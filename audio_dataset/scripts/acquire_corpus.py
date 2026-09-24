@@ -202,7 +202,7 @@ ESC50_PROV = {
     "author": "Karol J. Piczak",
     "licence_url": "https://github.com/karolpiczak/ESC-50/blob/master/LICENSE",
     "fetch_batch": "esc50_v1",
-    "recording_environment": "field",
+    "recording_environment": "unspecified",
     "environment_basis": "corpus_metadata:ESC-50 field recordings (Freesound clips)",
 }
 
@@ -213,7 +213,7 @@ US8K_PROV = {
     "author": "Justin Salamon, Duncan Jacoby, Juan Pablo Bello",
     "licence_url": "https://creativecommons.org/licenses/by/4.0/",
     "fetch_batch": "urbansound8k_v1",
-    "recording_environment": "field",
+    "recording_environment": "unspecified",
     "environment_basis": "corpus_metadata:UrbanSound8K urban field recordings",
 }
 
@@ -224,7 +224,7 @@ FSD_EVAL_PROV = {
     "author": "Eduardo Fonseca et al.",
     "licence_url": "https://creativecommons.org/licenses/by/4.0/",
     "fetch_batch": "fsd50k_eval_recovered_v1",
-    "recording_environment": "field",
+    "recording_environment": "unspecified",
     "environment_basis": "corpus_metadata:FSD50K Freesound field recordings",
 }
 
@@ -450,6 +450,119 @@ def from_fsd_eval(classes: dict, next_id: dict, have_sha: set, stats: Counter,
     return rows
 
 
+FSD_DEV_PROV = {
+    "source": "FSD50K.dev (Freesound field recordings)",
+    "source_url": "https://zenodo.org/record/4060432",
+    "licence": "CC-BY-4.0",
+    "author": "Eduardo Fonseca et al.",
+    "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+    "fetch_batch": "fsd50k_dev_topup_v1",
+    "recording_environment": "unspecified",
+    "environment_basis": "corpus_metadata:FSD50K Freesound field recordings",
+}
+
+
+def from_fsd_dev(classes: dict, next_id: dict, have_sha: set, stats: Counter,
+                 skipped: Counter, room: dict[str, int], tmp: Path) -> list[dict]:
+    """FSD50K.dev clips downloaded individually from the dataset mirror.
+
+    The dev split's per-clip WAVs live at
+    https://huggingface.co/datasets/Fhrozen/FSD50k/resolve/main/clips/dev/<id>.wav
+    (the official Zenodo zip is ~8 GB and only ~1,150 of its clips were ever
+    extracted locally). Only clips whose ground-truth labels map to a class
+    that still needs originals are fetched, so this never pulls more than the
+    gap. Every clip's own licence is checked against the accept-list from the
+    clips_info metadata before download -- the same per-FILE licence rule the
+    rest of this script enforces; NC and unlicensed clips are never fetched.
+    """
+    rows: list[dict] = []
+    import urllib.request
+
+    gt_path = AUDIO_DATASET / "raw_downloads" / "fsd50k_gt" / "FSD50K.ground_truth" / "dev.csv"
+    info_path = AUDIO_DATASET / "raw_downloads" / "dev_clips_info_FSD50K.json"
+    if not gt_path.exists():
+        skipped["fsd_dev:no_ground_truth"] += 1
+        return rows
+    info = json.loads(info_path.read_text(encoding="utf-8")) if info_path.exists() else {}
+    allowed_licences = {
+        "http://creativecommons.org/publicdomain/zero/1.0/": "CC0-1.0",
+        "http://creativecommons.org/licenses/by/3.0/": "CC-BY-3.0",
+        "http://creativecommons.org/licenses/sampling+/1.0/": "Sampling+-1.0",
+    }
+    # already-used source clips (by original filename) are never re-fetched
+    used_sources: set[str] = set()
+    for src_csv in (AUDIO_DATASET / "manifests" / "fsd50k_real_rows.csv", OUT_MANIFEST):
+        if src_csv.exists():
+            with src_csv.open(newline="", encoding="utf-8") as fh:
+                for r in csv.DictReader(fh):
+                    used_sources.add(r.get("original_filename", "").strip())
+
+    # 1. build the candidate list: (fname, label) sorted for determinism
+    candidates: dict[str, str] = {}
+    with gt_path.open(newline="", encoding="utf-8") as fh:
+        for row in csv.DictReader(fh):
+            fname = row["fname"]
+            terms = [t.strip().replace("_", " ") for t in row["labels"].split(",") if t.strip()]
+            label = None
+            for term in terms:
+                if term in FSD_EVAL_MAP and room.get(FSD_EVAL_MAP[term], 0) > 0:
+                    label = FSD_EVAL_MAP[term]
+                    break
+            if label is None:
+                continue
+            clip_info = info.get(fname, {})
+            licence_url = clip_info.get("license", "")
+            if licence_url not in allowed_licences:
+                key = "fsd_dev:licence_refused:" + (licence_url or "missing")
+                skipped[key] += 1
+                continue
+            if f"{fname}.wav" in used_sources:
+                skipped["fsd_dev:already_used"] += 1
+                continue
+            candidates[fname] = label
+            if sum(1 for l in candidates.values() if l == label) >= room[label]:
+                # enough candidates for this class; stop collecting for it
+                if all(sum(1 for l in candidates.values() if l == n) >= room[n]
+                       for n in classes if room[n] > 0):
+                    break
+
+    # interleave the classes so a run interrupted mid-way leaves gains spread
+    # over all three labels instead of exhausting one pool first
+    by_class: dict[str, list[tuple[str, str]]] = {}
+    for fname, label in sorted(candidates.items()):
+        by_class.setdefault(label, []).append(fname)
+    plan: list[tuple[str, str]] = []
+    remaining = {c: list(v) for c, v in by_class.items()}
+    while any(remaining.values()):
+        for label in sorted(remaining):
+            if remaining[label]:
+                plan.append((remaining[label].pop(0), label))
+
+    # 2. fetch, verify, ingest
+    base = "https://huggingface.co/datasets/Fhrozen/FSD50k/resolve/main/clips/dev/{}.wav"
+    for i, (fname, label) in enumerate(plan, start=1):
+        if room[label] <= 0:
+            continue
+        url = base.format(fname)
+        try:
+            with urllib.request.urlopen(url, timeout=60) as resp:
+                blob = resp.read()
+        except Exception as exc:  # noqa: BLE001 - a lost clip is skipped, not fatal
+            skipped[f"fsd_dev:download_failed"] += 1
+            print(f"  ! {fname}: {exc}")
+            continue
+        # trust but verify: the bytes must decode as audio and hash uniquely
+        if _ingest_blob(rows, FSD_DEV_PROV, f"fsd50k_dev:{info.get(fname, {}).get('title', '')[:40]}",
+                        label, classes[label]["slug"], classes[label]["code"],
+                        next_id[label], have_sha, stats, skipped, blob,
+                        {"corpus_id": f"fsd50k_dev:{fname}",
+                         "original_filename": f"{fname}.wav"}, tmp, room):
+            room[label] -= 1
+        if i % 25 == 0:
+            print(f"  fetched {i}/{len(plan)}; gained so far: {dict(stats)}")
+    return rows
+
+
 # ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
@@ -461,7 +574,7 @@ def main(argv=None) -> int:
     ap.add_argument("--per-class", type=int, default=300,
                     help="originals per class to end on (SRS: 300)")
     ap.add_argument("--source", action="append", default=None,
-                    choices=["esc50", "us8k", "fsd_eval"],
+                    choices=["esc50", "us8k", "fsd_eval", "fsd_dev"],
                     help="limit to these sources (repeatable); default: all")
     ap.add_argument("--rebuild", action="store_true",
                     help="delete every clip this script has ever written and "
@@ -510,13 +623,15 @@ def main(argv=None) -> int:
 
     rows: list[dict] = _load_acquired(have_sha)
     gained_start = len(rows)
-    sources = args.source or ["esc50", "us8k", "fsd_eval"]
+    sources = args.source or ["esc50", "us8k", "fsd_eval", "fsd_dev"]
     if "esc50" in sources:
         rows += from_esc50(classes, next_id, have_sha, stats, skipped, room, tmp)
     if "us8k" in sources:
         rows += from_us8k(classes, next_id, have_sha, stats, skipped, room, tmp)
     if "fsd_eval" in sources:
         rows += from_fsd_eval(classes, next_id, have_sha, stats, skipped, room, tmp)
+    if "fsd_dev" in sources:
+        rows += from_fsd_dev(classes, next_id, have_sha, stats, skipped, room, tmp)
     try:
         tmp.unlink()
         tmp.parent.rmdir()

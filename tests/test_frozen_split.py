@@ -268,8 +268,16 @@ def test_no_audio_file_on_disk_is_unlisted(records: list[dict[str, str]]):
     unlisted = []
     for path in AUDIO_ROOT.rglob("*.wav"):
         rel = str(path.relative_to(AUDIO_ROOT))
-        if rel not in listed and "/__pycache__/" not in rel:
-            unlisted.append(rel)
+        if rel in listed or "/__pycache__/" in rel:
+            continue
+        # raw_downloads/ holds UNPROCESSED acquisition inventory (FSD50K mirror
+        # clips, ESC-50 parquet) downloaded by acquire_corpus.py. These files are
+        # intentionally not in the manifest and must never enter a split; they
+        # live under audio_dataset/ only because that is where the fetcher
+        # writes. Everything else unlisted under audio_dataset/ is an orphan.
+        if rel.startswith("raw_downloads/"):
+            continue
+        unlisted.append(rel)
     assert not unlisted, (
         f"{len(unlisted)} wav files on disk in no manifest row, e.g. {sorted(unlisted)[:5]}"
     )

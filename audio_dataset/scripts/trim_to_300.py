@@ -1,0 +1,114 @@
+#!/usr/bin/env python3
+"""One-off trim of surplus originals so every class has EXACTLY 300 originals.
+
+Surplus arose because topup_synthetic.py under-counted existing originals while
+the fsd_dev acquisition was still adding clips. Priority when trimming:
+drop surplus SYNTHETIC clips first, then surplus dev-acquired clips.
+Also resolves the 13 SS-GLA-0700..0712 filename collisions between
+acquired_rows.csv (dev clips) and synthetic_topup_rows.csv.
+
+Dropped wavs are MOVED to <repo>/data/dataset_overflow/ (outside the verifier's
+scan roots) so nothing is destroyed.
+"""
+from __future__ import annotations
+
+import csv
+import shutil
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parents[2]
+AD = REPO / "audio_dataset"
+OVERFLOW = REPO / "data" / "dataset_overflow"
+OVERFLOW.mkdir(parents=True, exist_ok=True)
+
+MANIFESTS = {
+    "real": AD / "manifests" / "fsd50k_real_rows.csv",
+    "acq": AD / "manifests" / "acquired_rows.csv",
+    "tts": AD / "manifests" / "help_tts_rows.csv",
+    "top": AD / "manifests" / "synthetic_topup_rows.csv",
+}
+
+
+def load(name: str) -> list[dict]:
+    with MANIFESTS[name].open(newline="") as fh:
+        return list(csv.DictReader(fh))
+
+
+def save(name: str, rows: list[dict]) -> None:
+    fieldnames = list(rows[0].keys())
+    with MANIFESTS[name].open("w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=fieldnames)
+        w.writeheader()
+        w.writerows(rows)
+
+
+def move_clip(rel_filename: str) -> None:
+    src = AD / rel_filename
+    if not src.exists():
+        return
+    dest = OVERFLOW / Path(rel_filename).name
+    shutil.move(str(src), str(dest))
+
+
+def main() -> None:
+    rows = {n: load(n) for n in MANIFESTS}
+
+    # 1) Drop ALL synthetic glass clips (67) — their filenames collide with dev
+    #    clips and glass has the biggest overage.
+    keep_top = []
+    for r in rows["top"]:
+        if r["class_label"] == "Glass Breaking":
+            move_clip(r["filename"])
+            continue
+        keep_top.append(r)
+
+    # 2) Trim synthetic Aggression 45 -> 40 (drop highest 5 ids) and
+    #    synthetic Panic 47 -> 24 (drop highest 23 ids).
+    for label, target in (("Aggression", 40), ("Panic Scream", 24)):
+        sel = sorted(
+            (r for r in keep_top if r["class_label"] == label),
+            key=lambda r: int(r["audio_id"].split("-")[2]),
+        )
+        for r in sel[target:]:
+            move_clip(r["filename"])
+            keep_top.remove(r)
+
+    # 3) Trim acq dev glass by 51 (drop highest dev ids) — this also removes
+    #    the colliding SS-GLA-0700..0712 dev clips.
+    acq_glass_dev = sorted(
+        (
+            r
+            for r in rows["acq"]
+            if r["class_label"] == "Glass Breaking"
+            and r["fetch_batch"] == "fsd50k_dev_topup_v1"
+        ),
+        key=lambda r: int(r["audio_id"].split("-")[2]),
+        reverse=True,
+    )
+    drop_ids = {r["audio_id"] for r in acq_glass_dev[:51]}
+    keep_acq = []
+    for r in rows["acq"]:
+        if r["audio_id"] in drop_ids:
+            move_clip(r["filename"])
+            continue
+        keep_acq.append(r)
+
+    save("top", keep_top)
+    save("acq", keep_acq)
+
+    # 4) Report final tallies.
+    import collections
+
+    totals: collections.Counter = collections.Counter()
+    for n in MANIFESTS:
+        for r in load(n):
+            totals[r["class_label"]] += 1
+    print("final per-class original totals:")
+    for cl, n in sorted(totals.items()):
+        flag = "" if n == 300 else "  <-- NOT 300"
+        print(f"  {cl:<24} {n}{flag}")
+    print("grand total:", sum(totals.values()))
+
+
+if __name__ == "__main__":
+    main()

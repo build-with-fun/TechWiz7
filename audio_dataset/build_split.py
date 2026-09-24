@@ -411,6 +411,11 @@ def main(argv: Iterable[str] | None = None) -> int:
                                  if args.manifest.is_relative_to(REPO_ROOT) else args.manifest)
 
     write_split(split, args.out, args.ids_dir)
+    # The canonical manifest must carry the resolved dataset_split column so
+    # manifest.csv + split.json stay one consistent pair of frozen artifacts
+    # (the QA tests read manifest.csv directly). Rewrite it in place.
+    write_manifest_with_split(records, split, args.manifest)
+    # Keep a frozen-input copy (pre-split manifest) for provenance audits.
     write_manifest_with_split(records, split, REPO_ROOT / "audio_dataset" / "manifest_with_split.csv")
 
     totals = split["counts"]["originals_totals"]
