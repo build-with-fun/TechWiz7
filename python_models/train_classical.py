@@ -342,7 +342,7 @@ def run_training(
         best_dir,
         class_names=class_names,
         feature_version=extractor.feature_version,
-        columns=columns,
+        feature_columns=columns,
         model_name=f"classical_{selection.winner}",
         model_version=MODEL_VERSION,
         metrics=final.result.to_dict(),

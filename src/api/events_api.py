@@ -22,6 +22,7 @@ from pathlib import Path
 
 from flask import Blueprint, current_app, jsonify, request, send_file
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from src.auth import capability_required, client_ip, current_user
 from src.db import session_scope
@@ -176,8 +177,7 @@ def _event_row_to_dict(event: Event, store) -> dict:
         "duration_sec": audio.duration_sec if audio else None,
         "sample_rate": audio.sample_rate if audio else None,
         "sha256": audio.sha256 if audio else None,
-        "near_duplicate_of": audio.near_duplicate_of.audio_id
-            if audio and audio.near_duplicate_of else None,
+        "near_duplicate_of": audio.near_duplicate_of_id,
         "status": event.status,
         "quality": {
             "verdict": event.quality_verdict,
@@ -186,13 +186,13 @@ def _event_row_to_dict(event: Event, store) -> dict:
         },
         "predicted_class": event.predicted_class,
         "severity": event.severity,
-        "severity_display": event.severity_display,
-        "critical_class": event.critical_class,
+        "severity_display": event.severity,
+        "critical_class": event.is_critical,
         "consistency_status": event.consistency_status,
         "confidence_difference": event.confidence_difference,
         "requires_manual_review": bool(event.requires_manual_review),
         "review_reason": event.review_reason,
-        "review_priority": event.review_priority,
+        "review_priority": event.reviews[0].priority if event.reviews else None,
         "alert": (
             {"id": alert.id, "status": alert.status, "severity": alert.severity}
             if alert else None
@@ -307,8 +307,8 @@ def event_evidence(event_id: int):
             },
             "severity": {
                 "severity": event.severity,
-                "display": event.severity_display,
-                "critical_class": event.critical_class,
+                "display": event.severity,
+                "critical_class": event.is_critical,
             },
             "comparison": {
                 "consistency_status": event.consistency_status,
@@ -439,13 +439,26 @@ def _visible_event(event_id: int) -> Event:
     viewer_id, sees_all = _viewer_scope()
     factory = current_app.config["SST_SESSION_FACTORY"]
     with session_scope(factory) as session:
-        statement = select(Event).where(Event.id == event_id)
+        statement = (
+            select(Event)
+            .where(Event.id == event_id)
+            .options(
+                selectinload(Event.audio_file),
+                selectinload(Event.created_by),
+                selectinload(Event.python_model_version),
+                selectinload(Event.gtm_model_version),
+                selectinload(Event.confidence_scores),
+                selectinload(Event.alerts),
+                selectinload(Event.reviews),
+            )
+        )
         if not sees_all:
             statement = statement.where(Event.created_by_id == viewer_id)
         event = session.execute(statement).scalar_one_or_none()
         if event is None:
             raise ApiError("not_found", "No event has that id.")
-        # Detach a fully loaded copy: the relationships the serializer needs are loaded here
-        # while the session is open, and the response is built after it closes.
+        # Every relationship the serializers and the delete path read is loaded above,
+        # while the session is open, so the response can be built after it closes without
+        # a lazy load hitting a detached instance.
         session.expunge(event)
     return event

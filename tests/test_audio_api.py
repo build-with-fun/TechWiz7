@@ -12,7 +12,9 @@ which class the model picked. The stub returns a record shaped exactly like
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import io
+import itertools
 from pathlib import Path
 
 import pytest
@@ -73,7 +75,14 @@ def _record(*, event_id: int = 1, sha256: str = "a" * 64, agree: bool = True,
 
 
 class _StubPipeline:
-    """Returns a canned record and records what it was asked to analyse."""
+    """Returns a canned record and records what it was asked to analyse.
+
+    Mirrors the real contract: the pipeline calls ``persist`` itself and returns the record
+    it was handed back (enriched with the ids the database assigned). The endpoint reads
+    ``event_id`` / ``created_by`` straight off that returned record, so a stub that skips the
+    callback hands the serialiser a record with no id at all -- which is why the response
+    came back as a 201 full of ``None``.
+    """
 
     def __init__(self):
         self.calls = []
@@ -84,11 +93,30 @@ class _StubPipeline:
         self.calls.append({"filename": filename, "origin": origin, "meta": meta,
                            "bytes": len(raw), "persist": persist is not None})
         if self.next_status == "rejected":
-            return {**_record(), "status": "rejected",
-                    "rejection": {"message": "too short to analyse"},
-                    "quality": {"verdict": "Unusable", "problems": ["too_short"],
-                                "summary": "0.2s is below the 0.5s minimum"}}
-        return _record(verdict=self.next_quality_verdict)
+            record = {**_record(), "status": "rejected",
+                      "rejection": {"message": "The recording is 0.2s, below the 0.5s minimum"},
+                      "quality": {"verdict": "Unusable", "problems": ["too_short"],
+                                  "summary": "0.2s is below the 0.5s minimum"}}
+        else:
+            record = _record(verdict=self.next_quality_verdict)
+        # Mirror the real pipeline: the digest is of the bytes actually received, so two
+        # uploads of the same bytes collide and two different uploads do not. The stub
+        # used to ship a fixed digest, which made the second seed of any test a
+        # duplicate and broke the 409 gate's premise.
+        digest = hashlib.sha256(raw).hexdigest()
+        record["audio"]["sha256"] = digest
+        record["audio"]["fingerprint"] = f"fp-{digest[:8]}"
+        if persist is not None:
+            # The real pipeline does `record["stored"] = dict(stored)` and keeps the
+            # record: persist returns the *stored result*, not a replacement record.
+            # Replacing the record here used to throw away everything (class, severity,
+            # audio) and hand the serialiser a bare id bag -- hence a 201 full of None.
+            stored = persist(record)
+            record["stored"] = dict(stored)
+            if stored.get("event_ids"):
+                record["event_id"] = stored["event_ids"][0]
+            record["audio_id"] = stored.get("audio_id") or record["audio"]["audio_id"]
+        return record
 
 
 @pytest.fixture()
@@ -143,28 +171,32 @@ def reviewer(factory):
     return _make_user(factory, username="rev", role="audio_reviewer")
 
 
-def _login(app, user):
-    """Sign in inside a request context so the session cookie is set."""
-    with app.test_request_context("/"):
-        sign_in(user)
-    return user
-
-
 def _client(app, user):
     """A test client carrying that user's signed session.
 
-    The session is established inside a real request context on the app so the signed cookie
-    the client carries is the one a browser would have received.
+    ``login_user`` (via ``sign_in``) only writes to ``flask.session``; Flask serialises
+    that session into a cookie only when a request completes, so there is no cookie to read
+    off the session object itself -- the old code read ``session.cookies``, which does not
+    exist on a ``SecureCookieSession``.
+
+    ``session_transaction`` is the documented way to seed a client's cookie session
+    outside a request, but it needs a request context to build the identifier
+    flask_login's session protection checks. Opening that context here is exactly what
+    ``sign_in`` was already trying to do; the missing piece was reading the serialised
+    cookie back out of the transaction rather than off ``flask.session``.
     """
     client = app.test_client()
     with app.test_request_context("/"):
-        sign_in(user)
-        from flask import session as flask_session
-
-        cookie = flask_session.cookies.get("session", "")
-    if cookie:
-        client.set_cookie("localhost", "session", cookie)
+        with client.session_transaction() as sess:
+            sess["_user_id"] = str(user.id)
+            sess["_fresh"] = True
+            sess["_id"] = app.login_manager._session_identifier_generator()
     return client
+
+
+def _login(app, user):
+    """Kept for the two tests that only need the user row itself."""
+    return user
 
 
 def _upload(client, *, data=b"RIFF****", filename="probe.wav", **form):
@@ -197,7 +229,9 @@ def test_upload_writes_the_event_and_audio_rows(app, factory, viewer):
     with factory() as session:
         event = session.execute(select(Event)).scalar_one()
         assert event.predicted_class == "Gunshot"
-        assert event.audio_file.sha256 == "a" * 64
+        # The stub digests the real bytes (as the pipeline does), so the stored hash is
+        # the digest of what was uploaded, not the canned "a"*64 placeholder.
+        assert event.audio_file.sha256 == hashlib.sha256(b"RIFF****").hexdigest()
 
 
 def test_upload_of_the_same_bytes_is_a_409_naming_the_first(app, viewer):
@@ -208,7 +242,8 @@ def test_upload_of_the_same_bytes_is_a_409_naming_the_first(app, viewer):
 
     assert again.status_code == 409
     assert again.get_json()["error"]["code"] == "duplicate_audio"
-    assert again.get_json()["error"]["audio_id"].startswith("SST-")
+    # Error envelope contract: field-level identifiers live in details.
+    assert again.get_json()["error"]["details"]["audio_id"].startswith("SST-")
 
 
 def test_allow_duplicate_stores_a_second_event(app, viewer):
@@ -266,18 +301,28 @@ def test_an_anonymous_upload_is_not_allowed(app):
 # /api/events -- scoping
 # --------------------------------------------------------------------------------------
 
+_seed_counter = itertools.count()
+_seed_digests: dict[int, str] = {}
+
+
 def _seed_event(factory, user, *, predicted="Gunshot", severity="High"):
     from src.services.persistence import EventStore
     from src.db import StorageLayout
 
     layout = StorageLayout(Path("/tmp") / f"sst-test-{user.id}")
     layout.ensure()
-    record = _record(severity=severity)
+    # A distinct digest per seed: the store treats an identical sha256 as a re-upload of
+    # already-known bytes and files none, which is correct for production and fatal for a
+    # fixture that seeds twice.
+    digest = hashlib.sha256(str(next(_seed_counter)).encode()).hexdigest()
+    record = _record(severity=severity, sha256=digest)
     record["predictions"]["python"]["predicted_class"] = predicted
     record["decision"]["final_class"] = predicted
     with factory() as session:
         result = EventStore(session, storage=layout, actor=user).store(record)
-    return result["event_ids"][0]
+    event_id = result["event_ids"][0]
+    _seed_digests[event_id] = digest
+    return event_id
 
 
 def test_a_viewer_sees_only_their_own_events(app, factory, viewer, reviewer):
@@ -396,4 +441,5 @@ def test_a_reviewer_can_delete_and_it_is_audited_with_a_before_image(app, factor
         rows = [a for a in session.execute(select(AuditRecord)).scalars()
                 if a.action == "event_deleted"]
     assert rows
-    assert rows[0].before["sha256"] == "a" * 64
+    # The before-image records the audio exactly as it was stored.
+    assert rows[0].before["sha256"] == _seed_digests[event_id]

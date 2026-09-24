@@ -1,0 +1,414 @@
+{# ==========================================================================
+   templates/event_detail.html — one event in full.
+
+   Owner: hina (front end). The comparison page: both models' classes and
+   confidences side by side, the difference, the consistency verdict, the
+   quality verdict, severity, the rule that fired, and the audio with its
+   waveform and spectrogram.
+
+   Context (src/api/pages.py::event_detail):
+     event         Event  the row, expunged
+     audio         AudioFile|None
+     scores        dict[str, list[ConfidenceScore]] keyed by model_name, by rank
+     alerts        list[Alert] newest first
+     reviews       list[Review] newest first
+     severity_tone dict
+     rule          dict|None  the alert rule snapshot that fired
+     page_title    str
+
+   `scores` is keyed by model_name and each list is already sorted by rank, so the
+   page walks MODEL_NAMES and reads what it finds; a model with no scores shows
+   an honest "no prediction recorded" rather than a zero.
+   ========================================================================== #}
+{% extends "base.html" %}
+{% import "_macros.html" as ui %}
+{% import "_presentation.html" as pres %}
+
+{% block title %}{{ page_title|default('Event') }} · {{ app_name }}{% endblock %}
+{% block page_id %}event-detail{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="page-head__main">
+    <p class="breadcrumb">
+      <a href="{{ url_for('main.events') }}">Events</a>
+      <span>{{ event.id }}</span>
+    </p>
+    <h1 class="page-title">
+      {{ event.effective_class or 'Unclassified event' }}
+    </h1>
+    <p class="page-sub">
+      Event <span class="mono">#{{ event.id }}</span>
+      {% if audio %}· <span class="mono">{{ audio.audio_id }}</span>{% endif %}
+      · {{ event.source }}
+      · created {{ event.created_at }}
+    </p>
+  </div>
+  <div class="page-head__actions">
+    <a class="btn" href="{{ url_for('main.events', audio_id=audio.audio_id if audio else '') }}">
+      {{ ui.icon('search', 16) }} <span>Similar events</span>
+    </a>
+    {% if audio %}
+    <a class="btn" href="{{ url_for('main.event_audio', event_id=event.id, download='1') }}">
+      {{ ui.icon('download', 16) }} <span>Download recording</span>
+    </a>
+    {% endif %}
+  </div>
+</section>
+
+{# ---- the summary rail: the six facts, each with a word and a glyph. --------- #}
+<section class="summary-grid" data-testid="event-summary">
+  <div class="summary-cell">
+    <p class="summary-label">Final class</p>
+    <div class="summary-value">
+      {{ ui.class_chip(event.effective_class,
+                       class_names|default({}).get(event.effective_class) if class_names is defined else none,
+                       critical=event.is_critical) }}
+    </div>
+    {% if event.final_class and event.final_class != event.predicted_class %}
+      <p class="summary-note">Overridden from {{ event.predicted_class }}</p>
+    {% endif %}
+  </div>
+
+  <div class="summary-cell">
+    <p class="summary-label">Severity</p>
+    <div class="summary-value">{{ ui.severity_chip(event.severity) }}</div>
+    {% if event.is_critical %}<p class="summary-note">Critical category — alertable</p>{% endif %}
+  </div>
+
+  <div class="summary-cell">
+    <p class="summary-label">Consistency</p>
+    <div class="summary-value">{{ ui.consistency_chip(event.consistency_status) }}</div>
+    <p class="summary-note">
+      {% if event.confidence_difference is not none %}
+      Confidence difference <span class="mono">{{ '%.3f'|format(event.confidence_difference) }}</span>
+      {% else %}
+      No comparison available
+      {% endif %}
+    </p>
+  </div>
+
+  <div class="summary-cell">
+    <p class="summary-label">Audio quality</p>
+    <div class="summary-value">{{ ui.quality_chip(event.quality_verdict) }}</div>
+    {% if event.quality_score is not none %}
+    <p class="summary-note">Score <span class="mono">{{ '%.2f'|format(event.quality_score) }}</span></p>
+    {% endif %}
+  </div>
+
+  <div class="summary-cell">
+    <p class="summary-label">Status</p>
+    <div class="summary-value">{{ ui.status_chip(event.status) }}</div>
+    {% if event.requires_manual_review %}
+    <p class="summary-note">{{ ui.icon('clipboard', 12) }} Routed to manual review</p>
+    {% endif %}
+  </div>
+
+  <div class="summary-cell">
+    <p class="summary-label">Confirmed by</p>
+    <div class="summary-value">
+      <span class="mono">{{ event.consecutive_detections if event.consecutive_detections else 1 }}</span>
+      <span class="summary-unit">consecutive window{{ '' if (event.consecutive_detections or 1) == 1 else 's' }}</span>
+    </div>
+    {% if event.overlapping_classes %}
+    <p class="summary-note">Also above threshold: {{ event.overlapping_classes|join(', ') }}</p>
+    {% endif %}
+  </div>
+</section>
+
+{% if event.requires_manual_review and event.review_reason %}
+<div class="banner banner--warn">
+  <span class="banner__icon" aria-hidden="true">{{ ui.icon('clipboard', 20) }}</span>
+  <div class="banner__body">
+    <p class="banner__text"><strong>Queued for manual review.</strong> {{ event.review_reason }}</p>
+  </div>
+</div>
+{% endif %}
+
+{# ---- the audio and its visuals. ------------------------------------------- #}
+<section class="panel">
+  <div class="panel__head">
+    <h2 class="panel__title">Recording</h2>
+    <p class="panel__note">
+      {% if audio %}
+      {{ audio.filename }} · {{ ui.bytesize(audio.size_bytes) }}
+      · {{ ui.duration(audio.duration_sec) if audio.duration_sec else 'duration unknown' }}
+      · {{ audio.sample_rate|default('—') }} Hz
+      {% else %}
+      No recording is attached to this event.
+      {% endif %}
+    </p>
+  </div>
+  <div class="panel__body">
+    {% if audio %}
+    <div class="player" data-audio-player
+         data-src="{{ url_for('main.event_audio', event_id=event.id) }}"
+         data-visuals="{{ url_for('event_visuals.visuals', event_id=event.id) }}">
+      <div class="player__controls">
+        <button class="btn btn--icon" type="button" data-player-play aria-label="Play recording">
+          {{ ui.icon('play', 18) }}
+        </button>
+        <span class="player__time" data-player-time>0:00.0</span>
+        <input class="player__seek" type="range" min="0" max="1000" value="0" step="1"
+               data-player-seek aria-label="Seek">
+        <div class="player__volume">
+          {{ ui.icon('volume', 16) }}
+          <input type="range" min="0" max="100" value="80" step="1" data-player-volume
+                 aria-label="Volume">
+        </div>
+      </div>
+      <div class="canvas-frame canvas-frame--wave">
+        <canvas data-player-waveform width="1200" height="128" aria-hidden="true"></canvas>
+      </div>
+      <p class="canvas-caption">
+        <span>Waveform — peaks computed server-side from the stored recording</span>
+        <span data-player-duration>{{ ui.duration(audio.duration_sec) if audio.duration_sec else '' }}</span>
+      </p>
+      <div class="canvas-frame canvas-frame--spec">
+        <canvas data-player-spectrogram width="1200" height="192" aria-hidden="true"></canvas>
+      </div>
+      <p class="canvas-caption">
+        <span>Spectrogram — frequency over time</span>
+        <span class="legend">
+          <span class="legend__item"><span class="legend__swatch" style="background:#0b1220"></span>quiet</span>
+          <span class="legend__item"><span class="legend__swatch" style="background:#38bdf8"></span>loud</span>
+        </span>
+      </p>
+      <p class="field__hint">
+        Both visuals are computed server-side from the same signal the models were given,
+        so what you see is what they heard. The spectrogram endpoint is
+        <span class="mono">{{ url_for('event_visuals.visuals', event_id=event.id) }}</span>.
+      </p>
+    </div>
+    {% else %}
+    {{ ui.empty_state('No recording attached',
+                      'This event has no stored audio, so there is nothing to play back. Its analysis and history are unaffected.',
+                      art='audio') }}
+    {% endif %}
+  </div>
+</section>
+
+{# ---- both models, side by side. The reason this page exists. -------------- #}
+<section class="panel">
+  <div class="panel__head">
+    <h2 class="panel__title">Model comparison</h2>
+    <p class="panel__note">Each model predicted independently. Neither was given the other's
+      class or confidence.</p>
+  </div>
+  <div class="panel__body">
+    <div class="duo">
+      {% for model_name in ('python', 'gtm') %}
+      <article class="model-card model-card--{{ model_name }}" data-model-card="{{ model_name }}">
+        <header class="model-card__head">
+          <span class="model-card__name">{{ model_labels[model_name] }}</span>
+        </header>
+        {% set rows = scores.get(model_name, []) %}
+        {% if rows %}
+          {% set top = rows[0] %}
+          <div class="model-card__class">{{ top.class_name }}</div>
+          <div class="model-card__conf">
+            {{ ui.confidence(top.confidence) }}
+            <span class="model-card__conf-unit">top-class confidence</span>
+          </div>
+          <div class="model-card__bar" aria-hidden="true">
+            <div class="model-card__bar-fill" style="width: {{ (top.confidence * 100)|round(1) }}%"></div>
+          </div>
+          {% if top.latency_sec is not none %}
+          <p class="model-card__note">Inference {{ ui.ms(top.latency_sec * 1000) }}</p>
+          {% endif %}
+          <h3 class="model-card__subhead">Top classes</h3>
+          <ol class="pred">
+            {% for row in rows[:5] %}
+            <li class="pred__row">
+              <span class="pred__rank">{{ loop.index }}</span>
+              <span class="pred__label">
+                <span class="pred__name"><span class="pred__name-text">{{ row.class_name }}</span></span>
+                <span class="pred__bar"><span class="pred__bar-fill"
+                       style="width: {{ (row.confidence * 100)|round(1) }}%"></span></span>
+              </span>
+              <span class="pred__value">{{ ui.confidence(row.confidence, 2) }}</span>
+            </li>
+            {% endfor %}
+          </ol>
+        {% else %}
+          <div class="model-card__class">—</div>
+          <p class="model-card__note">No prediction from this model is recorded for this
+            event.</p>
+        {% endif %}
+      </article>
+      {% endfor %}
+
+      <div class="duo__gap" aria-hidden="true">
+        <span class="duo__gap-label">Δ</span>
+        <span class="duo__gap-value">
+          {% if event.confidence_difference is not none %}
+            {{ '%.3f'|format(event.confidence_difference) }}
+          {% else %}—{% endif %}
+        </span>
+      </div>
+    </div>
+
+    {# ---- the verdict, stated in words. ------------------------------------ #}
+    <div class="verdict" data-testid="event-verdict">
+      <div class="verdict__item">
+        <p class="verdict__label">Agreed class</p>
+        <p class="verdict__value">
+          {% set p_top = scores.get('python', [{}])[0] if 'python' in scores else none %}
+          {% set g_top = scores.get('gtm', [{}])[0] if 'gtm' in scores else none %}
+          {% if p_top and g_top %}
+            {% if p_top.class_name == g_top.class_name %}{{ p_top.class_name }}{% else %}No agreement — see the queue{% endif %}
+          {% else %}—{% endif %}
+        </p>
+      </div>
+      <div class="verdict__item">
+        <p class="verdict__label">Python confidence</p>
+        <p class="verdict__value mono">
+          {{ ui.confidence(p_top.confidence if p_top) }}
+        </p>
+      </div>
+      <div class="verdict__item">
+        <p class="verdict__label">Teachable Machine confidence</p>
+        <p class="verdict__value mono">
+          {{ ui.confidence(g_top.confidence if g_top) }}
+        </p>
+      </div>
+      <div class="verdict__item">
+        <p class="verdict__label">Difference</p>
+        <p class="verdict__value mono">
+          {% if event.confidence_difference is not none %}
+            |{{ '%.3f'|format(event.confidence_difference) }}|
+          {% else %}—{% endif %}
+        </p>
+      </div>
+      <div class="verdict__item">
+        <p class="verdict__label">Verdict</p>
+        <p class="verdict__value">{{ ui.consistency_chip(event.consistency_status) }}</p>
+      </div>
+    </div>
+    <p class="field__hint">
+      The verdict bands are
+      {% for status in consistency_statuses|default([]) %}
+      <span class="chip chip--consistency-{{ pres.consistency_slug(status) }}">
+        <span class="chip__glyph" aria-hidden="true">{{ pres.consistency_glyph(status) }}</span><span class="chip__text">{{ status }}</span>
+      </span>
+      {% endfor %}
+    </p>
+  </div>
+</section>
+
+{# ---- the rule that fired. -------------------------------------------------- #}
+{% if rule %}
+<section class="panel">
+  <div class="panel__head">
+    <h2 class="panel__title">Rule that produced this severity</h2>
+    <p class="panel__note">Snapshot at firing time, so the page stays correct after the rule
+      is edited.</p>
+  </div>
+  <div class="panel__body">
+    <dl class="kv">
+      <dt>Rule</dt><dd>{{ rule.get('label') or rule.get('id') or rule.get('class') or '—' }}</dd>
+      <dt>Class</dt><dd>{{ rule.get('class') or '—' }}</dd>
+      <dt>Severity</dt><dd>{{ ui.severity_chip(rule.get('severity')) }}</dd>
+      {% if rule.get('recommended_action') %}
+      <dt>Recommended action</dt><dd>{{ rule.recommended_action }}</dd>
+      {% endif %}
+      {% if rule.get('min_confidence') is not none %}
+      <dt>Minimum confidence</dt><dd class="mono">{{ '%.3f'|format(rule.min_confidence) }}</dd>
+      {% endif %}
+    </dl>
+  </div>
+</section>
+{% endif %}
+
+{# ---- alerts on this event. ------------------------------------------------- #}
+<section class="panel">
+  <div class="panel__head">
+    <h2 class="panel__title">Alerts</h2>
+    <p class="panel__note">{{ alerts|length }} on this event</p>
+  </div>
+  {% if alerts %}
+  <div class="table-wrap">
+    <table class="data">
+      <caption>Alerts raised by this event, newest first</caption>
+      <thead>
+        <tr><th>Severity</th><th>Status</th><th>Rule class</th><th>Message</th><th>Raised</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        {% for alert in alerts %}
+        <tr>
+          <td>{{ ui.severity_chip(alert.severity) }}</td>
+          <td>{{ ui.alert_chip(alert.status) }}</td>
+          <td>{{ alert.rule_class or '—' }}</td>
+          <td>{{ alert.message or '—' }}</td>
+          <td class="mono">{{ alert.created_at }}</td>
+          <td>{{ alert.recommended_action or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="panel__body">
+    {{ ui.empty_state('No alerts',
+                      'This event did not raise an alert. An alert is raised when the class, severity and confidence thresholds in the alert rules are met.',
+                      art='bell') }}
+  </div>
+  {% endif %}
+</section>
+
+{# ---- the review history. --------------------------------------------------- #}
+<section class="panel">
+  <div class="panel__head">
+    <h2 class="panel__title">Review history</h2>
+    <p class="panel__note">{{ reviews|length }} decision{{ '' if reviews|length == 1 else 's' }}</p>
+  </div>
+  {% if reviews %}
+  <div class="panel__body">
+    <ol class="timeline">
+      {% for review in reviews %}
+      <li class="timeline__item">
+        <span class="timeline__when">
+          {{ review.queued_at }}{% if review.decided_at %}<br>→ {{ review.decided_at }}{% endif %}
+        </span>
+        <div class="timeline__body">
+          <p class="timeline__title">
+            {{ ui.review_chip(review.status) }}
+            {% if review.decision != 'pending' %}
+            <strong>{{ review.decision }}</strong>
+            {% endif %}
+          </p>
+          {% if review.reason_text %}<p>{{ review.reason_text }}</p>{% endif %}
+          {% if review.comments %}<p>{{ review.comments }}</p>{% endif %}
+          {% if review.is_decided %}
+          <dl class="kv">
+            {% if review.final_class %}<dt>Final class</dt><dd>{{ review.final_class }}</dd>{% endif %}
+            {% if review.final_severity %}<dt>Final severity</dt><dd>{{ ui.severity_chip(review.final_severity) }}</dd>{% endif %}
+            {% if review.false_alarm is not none %}
+            <dt>False alarm</dt><dd>{{ 'Yes — recorded against the false-alarm rate' if review.false_alarm else 'No' }}</dd>
+            {% endif %}
+          </dl>
+          <p class="field__hint">
+            Models said: {{ review.original_python_class }}
+            ({{ '%.3f'|format(review.original_python_confidence) if review.original_python_confidence is not none else '—' }})
+            · {{ review.original_gtm_class }}
+            ({{ '%.3f'|format(review.original_gtm_confidence) if review.original_gtm_confidence is not none else '—' }})
+          </p>
+          {% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+  {% else %}
+  <div class="panel__body">
+    {{ ui.empty_state('Never queued for review',
+                      'This event was not routed to the manual review queue. Reviews are queued by the conditions in alert_rules/manual_review_conditions.json.',
+                      art='clipboard') }}
+  </div>
+{% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/event.js') }}" defer></script>
+{% endblock %}

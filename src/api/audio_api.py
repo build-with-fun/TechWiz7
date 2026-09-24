@@ -150,6 +150,7 @@ def upload():
         storage=storage,
         actor=actor,
         request_id=current_request_id(),
+        allow_duplicate=allow_duplicate,
     )
     try:
         record = pipeline.analyse_bytes(
@@ -177,7 +178,7 @@ def upload():
             details={"request_id": current_request_id(), "detail": type(exc).__name__},
         )
 
-    return _response_for(record, store), 201
+    return {"data": _response_for(record, store)}, 201
 
 
 @bp.get("/<int:audio_pk>/download")

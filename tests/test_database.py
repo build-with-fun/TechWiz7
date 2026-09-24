@@ -1043,9 +1043,12 @@ def test_init_db_reset_with_yes_rebuilds_and_reassigns_ids(tmp_path: Path):
         assert connection.execute(text("SELECT COUNT(*) FROM users")).scalar() == 6
 
 
-def test_init_db_register_model_then_activate(tmp_path: Path):
+def test_init_db_register_model_then_activate(tmp_path: Path, monkeypatch):
     """FR lxxv: versions are registered and activated through a documented operator command."""
     init = _load_init_module()
+    # Isolate from real artifacts on disk (python_models/ carries a smoke bundle): the
+    # seed step must discover nothing here so the operator command is the sole registration.
+    monkeypatch.setattr(init, "REPO_ROOT", tmp_path)
     db = tmp_path / "models.db"
     assert init.main(["--db", str(db), "--seed", "--storage", str(tmp_path / "st")]) == 0
     assert init.main(["--db", str(db), "--register-model", "python", "--version", "3.1.0",

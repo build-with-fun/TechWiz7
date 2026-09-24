@@ -136,11 +136,16 @@ class EventStore:
         storage: StorageLayout | None = None,
         actor: "User | None" = None,
         request_id: str | None = None,
+        allow_duplicate: bool = False,
     ) -> None:
         self.session = session
         self.storage = storage or StorageLayout()
         self.actor = actor
         self.request_id = request_id
+        # FR lxxiii: the caller has already consented to a repeat of known bytes. The
+        # 409 gate lives in the API layer; here it changes what a hash hit means --
+        # reuse the evidence instead of refusing.
+        self.allow_duplicate = allow_duplicate
 
     # -- helpers --------------------------------------------------------------
 
@@ -245,10 +250,15 @@ class EventStore:
         meta = self._block(record, "meta")
 
         # -- 1. exact duplicate by content hash (FR lxxiii) ---------------------
-        # The pipeline decides whether that is a 409; this is the memory that makes the
-        # decision a database guarantee rather than a query that can race.
+        # The API layer decided whether that is a 409; this is the memory that makes the
+        # decision a database guarantee rather than a query that can race. With
+        # allow_duplicate consent, a hit is not a refusal: the bytes are the same
+        # evidence, so the file row is reused and the new analysis gets its own event
+        # (a second opinion on the same bytes is exactly what the operator asked for).
         existing = self._audio_file_by_hash(audio.get("sha256"))
         if existing is not None:
+            if self.allow_duplicate:
+                return self._reanalyse_existing(existing, record)
             self._audit(
                 action="audio_duplicate_rejected",
                 target_type="audio_file",
@@ -278,7 +288,32 @@ class EventStore:
         session.add(audio_file)
         session.flush()  # populate .id and enforce the unique sha256 constraint
         self._audit_audio_upload(audio_file)
+        return self._store_event_for(audio_file, record)
 
+    def _reanalyse_existing(self, existing: AudioFile, record: Mapping[str, Any]) -> dict[str, Any]:
+        """FR lxxiii: the operator consented to a repeat -- analyse the bytes again.
+
+        Same bytes, same evidence: the file row is reused (rewriting the bytes would fork
+        the evidence and confuse the download path), but the new analysis earns its own
+        event, alert, review and audit trail, because the operator is explicitly asking
+        for a second opinion on the same clip.
+        """
+        self._audit(
+            action="audio_duplicate_allowed",
+            target_type="audio_file",
+            target_id=existing.audio_id,
+            detail=f"re-analysis of known bytes, consented by allow_duplicate",
+            after={"audio_id": existing.audio_id, "sha256": existing.sha256},
+        )
+        return self._store_event_for(existing, record)
+
+    def _store_event_for(self, audio_file: AudioFile, record: Mapping[str, Any]) -> dict[str, Any]:
+        """Steps 3-4 of the store: the event (or not), plus alert, review and audit.
+
+        Shared by the fresh-upload path and the allow_duplicate path, so a repeat upload
+        gets exactly the same treatment as a first one -- not a stripped-down copy.
+        """
+        session = self.session
         # -- 3. the event (or not) + both models' confidence distributions -------
         event_status = self._event_status(record)
         if event_status is None:
@@ -689,6 +724,7 @@ def store_analysis(
     storage: StorageLayout | None = None,
     actor: "User | None" = None,
     request_id: str | None = None,
+    allow_duplicate: bool = False,
 ) -> dict[str, Any]:
     """Store one pipeline record, opening a session if the caller did not supply one.
 
@@ -697,14 +733,16 @@ def store_analysis(
     """
     if session is not None:
         return EventStore(
-            session, storage=storage, actor=actor, request_id=request_id
+            session, storage=storage, actor=actor, request_id=request_id,
+            allow_duplicate=allow_duplicate,
         ).store(record)
 
     from src.db import session_scope
 
     with session_scope() as new_session:
         return EventStore(
-            new_session, storage=storage, actor=actor, request_id=request_id
+            new_session, storage=storage, actor=actor, request_id=request_id,
+            allow_duplicate=allow_duplicate,
         ).store(record)
 
 
@@ -712,6 +750,7 @@ def make_persistence_callback(
     storage: StorageLayout | None = None,
     actor: "User | None" = None,
     request_id: str | None = None,
+    allow_duplicate: bool = False,
 ) -> Any:
     """Build the ``persist(record)`` the pipeline calls.
 
@@ -721,7 +760,8 @@ def make_persistence_callback(
     """
 
     def _persist(record: Mapping[str, Any]) -> dict[str, Any]:
-        return store_analysis(record, storage=storage, actor=actor, request_id=request_id)
+        return store_analysis(record, storage=storage, actor=actor,
+                              request_id=request_id, allow_duplicate=allow_duplicate)
 
     return _persist
 

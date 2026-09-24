@@ -1,0 +1,2069 @@
+{
+  "model_family": "classical",
+  "model_version": "1.0.0",
+  "python": "3.12.14",
+  "classes": [
+    "Machinery Fault",
+    "Glass Breaking",
+    "Alarm or Siren",
+    "Vehicle Horn",
+    "Animal Sound",
+    "Gunshot",
+    "Panic Scream",
+    "Aggression",
+    "Person Asking for Help",
+    "Background Noise"
+  ],
+  "critical_classes": [
+    "Gunshot",
+    "Glass Breaking",
+    "Panic Scream",
+    "Aggression",
+    "Person Asking for Help"
+  ],
+  "n_features": 254,
+  "feature_version": "audiofeat-1.0.0",
+  "floors": {
+    "accuracy": 0.85,
+    "macro_f1": 0.8,
+    "critical_recall": 0.85
+  },
+  "manifest": "/home/ammar/Downloads/SRS_NextWave AI and ML/sonicsentinel-ai/audio_dataset/smoke/manifest_with_split.csv",
+  "split_sizes": {
+    "train": 80,
+    "val": 20,
+    "test": 20
+  },
+  "matrix_rows": {
+    "train": 78,
+    "val": 19,
+    "test": 19
+  },
+  "split_integrity": {
+    "train_val_overlap": 0,
+    "train_test_overlap": 0,
+    "val_test_overlap": 0
+  },
+  "unusable_recordings": {
+    "n": 4,
+    "by_split": {
+      "train": 2,
+      "val": 1,
+      "test": 1
+    },
+    "by_class": {
+      "Background Noise": 1,
+      "Machinery Fault": 1,
+      "Aggression": 1,
+      "Glass Breaking": 1
+    },
+    "rows": [
+      {
+        "audio_id": "SS-BGN-0008",
+        "class_label": "Background Noise",
+        "split": "train",
+        "reason": "unreadable_format"
+      },
+      {
+        "audio_id": "SS-MAC-0006",
+        "class_label": "Machinery Fault",
+        "split": "train",
+        "reason": "unreadable_format"
+      },
+      {
+        "audio_id": "SS-AGG-0004",
+        "class_label": "Aggression",
+        "split": "val",
+        "reason": "unreadable_format"
+      },
+      {
+        "audio_id": "SS-GLA-0001",
+        "class_label": "Glass Breaking",
+        "split": "test",
+        "reason": "unreadable_format"
+      }
+    ]
+  },
+  "selection": {
+    "winner": "gradient_boosting[learning_rate=0.1,max_depth=3,n_estimators=200]",
+    "params": {
+      "_candidate": "gradient_boosting",
+      "n_estimators": 200,
+      "learning_rate": 0.1,
+      "max_depth": 3
+    },
+    "seed": 0,
+    "criterion": "macro_f1",
+    "rationale": "selected gradient_boosting[learning_rate=0.1,max_depth=3,n_estimators=200] on validation macro_f1=0.3133 (val accuracy 0.3158, critical recall 0.2000) out of 26 trials; test split not used for selection. no candidate met the critical-recall floor of 0.85; selecting the best available on macro-F1 and flagging this in the report",
+    "n_trials": 26,
+    "trials": [
+      {
+        "candidate": "svm_rbf[C=1.0,gamma=scale]",
+        "params": {
+          "_candidate": "svm_rbf",
+          "C": 1.0,
+          "gamma": "scale"
+        },
+        "seed": 0,
+        "val_macro_f1": 0.03333333333333333,
+        "val_accuracy": 0.05263157894736842,
+        "val_critical_recall": 0.0,
+        "fit_seconds": 0.202,
+        "score_seconds": 0.004,
+        "note": ""
+      },
+      {
+        "candidate": "svm_rbf[C=1.0,gamma=scale]+cw",
+        "params": {
+          "_candidate": "svm_rbf",
+          "C": 1.0,
+          "gamma": "scale",
+          "_weighted": true
+        },
+        "seed": 0,
+        "val_macro_f1": 0.03333333333333333,
+        "val_accuracy": 0.05263157894736842,
+        "val_critical_recall": 0.0,
+        "fit_seconds": 0.058,
+        "score_seconds": 0.004,
+        "note": ""
+      },
+      {
+        "candidate": "svm_rbf[C=10.0,gamma=scale]",
+        "params": {
+          "_candidate": "svm_rbf",
+          "C": 10.0,
+          "gamma": "scale"
+        },
+        "seed": 0,
+        "val_macro_f1": 0.09523809523809523,
+        "val_accuracy": 0.10526315789473684,
+        "val_critical_recall": 0.1,
+        "fit_seconds": 0.058,
+        "score_seconds": 0.004,
+        "note": ""
+      },
+      {
+        "candidate": "svm_rbf[C=10.0,gamma=scale]+cw",
+        "params": {
+          "_candidate": "svm_rbf",
+          "C": 10.0,
+          "gamma": "scale",
+          "_weighted": true
+        },
+        "seed": 0,
+        "val_macro_f1": 0.09523809523809523,
+        "val_accuracy": 0.10526315789473684,
+        "val_critical_recall": 0.1,
+        "fit_seconds": 0.102,
+        "score_seconds": 0.005,
+        "note": ""
+      },
+      {
+        "candidate": "svm_rbf[C=100.0,gamma=scale]",
+        "params": {
+          "_candidate": "svm_rbf",
+          "C": 100.0,
+          "gamma": "scale"
+        },
+        "seed": 0,
+        "val_macro_f1": 0.14523809523809525,
+        "val_accuracy": 0.15789473684210525,
+        "val_critical_recall": 0.3,
+        "fit_seconds": 0.144,
+        "score_seconds": 0.004,
+        "note": ""
+      },
+      {
+        "candidate": "svm_rbf[C=100.0,gamma=scale]+cw",
+        "params": {
+          "_candidate": "svm_rbf",
+          "C": 100.0,
+          "gamma": "scale",
+          "_weighted": true
+        },
+        "seed": 0,
+        "val_macro_f1": 0.14523809523809525,
+        "val_accuracy": 0.15789473684210525,
+        "val_critical_recall": 0.3,
+        "fit_seconds": 0.195,
+        "score_seconds": 0.004,
+        "note": ""
+      },
+      {
+        "candidate": "random_forest[min_samples_leaf=1,n_estimators=500]",
+        "params": {
+          "_candidate": "random_forest",
+          "n_estimators": 500,
+          "max_depth": null,
+          "min_samples_leaf": 1
+        },
+        "seed": 0,
+        "val_macro_f1": 0.18,
+        "val_accuracy": 0.21052631578947367,
+        "val_critical_recall": 0.2,
+        "fit_seconds": 1.067,
+        "score_seconds": 0.106,
+        "note": ""
+      },
+      {
+        "candidate": "random_forest[min_samples_leaf=1,n_estimators=500]+cw",
+        "params": {
+          "_candidate": "random_forest",
+          "n_estimators": 500,
+          "max_depth": null,
+          "min_samples_leaf": 1,
+          "_weighted": true
+        },
+        "seed": 0,
+        "val_macro_f1": 0.18,
+        "val_accuracy": 0.21052631578947367,
+        "val_critical_recall": 0.2,
+        "fit_seconds": 0.921,
+        "score_seconds": 0.095,
+        "note": ""
+      },
+      {
+        "candidate": "random_forest[min_samples_leaf=2,n_estimators=500]",
+        "params": {
+          "_candidate": "random_forest",
+          "n_estimators": 500,
+          "max_depth": null,
+          "min_samples_leaf": 2
+        },
+        "seed": 0,
+        "val_macro_f1": 0.14666666666666667,
+        "val_accuracy": 0.15789473684210525,
+        "val_critical_recall": 0.2,
+        "fit_seconds": 0.998,
+        "score_seconds": 0.094,
+        "note": ""
+      },
+      {
+        "candidate": "random_forest[min_samples_leaf=2,n_estimators=500]+cw",
+        "params": {
+          "_candidate": "random_forest",
+          "n_estimators": 500,
+          "max_depth": null,
+          "min_samples_leaf": 2,
+          "_weighted": true
+        },
+        "seed": 0,
+        "val_macro_f1": 0.14666666666666667,
+        "val_accuracy": 0.15789473684210525,
+        "val_critical_recall": 0.2,
+        "fit_seconds": 0.988,
+        "score_seconds": 0.103,
+        "note": ""
+      },
+      {
+        "candidate": "random_forest[max_depth=20,min_samples_leaf=1,n_estimators=500]",
+        "params": {
+          "_candidate": "random_forest",
+          "n_estimators": 500,
+          "max_depth": 20,
+          "min_samples_leaf": 1
+        },
+        "seed": 0,
+        "val_macro_f1": 0.18,
+        "val_accuracy": 0.21052631578947367,
+        "val_critical_recall": 0.2,
+        "fit_seconds": 0.96,
+        "score_seconds": 0.095,
+        "note": ""
+      },
+      {
+        "candidate": "random_forest[max_depth=20,min_samples_leaf=1,n_estimators=500]+cw",
+        "params": {
+          "_candidate": "random_forest",
+          "n_estimators": 500,
+          "max_depth": 20,
+          "min_samples_leaf": 1,
+          "_weighted": true
+        },
+        "seed": 0,
+        "val_macro_f1": 0.18,
+        "val_accuracy": 0.21052631578947367,
+        "val_critical_recall": 0.2,
+        "fit_seconds": 0.853,
+        "score_seconds": 0.073,
+        "note": ""
+      },
+      {
+        "candidate": "random_forest[max_depth=20,min_samples_leaf=2,n_estimators=500]",
+        "params": {
+          "_candidate": "random_forest",
+          "n_estimators": 500,
+          "max_depth": 20,
+          "min_samples_leaf": 2
+        },
+        "seed": 0,
+        "val_macro_f1": 0.14666666666666667,
+        "val_accuracy": 0.15789473684210525,
+        "val_critical_recall": 0.2,
+        "fit_seconds": 0.892,
+        "score_seconds": 0.106,
+        "note": ""
+      },
+      {
+        "candidate": "random_forest[max_depth=20,min_samples_leaf=2,n_estimators=500]+cw",
+        "params": {
+          "_candidate": "random_forest",
+          "n_estimators": 500,
+          "max_depth": 20,
+          "min_samples_leaf": 2,
+          "_weighted": true
+        },
+        "seed": 0,
+        "val_macro_f1": 0.14666666666666667,
+        "val_accuracy": 0.15789473684210525,
+        "val_critical_recall": 0.2,
+        "fit_seconds": 0.925,
+        "score_seconds": 0.07,
+        "note": ""
+      },
+      {
+        "candidate": "extra_trees[min_samples_leaf=1,n_estimators=500]",
+        "params": {
+          "_candidate": "extra_trees",
+          "n_estimators": 500,
+          "min_samples_leaf": 1
+        },
+        "seed": 0,
+        "val_macro_f1": 0.11333333333333333,
+        "val_accuracy": 0.15789473684210525,
+        "val_critical_recall": 0.2,
+        "fit_seconds": 0.607,
+        "score_seconds": 0.07,
+        "note": ""
+      },
+      {
+        "candidate": "extra_trees[min_samples_leaf=1,n_estimators=500]+cw",
+        "params": {
+          "_candidate": "extra_trees",
+          "n_estimators": 500,
+          "min_samples_leaf": 1,
+          "_weighted": true
+        },
+        "seed": 0,
+        "val_macro_f1": 0.11333333333333333,
+        "val_accuracy": 0.15789473684210525,
+        "val_critical_recall": 0.2,
+        "fit_seconds": 0.645,
+        "score_seconds": 0.085,
+        "note": ""
+      },
+      {
+        "candidate": "extra_trees[min_samples_leaf=2,n_estimators=500]",
+        "params": {
+          "_candidate": "extra_trees",
+          "n_estimators": 500,
+          "min_samples_leaf": 2
+        },
+        "seed": 0,
+        "val_macro_f1": 0.08333333333333333,
+        "val_accuracy": 0.10526315789473684,
+        "val_critical_recall": 0.1,
+        "fit_seconds": 0.721,
+        "score_seconds": 0.09,
+        "note": ""
+      },
+      {
+        "candidate": "extra_trees[min_samples_leaf=2,n_estimators=500]+cw",
+        "params": {
+          "_candidate": "extra_trees",
+          "n_estimators": 500,
+          "min_samples_leaf": 2,
+          "_weighted": true
+        },
+        "seed": 0,
+        "val_macro_f1": 0.08333333333333333,
+        "val_accuracy": 0.10526315789473684,
+        "val_critical_recall": 0.1,
+        "fit_seconds": 0.667,
+        "score_seconds": 0.078,
+        "note": ""
+      },
+      {
+        "candidate": "gradient_boosting[learning_rate=0.1,max_depth=3,n_estimators=200]",
+        "params": {
+          "_candidate": "gradient_boosting",
+          "n_estimators": 200,
+          "learning_rate": 0.1,
+          "max_depth": 3
+        },
+        "seed": 0,
+        "val_macro_f1": 0.3133333333333333,
+        "val_accuracy": 0.3157894736842105,
+        "val_critical_recall": 0.2,
+        "fit_seconds": 4.96,
+        "score_seconds": 0.003,
+        "note": ""
+      },
+      {
+        "candidate": "gradient_boosting[learning_rate=0.1,max_depth=3,n_estimators=200]+cw",
+        "params": {
+          "_candidate": "gradient_boosting",
+          "n_estimators": 200,
+          "learning_rate": 0.1,
+          "max_depth": 3,
+          "_weighted": true
+        },
+        "seed": 0,
+        "val_macro_f1": 0.3133333333333333,
+        "val_accuracy": 0.3157894736842105,
+        "val_critical_recall": 0.2,
+        "fit_seconds": 5.017,
+        "score_seconds": 0.002,
+        "note": ""
+      },
+      {
+        "candidate": "gradient_boosting[learning_rate=0.1,max_depth=5,n_estimators=200]",
+        "params": {
+          "_candidate": "gradient_boosting",
+          "n_estimators": 200,
+          "learning_rate": 0.1,
+          "max_depth": 5
+        },
+        "seed": 0,
+        "val_macro_f1": 0.2333333333333333,
+        "val_accuracy": 0.21052631578947367,
+        "val_critical_recall": 0.1,
+        "fit_seconds": 5.274,
+        "score_seconds": 0.002,
+        "note": ""
+      },
+      {
+        "candidate": "gradient_boosting[learning_rate=0.1,max_depth=5,n_estimators=200]+cw",
+        "params": {
+          "_candidate": "gradient_boosting",
+          "n_estimators": 200,
+          "learning_rate": 0.1,
+          "max_depth": 5,
+          "_weighted": true
+        },
+        "seed": 0,
+        "val_macro_f1": 0.2333333333333333,
+        "val_accuracy": 0.21052631578947367,
+        "val_critical_recall": 0.1,
+        "fit_seconds": 5.023,
+        "score_seconds": 0.002,
+        "note": ""
+      },
+      {
+        "candidate": "xgboost[learning_rate=0.1,max_depth=4,n_estimators=300]",
+        "params": {
+          "_candidate": "xgboost",
+          "n_estimators": 300,
+          "learning_rate": 0.1,
+          "max_depth": 4
+        },
+        "seed": 0,
+        "val_macro_f1": 0.08333333333333333,
+        "val_accuracy": 0.10526315789473684,
+        "val_critical_recall": 0.1,
+        "fit_seconds": 0.876,
+        "score_seconds": 0.002,
+        "note": ""
+      },
+      {
+        "candidate": "xgboost[learning_rate=0.1,max_depth=4,n_estimators=300]+cw",
+        "params": {
+          "_candidate": "xgboost",
+          "n_estimators": 300,
+          "learning_rate": 0.1,
+          "max_depth": 4,
+          "_weighted": true
+        },
+        "seed": 0,
+        "val_macro_f1": 0.08333333333333333,
+        "val_accuracy": 0.10526315789473684,
+        "val_critical_recall": 0.1,
+        "fit_seconds": 0.824,
+        "score_seconds": 0.002,
+        "note": ""
+      },
+      {
+        "candidate": "xgboost[learning_rate=0.1,max_depth=6,n_estimators=300]",
+        "params": {
+          "_candidate": "xgboost",
+          "n_estimators": 300,
+          "learning_rate": 0.1,
+          "max_depth": 6
+        },
+        "seed": 0,
+        "val_macro_f1": 0.08333333333333333,
+        "val_accuracy": 0.10526315789473684,
+        "val_critical_recall": 0.1,
+        "fit_seconds": 0.836,
+        "score_seconds": 0.002,
+        "note": ""
+      },
+      {
+        "candidate": "xgboost[learning_rate=0.1,max_depth=6,n_estimators=300]+cw",
+        "params": {
+          "_candidate": "xgboost",
+          "n_estimators": 300,
+          "learning_rate": 0.1,
+          "max_depth": 6,
+          "_weighted": true
+        },
+        "seed": 0,
+        "val_macro_f1": 0.08333333333333333,
+        "val_accuracy": 0.10526315789473684,
+        "val_critical_recall": 0.1,
+        "fit_seconds": 0.833,
+        "score_seconds": 0.002,
+        "note": ""
+      }
+    ]
+  },
+  "cross_validation": {
+    "folds": 2,
+    "macro_f1_mean": 0.09642857142857142,
+    "macro_f1_std": 0.053313606518033345,
+    "macro_f1_scores": [
+      0.13412698412698412,
+      0.05873015873015873
+    ],
+    "accuracy_mean": 0.10256410256410256,
+    "critical_recall_mean": 0.1,
+    "seed": 0
+  },
+  "winner": "gradient_boosting[learning_rate=0.1,max_depth=3,n_estimators=200]",
+  "winner_params": {
+    "_candidate": "gradient_boosting",
+    "n_estimators": 200,
+    "learning_rate": 0.1,
+    "max_depth": 3
+  },
+  "winner_class_weights": null,
+  "test": {
+    "model_name": "gradient_boosting[learning_rate=0.1,max_depth=3,n_estimators=200]",
+    "model_version": "1.0.0",
+    "split": "test",
+    "n_records": 19,
+    "probe": false,
+    "probe_label": "",
+    "accuracy": 0.05263157894736842,
+    "macro_precision": 0.03333333333333333,
+    "macro_recall": 0.05,
+    "macro_f1": 0.04,
+    "weighted_f1": 0.042105263157894736,
+    "critical_classes": [
+      "Gunshot",
+      "Glass Breaking",
+      "Panic Scream",
+      "Aggression",
+      "Person Asking for Help"
+    ],
+    "critical_recall": 0.1,
+    "critical_recall_by_class": {
+      "Glass Breaking": 0.0,
+      "Gunshot": 0.5,
+      "Panic Scream": 0.0,
+      "Aggression": 0.0,
+      "Person Asking for Help": 0.0
+    },
+    "top2_accuracy": 0.05263157894736842,
+    "per_class": [
+      {
+        "class_name": "Machinery Fault",
+        "index": 0,
+        "support": 2,
+        "predicted": 1,
+        "true_positive": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "is_critical": false
+      },
+      {
+        "class_name": "Glass Breaking",
+        "index": 1,
+        "support": 1,
+        "predicted": 3,
+        "true_positive": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "is_critical": true
+      },
+      {
+        "class_name": "Alarm or Siren",
+        "index": 2,
+        "support": 2,
+        "predicted": 4,
+        "true_positive": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "is_critical": false
+      },
+      {
+        "class_name": "Vehicle Horn",
+        "index": 3,
+        "support": 2,
+        "predicted": 2,
+        "true_positive": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "is_critical": false
+      },
+      {
+        "class_name": "Animal Sound",
+        "index": 4,
+        "support": 2,
+        "predicted": 0,
+        "true_positive": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "is_critical": false
+      },
+      {
+        "class_name": "Gunshot",
+        "index": 5,
+        "support": 2,
+        "predicted": 3,
+        "true_positive": 1,
+        "precision": 0.3333333333333333,
+        "recall": 0.5,
+        "f1": 0.4,
+        "is_critical": true
+      },
+      {
+        "class_name": "Panic Scream",
+        "index": 6,
+        "support": 2,
+        "predicted": 1,
+        "true_positive": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "is_critical": true
+      },
+      {
+        "class_name": "Aggression",
+        "index": 7,
+        "support": 2,
+        "predicted": 2,
+        "true_positive": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "is_critical": true
+      },
+      {
+        "class_name": "Person Asking for Help",
+        "index": 8,
+        "support": 2,
+        "predicted": 1,
+        "true_positive": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "is_critical": true
+      },
+      {
+        "class_name": "Background Noise",
+        "index": 9,
+        "support": 2,
+        "predicted": 2,
+        "true_positive": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "is_critical": false
+      }
+    ],
+    "confusion_matrix": [
+      [
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "class_names": [
+      "Machinery Fault",
+      "Glass Breaking",
+      "Alarm or Siren",
+      "Vehicle Horn",
+      "Animal Sound",
+      "Gunshot",
+      "Panic Scream",
+      "Aggression",
+      "Person Asking for Help",
+      "Background Noise"
+    ],
+    "severe_errors": [
+      {
+        "audio_id": "SS-AGG-0003",
+        "actual": "Aggression",
+        "predicted": "Alarm or Siren",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-GLA-0008",
+        "actual": "Glass Breaking",
+        "predicted": "Machinery Fault",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-SCR-0010",
+        "actual": "Panic Scream",
+        "predicted": "Alarm or Siren",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-HAL-0005",
+        "actual": "Person Asking for Help",
+        "predicted": "Alarm or Siren",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-AGG-0011",
+        "actual": "Aggression",
+        "predicted": "Glass Breaking",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-GUN-0001",
+        "actual": "Gunshot",
+        "predicted": "Glass Breaking",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-SCR-0008",
+        "actual": "Panic Scream",
+        "predicted": "Aggression",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-HAL-0007",
+        "actual": "Person Asking for Help",
+        "predicted": "Aggression",
+        "silent_miss": false,
+        "misattributed_alert": true
+      }
+    ],
+    "config_snapshot": {
+      "selection": {
+        "winner": "gradient_boosting[learning_rate=0.1,max_depth=3,n_estimators=200]",
+        "params": {
+          "_candidate": "gradient_boosting",
+          "n_estimators": 200,
+          "learning_rate": 0.1,
+          "max_depth": 3
+        },
+        "seed": 0,
+        "criterion": "macro_f1",
+        "rationale": "selected gradient_boosting[learning_rate=0.1,max_depth=3,n_estimators=200] on validation macro_f1=0.3133 (val accuracy 0.3158, critical recall 0.2000) out of 26 trials; test split not used for selection. no candidate met the critical-recall floor of 0.85; selecting the best available on macro-F1 and flagging this in the report",
+        "n_trials": 26,
+        "trials": [
+          {
+            "candidate": "svm_rbf[C=1.0,gamma=scale]",
+            "params": {
+              "_candidate": "svm_rbf",
+              "C": 1.0,
+              "gamma": "scale"
+            },
+            "seed": 0,
+            "val_macro_f1": 0.03333333333333333,
+            "val_accuracy": 0.05263157894736842,
+            "val_critical_recall": 0.0,
+            "fit_seconds": 0.202,
+            "score_seconds": 0.004,
+            "note": ""
+          },
+          {
+            "candidate": "svm_rbf[C=1.0,gamma=scale]+cw",
+            "params": {
+              "_candidate": "svm_rbf",
+              "C": 1.0,
+              "gamma": "scale",
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.03333333333333333,
+            "val_accuracy": 0.05263157894736842,
+            "val_critical_recall": 0.0,
+            "fit_seconds": 0.058,
+            "score_seconds": 0.004,
+            "note": ""
+          },
+          {
+            "candidate": "svm_rbf[C=10.0,gamma=scale]",
+            "params": {
+              "_candidate": "svm_rbf",
+              "C": 10.0,
+              "gamma": "scale"
+            },
+            "seed": 0,
+            "val_macro_f1": 0.09523809523809523,
+            "val_accuracy": 0.10526315789473684,
+            "val_critical_recall": 0.1,
+            "fit_seconds": 0.058,
+            "score_seconds": 0.004,
+            "note": ""
+          },
+          {
+            "candidate": "svm_rbf[C=10.0,gamma=scale]+cw",
+            "params": {
+              "_candidate": "svm_rbf",
+              "C": 10.0,
+              "gamma": "scale",
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.09523809523809523,
+            "val_accuracy": 0.10526315789473684,
+            "val_critical_recall": 0.1,
+            "fit_seconds": 0.102,
+            "score_seconds": 0.005,
+            "note": ""
+          },
+          {
+            "candidate": "svm_rbf[C=100.0,gamma=scale]",
+            "params": {
+              "_candidate": "svm_rbf",
+              "C": 100.0,
+              "gamma": "scale"
+            },
+            "seed": 0,
+            "val_macro_f1": 0.14523809523809525,
+            "val_accuracy": 0.15789473684210525,
+            "val_critical_recall": 0.3,
+            "fit_seconds": 0.144,
+            "score_seconds": 0.004,
+            "note": ""
+          },
+          {
+            "candidate": "svm_rbf[C=100.0,gamma=scale]+cw",
+            "params": {
+              "_candidate": "svm_rbf",
+              "C": 100.0,
+              "gamma": "scale",
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.14523809523809525,
+            "val_accuracy": 0.15789473684210525,
+            "val_critical_recall": 0.3,
+            "fit_seconds": 0.195,
+            "score_seconds": 0.004,
+            "note": ""
+          },
+          {
+            "candidate": "random_forest[min_samples_leaf=1,n_estimators=500]",
+            "params": {
+              "_candidate": "random_forest",
+              "n_estimators": 500,
+              "max_depth": null,
+              "min_samples_leaf": 1
+            },
+            "seed": 0,
+            "val_macro_f1": 0.18,
+            "val_accuracy": 0.21052631578947367,
+            "val_critical_recall": 0.2,
+            "fit_seconds": 1.067,
+            "score_seconds": 0.106,
+            "note": ""
+          },
+          {
+            "candidate": "random_forest[min_samples_leaf=1,n_estimators=500]+cw",
+            "params": {
+              "_candidate": "random_forest",
+              "n_estimators": 500,
+              "max_depth": null,
+              "min_samples_leaf": 1,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.18,
+            "val_accuracy": 0.21052631578947367,
+            "val_critical_recall": 0.2,
+            "fit_seconds": 0.921,
+            "score_seconds": 0.095,
+            "note": ""
+          },
+          {
+            "candidate": "random_forest[min_samples_leaf=2,n_estimators=500]",
+            "params": {
+              "_candidate": "random_forest",
+              "n_estimators": 500,
+              "max_depth": null,
+              "min_samples_leaf": 2
+            },
+            "seed": 0,
+            "val_macro_f1": 0.14666666666666667,
+            "val_accuracy": 0.15789473684210525,
+            "val_critical_recall": 0.2,
+            "fit_seconds": 0.998,
+            "score_seconds": 0.094,
+            "note": ""
+          },
+          {
+            "candidate": "random_forest[min_samples_leaf=2,n_estimators=500]+cw",
+            "params": {
+              "_candidate": "random_forest",
+              "n_estimators": 500,
+              "max_depth": null,
+              "min_samples_leaf": 2,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.14666666666666667,
+            "val_accuracy": 0.15789473684210525,
+            "val_critical_recall": 0.2,
+            "fit_seconds": 0.988,
+            "score_seconds": 0.103,
+            "note": ""
+          },
+          {
+            "candidate": "random_forest[max_depth=20,min_samples_leaf=1,n_estimators=500]",
+            "params": {
+              "_candidate": "random_forest",
+              "n_estimators": 500,
+              "max_depth": 20,
+              "min_samples_leaf": 1
+            },
+            "seed": 0,
+            "val_macro_f1": 0.18,
+            "val_accuracy": 0.21052631578947367,
+            "val_critical_recall": 0.2,
+            "fit_seconds": 0.96,
+            "score_seconds": 0.095,
+            "note": ""
+          },
+          {
+            "candidate": "random_forest[max_depth=20,min_samples_leaf=1,n_estimators=500]+cw",
+            "params": {
+              "_candidate": "random_forest",
+              "n_estimators": 500,
+              "max_depth": 20,
+              "min_samples_leaf": 1,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.18,
+            "val_accuracy": 0.21052631578947367,
+            "val_critical_recall": 0.2,
+            "fit_seconds": 0.853,
+            "score_seconds": 0.073,
+            "note": ""
+          },
+          {
+            "candidate": "random_forest[max_depth=20,min_samples_leaf=2,n_estimators=500]",
+            "params": {
+              "_candidate": "random_forest",
+              "n_estimators": 500,
+              "max_depth": 20,
+              "min_samples_leaf": 2
+            },
+            "seed": 0,
+            "val_macro_f1": 0.14666666666666667,
+            "val_accuracy": 0.15789473684210525,
+            "val_critical_recall": 0.2,
+            "fit_seconds": 0.892,
+            "score_seconds": 0.106,
+            "note": ""
+          },
+          {
+            "candidate": "random_forest[max_depth=20,min_samples_leaf=2,n_estimators=500]+cw",
+            "params": {
+              "_candidate": "random_forest",
+              "n_estimators": 500,
+              "max_depth": 20,
+              "min_samples_leaf": 2,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.14666666666666667,
+            "val_accuracy": 0.15789473684210525,
+            "val_critical_recall": 0.2,
+            "fit_seconds": 0.925,
+            "score_seconds": 0.07,
+            "note": ""
+          },
+          {
+            "candidate": "extra_trees[min_samples_leaf=1,n_estimators=500]",
+            "params": {
+              "_candidate": "extra_trees",
+              "n_estimators": 500,
+              "min_samples_leaf": 1
+            },
+            "seed": 0,
+            "val_macro_f1": 0.11333333333333333,
+            "val_accuracy": 0.15789473684210525,
+            "val_critical_recall": 0.2,
+            "fit_seconds": 0.607,
+            "score_seconds": 0.07,
+            "note": ""
+          },
+          {
+            "candidate": "extra_trees[min_samples_leaf=1,n_estimators=500]+cw",
+            "params": {
+              "_candidate": "extra_trees",
+              "n_estimators": 500,
+              "min_samples_leaf": 1,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.11333333333333333,
+            "val_accuracy": 0.15789473684210525,
+            "val_critical_recall": 0.2,
+            "fit_seconds": 0.645,
+            "score_seconds": 0.085,
+            "note": ""
+          },
+          {
+            "candidate": "extra_trees[min_samples_leaf=2,n_estimators=500]",
+            "params": {
+              "_candidate": "extra_trees",
+              "n_estimators": 500,
+              "min_samples_leaf": 2
+            },
+            "seed": 0,
+            "val_macro_f1": 0.08333333333333333,
+            "val_accuracy": 0.10526315789473684,
+            "val_critical_recall": 0.1,
+            "fit_seconds": 0.721,
+            "score_seconds": 0.09,
+            "note": ""
+          },
+          {
+            "candidate": "extra_trees[min_samples_leaf=2,n_estimators=500]+cw",
+            "params": {
+              "_candidate": "extra_trees",
+              "n_estimators": 500,
+              "min_samples_leaf": 2,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.08333333333333333,
+            "val_accuracy": 0.10526315789473684,
+            "val_critical_recall": 0.1,
+            "fit_seconds": 0.667,
+            "score_seconds": 0.078,
+            "note": ""
+          },
+          {
+            "candidate": "gradient_boosting[learning_rate=0.1,max_depth=3,n_estimators=200]",
+            "params": {
+              "_candidate": "gradient_boosting",
+              "n_estimators": 200,
+              "learning_rate": 0.1,
+              "max_depth": 3
+            },
+            "seed": 0,
+            "val_macro_f1": 0.3133333333333333,
+            "val_accuracy": 0.3157894736842105,
+            "val_critical_recall": 0.2,
+            "fit_seconds": 4.96,
+            "score_seconds": 0.003,
+            "note": ""
+          },
+          {
+            "candidate": "gradient_boosting[learning_rate=0.1,max_depth=3,n_estimators=200]+cw",
+            "params": {
+              "_candidate": "gradient_boosting",
+              "n_estimators": 200,
+              "learning_rate": 0.1,
+              "max_depth": 3,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.3133333333333333,
+            "val_accuracy": 0.3157894736842105,
+            "val_critical_recall": 0.2,
+            "fit_seconds": 5.017,
+            "score_seconds": 0.002,
+            "note": ""
+          },
+          {
+            "candidate": "gradient_boosting[learning_rate=0.1,max_depth=5,n_estimators=200]",
+            "params": {
+              "_candidate": "gradient_boosting",
+              "n_estimators": 200,
+              "learning_rate": 0.1,
+              "max_depth": 5
+            },
+            "seed": 0,
+            "val_macro_f1": 0.2333333333333333,
+            "val_accuracy": 0.21052631578947367,
+            "val_critical_recall": 0.1,
+            "fit_seconds": 5.274,
+            "score_seconds": 0.002,
+            "note": ""
+          },
+          {
+            "candidate": "gradient_boosting[learning_rate=0.1,max_depth=5,n_estimators=200]+cw",
+            "params": {
+              "_candidate": "gradient_boosting",
+              "n_estimators": 200,
+              "learning_rate": 0.1,
+              "max_depth": 5,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.2333333333333333,
+            "val_accuracy": 0.21052631578947367,
+            "val_critical_recall": 0.1,
+            "fit_seconds": 5.023,
+            "score_seconds": 0.002,
+            "note": ""
+          },
+          {
+            "candidate": "xgboost[learning_rate=0.1,max_depth=4,n_estimators=300]",
+            "params": {
+              "_candidate": "xgboost",
+              "n_estimators": 300,
+              "learning_rate": 0.1,
+              "max_depth": 4
+            },
+            "seed": 0,
+            "val_macro_f1": 0.08333333333333333,
+            "val_accuracy": 0.10526315789473684,
+            "val_critical_recall": 0.1,
+            "fit_seconds": 0.876,
+            "score_seconds": 0.002,
+            "note": ""
+          },
+          {
+            "candidate": "xgboost[learning_rate=0.1,max_depth=4,n_estimators=300]+cw",
+            "params": {
+              "_candidate": "xgboost",
+              "n_estimators": 300,
+              "learning_rate": 0.1,
+              "max_depth": 4,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.08333333333333333,
+            "val_accuracy": 0.10526315789473684,
+            "val_critical_recall": 0.1,
+            "fit_seconds": 0.824,
+            "score_seconds": 0.002,
+            "note": ""
+          },
+          {
+            "candidate": "xgboost[learning_rate=0.1,max_depth=6,n_estimators=300]",
+            "params": {
+              "_candidate": "xgboost",
+              "n_estimators": 300,
+              "learning_rate": 0.1,
+              "max_depth": 6
+            },
+            "seed": 0,
+            "val_macro_f1": 0.08333333333333333,
+            "val_accuracy": 0.10526315789473684,
+            "val_critical_recall": 0.1,
+            "fit_seconds": 0.836,
+            "score_seconds": 0.002,
+            "note": ""
+          },
+          {
+            "candidate": "xgboost[learning_rate=0.1,max_depth=6,n_estimators=300]+cw",
+            "params": {
+              "_candidate": "xgboost",
+              "n_estimators": 300,
+              "learning_rate": 0.1,
+              "max_depth": 6,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.08333333333333333,
+            "val_accuracy": 0.10526315789473684,
+            "val_critical_recall": 0.1,
+            "fit_seconds": 0.833,
+            "score_seconds": 0.002,
+            "note": ""
+          }
+        ]
+      },
+      "fitted_on": "train+val",
+      "critical_recall_floor": 0.85
+    }
+  },
+  "test_predictions": [
+    {
+      "audio_id": "SS-AGG-0003",
+      "actual_class": "Aggression",
+      "predicted_class": "Alarm or Siren",
+      "confidence": 0.6032417364988685,
+      "confidences": {
+        "Machinery Fault": 0.020300705432171606,
+        "Glass Breaking": 0.021094880221647922,
+        "Alarm or Siren": 0.6032417364988685,
+        "Vehicle Horn": 0.20016216315917618,
+        "Animal Sound": 0.018882170174698513,
+        "Gunshot": 0.052281619539318785,
+        "Panic Scream": 0.017646482974796283,
+        "Aggression": 0.013705591627985025,
+        "Person Asking for Help": 0.022035366273853906,
+        "Background Noise": 0.03064928409748326
+      },
+      "correct": false,
+      "split": "test"
+    },
+    {
+      "audio_id": "SS-AGG-0011",
+      "actual_class": "Aggression",
+      "predicted_class": "Glass Breaking",
+      "confidence": 0.9217276424661613,
+      "confidences": {
+        "Machinery Fault": 4.39155092461788e-10,
+        "Glass Breaking": 0.9217276424661613,
+        "Alarm or Siren": 1.5488763054471065e-07,
+        "Vehicle Horn": 3.162279427677627e-10,
+        "Animal Sound": 7.912185563198151e-10,
+        "Gunshot": 4.250042883925262e-10,
+        "Panic Scream": 3.546021855192323e-10,
+        "Aggression": 7.82304306066805e-10,
+        "Person Asking for Help": 7.015237486667485e-10,
+        "Background Noise": 0.07827219883617202
+      },
+      "correct": false,
+      "split": "test"
+    },
+    {
+      "audio_id": "SS-ALM-0004",
+      "actual_class": "Alarm or Siren",
+      "predicted_class": "Vehicle Horn",
+      "confidence": 0.9998192365788295,
+      "confidences": {
+        "Machinery Fault": 2.1706336229263366e-06,
+        "Glass Breaking": 1.4260916152732388e-06,
+        "Alarm or Siren": 5.2413540799446275e-05,
+        "Vehicle Horn": 0.9998192365788295,
+        "Animal Sound": 1.272715654625709e-06,
+        "Gunshot": 3.8507883564390214e-05,
+        "Panic Scream": 1.1798535809710713e-06,
+        "Aggression": 7.960703249947715e-05,
+        "Person Asking for Help": 2.142850290815292e-06,
+        "Background Noise": 2.042819542587673e-06
+      },
+      "correct": false,
+      "split": "test"
+    },
+    {
+      "audio_id": "SS-ALM-0009",
+      "actual_class": "Alarm or Siren",
+      "predicted_class": "Glass Breaking",
+      "confidence": 0.9131855991524147,
+      "confidences": {
+        "Machinery Fault": 4.814431272624451e-10,
+        "Glass Breaking": 0.9131855991524147,
+        "Alarm or Siren": 3.6618786111045784e-08,
+        "Vehicle Horn": 3.504960449825339e-10,
+        "Animal Sound": 4.27151025172094e-10,
+        "Gunshot": 4.717523790542138e-10,
+        "Panic Scream": 3.917262331455514e-10,
+        "Aggression": 5.195090485056231e-06,
+        "Person Asking for Help": 3.7795435174659946e-09,
+        "Background Noise": 0.086809163236202
+      },
+      "correct": false,
+      "split": "test"
+    },
+    {
+      "audio_id": "SS-ANI-0010",
+      "actual_class": "Animal Sound",
+      "predicted_class": "Gunshot",
+      "confidence": 0.9986041869685014,
+      "confidences": {
+        "Machinery Fault": 1.113566716207723e-07,
+        "Glass Breaking": 1.308425187878307e-07,
+        "Alarm or Siren": 0.0013948406564214318,
+        "Vehicle Horn": 9.619053251063696e-08,
+        "Animal Sound": 1.1715475408226371e-07,
+        "Gunshot": 0.9986041869685014,
+        "Panic Scream": 1.0297201697680789e-07,
+        "Aggression": 1.3688376490534933e-07,
+        "Person Asking for Help": 1.1645692633212767e-07,
+        "Background Noise": 1.6051789189562562e-07
+      },
+      "correct": false,
+      "split": "test"
+    },
+    {
+      "audio_id": "SS-ANI-0011",
+      "actual_class": "Animal Sound",
+      "predicted_class": "Person Asking for Help",
+      "confidence": 0.9999878718174988,
+      "confidences": {
+        "Machinery Fault": 8.272676679347988e-07,
+        "Glass Breaking": 9.841091932691526e-07,
+        "Alarm or Siren": 2.8381412536087706e-06,
+        "Vehicle Horn": 7.243698543367198e-07,
+        "Animal Sound": 1.227128423883894e-06,
+        "Gunshot": 2.17915785127036e-06,
+        "Panic Scream": 8.17997556010722e-07,
+        "Aggression": 1.3212245375833284e-06,
+        "Person Asking for Help": 0.9999878718174988,
+        "Background Noise": 1.2087861633316202e-06
+      },
+      "correct": false,
+      "split": "test"
+    },
+    {
+      "audio_id": "SS-BGN-0001",
+      "actual_class": "Background Noise",
+      "predicted_class": "Gunshot",
+      "confidence": 0.5265859249949771,
+      "confidences": {
+        "Machinery Fault": 0.0019035767256141898,
+        "Glass Breaking": 0.002149122944319887,
+        "Alarm or Siren": 0.058918323617508254,
+        "Vehicle Horn": 0.3785392730186041,
+        "Animal Sound": 0.0019179850618693585,
+        "Gunshot": 0.5265859249949771,
+        "Panic Scream": 0.013183779010787227,
+        "Aggression": 0.010318847237624568,
+        "Person Asking for Help": 0.0038552678936468678,
+        "Background Noise": 0.0026278994950483694
+      },
+      "correct": false,
+      "split": "test"
+    },
+    {
+      "audio_id": "SS-BGN-0009",
+      "actual_class": "Background Noise",
+      "predicted_class": "Vehicle Horn",
+      "confidence": 0.48003246178796766,
+      "confidences": {
+        "Machinery Fault": 0.00019514110865609228,
+        "Glass Breaking": 0.00020647064552729993,
+        "Alarm or Siren": 0.00021981433150076345,
+        "Vehicle Horn": 0.48003246178796766,
+        "Animal Sound": 0.00018426475548201157,
+        "Gunshot": 0.025812236141273825,
+        "Panic Scream": 0.05857705005592163,
+        "Aggression": 0.0018296290058942234,
+        "Person Asking for Help": 0.43269046447784876,
+        "Background Noise": 0.00025246768992790634
+      },
+      "correct": false,
+      "split": "test"
+    },
+    {
+      "audio_id": "SS-GLA-0008",
+      "actual_class": "Glass Breaking",
+      "predicted_class": "Machinery Fault",
+      "confidence": 0.7046388372635414,
+      "confidences": {
+        "Machinery Fault": 0.7046388372635414,
+        "Glass Breaking": 4.2952685862703477e-07,
+        "Alarm or Siren": 1.0038312689429024e-06,
+        "Vehicle Horn": 3.1567457095982605e-07,
+        "Animal Sound": 0.2953563285484376,
+        "Gunshot": 3.744426757255608e-07,
+        "Panic Scream": 3.564767634307628e-07,
+        "Aggression": 1.1935984315976322e-06,
+        "Person Asking for Help": 6.338581527317385e-07,
+        "Background Noise": 5.267792990553831e-07
+      },
+      "correct": false,
+      "split": "test"
+    },
+    {
+      "audio_id": "SS-GUN-0001",
+      "actual_class": "Gunshot",
+      "predicted_class": "Glass Breaking",
+      "confidence": 0.6496152700128743,
+      "confidences": {
+        "Machinery Fault": 1.236952113130529e-09,
+        "Glass Breaking": 0.6496152700128743,
+        "Alarm or Siren": 1.1727103356752754e-08,
+        "Vehicle Horn": 2.3777183237268425e-08,
+        "Animal Sound": 1.230788096271565e-09,
+        "Gunshot": 1.9705086268800557e-08,
+        "Panic Scream": 1.1487480229062402e-09,
+        "Aggression": 1.9548557054151914e-08,
+        "Person Asking for Help": 0.06996155677471994,
+        "Background Noise": 0.2804230948379876
+      },
+      "correct": false,
+      "split": "test"
+    },
+    {
+      "audio_id": "SS-GUN-0007",
+      "actual_class": "Gunshot",
+      "predicted_class": "Gunshot",
+      "confidence": 0.5494027243353311,
+      "confidences": {
+        "Machinery Fault": 0.0003100487023905618,
+        "Glass Breaking": 0.0003587377647076085,
+        "Alarm or Siren": 0.4473704247049898,
+        "Vehicle Horn": 0.0008624836657438917,
+        "Animal Sound": 0.00032657654140027707,
+        "Gunshot": 0.5494027243353311,
+        "Panic Scream": 0.00030450377834391343,
+        "Aggression": 0.000235933931160856,
+        "Person Asking for Help": 0.00038111245101159495,
+        "Background Noise": 0.0004474541249203403
+      },
+      "correct": true,
+      "split": "test"
+    },
+    {
+      "audio_id": "SS-MAC-0005",
+      "actual_class": "Machinery Fault",
+      "predicted_class": "Alarm or Siren",
+      "confidence": 0.818278734290128,
+      "confidences": {
+        "Machinery Fault": 0.019352088560662607,
+        "Glass Breaking": 0.02009698472082778,
+        "Alarm or Siren": 0.818278734290128,
+        "Vehicle Horn": 0.014756546887413112,
+        "Animal Sound": 0.017988947152568456,
+        "Gunshot": 0.017519579674399932,
+        "Panic Scream": 0.03096943160285959,
+        "Aggression": 0.01125724242314502,
+        "Person Asking for Help": 0.02513314892119716,
+        "Background Noise": 0.024647295766798572
+      },
+      "correct": false,
+      "split": "test"
+    },
+    {
+      "audio_id": "SS-MAC-0010",
+      "actual_class": "Machinery Fault",
+      "predicted_class": "Background Noise",
+      "confidence": 0.9995928083001527,
+      "confidences": {
+        "Machinery Fault": 4.7266095438704845e-09,
+        "Glass Breaking": 4.5617294083346945e-09,
+        "Alarm or Siren": 1.0018563565650531e-07,
+        "Vehicle Horn": 3.411314327837699e-09,
+        "Animal Sound": 4.1527655004265015e-09,
+        "Gunshot": 0.00040704379466862973,
+        "Panic Scream": 3.831778149151355e-09,
+        "Aggression": 5.006710429422176e-09,
+        "Person Asking for Help": 2.2028635630240054e-08,
+        "Background Noise": 0.9995928083001527
+      },
+      "correct": false,
+      "split": "test"
+    },
+    {
+      "audio_id": "SS-SCR-0008",
+      "actual_class": "Panic Scream",
+      "predicted_class": "Aggression",
+      "confidence": 0.9999999772836227,
+      "confidences": {
+        "Machinery Fault": 1.2539663576511345e-09,
+        "Glass Breaking": 1.389537499517496e-09,
+        "Alarm or Siren": 1.0605673656452879e-08,
+        "Vehicle Horn": 1.0203044971629207e-09,
+        "Animal Sound": 1.2437844279906911e-09,
+        "Gunshot": 1.2113378450964907e-09,
+        "Panic Scream": 1.1618216410773116e-09,
+        "Aggression": 0.9999999772836227,
+        "Person Asking for Help": 1.7377455513431578e-09,
+        "Background Noise": 3.09220587348282e-09
+      },
+      "correct": false,
+      "split": "test"
+    },
+    {
+      "audio_id": "SS-SCR-0010",
+      "actual_class": "Panic Scream",
+      "predicted_class": "Alarm or Siren",
+      "confidence": 0.9750596799839191,
+      "confidences": {
+        "Machinery Fault": 0.0026749835671910347,
+        "Glass Breaking": 0.002966972313137665,
+        "Alarm or Siren": 0.9750596799839191,
+        "Vehicle Horn": 0.0021727070307081173,
+        "Animal Sound": 0.002655757014576108,
+        "Gunshot": 0.002583120136885438,
+        "Panic Scream": 0.002481865499796563,
+        "Aggression": 0.0016616428565128561,
+        "Person Asking for Help": 0.004104524533987619,
+        "Background Noise": 0.003638747063285544
+      },
+      "correct": false,
+      "split": "test"
+    },
+    {
+      "audio_id": "SS-HAL-0005",
+      "actual_class": "Person Asking for Help",
+      "predicted_class": "Alarm or Siren",
+      "confidence": 0.9963144115569758,
+      "confidences": {
+        "Machinery Fault": 8.48522555589e-05,
+        "Glass Breaking": 9.261663559951659e-05,
+        "Alarm or Siren": 0.9963144115569758,
+        "Vehicle Horn": 6.902529529889604e-05,
+        "Animal Sound": 8.431345541463256e-05,
+        "Gunshot": 0.0029273109489390712,
+        "Panic Scream": 7.388710461025884e-05,
+        "Aggression": 8.875330940865195e-05,
+        "Person Asking for Help": 0.0001493085766841186,
+        "Background Noise": 0.00011552086151014808
+      },
+      "correct": false,
+      "split": "test"
+    },
+    {
+      "audio_id": "SS-HAL-0007",
+      "actual_class": "Person Asking for Help",
+      "predicted_class": "Aggression",
+      "confidence": 0.5113330786870189,
+      "confidences": {
+        "Machinery Fault": 0.00010710281006197352,
+        "Glass Breaking": 0.000118636940920894,
+        "Alarm or Siren": 0.00011151189752283909,
+        "Vehicle Horn": 0.4808621139674672,
+        "Animal Sound": 0.0001063561481495097,
+        "Gunshot": 0.0059094228942188284,
+        "Panic Scream": 0.00017056098329842724,
+        "Aggression": 0.5113330786870189,
+        "Person Asking for Help": 0.000594840538693885,
+        "Background Noise": 0.000686375132647414
+      },
+      "correct": false,
+      "split": "test"
+    },
+    {
+      "audio_id": "SS-HOR-0001",
+      "actual_class": "Vehicle Horn",
+      "predicted_class": "Background Noise",
+      "confidence": 0.9999965010046753,
+      "confidences": {
+        "Machinery Fault": 1.8248633429737695e-08,
+        "Glass Breaking": 2.0170039836397083e-08,
+        "Alarm or Siren": 5.617792116212285e-07,
+        "Vehicle Horn": 7.755741634376301e-08,
+        "Animal Sound": 1.8361774247674194e-08,
+        "Gunshot": 6.694104630390401e-08,
+        "Panic Scream": 1.6942196247739687e-08,
+        "Aggression": 1.24949814880512e-07,
+        "Person Asking for Help": 2.5940451917704148e-06,
+        "Background Noise": 0.9999965010046753
+      },
+      "correct": false,
+      "split": "test"
+    },
+    {
+      "audio_id": "SS-HOR-0011",
+      "actual_class": "Vehicle Horn",
+      "predicted_class": "Panic Scream",
+      "confidence": 0.937740643602251,
+      "confidences": {
+        "Machinery Fault": 1.2527965905343612e-08,
+        "Glass Breaking": 1.9457274720070538e-08,
+        "Alarm or Siren": 6.348559013012018e-06,
+        "Vehicle Horn": 2.2775398239457643e-06,
+        "Animal Sound": 1.098831990120585e-08,
+        "Gunshot": 2.8168396924529274e-06,
+        "Panic Scream": 0.937740643602251,
+        "Aggression": 1.8326067958017355e-06,
+        "Person Asking for Help": 5.851118882169919e-07,
+        "Background Noise": 0.062245452766975254
+      },
+      "correct": false,
+      "split": "test"
+    }
+  ],
+  "per_candidate": [
+    {
+      "candidate": "gradient_boosting[learning_rate=0.1,max_depth=3,n_estimators=200]",
+      "params": {
+        "_candidate": "gradient_boosting",
+        "n_estimators": 200,
+        "learning_rate": 0.1,
+        "max_depth": 3
+      },
+      "val_accuracy": 0.3157894736842105,
+      "val_macro_f1": 0.3133333333333333,
+      "val_critical_recall": 0.2,
+      "fit_seconds": 4.96,
+      "selected": true
+    },
+    {
+      "candidate": "gradient_boosting[learning_rate=0.1,max_depth=3,n_estimators=200]+cw",
+      "params": {
+        "_candidate": "gradient_boosting",
+        "n_estimators": 200,
+        "learning_rate": 0.1,
+        "max_depth": 3,
+        "_weighted": true
+      },
+      "val_accuracy": 0.3157894736842105,
+      "val_macro_f1": 0.3133333333333333,
+      "val_critical_recall": 0.2,
+      "fit_seconds": 5.02,
+      "selected": false
+    },
+    {
+      "candidate": "gradient_boosting[learning_rate=0.1,max_depth=5,n_estimators=200]+cw",
+      "params": {
+        "_candidate": "gradient_boosting",
+        "n_estimators": 200,
+        "learning_rate": 0.1,
+        "max_depth": 5,
+        "_weighted": true
+      },
+      "val_accuracy": 0.21052631578947367,
+      "val_macro_f1": 0.2333333333333333,
+      "val_critical_recall": 0.1,
+      "fit_seconds": 5.02,
+      "selected": false
+    },
+    {
+      "candidate": "gradient_boosting[learning_rate=0.1,max_depth=5,n_estimators=200]",
+      "params": {
+        "_candidate": "gradient_boosting",
+        "n_estimators": 200,
+        "learning_rate": 0.1,
+        "max_depth": 5
+      },
+      "val_accuracy": 0.21052631578947367,
+      "val_macro_f1": 0.2333333333333333,
+      "val_critical_recall": 0.1,
+      "fit_seconds": 5.27,
+      "selected": false
+    },
+    {
+      "candidate": "random_forest[max_depth=20,min_samples_leaf=1,n_estimators=500]+cw",
+      "params": {
+        "_candidate": "random_forest",
+        "n_estimators": 500,
+        "max_depth": 20,
+        "min_samples_leaf": 1,
+        "_weighted": true
+      },
+      "val_accuracy": 0.21052631578947367,
+      "val_macro_f1": 0.18,
+      "val_critical_recall": 0.2,
+      "fit_seconds": 0.85,
+      "selected": false
+    },
+    {
+      "candidate": "random_forest[min_samples_leaf=1,n_estimators=500]+cw",
+      "params": {
+        "_candidate": "random_forest",
+        "n_estimators": 500,
+        "max_depth": null,
+        "min_samples_leaf": 1,
+        "_weighted": true
+      },
+      "val_accuracy": 0.21052631578947367,
+      "val_macro_f1": 0.18,
+      "val_critical_recall": 0.2,
+      "fit_seconds": 0.92,
+      "selected": false
+    },
+    {
+      "candidate": "random_forest[max_depth=20,min_samples_leaf=1,n_estimators=500]",
+      "params": {
+        "_candidate": "random_forest",
+        "n_estimators": 500,
+        "max_depth": 20,
+        "min_samples_leaf": 1
+      },
+      "val_accuracy": 0.21052631578947367,
+      "val_macro_f1": 0.18,
+      "val_critical_recall": 0.2,
+      "fit_seconds": 0.96,
+      "selected": false
+    },
+    {
+      "candidate": "random_forest[min_samples_leaf=1,n_estimators=500]",
+      "params": {
+        "_candidate": "random_forest",
+        "n_estimators": 500,
+        "max_depth": null,
+        "min_samples_leaf": 1
+      },
+      "val_accuracy": 0.21052631578947367,
+      "val_macro_f1": 0.18,
+      "val_critical_recall": 0.2,
+      "fit_seconds": 1.07,
+      "selected": false
+    },
+    {
+      "candidate": "random_forest[max_depth=20,min_samples_leaf=2,n_estimators=500]",
+      "params": {
+        "_candidate": "random_forest",
+        "n_estimators": 500,
+        "max_depth": 20,
+        "min_samples_leaf": 2
+      },
+      "val_accuracy": 0.15789473684210525,
+      "val_macro_f1": 0.14666666666666667,
+      "val_critical_recall": 0.2,
+      "fit_seconds": 0.89,
+      "selected": false
+    },
+    {
+      "candidate": "random_forest[max_depth=20,min_samples_leaf=2,n_estimators=500]+cw",
+      "params": {
+        "_candidate": "random_forest",
+        "n_estimators": 500,
+        "max_depth": 20,
+        "min_samples_leaf": 2,
+        "_weighted": true
+      },
+      "val_accuracy": 0.15789473684210525,
+      "val_macro_f1": 0.14666666666666667,
+      "val_critical_recall": 0.2,
+      "fit_seconds": 0.92,
+      "selected": false
+    },
+    {
+      "candidate": "random_forest[min_samples_leaf=2,n_estimators=500]+cw",
+      "params": {
+        "_candidate": "random_forest",
+        "n_estimators": 500,
+        "max_depth": null,
+        "min_samples_leaf": 2,
+        "_weighted": true
+      },
+      "val_accuracy": 0.15789473684210525,
+      "val_macro_f1": 0.14666666666666667,
+      "val_critical_recall": 0.2,
+      "fit_seconds": 0.99,
+      "selected": false
+    },
+    {
+      "candidate": "random_forest[min_samples_leaf=2,n_estimators=500]",
+      "params": {
+        "_candidate": "random_forest",
+        "n_estimators": 500,
+        "max_depth": null,
+        "min_samples_leaf": 2
+      },
+      "val_accuracy": 0.15789473684210525,
+      "val_macro_f1": 0.14666666666666667,
+      "val_critical_recall": 0.2,
+      "fit_seconds": 1.0,
+      "selected": false
+    },
+    {
+      "candidate": "svm_rbf[C=100.0,gamma=scale]",
+      "params": {
+        "_candidate": "svm_rbf",
+        "C": 100.0,
+        "gamma": "scale"
+      },
+      "val_accuracy": 0.15789473684210525,
+      "val_macro_f1": 0.14523809523809525,
+      "val_critical_recall": 0.3,
+      "fit_seconds": 0.14,
+      "selected": false
+    },
+    {
+      "candidate": "svm_rbf[C=100.0,gamma=scale]+cw",
+      "params": {
+        "_candidate": "svm_rbf",
+        "C": 100.0,
+        "gamma": "scale",
+        "_weighted": true
+      },
+      "val_accuracy": 0.15789473684210525,
+      "val_macro_f1": 0.14523809523809525,
+      "val_critical_recall": 0.3,
+      "fit_seconds": 0.19,
+      "selected": false
+    },
+    {
+      "candidate": "extra_trees[min_samples_leaf=1,n_estimators=500]",
+      "params": {
+        "_candidate": "extra_trees",
+        "n_estimators": 500,
+        "min_samples_leaf": 1
+      },
+      "val_accuracy": 0.15789473684210525,
+      "val_macro_f1": 0.11333333333333333,
+      "val_critical_recall": 0.2,
+      "fit_seconds": 0.61,
+      "selected": false
+    },
+    {
+      "candidate": "extra_trees[min_samples_leaf=1,n_estimators=500]+cw",
+      "params": {
+        "_candidate": "extra_trees",
+        "n_estimators": 500,
+        "min_samples_leaf": 1,
+        "_weighted": true
+      },
+      "val_accuracy": 0.15789473684210525,
+      "val_macro_f1": 0.11333333333333333,
+      "val_critical_recall": 0.2,
+      "fit_seconds": 0.65,
+      "selected": false
+    },
+    {
+      "candidate": "svm_rbf[C=10.0,gamma=scale]",
+      "params": {
+        "_candidate": "svm_rbf",
+        "C": 10.0,
+        "gamma": "scale"
+      },
+      "val_accuracy": 0.10526315789473684,
+      "val_macro_f1": 0.09523809523809523,
+      "val_critical_recall": 0.1,
+      "fit_seconds": 0.06,
+      "selected": false
+    },
+    {
+      "candidate": "svm_rbf[C=10.0,gamma=scale]+cw",
+      "params": {
+        "_candidate": "svm_rbf",
+        "C": 10.0,
+        "gamma": "scale",
+        "_weighted": true
+      },
+      "val_accuracy": 0.10526315789473684,
+      "val_macro_f1": 0.09523809523809523,
+      "val_critical_recall": 0.1,
+      "fit_seconds": 0.1,
+      "selected": false
+    },
+    {
+      "candidate": "extra_trees[min_samples_leaf=2,n_estimators=500]+cw",
+      "params": {
+        "_candidate": "extra_trees",
+        "n_estimators": 500,
+        "min_samples_leaf": 2,
+        "_weighted": true
+      },
+      "val_accuracy": 0.10526315789473684,
+      "val_macro_f1": 0.08333333333333333,
+      "val_critical_recall": 0.1,
+      "fit_seconds": 0.67,
+      "selected": false
+    },
+    {
+      "candidate": "extra_trees[min_samples_leaf=2,n_estimators=500]",
+      "params": {
+        "_candidate": "extra_trees",
+        "n_estimators": 500,
+        "min_samples_leaf": 2
+      },
+      "val_accuracy": 0.10526315789473684,
+      "val_macro_f1": 0.08333333333333333,
+      "val_critical_recall": 0.1,
+      "fit_seconds": 0.72,
+      "selected": false
+    },
+    {
+      "candidate": "xgboost[learning_rate=0.1,max_depth=4,n_estimators=300]+cw",
+      "params": {
+        "_candidate": "xgboost",
+        "n_estimators": 300,
+        "learning_rate": 0.1,
+        "max_depth": 4,
+        "_weighted": true
+      },
+      "val_accuracy": 0.10526315789473684,
+      "val_macro_f1": 0.08333333333333333,
+      "val_critical_recall": 0.1,
+      "fit_seconds": 0.82,
+      "selected": false
+    },
+    {
+      "candidate": "xgboost[learning_rate=0.1,max_depth=6,n_estimators=300]+cw",
+      "params": {
+        "_candidate": "xgboost",
+        "n_estimators": 300,
+        "learning_rate": 0.1,
+        "max_depth": 6,
+        "_weighted": true
+      },
+      "val_accuracy": 0.10526315789473684,
+      "val_macro_f1": 0.08333333333333333,
+      "val_critical_recall": 0.1,
+      "fit_seconds": 0.83,
+      "selected": false
+    },
+    {
+      "candidate": "xgboost[learning_rate=0.1,max_depth=6,n_estimators=300]",
+      "params": {
+        "_candidate": "xgboost",
+        "n_estimators": 300,
+        "learning_rate": 0.1,
+        "max_depth": 6
+      },
+      "val_accuracy": 0.10526315789473684,
+      "val_macro_f1": 0.08333333333333333,
+      "val_critical_recall": 0.1,
+      "fit_seconds": 0.84,
+      "selected": false
+    },
+    {
+      "candidate": "xgboost[learning_rate=0.1,max_depth=4,n_estimators=300]",
+      "params": {
+        "_candidate": "xgboost",
+        "n_estimators": 300,
+        "learning_rate": 0.1,
+        "max_depth": 4
+      },
+      "val_accuracy": 0.10526315789473684,
+      "val_macro_f1": 0.08333333333333333,
+      "val_critical_recall": 0.1,
+      "fit_seconds": 0.88,
+      "selected": false
+    },
+    {
+      "candidate": "svm_rbf[C=1.0,gamma=scale]+cw",
+      "params": {
+        "_candidate": "svm_rbf",
+        "C": 1.0,
+        "gamma": "scale",
+        "_weighted": true
+      },
+      "val_accuracy": 0.05263157894736842,
+      "val_macro_f1": 0.03333333333333333,
+      "val_critical_recall": 0.0,
+      "fit_seconds": 0.06,
+      "selected": false
+    },
+    {
+      "candidate": "svm_rbf[C=1.0,gamma=scale]",
+      "params": {
+        "_candidate": "svm_rbf",
+        "C": 1.0,
+        "gamma": "scale"
+      },
+      "val_accuracy": 0.05263157894736842,
+      "val_macro_f1": 0.03333333333333333,
+      "val_critical_recall": 0.0,
+      "fit_seconds": 0.2,
+      "selected": false
+    }
+  ],
+  "inference_latency_ms": {
+    "single_row_mean_ms": 1.3147257996024564,
+    "single_row_max_ms": 1.507920002040919,
+    "repeats": 5
+  },
+  "meets_floors": false
+}

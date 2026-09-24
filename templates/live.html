@@ -1,0 +1,212 @@
+{# ==========================================================================
+   templates/live.html — the live monitoring console.
+
+   Owner: hina (front end). This is the screen a person watches.
+
+   Context (src/api/pages.py::live):
+     analysis_ready   bool  both models loaded and a pipeline built
+     pipeline_error   str   why the pipeline is unavailable, when it isn't
+     window_seconds   float the live window length (thresholds.live_window_sec)
+     classes          list  the class vocabulary, for the visual scale
+
+   The whole screen is driven by static/js/live.js against the /api/live slice:
+     POST /api/live/session        start/stop a session
+     GET  /api/live/session/<id>   session state
+     POST /api/live/session/<id>/window   a captured window in for prediction
+     GET  /api/live/sessions       past sessions
+   When the slice is not installed the page says so plainly rather than spinning.
+   The two model cards are the point: Python on the left, Teachable Machine on
+   the right, top class and confidence each, the difference and the verdict
+   between them. Neither model is told the other's number.
+   ========================================================================== #}
+{% extends "base.html" %}
+{% import "_macros.html" as ui %}
+{% import "_presentation.html" as pres %}
+
+{% block title %}Live monitoring · {{ app_name }}{% endblock %}
+{% block page_id %}live{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="page-head__main">
+    <h1 class="page-title">Live monitoring</h1>
+    <p class="page-sub">
+      Captures <strong>{{ window_seconds|round(1) }}&nbsp;second{{ '' if window_seconds == 1 else 's' }}</strong>
+      at a time and classifies it with both models independently.
+      A class is only reported once it has been seen in
+      {{ config.thresholds.required_consecutive_detections if config and config.thresholds else 3 }}
+      consecutive windows.
+    </p>
+  </div>
+  <div class="page-head__actions">
+    <span class="pip pip--{% if analysis_ready %}ok{% else %}warn{% endif %}"
+          data-testid="pipeline-state">
+      <span class="pip__dot" aria-hidden="true"></span>
+      {% if analysis_ready %}Both models ready{% else %}Pipeline limited{% endif %}
+    </span>
+  </div>
+</section>
+
+{% if pipeline_error %}
+  {{ ui.error_block(
+       'Live monitoring is unavailable',
+       pipeline_error,
+       request_id,
+       retry=False) }}
+{% elif not analysis_ready %}
+  <div class="banner banner--warn">
+    <span class="banner__icon" aria-hidden="true">{{ ui.icon('warn', 20) }}</span>
+    <div class="banner__body">
+      <p class="banner__text">The classification pipeline is not built yet, so a live session
+        will start but windows cannot be predicted. Upload a recording in the meantime —
+        once a model is loaded this screen picks it up without a restart.</p>
+    </div>
+  </div>
+{% endif %}
+
+{# ---- the consent gate. FR lxxix: capture is consent-gated. ----------------- #}
+<section class="panel" data-consent-panel hidden>
+  <div class="panel__head">
+    <h2 class="panel__title">Microphone consent</h2>
+    <p class="panel__note">Capture is only started after you say so, and the consent is
+      recorded with the session.</p>
+  </div>
+  <div class="panel__body">
+    <label class="checkline" for="consent">
+      <input type="checkbox" id="consent" data-consent-check>
+      <span>I understand this console captures audio from this device and stores it as part
+        of a security monitoring session, subject to the configured retention policy.</span>
+    </label>
+    <div class="row row--end">
+      <button class="btn btn--primary" type="button" data-consent-grant disabled>
+        {{ ui.icon('mic', 16) }} <span>Grant microphone access</span>
+      </button>
+    </div>
+  </div>
+</section>
+
+{# ---- the console. ---------------------------------------------------------- #}
+<section class="live" data-live-root aria-live="polite">
+  <div class="live__controls">
+    <div class="live__identity">
+      <span class="live__state" data-live-state>Idle</span>
+      <span class="live__session" data-live-session-id>no session</span>
+    </div>
+    <div class="live__buttons">
+      <button class="btn btn--primary" type="button" data-live-start disabled>
+        {{ ui.icon('mic', 16) }} <span>Start monitoring</span>
+      </button>
+      <button class="btn btn--ghost" type="button" data-live-stop disabled>
+        {{ ui.icon('x', 16) }} <span>Stop</span>
+      </button>
+      <button class="btn btn--ghost" type="button" data-live-mute disabled aria-pressed="false">
+        {{ ui.icon('volume', 16) }} <span>Mute</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="live__meter" data-live-meter>
+    <div class="live__meter-cap" data-live-meter-label>Level</div>
+    <div class="live__meter-track">
+      <div class="live__meter-fill" data-live-meter-fill></div>
+    </div>
+    <div class="live__meter-cap" data-live-meter-peak>-&nbsp;dB</div>
+  </div>
+
+  {# ---- the verdict line: the first thing a person reads. ------------------- #}
+  <div class="verdict" data-live-verdict data-testid="live-verdict">
+    <div class="verdict__class" data-live-class>
+      <span class="verdict__label">Nothing detected yet</span>
+    </div>
+    <div class="verdict__consistency" data-live-consistency>
+      <span class="pip pip--muted"><span class="pip__dot" aria-hidden="true"></span>Awaiting both models</span>
+    </div>
+  </div>
+
+  {# ---- the two models, side by side. The reason this screen exists. -------- #}
+  <div class="duo" data-live-duo>
+    <article class="model-card model-card--python" data-model-card="python">
+      <header class="model-card__head">
+        <span class="model-card__name">{{ model_labels.python }}</span>
+        <span class="model-card__tag">Own model · trained locally</span>
+      </header>
+      <div class="model-card__class" data-model-class>—</div>
+      <div class="model-card__conf" data-model-confidence>—</div>
+      <div class="model-card__bar" aria-hidden="true">
+        <div class="model-card__bar-fill" data-model-bar></div>
+      </div>
+      <p class="model-card__note" data-model-note>Prediction appears after the first window.</p>
+    </article>
+
+    <div class="duo__gap" aria-hidden="true">
+      <span class="duo__gap-label">Δ</span>
+      <span class="duo__gap-value" data-live-difference>—</span>
+    </div>
+
+    <article class="model-card model-card--gtm" data-model-card="gtm">
+      <header class="model-card__head">
+        <span class="model-card__name">{{ model_labels.gtm }}</span>
+        <span class="model-card__tag">Trained separately · never sees the Python output</span>
+      </header>
+      <div class="model-card__class" data-model-class>—</div>
+      <div class="model-card__conf" data-model-confidence>—</div>
+      <div class="model-card__bar" aria-hidden="true">
+        <div class="model-card__bar-fill" data-model-bar></div>
+      </div>
+      <p class="model-card__note" data-model-note>Prediction appears after the first window.</p>
+    </article>
+  </div>
+
+  {# ---- the run distribution: what this session has heard. ------------------ #}
+  <section class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">This session so far</h2>
+      <p class="panel__note">Windows classified: <span data-live-windows>0</span>
+        · Confirmed events: <span data-live-events>0</span></p>
+    </div>
+    <div class="panel__body panel__body--flush">
+      <ul class="scale-list" data-live-scale>
+        {% for class_name in classes %}
+          <li class="scale-list__item" data-scale-class="{{ class_name }}"
+              {% if class_name in critical_classes %}data-scale-critical="1"{% endif %}>
+            <span class="scale-list__name">{{ class_name }}</span>
+            <span class="scale-list__bar" aria-hidden="true"><span data-scale-fill></span></span>
+            <span class="scale-list__count" data-scale-count>0</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </section>
+
+  {# ---- the window tape: recent windows in chronological order. ------------- #}
+  <section class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">Recent windows</h2>
+      <p class="panel__note">Newest last. A window is a single
+        {{ window_seconds|round(1) }}&nbsp;s capture.</p>
+    </div>
+    <div class="panel__body panel__body--flush">
+      <ol class="tape" data-live-tape>
+        <li class="tape__item tape__item--empty">Waiting for the first window.</li>
+      </ol>
+    </div>
+  </section>
+</section>
+
+{# ---- past sessions. --------------------------------------------------------- #}
+<section class="panel" data-live-sessions-panel>
+  <div class="panel__head">
+    <h2 class="panel__title">Past sessions</h2>
+    <p class="panel__note">Loaded from <code>/api/live/sessions</code> when the live slice is
+      installed.</p>
+  </div>
+  <div class="panel__body panel__body--flush" data-live-sessions
+       data-endpoint="{{ url_for('live_api.sessions') if live_api is defined else '' }}">
+    <p class="prose">Session history is unavailable in this build.</p>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/live.js') }}" defer></script>
+{% endblock %}

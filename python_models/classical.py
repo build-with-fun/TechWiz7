@@ -56,6 +56,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable, Mapping, Sequence
 
+from sklearn.base import BaseEstimator, ClassifierMixin
+
 import numpy as np
 
 # --------------------------------------------------------------------------------------
@@ -148,21 +150,83 @@ def _gradient_boosting(params: Mapping[str, Any], seed: int, _rng: Any) -> Any:
     )
 
 
+class _LabelEncodedClassifier(BaseEstimator, ClassifierMixin):
+    """Fit an integer-only estimator on string class labels.
+
+    XGBoost's sklearn wrapper infers ``[0..n-1]`` from ``y`` and refuses strings::
+
+        ValueError: Invalid classes inferred from unique values of `y`.
+
+    Every other estimator in the zoo (SVM, RandomForest, ExtraTrees,
+    GradientBoosting, and ``CalibratedClassifierCV`` over them) accepts strings
+    natively, and the rest of the pipeline -- the manifest, the metrics, the
+    confidence comparison, the saved bundle -- is string-labelled end to end.
+    Encoding at the boundary keeps it that way: callers pass and receive the real
+    class names and never learn that a translation happened.
+
+    The mapping is built from ``sorted(unique(y))``, so the encoded order is the
+    same order sklearn itself would use, and ``classes_`` stays the string labels
+    -- ``predict_proba`` columns line up with it exactly.
+    """
+
+    def __init__(self, estimator: Any):
+        self.estimator = estimator
+
+    # -- fit/predict/predict_proba -------------------------------------------------
+    # ``sample_weight`` is named explicitly rather than folded into ``**fit_params``:
+    # fit_estimator introspects this signature to decide how critical-class weighting is
+    # delivered. Without a discoverable name it would fall through to the warning branch
+    # and the boost would be dropped -- silently, with the model still training.
+    def fit(self, X, y, sample_weight=None, **fit_params):
+        labels = sorted({str(v) for v in y})
+        self._label_to_int_ = {label: i for i, label in enumerate(labels)}
+        self.classes_ = np.asarray(labels, dtype=object)
+
+        encoded = np.asarray([self._label_to_int_[str(v)] for v in y], dtype=np.int64)
+        if sample_weight is not None:
+            self.estimator.fit(X, encoded, sample_weight=sample_weight, **fit_params)
+        else:
+            self.estimator.fit(X, encoded, **fit_params)
+        return self
+
+    def predict(self, X):
+        ints = np.asarray(self.estimator.predict(X))
+        # ``self.classes_`` is object-dtype, so fancy indexing yields real strings.
+        return self.classes_[ints]
+
+    def predict_proba(self, X):
+        return self.estimator.predict_proba(X)
+
+    # -- delegation ----------------------------------------------------------------
+    # Fitted state lives on the inner estimator. ``feature_importances_`` is what
+    # ``feature_importances()`` reads to rank the 254 axes for the report.
+    @property
+    def feature_importances_(self):
+        return self.estimator.feature_importances_
+
+    def __getattr__(self, name):
+        # Anything else (n_estimators_, feature_names_in_, ...) belongs to the inner
+        # estimator. Only called when the attribute is not found on the wrapper.
+        return getattr(self.estimator, name)
+
+
 def _xgboost(params: Mapping[str, Any], seed: int, _rng: Any) -> Any:
     from xgboost import XGBClassifier
 
-    return XGBClassifier(
-        n_estimators=int(params.get("n_estimators", 300)),
-        learning_rate=float(params.get("learning_rate", 0.1)),
-        max_depth=int(params.get("max_depth", 6)),
-        subsample=float(params.get("subsample", 1.0)),
-        colsample_bytree=float(params.get("colsample_bytree", 1.0)),
-        reg_lambda=float(params.get("reg_lambda", 1.0)),
-        tree_method="hist",
-        random_state=seed,
-        n_jobs=-1,
-        verbosity=0,
-        eval_metric="mlogloss",
+    return _LabelEncodedClassifier(
+        XGBClassifier(
+            n_estimators=int(params.get("n_estimators", 300)),
+            learning_rate=float(params.get("learning_rate", 0.1)),
+            max_depth=int(params.get("max_depth", 6)),
+            subsample=float(params.get("subsample", 1.0)),
+            colsample_bytree=float(params.get("colsample_bytree", 1.0)),
+            reg_lambda=float(params.get("reg_lambda", 1.0)),
+            tree_method="hist",
+            random_state=seed,
+            n_jobs=-1,
+            verbosity=0,
+            eval_metric="mlogloss",
+        )
     )
 
 

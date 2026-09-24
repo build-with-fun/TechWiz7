@@ -1,0 +1,147 @@
+{# ==========================================================================
+   templates/upload.html — the audio upload screen.
+
+   Owner: hina (front end).
+
+   Context (src/api/pages.py::upload):
+     accepted       list[str] the accepted mime types and extensions
+     max_bytes      int   the per-file byte ceiling
+     max_mb         float the same, human
+     quality_verdicts list[str] the quality vocabulary
+     analysis_ready bool  both models loaded and a pipeline built
+     pipeline_error str   why the pipeline is unavailable, when it isn't
+
+   The form is progressively enhanced by static/js/upload.js, which posts to the
+   audio slice. When the slice is not installed the page says so and offers the
+   fallback: an HTML form that posts to the same endpoint.
+   ========================================================================== #}
+{% extends "base.html" %}
+{% import "_macros.html" as ui %}
+
+{% block title %}Upload audio · {{ app_name }}{% endblock %}
+{% block page_id %}upload{% endblock %}
+
+{% block content %}
+<section class="page-head">
+  <div class="page-head__main">
+    <h1 class="page-title">Upload audio</h1>
+    <p class="page-sub">Drop a recording and both models classify it independently — the
+      Python model and the Google Teachable Machine model. The result shows each
+      prediction, each confidence, the difference, and the consistency verdict.</p>
+  </div>
+  <div class="page-head__actions">
+    <span class="pip pip--{% if analysis_ready %}ok{% else %}warn{% endif %}">
+      <span class="pip__dot" aria-hidden="true"></span>
+      {% if analysis_ready %}Both models ready{% else %}Pipeline limited{% endif %}
+    </span>
+  </div>
+</section>
+
+{% if pipeline_error %}
+  {{ ui.error_block('Analysis is unavailable', pipeline_error, request_id, retry=False) }}
+{% elif not analysis_ready %}
+  <div class="banner banner--warn">
+    <span class="banner__icon" aria-hidden="true">{{ ui.icon('warn', 20) }}</span>
+    <div class="banner__body">
+      <p class="banner__text">No trained model is loaded, so an upload will be stored and
+        quality-checked but not classified. Once a model is trained and the app restarts,
+        the same file is analysed on demand.</p>
+    </div>
+  </div>
+{% endif %}
+
+<div class="grid grid--2col">
+  {# ---- the dropzone. ------------------------------------------------------- #}
+  <section class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">Add a recording</h2>
+      <p class="panel__note">Accepted: {{ accepted|join(', ') }} · up to
+        <strong>{{ max_mb|round(1) }} MB</strong></p>
+    </div>
+    <div class="panel__body">
+      <form class="dropzone" method="post" enctype="multipart/form-data"
+            action="{{ url_for('audio_api.upload') if audio_api is defined else '#' }}"
+            data-dropzone data-testid="upload-dropzone">
+        {{ csrf_token() if csrf_token is defined }}
+        <span class="dropzone__icon" aria-hidden="true">{{ ui.icon('upload', 40) }}</span>
+        <p class="dropzone__title">Drag a file here, or choose one</p>
+        <p class="dropzone__hint">
+          {% if accepted %}{{ accepted|join(', ') }}{% else %}Any audio format{% endif %}
+          · {{ max_mb|round(1) }} MB ceiling
+        </p>
+        <button class="btn btn--primary" type="button" data-dropzone-pick>
+          {{ ui.icon('upload', 16) }} <span>Choose a file</span>
+        </button>
+        <input type="file" name="audio" id="audio-input" data-dropzone-input hidden
+               accept="{{ accepted|join(',') if accepted else 'audio/*' }}">
+      </form>
+
+      {# ---- the queue: what is happening to each file. ----------------------- #}
+      <h2 class="panel__title panel__title--sub">Queue</h2>
+      <ol class="queue" data-upload-queue data-testid="upload-queue">
+        <li class="queue__item queue__item--empty">Nothing queued yet.</li>
+      </ol>
+    </div>
+  </section>
+
+  {# ---- how a file is judged. ---------------------------------------------- #}
+  <section class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">What happens to a file</h2>
+      <p class="panel__note">Every step is recorded against the event it produces.</p>
+    </div>
+    <div class="panel__body">
+      <ol class="steps">
+        <li class="steps__item">
+          <span class="steps__n">1</span>
+          <div>
+            <p class="steps__title">Stored as the original</p>
+            <p class="steps__body">The file is written under
+              <span class="mono">audio_dataset/originals/</span> hashed by content, so the
+              same bytes never land twice.</p>
+          </div>
+        </li>
+        <li class="steps__item">
+          <span class="steps__n">2</span>
+          <div>
+            <p class="steps__title">Quality checked</p>
+            <p class="steps__body">Silence, clipping, noise floor and length are scored
+              before any model runs, because a bad recording explains a bad prediction.</p>
+          </div>
+        </li>
+        <li class="steps__item">
+          <span class="steps__n">3</span>
+          <div>
+            <p class="steps__title">Predicted twice, independently</p>
+            <p class="steps__body">The Python model and the Teachable Machine model each
+              classify the same signal. Neither is given the other's class or confidence.</p>
+          </div>
+        </li>
+        <li class="steps__item">
+          <span class="steps__n">4</span>
+          <div>
+            <p class="steps__title">Compared and alerted</p>
+            <p class="steps__body">The top classes are compared and the confidence gap is
+              taken as an absolute difference. Severity comes from the alert rules, not
+              from the models.</p>
+          </div>
+        </li>
+      </ol>
+
+      <h3 class="panel__title panel__title--sub">Quality verdicts used</h3>
+      <p class="chips">
+        {% for verdict in quality_verdicts|default([]) %}
+        {{ ui.quality_chip(verdict) }}
+        {% endfor %}
+      </p>
+      <p class="field__hint">A recording scored <strong>Poor</strong> or
+        <strong>Unusable</strong> is not discarded — its event is flagged so the
+        prediction is read with that in mind.</p>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/upload.js') }}" defer></script>
+{% endblock %}

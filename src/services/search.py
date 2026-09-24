@@ -330,8 +330,11 @@ def parse_filters(args: Mapping[str, Any], store, *, viewer=None,
         if filters.page < 1:
             raise ApiError("validation_error", "page must be 1 or greater.",
                            details={"page": "must be >= 1"})
-    size_raw = args.get("page_size")
-    if _has(args, "page_size"):
+    # `per_page` is the contract's name for the size (documentation/api_contract.md 3.2);
+    # `page_size` is what the HTML form uses. Accept both -- an ignored size silently
+    # changes which rows the client sees, which reads as a bug in the search.
+    size_raw = args.get("per_page", args.get("page_size"))
+    if _has(args, "per_page") or _has(args, "page_size"):
         try:
             filters.page_size = int(size_raw)
         except (TypeError, ValueError):
@@ -513,7 +516,9 @@ def run_search(session: Session, filters: Filters, store) -> tuple[list[Event], 
     rows = session.execute(
         statement
         .options(selectinload(Event.audio_file), selectinload(Event.confidence_scores),
-                 selectinload(Event.alerts), selectinload(Event.created_by))
+                 selectinload(Event.alerts), selectinload(Event.created_by),
+                 selectinload(Event.python_model_version),
+                 selectinload(Event.gtm_model_version), selectinload(Event.reviews))
         .offset((filters.page - 1) * filters.page_size)
         .limit(filters.page_size)
     ).scalars().all()

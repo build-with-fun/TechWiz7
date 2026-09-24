@@ -84,7 +84,11 @@ DEFAULT_STATUS: Mapping[str, int] = {
     "not_found": 404,
     "method_not_allowed": 405,
     "conflict": 409,
-    "validation_error": 400,
+    # Contract §3.2 / api_contract.md line 272: an unknown value in a validated param
+    # returns "422 validation_error naming the param". Every raise site is a rejected
+    # but well-formed request (bad filter, bad sort, missing file part), which is the
+    # 422 definition at line 94, not a malformed body (400).
+    "validation_error": 422,
     "unsupported_media_type": 415,
     "file_too_large": 413,
     "rate_limited": 429,
