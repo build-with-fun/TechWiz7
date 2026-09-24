@@ -356,13 +356,26 @@ class TuningProtocol:
     # -- scoring ----------------------------------------------------------------------
 
     def _predictions(self, estimator: Any, X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        """Class predictions and the full confidence matrix, in ``class_names`` order."""
+        """Class predictions and the full confidence matrix, in ``class_names`` order.
+
+        ``predict_proba`` columns follow the estimator's own ``classes_`` (alphabetical for
+        sklearn), *not* the config order of ``class_names``. Argmax positions must be
+        resolved against ``classes_`` -- indexing ``class_names`` directly scrambles every
+        label (a real bug that made whole candidate sweeps score at chance level).
+        """
         proba = np.asarray(self.predict_proba_of(estimator, X))
         if proba.ndim != 2 or proba.shape[1] != len(self.class_names):
             raise TuningError(
                 f"predict_proba_of returned shape {proba.shape}; expected "
                 f"(n_rows, {len(self.class_names)}) matching the configured class list"
             )
+        learned = list(getattr(estimator, "classes_", []))
+        if learned and len(learned) == proba.shape[1]:
+            # Columns are in the estimator's order; canonicalise to class_names order.
+            order = [learned.index(str(name)) for name in self.class_names]
+            proba = proba[:, order]
+        # If classes_ is absent, predict_proba must already be in class_names order --
+        # the caller owns that contract (asserted by the shape check above).
         idx = np.argmax(proba, axis=1)
         names = np.asarray(self.class_names, dtype=object)
         return names[idx], proba
