@@ -1,0 +1,223 @@
+{# ==========================================================================
+   templates/base.html — the application shell.
+
+   Context keys this template relies on. They are sara's context-processor
+   contract, and the file fails loudly if they go missing, which is deliberate:
+     config (ConfigStore)   nav   severity_scale   severity_levels
+     class_names            critical_classes   role_labels   model_labels
+     quality_verdicts   consistency_statuses   alert_statuses
+     review_decisions   review_conditions   app_name   app_version   request_id
+     current_user (Flask-Login, with .can(capability) and .role)
+
+   Two rules worth stating out loud because they cause real bugs:
+
+   1. **Access is gated on `current_user.can('capability')`, never on a role
+      string.** Moving a capability between roles in src/auth.py must not need a
+      template edit. There is one helper (`_can`) and everything uses it.
+
+   2. **Nothing inline executes.** The app is served with
+      `script-src 'self'; style-src 'self'` (config/auth.json), so there are no
+      inline <script> bodies and no `style=` attributes anywhere in my templates.
+      Data crosses to the browser through `type="application/json"` blocks, which
+      CSP does not execute, and the browser reads them by id.
+   ========================================================================== #}
+{% import "_macros.html" as ui with context %}
+{% import "_presentation.html" as pres with context %}
+
+{# One access check, used everywhere. A user object without `can` (or no user at
+   all) sees only public chrome. #}
+{% macro _can(capability) -%}
+{{ 'true' if (current_user is defined and current_user and current_user.can and current_user.can(capability)) else 'false' }}
+{%- endmacro %}
+
+{% set _theme = 'light' if request.cookies.get('sst_theme') == 'light' else 'dark' %}
+<!doctype html>
+<html lang="en" data-theme="{{ _theme }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <title>{% block title %}{{ app_name | default('SonicSentinel AI') }}{% endblock %}</title>
+  <meta name="description" content="{% block description %}SonicSentinel AI — real-time sound event detection with a dual-model consistency check. Every prediction is shown from the project's own Python model and from a separately trained Teachable Machine model so the two can be compared on the same clip.{% endblock %}">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body data-page="{% block page_id %}page{% endblock %}">
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <div class="app">
+
+    <header class="topbar">
+      <div class="topbar__brand">
+        <img class="topbar__logo" src="{{ url_for('static', filename='img/logo.svg') }}"
+             alt="" width="28" height="28" aria-hidden="true">
+        <span>
+          <span class="topbar__title">{{ app_name | default('SonicSentinel AI') }}</span>
+          <span class="topbar__sub">{% block brand_sub %}AcousticX Intelligence{% endblock %}</span>
+        </span>
+      </div>
+
+      <div class="topbar__spacer"></div>
+
+      <div class="topbar__actions">
+        {% block topbar_actions %}{% endblock %}
+
+        <button type="button" class="btn btn--ghost btn--icon" data-theme-toggle
+                aria-pressed="{{ 'true' if _theme == 'light' else 'false' }}"
+                title="Switch between the dark console and the light theme">
+          <span aria-hidden="true" data-theme-icon>{{ ui.icon('sun', 16) if _theme == 'light' else ui.icon('moon', 16) }}</span>
+          <span class="visually-hidden">Toggle colour theme</span>
+        </button>
+
+        {% if current_user is defined and current_user and current_user.is_authenticated %}
+          <span class="chip" title="Signed in">
+            <span class="chip__glyph" aria-hidden="true">{{ ui.icon('user', 12) }}</span>
+            <span class="chip__text">{{ current_user.username }}</span>
+          </span>
+          <span class="chip chip--role" title="Role: {{ role_labels.get(current_user.role, current_user.role) if role_labels is defined else current_user.role }}">
+            <span class="chip__glyph" aria-hidden="true">{{ ui.icon('shield', 12) }}</span>
+            <span class="chip__text">{{ role_labels.get(current_user.role, current_user.role) if role_labels is defined else current_user.role }}</span>
+          </span>
+          <form method="post" action="{{ url_for('auth.logout') }}" class="logout-form">
+            <button type="submit" class="btn btn--sm">
+              {{ ui.icon('logout', 14) }} <span>Sign out</span>
+            </button>
+          </form>
+        {% endif %}
+      </div>
+    </header>
+
+    {# ------------------------------------------------------------------ nav
+       Rendered from pres.nav_entries() and gated item-by-item. An item the user
+       cannot open is not rendered at all — showing a door that answers 403 is
+       worse than showing no door.
+       ------------------------------------------------------------------ #}
+    <nav class="nav" aria-label="Main navigation">
+      {% set entries = pres.nav_entries() | fromjson %}
+      {% for group in entries %}
+        {% set visible = [] %}
+        {% for item in group['items'] %}
+          {% if _can(item['capability']) | trim == 'true' %}{% set _ = visible.append(item) %}{% endif %}
+        {% endfor %}
+        {% if visible %}
+          <div class="nav__group">
+            <p class="nav__label">{{ group['group'] }}</p>
+            {% for item in visible %}
+              {% set here = request.endpoint == item['endpoint'] %}
+              <a class="nav__link" href="{{ url_for(item['endpoint']) }}"
+                 {% if here %}aria-current="page"{% endif %}>
+                <span aria-hidden="true">{{ ui.icon(item['icon'], 18) }}</span>
+                <span>{{ item['label'] }}</span>
+                {% set badge = (nav.get('badges', {}).get(item['endpoint']) if nav is defined and nav else none) %}
+                {% if badge %}<span class="nav__badge" title="{{ badge }} waiting">{{ badge }}</span>{% endif %}
+              </a>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endfor %}
+
+      <div class="nav__group push">
+        <p class="nav__label">System</p>
+        <a class="nav__link" href="{{ url_for('health.health') }}" target="_blank" rel="noopener">
+          <span aria-hidden="true">{{ ui.icon('info', 18) }}</span><span>Service health</span>
+          <span class="visually-hidden">(opens in a new tab)</span>
+        </a>
+      </div>
+    </nav>
+
+    <main class="main" id="main" tabindex="-1">
+      {# ------------------------------------------------------------------
+         The shared error region. Every client-side failure writes here rather
+         than replacing the page, so a 500 on one panel never takes the console
+         down with it (the SRS's "no page kill" rule for batch upload).
+         ------------------------------------------------------------------ #}
+      <div id="page-error" data-api-error hidden></div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="stack stack--tight" data-testid="flashes">
+            {% for category, message in messages %}
+              {% set tone = 'error' if category in ('error', 'danger') else ('ok' if category in ('success', 'ok') else 'info') %}
+              <div class="banner banner--{{ tone }}" role="{{ 'alert' if tone == 'error' else 'status' }}">
+                <span class="banner__icon" aria-hidden="true">{{ ui.icon('warn' if tone == 'error' else 'info', 20) }}</span>
+                <div class="banner__body"><p class="banner__text">{{ message }}</p></div>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+
+      <footer class="page-foot">
+        <p class="field__hint">
+          {{ app_name | default('SonicSentinel AI') }}
+          {% if app_version %}v{{ app_version }}{% endif %}
+          · Predictions come from this project's own Python model and from a separately trained
+          Teachable Machine model, each predicting independently. The final decision is made by the
+          application's own rule engine, never by an external generative-AI service.
+          {% if request_id %}· Request <span class="mono">{{ request_id }}</span>{% endif %}
+        </p>
+      </footer>
+    </main>
+  </div>
+
+  <div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="false"></div>
+
+  {# ---------------------------------------------------------------------
+     Data handoff to the browser.
+
+     `type="application/json"` is inert: the browser parses it as data and CSP
+     does not treat it as script, so `script-src 'self'` stays unrelaxed.
+
+     Everything the client-side code needs that a human configured — endpoints,
+     thresholds, class list, display vocabulary — is emitted here exactly once.
+     Nothing is typed a second time in JavaScript. If an evaluator changes
+     `config/thresholds.json`, the browser-side behaviour changes with the
+     server's, because both read the same values from the same file.
+     --------------------------------------------------------------------- #}
+  {% set thresholds = (config.thresholds() if config is defined and config and config.thresholds else {}) %}
+  <script type="application/json" id="app-config">
+  {
+    "appName": {{ (app_name | default('SonicSentinel AI')) | tojson }},
+    "appVersion": {{ (app_version | default('0.0.0')) | tojson }},
+    "requestId": {{ (request_id | default('')) | tojson }},
+    "endpoints": {{ {
+        "upload": url_for('main.upload'),
+        "events": url_for('main.events'),
+        "live": url_for('main.live'),
+        "alerts": url_for('main.alerts'),
+        "reviews": url_for('main.reviews'),
+        "dashboard": url_for('main.dashboard'),
+        "analytics": url_for('main.analytics'),
+        "login": url_for('auth.login'),
+        "eventDetail": url_for('main.event_detail', audio_id='__AUDIO_ID__'),
+        "eventAudio": url_for('main.event_audio', audio_id='__AUDIO_ID__'),
+        "liveWindow": url_for('main.live') ~ '/windows'
+      } | tojson }},
+    "thresholds": {{ thresholds | tojson }}
+  }
+  </script>
+
+  <script type="application/json" id="app-vocabulary">
+  {
+    "classes": {{ (class_names | default({})) | tojson }},
+    "criticalClasses": {{ (critical_classes | default([])) | tojson }},
+    "severityScale": {{ (severity_scale | default('five_level')) | tojson }},
+    "severityLevels": {{ (severity_levels | default([])) | tojson }},
+    "qualityVerdicts": {{ (quality_verdicts | default([])) | tojson }},
+    "consistencyStatuses": {{ (consistency_statuses | default([])) | tojson }},
+    "alertStatuses": {{ (alert_statuses | default([])) | tojson }},
+    "reviewDecisions": {{ (review_decisions | default([])) | tojson }},
+    "reviewConditions": {{ (review_conditions | default([])) | tojson }},
+    "modelLabels": {{ (model_labels | default({'python': 'Python model', 'gtm': 'Teachable Machine'})) | tojson }},
+    "presentation": {{ pres.presentation_payload() | fromjson | tojson }}
+  }
+  </script>
+
+  <script src="{{ url_for('static', filename='js/core.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/format.js') }}" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+python_models/.cache/
+
+# Audio / dataset binaries
+*.wav
+*.mp3
+*.flac
+*.ogg
+*.m4a
+
+# Raw downloads / scraped datasets
+audio_dataset/raw_downloads/
+audio_dataset/originals/
+data/uscraping/parquet/
+data/uscraping/download.log
+
+# Large data files
+*.parquet
+*.zip
+
+# Generated caches
+data/features/real_corpus_cache.json

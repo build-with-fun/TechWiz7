@@ -1,0 +1,49 @@
+{
+  "note": "Per-class synthetic counts for data/generate_corpus.py. real + synthetic must equal 300 exactly (build_split.py --strict, SRS 300/class).",
+  "id_blocks": {
+    "synthetic": "SS-<CODE>-0001..0999",
+    "real": "SS-<CODE>-1001..1999"
+  },
+  "per_class": {
+    "Gunshot": {
+      "real": 150,
+      "synthetic": 150
+    },
+    "Glass Breaking": {
+      "real": 150,
+      "synthetic": 150
+    },
+    "Panic Scream": {
+      "real": 100,
+      "synthetic": 200
+    },
+    "Aggression": {
+      "real": 100,
+      "synthetic": 200
+    },
+    "Vehicle Horn": {
+      "real": 130,
+      "synthetic": 170
+    },
+    "Alarm or Siren": {
+      "real": 130,
+      "synthetic": 170
+    },
+    "Machinery Fault": {
+      "real": 120,
+      "synthetic": 180
+    },
+    "Animal Sound": {
+      "real": 150,
+      "synthetic": 150
+    },
+    "Person Asking for Help": {
+      "real": 0,
+      "synthetic": 300
+    },
+    "Background Noise": {
+      "real": 120,
+      "synthetic": 180
+    }
+  }
+}

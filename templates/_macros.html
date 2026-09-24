@@ -1,0 +1,429 @@
+{# ==========================================================================
+   templates/_macros.html
+   Component macros. Import with context:
+
+     {% import "_macros.html" as ui with context %}
+
+   Every macro here is deliberately dumb: it renders markup from data and never
+   reaches for a request. The server decides; the client script only animates.
+   ========================================================================== #}
+{% import "_presentation.html" as pres with context %}
+
+{# ---------------------------------------------------------------- icons -- #}
+{% macro icon(name, size=16, cls="") -%}
+<svg class="icon {{ cls }}" width="{{ size }}" height="{{ size }}" viewBox="0 0 24 24"
+     fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+     stroke-linejoin="round" aria-hidden="true" focusable="false">
+{%- if name == 'mic' -%}
+  <rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v4"/><path d="M8 22h8"/>
+{%- elif name == 'upload' -%}
+  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v13"/>
+{%- elif name == 'download' -%}
+  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>
+{%- elif name == 'list' -%}
+  <path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/>
+{%- elif name == 'grid' -%}
+  <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+{%- elif name == 'chart' -%}
+  <path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/>
+{%- elif name == 'cpu' -%}
+  <rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v2"/><path d="M15 2v2"/><path d="M9 20v2"/><path d="M15 20v2"/><path d="M2 9h2"/><path d="M2 15h2"/><path d="M20 9h2"/><path d="M20 15h2"/>
+{%- elif name == 'bell' -%}
+  <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>
+{%- elif name == 'clipboard' -%}
+  <rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 12l2 2 4-4"/>
+{%- elif name == 'sliders' -%}
+  <path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M1 14h6"/><path d="M9 8h6"/><path d="M17 16h6"/>
+{%- elif name == 'users' -%}
+  <path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+{%- elif name == 'user' -%}
+  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+{%- elif name == 'logout' -%}
+  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>
+{%- elif name == 'play' -%}
+  <path d="M6 4l14 8-14 8z"/>
+{%- elif name == 'pause' -%}
+  <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+{%- elif name == 'replay' -%}
+  <path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/>
+{%- elif name == 'rewind' -%}
+  <path d="M11 19l-9-7 9-7z"/><path d="M22 19l-9-7 9-7z"/>
+{%- elif name == 'volume' -%}
+  <path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>
+{%- elif name == 'mute' -%}
+  <path d="M11 5L6 9H2v6h4l5 4z"/><path d="M22 9l-6 6"/><path d="M16 9l6 6"/>
+{%- elif name == 'alert' -%}
+  <path d="M12 3l9.5 16.5H2.5z"/><path d="M12 9v5"/><path d="M12 17h.01"/>
+{%- elif name == 'shield' -%}
+  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+{%- elif name == 'check' -%}
+  <path d="M20 6L9 17l-5-5"/>
+{%- elif name == 'search' -%}
+  <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>
+{%- elif name == 'filter' -%}
+  <path d="M3 4h18l-7 8v6l-4 2v-8z"/>
+{%- elif name == 'expand' -%}
+  <path d="M6 9l6 6 6-6"/>
+{%- elif name == 'collapse' -%}
+  <path d="M6 15l6-6 6 6"/>
+{%- elif name == 'sun' -%}
+  <circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M4.9 4.9l1.4 1.4"/><path d="M17.7 17.7l1.4 1.4"/><path d="M4.9 19.1l1.4-1.4"/><path d="M17.7 6.3l1.4-1.4"/>
+{%- elif name == 'moon' -%}
+  <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+{%- elif name == 'clock' -%}
+  <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+{%- elif name == 'waves' -%}
+  <path d="M2 12h2"/><path d="M6 8v8"/><path d="M10 4v16"/><path d="M14 7v10"/><path d="M18 10v4"/><path d="M22 12h-2"/>
+{%- elif name == 'spectrogram' -%}
+  <rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 14h6"/><path d="M9 10h6"/><path d="M15 15h6"/><path d="M9 4v6"/>
+{%- elif name == 'image' -%}
+  <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>
+{%- elif name == 'info' -%}
+  <circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/>
+{%- elif name == 'warn' -%}
+  <path d="M12 3l9.5 16.5H2.5z"/><path d="M12 9v5"/><path d="M12 17h.01"/>
+{%- elif name == 'x' -%}
+  <path d="M18 6L6 18"/><path d="M6 6l12 12"/>
+{%- elif name == 'external' -%}
+  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14L21 3"/>
+{%- else -%}
+  <circle cx="12" cy="12" r="9"/>
+{%- endif -%}
+</svg>
+{%- endmacro %}
+
+{# ----------------------------------------------------- formatted values -- #}
+{% macro confidence(value, places=3) -%}
+{%- if value is none -%}--
+{%- elif value is number -%}{{ '%.' ~ places ~ 'f' | format(value) }}
+{%- else -%}{{ value }}
+{%- endif -%}
+{% endmacro %}
+
+{% macro percent(value, places=1) -%}
+{%- if value is none -%}--
+{%- elif value is number -%}{{ '%.' ~ places ~ 'f' | format(value * 100) }}%
+{%- else -%}{{ value }}
+{%- endif -%}
+{% endmacro %}
+
+{% macro bytesize(n) -%}
+{%- if n is none -%}--
+{%- elif n < 1024 -%}{{ n }} B
+{%- elif n < 1048576 -%}{{ '%.1f' | format(n / 1024) }} KB
+{%- elif n < 1073741824 -%}{{ '%.1f' | format(n / 1048576) }} MB
+{%- else -%}{{ '%.2f' | format(n / 1073741824) }} GB
+{%- endif -%}
+{% endmacro %}
+
+{% macro seconds(ms) -%}
+{%- if ms is none -%}--
+{%- elif ms is number -%}{{ '%.0f' | format(ms) }} ms
+{%- else -%}{{ ms }}
+{%- endif -%}
+{% endmacro %}
+
+{% macro duration(sec) -%}
+{%- if sec is none -%}--
+{%- elif sec is number -%}
+{%- set m = (sec // 60) | int -%}
+{%- set s = sec - m * 60 -%}
+{{ '%d:%04.1f' | format(m, s) }}
+{%- else -%}{{ sec }}
+{%- endif -%}
+{% endmacro %}
+
+{% macro number(value, places=0) -%}
+{%- if value is none -%}--
+{%- elif value is number -%}{{ ('%.' ~ places ~ 'f') | format(value) }}
+{%- else -%}{{ value }}
+{%- endif -%}
+{% endmacro %}
+
+{# ------------------------------------------------------------- chips ----- #}
+{% macro severity_chip(severity, display=None, extra="") -%}
+{%- if severity -%}
+{%- set shown = display or severity -%}
+<span class="chip chip--sev-{{ pres.severity_slug(severity) }} {{ extra }}"
+      title="{{ shown }} severity" data-severity="{{ severity }}">
+  <span class="chip__glyph" aria-hidden="true">{{ pres.severity_glyph(severity) }}</span><span class="chip__text">{{ shown }}</span>
+</span>
+{%- else -%}
+<span class="chip chip--sev-informational"><span class="chip__glyph" aria-hidden="true">◦</span><span class="chip__text">Not set</span></span>
+{%- endif -%}
+{% endmacro %}
+
+{% macro consistency_chip(status, extra="") -%}
+{%- if status -%}
+<span class="chip chip--consistency-{{ pres.consistency_slug(status) }} {{ extra }}"
+      title="{{ pres.consistency_explanation(status) }}" data-consistency="{{ status }}">
+  <span class="chip__glyph" aria-hidden="true">{{ pres.consistency_glyph(status) }}</span><span class="chip__text">{{ status }}</span>
+</span>
+{%- else -%}
+<span class="chip"><span class="chip__glyph" aria-hidden="true">?</span><span class="chip__text">No verdict</span></span>
+{%- endif -%}
+{% endmacro %}
+
+{% macro quality_chip(verdict, extra="") -%}
+{%- if verdict -%}
+<span class="chip chip--quality-{{ pres.quality_slug(verdict) }} {{ extra }}"
+      title="{{ pres.quality_explanation(verdict) }}" data-quality="{{ verdict }}">
+  <span class="chip__glyph" aria-hidden="true">{{ pres.quality_glyph(verdict) }}</span><span class="chip__text">{{ verdict }}</span>
+</span>
+{%- else -%}
+<span class="chip"><span class="chip__glyph" aria-hidden="true">·</span><span class="chip__text">Unknown</span></span>
+{%- endif -%}
+{% endmacro %}
+
+{% macro status_chip(status, label=None, extra="") -%}
+{%- if status -%}
+<span class="chip chip--status {{ extra }}" data-status="{{ status }}">
+  <span class="chip__glyph" aria-hidden="true">{{ pres.status_glyph(status) }}</span><span class="chip__text">{{ label or status }}</span>
+</span>
+{%- else -%}
+<span class="chip"><span class="chip__glyph" aria-hidden="true">·</span><span class="chip__text">—</span></span>
+{%- endif -%}
+{% endmacro %}
+
+{% macro alert_chip(status, extra="") -%}
+{%- if status -%}
+<span class="chip chip--alert-{{ pres.alert_slug(status) }} {{ extra }}" data-alert-status="{{ status }}">
+  <span class="chip__glyph" aria-hidden="true">{{ pres.alert_glyph(status) }}</span><span class="chip__text">{{ status }}</span>
+</span>
+{%- else -%}
+<span class="chip"><span class="chip__glyph" aria-hidden="true">·</span><span class="chip__text">No alert</span></span>
+{%- endif -%}
+{% endmacro %}
+
+{% macro review_chip(status, extra="") -%}
+<span class="chip chip--action {{ extra }}" data-review-status="{{ status or '' }}">
+  <span class="chip__glyph" aria-hidden="true">☰</span><span class="chip__text">{{ status or 'Not queued' }}</span>
+</span>
+{% endmacro %}
+
+{% macro class_chip(name, class_code=None, critical=false, extra="") -%}
+<span class="chip {{ 'chip--critical' if critical else '' }} {{ extra }}"
+      data-sound-class="{{ name }}"
+      {%- if critical %} title="Critical category: {{ name }} — this triggers an acknowledgeable alert"{% endif %}>
+  <span class="chip__glyph" aria-hidden="true">{{ '⚠' if critical else '♪' }}</span><span class="chip__text">{{ name }}{% if class_code %} <span class="mono">({{ class_code }})</span>{% endif %}</span>
+</span>
+{% endmacro %}
+
+{# --------------------------------------------------------- state blocks -- #}
+{% macro empty_state(title, body=None, art='waves', action_text=None, action_href=None) -%}
+<div class="empty" data-state="empty" role="status">
+  <svg class="empty__art" viewBox="0 0 96 96" aria-hidden="true" focusable="false">
+    <rect x="6" y="6" width="84" height="84" rx="16" fill="none" stroke="currentColor" stroke-width="2" opacity="0.35"/>
+    <path d="M14 52h8l6-18 8 34 9-46 9 58 8-40 7 22h11"
+          fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>
+  </svg>
+  <p class="empty__title">{{ title }}</p>
+  {% if body %}<p class="empty__body">{{ body }}</p>{% endif %}
+  {% if action_text and action_href %}
+  <a class="btn btn--primary" href="{{ action_href }}">{{ action_text }}</a>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{# A skeleton for the two states everyone forgets. `rows` shapes the placeholder
+   so the layout does not jump when the real content arrives. #}
+{% macro loading_block(label='Loading…', rows=4) -%}
+<div class="stack stack--tight" data-state="loading" role="status" aria-live="polite">
+  <span class="visually-hidden">{{ label }}</span>
+  {% for _ in range(rows) %}<span class="skeleton skeleton--row"></span>{% endfor %}
+</div>
+{% endmacro %}
+
+{% macro error_block(title='Something went wrong', body=None, request_id=None, retry=False) -%}
+<div class="banner banner--error" data-state="error" role="alert">
+  <span class="banner__icon" aria-hidden="true">{{ icon('warn', 20) }}</span>
+  <div class="banner__body">
+    <p class="banner__title">{{ title }}</p>
+    {% if body %}<p class="banner__text">{{ body }}</p>{% endif %}
+    {% if request_id %}<p class="banner__text">Reference: <span class="mono">{{ request_id }}</span> — quote this and it can be found in the log.</p>{% endif %}
+  </div>
+  {% if retry %}<div class="banner__actions"><button type="button" class="btn btn--sm" data-retry>Try again</button></div>{% endif %}
+</div>
+{% endmacro %}
+
+{% macro problems_block(problems) -%}
+{% if problems %}
+<div class="banner banner--error" role="alert" data-testid="form-problems">
+  <span class="banner__icon" aria-hidden="true">{{ icon('warn', 20) }}</span>
+  <div class="banner__body">
+    <p class="banner__title">{{ problems | length }} filter {{ 'value was' if problems | length == 1 else 'values were' }} not understood</p>
+    <ul class="flow-list">
+      {% for problem in problems %}<li>{{ problem }}</li>{% endfor %}
+    </ul>
+    <p class="banner__text">The results below ignore those values — nothing was silently dropped.</p>
+  </div>
+</div>
+{% endif %}
+{% endmacro %}
+
+{# ------------------------------------------------------------- paginate -- #}
+{% macro pagination(meta, endpoint, params=None) -%}
+{% set page = (meta.page if meta else 1) or 1 %}
+{% set pages = (meta.pages if meta else 1) or 1 %}
+{% set total = (meta.total if meta else none) %}
+{% set base = params or {} %}
+<nav class="pagination" aria-label="Pagination">
+  {% if page > 1 %}
+    <a class="btn btn--sm" rel="prev" href="{{ url_for(endpoint, page=page - 1, **base) }}">Previous</a>
+  {% else %}
+    <span class="btn btn--sm" aria-disabled="true">Previous</span>
+  {% endif %}
+  <span class="pagination__page">
+    Page {{ page }} of {{ pages }}{% if total is not none %} · {{ total }} event{{ '' if total == 1 else 's' }}{% endif %}
+  </span>
+  {% if page < pages %}
+    <a class="btn btn--sm" rel="next" href="{{ url_for(endpoint, page=page + 1, **base) }}">Next</a>
+  {% else %}
+    <span class="btn btn--sm" aria-disabled="true">Next</span>
+  {% endif %}
+</nav>
+{% endmacro %}
+
+{# ------------------------------------------------------------ filter form --
+   Rendered entirely from `filter_fields`, which sara builds in
+   src/services/search.py. No field name, no option list and no label is typed
+   into a template: adding a class to config/classes.json grows the dropdown,
+   and an evaluator's surprise request ("filter by quality") is already here.
+
+   `requires_capability` fields are dropped for users who lack the capability --
+   hiding is a courtesy; the endpoint checks it again.
+   ---------------------------------------------------------------------- #}
+{% macro _selected_values(filters, name) -%}
+{%- set raw = (filters or {}).get(name) -%}
+{%- if raw is none -%}
+[]
+{%- elif raw is string -%}
+{{ raw.split(',') | map('trim') | select | list | tojson }}
+{%- elif raw is iterable -%}
+{{ raw | list | tojson }}
+{%- else -%}
+{{ [raw] | tojson }}
+{%- endif -%}
+{%- endmacro %}
+
+{% macro filter_form(fields, filters=None, problems=None, action='', submit_label='Apply filters',
+                     reset_href=None, hidden=None) -%}
+{% set filters = filters or {} %}
+{{ problems_block(problems) }}
+<form class="filters" method="get" action="{{ action or request.path }}" role="search"
+      aria-label="Filter events" data-testid="filter-form">
+  <div class="filters__grid">
+  {% for field in fields %}
+    {% if not field.requires_capability or (current_user is defined and current_user.can(field.requires_capability)) %}
+    {% set value = filters.get(field.name) %}
+    {% set fid = 'f-' ~ field.name %}
+
+    {% if field.type == 'multi' %}
+    <fieldset class="filters__wide" data-field="{{ field.name }}">
+      <legend>{{ field.label }}</legend>
+      <div class="checkgrid">
+        {% set chosen = _selected_values(filters, field.name) | fromjson %}
+        {% for option in field.options %}
+        <span class="checkline">
+          <input type="checkbox" id="{{ fid }}-{{ loop.index }}" name="{{ field.name }}"
+                 value="{{ option.value }}" {% if option.value in chosen %}checked{% endif %}>
+          <label for="{{ fid }}-{{ loop.index }}">{{ option.label }}</label>
+        </span>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    {% elif field.type == 'checkbox' %}
+    <span class="checkline" data-field="{{ field.name }}">
+      <input type="checkbox" id="{{ fid }}" name="{{ field.name }}" value="1"
+             {% if value not in (none, '', false, '0', 0) %}checked{% endif %}>
+      <label for="{{ fid }}">{{ field.label }}</label>
+    </span>
+
+    {% elif field.type == 'select' %}
+    <span class="field" data-field="{{ field.name }}">
+      <label class="field__label" for="{{ fid }}">{{ field.label }}</label>
+      <select class="select" id="{{ fid }}" name="{{ field.name }}">
+        <option value="">Any</option>
+        {% for option in (field.options or []) %}
+        {% set is_selected = (value if value is not none else field.selected) %}
+        <option value="{{ option.value }}" {% if option.value == is_selected %}selected{% endif %}>{{ option.label }}</option>
+        {% endfor %}
+      </select>
+      {% if field.srs %}<span class="field__hint">SRS {{ field.srs }}</span>{% endif %}
+    </span>
+
+    {% elif field.type == 'number' %}
+    <span class="field" data-field="{{ field.name }}">
+      <label class="field__label" for="{{ fid }}">{{ field.label }}</label>
+      <input class="input" type="number" id="{{ fid }}" name="{{ field.name }}"
+             value="{{ value if value is not none else '' }}"
+             {% if field.min is not none %}min="{{ field.min }}"{% endif %}
+             {% if field.max is not none %}max="{{ field.max }}"{% endif %}
+             {% if field.step is not none %}step="{{ field.step }}"{% endif %}
+             {% if field.placeholder %}placeholder="{{ field.placeholder }}"{% endif %}
+             inputmode="decimal">
+    </span>
+
+    {% elif field.type == 'date' %}
+    <span class="field" data-field="{{ field.name }}">
+      <label class="field__label" for="{{ fid }}">{{ field.label }}</label>
+      <input class="input" type="date" id="{{ fid }}" name="{{ field.name }}"
+             value="{{ value if value is not none else '' }}">
+    </span>
+
+    {% else %}
+    <span class="field" data-field="{{ field.name }}">
+      <label class="field__label" for="{{ fid }}">{{ field.label }}</label>
+      <input class="input" type="text" id="{{ fid }}" name="{{ field.name }}"
+             value="{{ value if value is not none else '' }}"
+             {% if field.placeholder %}placeholder="{{ field.placeholder }}"{% endif %}>
+    </span>
+    {% endif %}
+    {% endif %}
+  {% endfor %}
+  </div>
+
+  {% if hidden %}
+    {% for key, val in hidden.items() %}<input type="hidden" name="{{ key }}" value="{{ val }}">{% endfor %}
+  {% endif %}
+
+  <div class="filters__actions">
+    <button type="submit" class="btn btn--primary">{{ icon('filter', 14) }} {{ submit_label }}</button>
+    {% if reset_href %}<a class="btn" href="{{ reset_href }}">Clear all</a>{% endif %}
+    <span class="field__hint push">Filters share the URL — copy the address bar to send this exact view.</span>
+  </div>
+</form>
+{% endmacro %}
+
+{# ------------------------------------------------ active filter summary --
+   The "what am I actually looking at" line. A filtered list that does not say
+   it is filtered is how someone reports a wrong number.
+   ---------------------------------------------------------------------- #}
+{% macro active_filters(fields, filters, clear_href=None) -%}
+{% set active = [] %}
+{% for field in fields %}
+  {% if field.name != 'sort' %}
+  {% set value = (filters or {}).get(field.name) %}
+  {% if value not in (none, '', false) %}
+    {% if field.type == 'multi' %}
+      {% set chosen = _selected_values(filters, field.name) | fromjson %}
+      {% for one in chosen %}{% set _ = active.append([field.label, one, field.name]) %}{% endfor %}
+    {% else %}
+      {% set _ = active.append([field.label, value, field.name]) %}
+    {% endif %}
+  {% endif %}
+  {% endif %}
+{% endfor %}
+{% if active %}
+<div class="row" data-testid="active-filters">
+  <span class="field__hint">{{ active | length }} filter{{ '' if active | length == 1 else 's' }} active:</span>
+  <ul class="tag-list">
+    {% for label, value, name in active %}
+    <li class="chip" data-active-filter="{{ name }}"><span class="chip__glyph" aria-hidden="true">{{ icon('filter', 12) }}</span><span class="chip__text">{{ label }}: {{ value }}</span></li>
+    {% endfor %}
+  </ul>
+  {% if clear_href %}<a class="btn btn--sm btn--ghost chip-remove" href="{{ clear_href }}">Clear</a>{% endif %}
+</div>
+{% endif %}
+{% endmacro %}

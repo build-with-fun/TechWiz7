@@ -1,0 +1,195 @@
+{# ==========================================================================
+   templates/_presentation.html
+   --------------------------------------------------------------------------
+   The ONE place that decides how a vocabulary value is shown to a human:
+   its slug (for CSS), its glyph, and the navigation structure.
+
+   Why a template and not three files: the SRS's surprise-modification rule says
+   a new category, a changed threshold or a new filter must be quick to add.
+   Class names, severity levels, quality verdicts and consistency statuses all
+   come from `config/`/`alert_rules/` at runtime; only the *presentation* of
+   those vocabularies lives here, once. The JavaScript does not re-declare any
+   of it -- it reads the same table from the JSON payload this file emits
+   (`presentation_payload`), so a glyph cannot drift between server and client.
+
+   Accessibility rule this file exists to hold: **no indicator is colour alone.**
+   Every value has a word (the value itself) and a glyph whose *shape or count*
+   encodes the level, so the chips survive greyscale, colour-blindness and
+   forced-colours mode. Severity uses a monotonic count of solid dots so the
+   ordering is visible without the hue.
+   ========================================================================== #}
+
+{# ---- severity (names come from alert_rules/severity_levels.json) -------- #}
+{% macro severity_glyph(name) -%}
+{%- if name == 'Critical' -%}●●●●
+{%- elif name == 'High' -%}●●●
+{%- elif name == 'Medium' -%}●●
+{%- elif name == 'Low' -%}●
+{%- elif name == 'Informational' -%}◦
+{%- else -%}◦
+{%- endif -%}
+{% endmacro %}
+
+{% macro severity_slug(name) -%}
+{%- if name in ('Informational', 'Low', 'Medium', 'High', 'Critical') -%}
+{{ name | lower }}
+{%- else -%}
+informational
+{%- endif -%}
+{% endmacro %}
+
+{# A severity is "loud" when it demands a human: High and Critical. Used to
+   decide whether a banner interrupts or merely informs. #}
+{% macro severity_is_loud(name) -%}
+{{ 'true' if name in ('High', 'Critical') else 'false' }}
+{% endmacro %}
+
+{# ---- consistency statuses (SRS FR xxxiii / the five in src/models.py) ---- #}
+{% macro consistency_slug(status) -%}
+{%- if status == 'Strong Match' -%}strong
+{%- elif status == 'Acceptable Match' -%}acceptable
+{%- elif status == 'Weak Match' -%}weak
+{%- elif status == 'Model Disagreement' -%}disagreement
+{%- elif status == 'Uncertain Result' -%}uncertain
+{%- else -%}uncertain
+{%- endif -%}
+{% endmacro %}
+
+{% macro consistency_glyph(status) -%}
+{%- if status == 'Strong Match' -%}✓✓
+{%- elif status == 'Acceptable Match' -%}✓
+{%- elif status == 'Weak Match' -%}≈
+{%- elif status == 'Model Disagreement' -%}✕
+{%- elif status == 'Uncertain Result' -%}?
+{%- else -%}?
+{%- endif -%}
+{% endmacro %}
+
+{# One sentence a reader can act on, so the status is never just a label. #}
+{% macro consistency_explanation(status) -%}
+{%- if status == 'Strong Match' -%}Both models agree on the class and their top-class confidences are close.
+{%- elif status == 'Acceptable Match' -%}Both models agree on the class; the confidences differ within the accepted band.
+{%- elif status == 'Weak Match' -%}Both models agree on the class but their confidences differ widely -- treat with care.
+{%- elif status == 'Model Disagreement' -%}The two models named different classes, so no single reading is safe.
+{%- elif status == 'Uncertain Result' -%}At least one model was not confident enough to commit to a class.
+{%- else -%}No consistency verdict was recorded for this event.
+{%- endif -%}
+{% endmacro %}
+
+{# ---- audio quality verdicts (config alert_rules/alert_rules.json) -------- #}
+{% macro quality_slug(verdict) -%}
+{{ (verdict or 'Unusable') | lower }}
+{% endmacro %}
+
+{% macro quality_glyph(verdict) -%}
+{%- if verdict == 'Good' -%}✓
+{%- elif verdict == 'Acceptable' -%}≈
+{%- elif verdict == 'Poor' -%}!
+{%- elif verdict == 'Unusable' -%}✕
+{%- else -%}·
+{%- endif -%}
+{% endmacro %}
+
+{% macro quality_explanation(verdict) -%}
+{%- if verdict == 'Good' -%}Clean signal, usable for classification without further work.
+{%- elif verdict == 'Acceptable' -%}Minor issues (some noise or narrow bandwidth); still classified.
+{%- elif verdict == 'Poor' -%}Degraded signal -- the classification is shown but should be read with caution.
+{%- elif verdict == 'Unusable' -%}Too degraded to classify reliably; the event is routed for a human instead.
+{%- else -%}No quality assessment was recorded.
+{%- endif -%}
+{% endmacro %}
+
+{# ---- event statuses, alert statuses, review states ---------------------- #}
+{% macro status_glyph(status) -%}
+{%- if status == 'Uploaded' -%}↑
+{%- elif status == 'Classified' -%}✓
+{%- elif status == 'Uncertain' -%}?
+{%- elif status == 'Alert Generated' -%}⚠
+{%- elif status == 'Manual Review' -%}☰
+{%- elif status == 'Reviewed' -%}✓✓
+{%- elif status == 'Closed' -%}■
+{%- elif status == 'Failed' -%}✕
+{%- else -%}·
+{%- endif -%}
+{% endmacro %}
+
+{% macro alert_slug(status) -%}
+{{ (status or 'Open') | lower }}
+{% endmacro %}
+
+{% macro alert_glyph(status) -%}
+{%- if status == 'Open' -%}●
+{%- elif status == 'Acknowledged' -%}✓
+{%- elif status == 'Dismissed' -%}✕
+{%- elif status == 'Escalated' -%}⇧
+{%- elif status == 'Closed' -%}■
+{%- else -%}·
+{%- endif -%}
+{% endmacro %}
+
+{% macro review_slug(status) -%}
+{{ (status or 'Not queued') | lower | replace(' ', '-') }}
+{% endmacro %}
+
+{# ---- navigation ---------------------------------------------------------
+   Capability names are the executable permission matrix in src/auth.py:
+   gating on a capability string, never on a role, so moving a capability
+   between roles is a one-line change there and no template edit.
+
+   `nav_entries()` is also what tests/test_ui_frontend.py reads to check that
+   every endpoint name below is one the backend actually provides -- a typo
+   here would otherwise be a 500 at render time.
+   ---------------------------------------------------------------------- #}
+{% macro nav_entries() -%}
+[
+  {"group": "Monitor", "items": [
+    {"endpoint": "main.live",    "label": "Live monitoring", "icon": "mic",     "capability": "live_session"},
+    {"endpoint": "main.upload",  "label": "Upload and analyse", "icon": "upload", "capability": "upload_audio"},
+    {"endpoint": "main.events",  "label": "Event history", "icon": "list",      "capability": "view_own_events"}
+  ]},
+  {"group": "Insight", "items": [
+    {"endpoint": "main.dashboard", "label": "Dashboard",  "icon": "grid",    "capability": "view_dashboards"},
+    {"endpoint": "main.analytics", "label": "Analytics",  "icon": "chart",   "capability": "view_analytics"},
+    {"endpoint": "models.list",    "label": "Models",     "icon": "cpu",     "capability": "view_analytics"}
+  ]},
+  {"group": "Respond", "items": [
+    {"endpoint": "main.alerts",    "label": "Alerts",         "icon": "bell",  "capability": "view_alerts"},
+    {"endpoint": "main.reviews",   "label": "Manual review",  "icon": "clipboard", "capability": "review_queue"}
+  ]},
+  {"group": "Configure", "items": [
+    {"endpoint": "admin.config", "label": "Configuration", "icon": "sliders", "capability": "edit_config"},
+    {"endpoint": "admin.users",  "label": "Users",         "icon": "users",   "capability": "manage_users"}
+  ]}
+]
+{%- endmacro %}
+
+{# Every endpoint name any of my templates calls with url_for(). Kept beside
+   the nav so the list is maintained in one place; the test suite asserts each
+   one resolves in the real application's URL map. #}
+{% macro endpoint_names() -%}
+["main.live", "main.upload", "main.events", "main.event_detail", "main.dashboard",
+ "main.analytics", "main.alerts", "main.reviews", "models.list", "admin.config",
+ "admin.users", "auth.login", "auth.logout", "main.event_audio"]
+{%- endmacro %}
+
+{# The table the browser-side code reads, so glyphs and labels cannot drift
+   between the server-rendered chip and a client-rendered one. #}
+{% macro presentation_payload() -%}
+{"severity": {
+   "Informational": {"glyph": "◦", "slug": "informational"},
+   "Low": {"glyph": "●", "slug": "low"},
+   "Medium": {"glyph": "●●", "slug": "medium"},
+   "High": {"glyph": "●●●", "slug": "high"},
+   "Critical": {"glyph": "●●●●", "slug": "critical"}},
+ "consistency": {
+   "Strong Match": {"glyph": "✓✓", "slug": "strong"},
+   "Acceptable Match": {"glyph": "✓", "slug": "acceptable"},
+   "Weak Match": {"glyph": "≈", "slug": "weak"},
+   "Model Disagreement": {"glyph": "✕", "slug": "disagreement"},
+   "Uncertain Result": {"glyph": "?", "slug": "uncertain"}},
+ "quality": {
+   "Good": {"glyph": "✓", "slug": "good"},
+   "Acceptable": {"glyph": "≈", "slug": "acceptable"},
+   "Poor": {"glyph": "!", "slug": "poor"},
+   "Unusable": {"glyph": "✕", "slug": "unusable"}}}
+{%- endmacro %}

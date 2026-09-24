@@ -1,0 +1,94 @@
+{
+  "version": "1.0.0",
+  "owner": "lorena",
+  "consistency_note": "The 10 class names below are the single source of truth. They MUST be identical in config/classes.json, the Python model's label encoder, the Google Teachable Machine project's class labels, the app's UI and the alert rules. Duplicating or paraphrasing a class name anywhere breaks the model comparison.",
+  "critical_classes": [
+    "Gunshot",
+    "Glass Breaking",
+    "Panic Scream",
+    "Aggression",
+    "Person Asking for Help"
+  ],
+  "criteria": {
+    "critical": "Requires >= 85% recall on the untouched test split (SRS NFR). A missed detection here is a safety failure, so recall is prioritised over precision."
+  },
+  "classes": [
+    {
+      "name": "Machinery Fault",
+      "code": "MAC",
+      "critical": false,
+      "required_originals": 300,
+      "description": "Abnormal mechanical operation: grinding, squealing bearing, rhythmic knocking, metal-on-metal friction."
+    },
+    {
+      "name": "Glass Breaking",
+      "code": "GLA",
+      "critical": true,
+      "required_originals": 300,
+      "description": "Sharp broadband transient with high-frequency shards and a short decay tail."
+    },
+    {
+      "name": "Alarm or Siren",
+      "code": "ALM",
+      "critical": false,
+      "required_originals": 300,
+      "description": "Sustained tonal alert: smoke alarm, security siren, industrial alarm, vehicle siren."
+    },
+    {
+      "name": "Vehicle Horn",
+      "code": "HOR",
+      "critical": false,
+      "required_originals": 300,
+      "description": "Short tonal blast from a car or truck horn; often harmonically rich with 1-2 dominant tones."
+    },
+    {
+      "name": "Animal Sound",
+      "code": "ANI",
+      "critical": false,
+      "required_originals": 300,
+      "description": "Barking, howling, growling, birds, livestock."
+    },
+    {
+      "name": "Gunshot",
+      "code": "GUN",
+      "critical": true,
+      "required_originals": 300,
+      "description": "Extremely sharp impulse with near-instant attack and a broadband muzzle blast; may include an echo tail."
+    },
+    {
+      "name": "Panic Scream",
+      "code": "SCR",
+      "critical": true,
+      "required_originals": 300,
+      "description": "High-pitched sustained human vocalisation under distress; high pitch variance, elevated energy above 1 kHz."
+    },
+    {
+      "name": "Aggression",
+      "code": "AGG",
+      "critical": true,
+      "required_originals": 300,
+      "description": "Angry shouting, threatening vocal tone, aggressive non-speech vocalisation."
+    },
+    {
+      "name": "Person Asking for Help",
+      "code": "HAL",
+      "critical": true,
+      "required_originals": 300,
+      "description": "Restricted to the SRS-permitted safety phrases only: 'Help me', 'Somebody help', 'Please help', 'Call for help', 'Emergency'."
+    },
+    {
+      "name": "Background Noise",
+      "code": "BGN",
+      "critical": false,
+      "required_originals": 300,
+      "description": "Neutral ambient audio with no target event: traffic hum, room tone, crowd murmur, wind, HVAC."
+    }
+  ],
+  "allowed_help_phrases": [
+    "Help me",
+    "Somebody help",
+    "Please help",
+    "Call for help",
+    "Emergency"
+  ]
+}

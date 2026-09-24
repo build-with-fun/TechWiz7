@@ -1,0 +1,26 @@
+{
+  "$comment": "Owner: taha. Acoustic feature extraction parameters (SRS Step 6 / FR xx). Segment length and sample rate are NOT repeated here as independent values -- config/thresholds.json 'audio' block is the single source of truth and audio_preprocessing.config reconciles them. Every value below changes the feature vector, so a change here requires bumping feature_version.",
+  "feature_version": "audiofeat-1.0.0",
+  "sample_rate": 16000,
+  "segment_duration_sec": 3.0,
+  "n_fft": 1024,
+  "hop_length": 512,
+  "n_mels": 128,
+  "n_mfcc": 20,
+  "n_chroma": 12,
+  "fmin": 0.0,
+  "fmax": 8000.0,
+  "rolloff_percent": 0.85,
+  "include_delta_mfcc": true,
+  "onset_top_db": 30.0,
+  "mel_tensor": {
+    "$comment": "The tensor nadia's CNN/CRNN consumes. Frozen separately from the tabular vector so a change to one does not silently move the other.",
+    "representation": "log-mel (power_to_db)",
+    "n_mels": 128,
+    "n_frames": 94,
+    "n_fft": 1024,
+    "hop_length": 512,
+    "fmax": 8000.0,
+    "normalised": false
+  }
+}

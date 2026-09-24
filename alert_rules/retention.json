@@ -1,0 +1,46 @@
+{
+  "version": "1.0.0",
+  "owner": "sara",
+  "srs_refs": ["FR lxxx (Data Retention - administrators configure how long audio files and event records are retained)", "FR lxxi (secure audio storage)", "FR lxxix (privacy controls)"],
+  "read_by": ["src/maintenance/retention.py", "src/services/config.py", "src/api/admin.py"],
+
+  "retention_note": "Every window is in DAYS and is read at purge time, not at startup, so an administrator can shorten a window and the next purge honours it. Set a value to null to retain that artifact class indefinitely. A purge never deletes a record that is referenced by an open alert or an unfinished review -- see `legal_hold_conditions`.",
+
+  "enforce_on_purge": true,
+  "purge_schedule": "0 3 * * *",
+  "purge_batch_size": 500,
+  "purge_dry_run_default": true,
+
+  "defaults": {
+    "audio_days": 180,
+    "event_records_days": 730,
+    "alert_days": 730,
+    "review_days": 1095,
+    "audit_days": 1825,
+    "export_days": 30,
+    "microphone_session_audio_days": 7,
+    "model_version_days": null
+  },
+
+  "overrides_by_severity": {
+    "note": "Ministry-of-defence style longer holds for the events that matter. The window that applies to an event is the LONGER of the class default and its severity override, so an override can extend retention but can never truncate it.",
+    "Informational": { "event_records_days": 365 },
+    "Low": { "event_records_days": 365 },
+    "Medium": { "event_records_days": 730 },
+    "High": { "event_records_days": 1095 },
+    "Critical": { "event_records_days": 1825, "audio_days": 730 }
+  },
+
+  "legal_hold_conditions": [
+    "event.alert_status is not None and the alert is not in a terminal state",
+    "event.review_status in ('Pending Review', 'Manual Review')",
+    "event.flagged_for_investigation is true",
+    "the event belongs to an export that is younger than export_days"
+  ],
+
+  "deletion_behaviour": {
+    "method": "hard_delete",
+    "rationale": "A soft-delete flag would leave the audio bytes on disk, which contradicts FR lxxi 'stored securely with controlled access' and FR lxxix privacy. The purge removes the file and then the row, in that order, so a crash between the two leaves an orphan row (harmless, retried) rather than an orphan file (a privacy leak).",
+    "orphan_file_sweep": true
+  }
+}

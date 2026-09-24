@@ -1,0 +1,228 @@
+/* ============================================================================
+   SonicSentinel AI — design tokens
+   ----------------------------------------------------------------------------
+   Owner of the *token sheet*: zainab (visual design language). Values may be
+   re-valued by her at any time; the NAMES are frozen because the backend
+   already depends on five of them (`alert_rules/severity_levels.json` lists
+   `--severity-informational|low|medium|high|critical` as the css_token for each
+   severity level). Renaming a token here breaks the severity pipeline, so do
+   not rename — re-value.
+
+   Rule that shapes this whole file (SRS + faris): **severity is never conveyed
+   by colour alone.** Every severity, consistency and quality indicator in the
+   UI carries a text label and a glyph; colour is the third signal, not the only
+   one. `--sev-*-fg` exists so a chip stays legible on its own tinted ground at
+   WCAG AA, rather than relying on a colour difference to be understood.
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* --- palette: an operations console, not a marketing page -------------- */
+  --bg-canvas:        #0b1220;
+  --bg-surface:       #111a2b;
+  --bg-surface-2:     #16223a;
+  --bg-elevated:      #1c2a45;
+  --bg-inset:         #0a101c;
+
+  --border:           #263650;
+  --border-strong:    #33486b;
+  --border-subtle:    #1b273d;
+
+  --text:             #e8eef8;
+  --text-muted:       #a7b6cd;
+  --text-subtle:      #7d8ea8;
+  --text-inverse:     #08111f;
+
+  --accent:           #38bdf8;
+  --accent-strong:    #0ea5e9;
+  --accent-dim:       #1e4a68;
+  --accent-contrast:  #08111f;
+
+  --ok:               #34d399;
+  --ok-dim:           #0f3b2e;
+  --warn:             #fbbf24;
+  --warn-dim:         #42320a;
+  --danger:           #f87171;
+  --danger-dim:       #451c1c;
+
+  /* --- severity ramp ----------------------------------------------------
+     Names frozen by alert_rules/severity_levels.json. The -fg values are the
+     readable text colour on the matching -bg tint (checked at 4.5:1 or better
+     for body-sized text in the test suite's contrast table).                */
+  --severity-informational: #64748b;
+  --severity-low:           #0ea5e9;
+  --severity-medium:        #f59e0b;
+  --severity-high:          #f97316;
+  --severity-critical:      #dc2626;
+
+  --sev-informational-bg: #1c2839;
+  --sev-informational-fg: #b6c2d4;
+  --sev-informational-bd: #64748b;
+
+  --sev-low-bg:           #082c40;
+  --sev-low-fg:           #7dd3fc;
+  --sev-low-bd:           #0ea5e9;
+
+  --sev-medium-bg:        #3d2c05;
+  --sev-medium-fg:        #fcd34d;
+  --sev-medium-bd:        #f59e0b;
+
+  --sev-high-bg:          #431f07;
+  --sev-high-fg:          #fdba74;
+  --sev-high-bd:          #f97316;
+
+  --sev-critical-bg:      #4a1212;
+  --sev-critical-fg:      #fca5a5;
+  --sev-critical-bd:      #dc2626;
+
+  /* --- consistency status ramp (text + glyph always accompany these) ----- */
+  --consistency-strong:      #34d399;
+  --consistency-acceptable:  #a3e635;
+  --consistency-weak:        #fbbf24;
+  --consistency-disagreement:#f87171;
+  --consistency-uncertain:   #94a3b8;
+
+  /* --- audio quality ramp ------------------------------------------------ */
+  --quality-good:       #34d399;
+  --quality-acceptable: #a3e635;
+  --quality-poor:       #fbbf24;
+  --quality-unusable:   #94a3b8;
+
+  /* --- model identity: each model keeps one hue everywhere --------------- */
+  --model-python: #38bdf8;
+  --model-gtm:    #c084fc;
+
+  /* --- space scale (4px base) ------------------------------------------- */
+  --sp-0: 0;
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.5rem;
+  --sp-6: 2rem;
+  --sp-7: 3rem;
+  --sp-8: 4rem;
+
+  /* --- radius ----------------------------------------------------------- */
+  --r-1: 4px;
+  --r-2: 8px;
+  --r-3: 12px;
+  --r-4: 18px;
+  --r-round: 999px;
+
+  /* --- type scale ------------------------------------------------------- */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+               Arial, "Noto Sans", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+               "Liberation Mono", monospace;
+
+  --fs-xs:   0.75rem;
+  --fs-sm:   0.8125rem;
+  --fs-base: 0.9375rem;
+  --fs-md:   1.0625rem;
+  --fs-lg:   1.25rem;
+  --fs-xl:   1.5rem;
+  --fs-2xl:  1.875rem;
+  --fs-3xl:  2.25rem;
+
+  --lh-tight: 1.2;
+  --lh-base:  1.55;
+
+  --fw-normal: 400;
+  --fw-medium: 500;
+  --fw-semi:   600;
+  --fw-bold:   700;
+
+  /* --- elevation -------------------------------------------------------- */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-3: 0 12px 40px rgba(0, 0, 0, 0.55);
+
+  /* --- focus: never removed, only restyled ------------------------------ */
+  --focus-ring-color: #7dd3fc;
+  --focus-ring: 0 0 0 2px var(--bg-canvas), 0 0 0 4px var(--focus-ring-color);
+  --focus-ring-inset: inset 0 0 0 2px var(--focus-ring-color);
+
+  /* --- motion: reduced-motion is honoured at the bottom of this file ----- */
+  --t-fast: 120ms;
+  --t-base: 200ms;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* --- fixed geometry --------------------------------------------------- */
+  --topbar-h: 3.5rem;
+  --nav-w: 14rem;
+  --nav-w-collapsed: 3.5rem;
+  --content-max: 92rem;
+}
+
+/* ============================================================================
+   Light theme. The console is dark-first, but a bright-room reviewer or an
+   evaluator projecting the screen may switch it. Both themes keep severity
+   legible with the text label doing the work.
+   ========================================================================== */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --bg-canvas:     #f4f7fb;
+  --bg-surface:    #ffffff;
+  --bg-surface-2:  #eef3f9;
+  --bg-elevated:   #ffffff;
+  --bg-inset:      #e7eef7;
+
+  --border:        #ccd8e6;
+  --border-strong: #a9bcd2;
+  --border-subtle: #e2eaf3;
+
+  --text:          #101a2b;
+  --text-muted:    #46586f;
+  --text-subtle:   #64748b;
+  --text-inverse:  #ffffff;
+
+  --accent:        #0369a1;
+  --accent-strong: #075985;
+  --accent-dim:    #cfe8f7;
+  --accent-contrast: #ffffff;
+
+  --ok-dim:     #d7f5e7;
+  --warn-dim:   #fdf0cd;
+  --danger-dim: #fde2e2;
+
+  --sev-informational-bg: #e4e9f0;  --sev-informational-fg: #3a4757;
+  --sev-low-bg:           #dbeeff;  --sev-low-fg:           #05496e;
+  --sev-medium-bg:        #fdf0cd;  --sev-medium-fg:        #6b4406;
+  --sev-high-bg:         #ffe3cd;   --sev-high-fg:          #7c2d05;
+  --sev-critical-bg:     #fddede;   --sev-critical-fg:      #7f1d1d;
+
+  --focus-ring-color: #0369a1;
+  --shadow-1: 0 1px 2px rgba(16, 26, 43, 0.08);
+  --shadow-2: 0 4px 16px rgba(16, 26, 43, 0.12);
+  --shadow-3: 0 12px 40px rgba(16, 26, 43, 0.18);
+}
+
+/* Windows high-contrast / forced-colors: hand the palette to the OS. Complex
+   fills are dropped rather than fought; the browser's own colours are more
+   accessible than ours in this mode. */
+@media (forced-colors: active) {
+  :root {
+    --border: CanvasText;
+    --border-strong: CanvasText;
+    --focus-ring-color: Highlight;
+    --shadow-1: none; --shadow-2: none; --shadow-3: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --border: var(--border-strong);
+    --text-muted: var(--text);
+    --text-subtle: var(--text-muted);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --t-fast: 1ms;
+    --t-base: 1ms;
+  }
+}

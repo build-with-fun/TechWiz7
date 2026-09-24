@@ -1,0 +1,74 @@
+{
+  "version": "1.0.0",
+  "owner": "sara",
+  "srs_refs": ["Step 16", "FR lii", "FR liii (alert severity is administrator-configurable)"],
+  "read_by": ["src/services/config.py", "src/services/alerting.py", "templates (via app.severity_scale)"],
+
+  "srs_contradiction_note": "The SRS states the severity scale twice and disagrees with itself. Step 16 (Alert Generation) lists FIVE levels: Informational, Low, Medium, High, Critical. FR lii (Alert Severity Assignment) lists FOUR: Informational, Low, Medium, Critical. Step 16 is the step that actually assigns a severity to each of the ten classes and its examples use High, so the five-level scale is the one that can represent the SRS's own worked examples without loss. The four-level scale is kept here as a selectable alternative so an evaluator who quotes FR lii can be satisfied live by changing `active_scale` -- no code edit, no data migration, because every stored severity is a name and the display order comes from `levels`.",
+
+  "active_scale": "five_level",
+
+  "scales": {
+    "five_level": ["Informational", "Low", "Medium", "High", "Critical"],
+    "four_level_fr_lii": ["Informational", "Low", "Medium", "Critical"]
+  },
+
+  "levels": [
+    {
+      "name": "Informational",
+      "rank": 0,
+      "css_token": "--severity-informational",
+      "fallback_colour": "#64748b",
+      "page_priority": 50,
+      "notifies": [],
+      "description": "Recorded for the event history only. No attention required. Baseline ambient condition."
+    },
+    {
+      "name": "Low",
+      "rank": 1,
+      "css_token": "--severity-low",
+      "fallback_colour": "#0ea5e9",
+      "page_priority": 40,
+      "notifies": ["in_app"],
+      "description": "Context-dependent event. Worth recording and surfacing in the timeline; not a security or safety response."
+    },
+    {
+      "name": "Medium",
+      "rank": 2,
+      "css_token": "--severity-medium",
+      "fallback_colour": "#f59e0b",
+      "page_priority": 30,
+      "notifies": ["in_app"],
+      "description": "Warrants attention during the shift. Escalate if it repeats above the configured rate."
+    },
+    {
+      "name": "High",
+      "rank": 3,
+      "css_token": "--severity-high",
+      "fallback_colour": "#f97316",
+      "page_priority": 20,
+      "notifies": ["in_app", "dashboard_banner"],
+      "description": "Security-relevant event. Must be visible on the dashboard and acknowledged by an authorized user (FR liv, FR lv)."
+    },
+    {
+      "name": "Critical",
+      "rank": 4,
+      "css_token": "--severity-critical",
+      "fallback_colour": "#dc2626",
+      "page_priority": 10,
+      "notifies": ["in_app", "dashboard_banner", "alert_sound"],
+      "description": "Potential threat to life or safety. Must be confirmed across consecutive windows before it is raised (FR xl, FR xlvi) and must reach a human immediately once raised."
+    }
+  ],
+
+  "mapping_between_scales": {
+    "note": "Applied only when `active_scale` is `four_level_fr_lii`. The mapping deliberately maps High onto Critical rather than onto Medium: the four-level scale has no slot for 'high severity', and FR xlii promises Glass Breaking a 'high-severity security alert', FR xliii the same for Alarm or Siren, FR xlvi a critical alert for Gunshot. Downgrading those to Medium would silently break those three FRs at the moment the scale is switched. `recorded_severity` is never rewritten -- the mapping only decides which name the UI shows and which filter value matches.",
+    "five_level_to_four_level": {
+      "Informational": "Informational",
+      "Low": "Low",
+      "Medium": "Medium",
+      "High": "Critical",
+      "Critical": "Critical"
+    }
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "version": "1.0.0",
+  "owner": "sara",
+  "srs_refs": ["Step 17 (Manual Review)", "FR lvii (Manual Review Queue)", "FR li (Unknown Sound Handling)", "FR xxxviii (Uncertain Sound Detection)", "FR xxxix (Overlapping Sound Detection)"],
+  "read_by": ["src/services/config.py", "src/services/review.py", "src/services/decision.py"],
+
+  "evaluation_note": "Each condition is evaluated independently and EVERY condition that fires is named in `matched`. A queue entry that says only 'needs review' is a usability defect -- the reviewer cannot tell whether to distrust the model, the microphone or the class definition. Conditions are listed in the order the queue sorts equal-priority items.",
+
+  "queue": {
+    "default_priority": "normal",
+    "unreviewed_escalate_after_minutes": 60,
+    "unreviewed_escalate_to": "security operator",
+    "max_open_items_per_user": 50,
+    "ordering": ["priority", "critical_class_first", "created_at"]
+  },
+
+  "conditions": [
+    {
+      "id": "model_disagreement",
+      "enabled": true,
+      "priority": "high",
+      "srs_phrase": "Different predictions from the two models",
+      "when": { "models_agree": false },
+      "reason_template": "The Python model predicted '{python_class}' ({python_confidence:.2f}) and the GTM model predicted '{gtm_class}' ({gtm_confidence:.2f}).",
+      "recommended_action": "Listen to the segment and decide which model is correct before either result is trusted."
+    },
+    {
+      "id": "low_confidence",
+      "enabled": true,
+      "priority": "high",
+      "srs_phrase": "Low confidence",
+      "when": { "any_model_confidence_lt": "$thresholds.confidence.low_confidence_band" },
+      "reason_template": "At least one model is below the low-confidence band ({low_confidence_band:.2f}): Python {python_confidence:.2f}, GTM {gtm_confidence:.2f}.",
+      "recommended_action": "Confirm the class by listening; consider whether the segment contains an event at all."
+    },
+    {
+      "id": "poor_audio_quality",
+      "enabled": true,
+      "priority": "high",
+      "srs_phrase": "Poor audio quality",
+      "when": { "quality_in": ["Poor", "Unusable"] },
+      "reason_template": "Audio quality was classified '{quality}' ({quality_detail}).",
+      "recommended_action": "Re-upload a cleaner recording if the event matters; a Poor segment cannot support a confident decision either way."
+    },
+    {
+      "id": "similar_top_classes",
+      "enabled": true,
+      "priority": "normal",
+      "srs_phrase": "Similar top-class confidence scores",
+      "when": { "top_two_margin_lt": "$thresholds.confidence.top_two_margin_min" },
+      "reason_template": "The top two classes are within the configured margin ({margin:.2f} < {margin_min:.2f}), so the leading class is close to a coin toss.",
+      "recommended_action": "Treat the leading two classes as equally likely and check whether the segment contains both events."
+    },
+    {
+      "id": "overlapping_sounds",
+      "enabled": true,
+      "priority": "normal",
+      "srs_phrase": "Overlapping sounds",
+      "when": { "overlapping": true },
+      "reason_template": "A second class ('{secondary_detection}') also reached the overlap threshold, so more than one event may be present.",
+      "recommended_action": "A single stored label cannot describe two simultaneous events -- decide whether a second event should be recorded."
+    },
+    {
+      "id": "unsupported_sound_pattern",
+      "enabled": true,
+      "priority": "normal",
+      "srs_phrase": "Unsupported sound pattern",
+      "when": { "any": [{ "unknown_class": true }, { "below_min_confidence_on_both": true }] },
+      "reason_template": "The segment does not match any of the ten supported classes reliably.",
+      "recommended_action": "FR li: mark as Unknown or Manual Review Required rather than forcing one of the ten classes."
+    },
+    {
+      "id": "critical_without_agreement",
+      "enabled": true,
+      "priority": "critical",
+      "srs_phrase": "Critical event without sufficient model agreement",
+      "when": { "all": [{ "class_is_critical": true }, { "consistency_status_in": ["Weak Match", "Model Disagreement", "Uncertain Result"] }] },
+      "reason_template": "A critical category ('{predicted_class}') was detected without sufficient model agreement ({consistency_status}).",
+      "recommended_action": "Review immediately: raise the alert only if the event is confirmed, because a missed critical event and a false critical alert are both expensive."
+    },
+    {
+      "id": "possible_false_alarm",
+      "enabled": true,
+      "priority": "critical",
+      "srs_phrase": "Possible false alarm",
+      "when": { "all": [{ "class_is_critical": true }, { "any": [{ "quality_in": ["Poor", "Unusable"] }, { "top_two_margin_lt": "$thresholds.confidence.top_two_margin_min" }, { "confidence_difference_gt": 0.25 }] }] },
+      "reason_template": "A critical category ('{predicted_class}') was raised on weak evidence: quality '{quality}', top-two margin {margin:.2f}, confidence difference {confidence_difference:.2f}.",
+      "recommended_action": "Verify before dispatch. Record the outcome so the false-positive and false-negative analytics stay honest."
+    }
+  ],
+
+  "never_auto_review": {
+    "note": "Conditions that must NOT, on their own, push a clean result into the queue. An explicit denial is easier to audit than an omission.",
+    "rules": [
+      "a critical class with Strong Match and Good quality",
+      "a Background Noise result below the ambient level limit"
+    ]
+  }
+}

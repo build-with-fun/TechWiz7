@@ -1,0 +1,53 @@
+{
+  "generated": "2026-09-23",
+  "mode": "fetch",
+  "clips_scanned": 51197,
+  "licence_rejected_nc_or_unlicensed": 6041,
+  "no_metadata": 0,
+  "candidate_pool_per_class": {
+    "Glass Breaking": 1433,
+    "Alarm or Siren": 2312,
+    "Vehicle Horn": 163,
+    "Machinery Fault": 1981,
+    "Background Noise": 2377,
+    "Animal Sound": 3119,
+    "Aggression": 1169,
+    "Gunshot": 443,
+    "Panic Scream": 491
+  },
+  "selected_per_class": {
+    "Aggression": 100,
+    "Alarm or Siren": 130,
+    "Animal Sound": 150,
+    "Background Noise": 120,
+    "Glass Breaking": 150,
+    "Gunshot": 150,
+    "Vehicle Horn": 130,
+    "Machinery Fault": 120,
+    "Panic Scream": 100
+  },
+  "targets_per_class": {
+    "Machinery Fault": 120,
+    "Glass Breaking": 150,
+    "Alarm or Siren": 130,
+    "Vehicle Horn": 130,
+    "Animal Sound": 150,
+    "Gunshot": 150,
+    "Panic Scream": 100,
+    "Aggression": 100,
+    "Person Asking for Help": 0,
+    "Background Noise": 120
+  },
+  "download_failed_or_missing": 0,
+  "measure_failures": [],
+  "licence_counts": {
+    "CC-BY-3.0": 559,
+    "CC0-1.0": 555,
+    "Sampling+-1.0": 36
+  },
+  "environment_basis": {
+    "unmatched": 618,
+    "stated": 377,
+    "inferred_from_tags": 155
+  }
+}

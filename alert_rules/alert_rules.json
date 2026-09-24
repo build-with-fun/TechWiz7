@@ -1,0 +1,235 @@
+{
+  "version": "1.0.0",
+  "owner": "sara",
+  "srs_refs": [
+    "FR xl (Repeated Event Confirmation)",
+    "FR xli - FR l (per-category alert behaviour)",
+    "FR liii (Configurable Alert Rules)",
+    "FR liv (Real-Time Alert Generation)",
+    "FR lv (Alert Acknowledgement)",
+    "Step 15 (repeated-detection confirmation)",
+    "Step 16 (Alert Generation + severity examples)",
+    "Step 19 (final decision inputs)",
+    "Deliverable 7 (configurable rule files)"
+  ],
+  "read_by": [
+    "src/services/config.py",
+    "src/services/alerting.py",
+    "src/services/decision.py"
+  ],
+
+  "how_this_file_is_meant_to_be_edited": "An administrator changes a NUMBER here and the next event is judged by the new number -- there is no restart and no code edit (SRS 1.8 integrity rule 5). The loader keys its cache on the file's modification time, so saving this file is enough. Run `python -m tools.show_alert_rules` to print what the loader actually resolved, which is the fastest way to prove a live edit took effect during a demonstration.",
+
+  "inheritance_note": "A value written as the string \"$thresholds.<dotted.path>\" is resolved at load time against config/thresholds.json. Numbers are therefore stated once, in lorena's file, and this file states only where a class DEVIATES from the global default. Editing config/thresholds.json changes every rule that inherits from it; writing a literal here overrides it for that one field.",
+
+  "defaults": {
+    "enabled": true,
+    "min_confidence": "$thresholds.confidence.min_confidence",
+    "min_top_two_margin": "$thresholds.confidence.top_two_margin_min",
+    "required_consecutive_detections": "$thresholds.repeat_detection.required_consecutive_detections",
+    "window_seconds": "$thresholds.repeat_detection.window_seconds",
+    "requires_model_agreement": "$thresholds.repeat_detection.requires_model_agreement",
+    "min_audio_quality": "$thresholds.repeat_detection.min_quality",
+    "max_poor_quality_share": 0.5,
+    "alert_dedup_window_seconds": 60,
+    "max_alerts_per_window": 20,
+    "notification_channels": ["in_app"],
+    "auto_close_after_minutes": null,
+    "suppress_when": []
+  },
+
+  "critical_categories": {
+    "source": "config/classes.json:critical_classes",
+    "override": [],
+    "note": "FR liii requires the critical categories to be administrator-configurable. An EMPTY override list means 'inherit config/classes.json' -- the class list is stated once, in one file. A non-empty override REPLACES the inherited list and is validated at load time against the ten known class names, so a typo fails the app at startup instead of silently disabling a critical alert.",
+    "validate_against": "config/classes.json:classes[].name"
+  },
+
+  "quality_ordering": ["Unusable", "Poor", "Acceptable", "Good"],
+
+  "escalation_condition_vocabulary": {
+    "confidence_gte": "top-class confidence of the agreeing models",
+    "consecutive_gte": "number of consecutive confirming windows in window_seconds",
+    "top_two_margin_gte": "margin between the top two classes",
+    "repeats_within_window_gte": "count of separate confirmed events of this class inside repeat_rate_window_seconds",
+    "sustained_seconds_gte": "duration the class remained the top prediction without a gap",
+    "noise_level_dbfs_gte": "estimated ambient level for Background Noise (FR l)",
+    "quality_in": "audio-quality verdict is one of the listed values"
+  },
+
+  "repeat_rate_window_seconds": 600,
+
+  "rules": [
+    {
+      "class": "Machinery Fault",
+      "critical": false,
+      "severity": "High",
+      "recommended_action": "Raise a maintenance alert and schedule an inspection of the reported machinery. Check bearings, belts and couplings before the next shift begins.",
+      "srs_ref": "FR xli",
+      "escalation": [
+        {
+          "id": "machinery_persistent",
+          "when": { "repeats_within_window_gte": 4 },
+          "to_severity": "High",
+          "to_action": "Escalate to a maintenance work order and inspect the asset immediately rather than at the next shift.",
+          "reason": "The same machine has produced four confirmed faults inside the repeat-rate window; this is a developing failure, not an isolated event."
+        }
+      ]
+    },
+    {
+      "class": "Glass Breaking",
+      "critical": true,
+      "severity": "High",
+      "recommended_action": "Treat as a security event. Dispatch a security operator to the reported location and preserve the audio segment unedited as evidence.",
+      "srs_ref": "FR xlii",
+      "min_top_two_margin": 0.10,
+      "escalation": [
+        {
+          "id": "glass_with_scream",
+          "when": { "confidence_gte": 0.85 },
+          "to_severity": "Critical",
+          "to_action": "Treat as a possible break-in in progress: dispatch immediately and check the camera covering the location.",
+          "reason": "A confident, unambiguous glass break with model agreement is treated as an intrusion rather than an accident."
+        }
+      ]
+    },
+    {
+      "class": "Alarm or Siren",
+      "critical": false,
+      "severity": "High",
+      "recommended_action": "Verify whether this is a scheduled test or a genuine activation. If no test is logged, treat it as a genuine activation and follow the site evacuation procedure.",
+      "srs_ref": "FR xliii",
+      "escalation": [
+        {
+          "id": "alarm_will_not_stop",
+          "when": { "sustained_seconds_gte": 120 },
+          "to_severity": "Critical",
+          "to_action": "Treat as a genuine activation: begin evacuation and notify the fire warden.",
+          "reason": "A siren that has sounded continuously for two minutes is not a short test tone."
+        }
+      ]
+    },
+    {
+      "class": "Vehicle Horn",
+      "critical": false,
+      "severity": "Low",
+      "recommended_action": "Log as a traffic or environmental event. Review the location if the rate exceeds the configured threshold; no security response is required.",
+      "srs_ref": "FR xliv",
+      "severity_alternatives": {
+        "note": "Step 16 permits 'Low or Medium' for this class. Low is the default; the escalation below raises a repeated horn pattern to Medium.",
+        "values": ["Low", "Medium"]
+      },
+      "escalation": [
+        {
+          "id": "horn_repeated",
+          "when": { "repeats_within_window_gte": 6 },
+          "to_severity": "Medium",
+          "to_action": "Review the traffic or access-control situation at the reported location.",
+          "reason": "Repeated horn sounding often indicates congestion or a blocked access route worth a human look."
+        }
+      ]
+    },
+    {
+      "class": "Animal Sound",
+      "critical": false,
+      "severity": "Low",
+      "recommended_action": "Record as a non-critical, context-dependent event. No action unless the same source repeats above the configured rate.",
+      "srs_ref": "FR xlv",
+      "escalation": []
+    },
+    {
+      "class": "Gunshot",
+      "critical": true,
+      "severity": "Critical",
+      "recommended_action": "Treat as a life-threatening event. Notify on-site security and the emergency services immediately, and preserve both the audio segment and the model evidence unedited.",
+      "srs_ref": "FR xlvi",
+      "min_confidence": 0.75,
+      "min_top_two_margin": 0.20,
+      "required_consecutive_detections": "$thresholds.repeat_detection.required_consecutive_detections",
+      "requires_model_agreement": true,
+      "min_audio_quality": "Acceptable",
+      "escalation": [
+        {
+          "id": "gunshot_repeat",
+          "when": { "repeats_within_window_gte": 2 },
+          "to_severity": "Critical",
+          "to_action": "Multiple discharges detected: treat as an active incident and notify the emergency services with the location and the count.",
+          "reason": "More than one confirmed discharge is an active incident, not a single report."
+        }
+      ]
+    },
+    {
+      "class": "Panic Scream",
+      "critical": true,
+      "severity": "Critical",
+      "recommended_action": "Treat as a safety emergency. Dispatch the nearest responder and keep the live microphone channel open for the duration of the event.",
+      "srs_ref": "FR xlvii",
+      "requires_model_agreement": true,
+      "escalation": [
+        {
+          "id": "scream_sustained",
+          "when": { "sustained_seconds_gte": 10 },
+          "to_severity": "Critical",
+          "to_action": "Sustained distress: dispatch and keep the channel open until a responder confirms they are on scene.",
+          "reason": "A scream that lasts beyond ten seconds indicates continuing distress rather than a momentary startle."
+        }
+      ]
+    },
+    {
+      "class": "Aggression",
+      "critical": true,
+      "severity": "High",
+      "recommended_action": "Send a security operator to observe without intervening alone. Escalate to Critical if the event repeats within the configured window.",
+      "srs_ref": "FR xlviii",
+      "escalation": [
+        {
+          "id": "aggression_confident_repeat",
+          "when": { "all": [{ "confidence_gte": 0.90 }, { "consecutive_gte": 3 }] },
+          "to_severity": "Critical",
+          "to_action": "Treat as a violent conflict in progress: dispatch two operators and notify the site supervisor.",
+          "reason": "FR xlviii states the alert is high OR critical depending on confidence and repeated detection; three consecutive windows above 0.90 is that condition."
+        }
+      ]
+    },
+    {
+      "class": "Person Asking for Help",
+      "critical": true,
+      "severity": "Critical",
+      "recommended_action": "Treat as a safety emergency. Dispatch a responder to the reported location and confirm the detected phrase against the permitted help-phrase list.",
+      "srs_ref": "FR xlix",
+      "requires_model_agreement": true,
+      "min_audio_quality": "Poor",
+      "rationale_for_looser_quality": "A person asking for help is often quiet, distant or behind a door, which is exactly the recording that scores Poor. Requiring Acceptable quality here would discard the very events the class exists to catch, so this rule deliberately trades precision for recall and leans on the manual-review queue instead.",
+      "escalation": [
+        {
+          "id": "help_repeat",
+          "when": { "repeats_within_window_gte": 2 },
+          "to_severity": "Critical",
+          "to_action": "Repeated calls for help from the same location: dispatch immediately and treat as an emergency in progress.",
+          "reason": "Someone asking for help more than once has not been reached."
+        }
+      ]
+    },
+    {
+      "class": "Background Noise",
+      "critical": false,
+      "severity": "Informational",
+      "recommended_action": "No action. Retain as the ambient baseline for the period. Raise an alert only if the estimated noise level exceeds the configured limit.",
+      "srs_ref": "FR l",
+      "suppress_when": ["class_is_background_noise_and_level_below_limit"],
+      "thresholds": {
+        "noise_level_dbfs_limit": -35.0,
+        "noise_limit_note": "FR l: Background Noise is normally non-critical UNLESS the estimated noise level exceeds a configured limit. That limit is this number and it is administrator-editable."
+      },
+      "escalation": [
+        {
+          "id": "noise_level_exceeded",
+          "when": { "noise_level_dbfs_gte": -35.0 },
+          "to_severity": "Medium",
+          "to_action": "Investigate the sustained noise source; it has exceeded the configured ambient limit.",
+          "reason": "FR l: an above-limit ambient level is the one case where Background Noise is not informational."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,121 @@
+{
+  "schema_version": "1.0.0",
+  "produced_by": "amina (auditory neuroscience / psychoacoustics)",
+  "produced_on": "2026-09-23",
+  "status": "RECOMMENDATION - these are perceptual constraints the pipeline should satisfy. Anything here that becomes a decision must live in config/, never hard-coded (SRS 1.8 item 7 and FR xx/xxxvi/liii).",
+  "consumers": {
+    "taha": "audio_preprocessing/ + feature_extraction/ thresholds and the level features that must be computed before normalisation",
+    "junaid": "live window duration/hop; repeated-detection viability",
+    "sara": "config/ values and the alert human-factors budgets",
+    "lorena": "model selection constraints (latency budget, class-imbalance consequence)",
+    "raheem": "the report chapter on why these numbers are what they are"
+  },
+
+  "live_window": {
+    "duration_s": 2.0,
+    "hop_s": 1.0,
+    "overlap_ratio": 0.5,
+    "hard_max_duration_s": 3.0,
+    "srs_base": "Step 12 / FR xv: live windows 'such as one to three seconds'. NFR 1: 'Live sound windows should produce a prediction within three seconds.'",
+    "why_2s_not_3s": "The NFR is a latency promise. If the window is 3.0 s and latency is measured from the onset of the event, the window alone consumes the entire 3 s budget and inference has zero time. At 2.0 s duration with a 1.0 s hop, worst-case onset-to-display is 2.0 s (window fill) + inference, which leaves a comfortable inference budget and still satisfies the NFR under either reading.",
+    "inference_budget_s": 0.5,
+    "worst_case_onset_to_display_s": 2.5,
+    "worst_case_is_inference": true,
+    "WHY_THE_HOP_IS_NOT_A_DETAIL": "With hop == duration (a 2 s window every 2 s), a 0.3-0.6 s event such as a gunshot or a glass break can fall entirely inside exactly one window. Consecutive-detection confirmation (SRS Step 15, FR xl) then has a maximum run length of 1 and can NEVER fire, so a Gunshot critical alert would never be raised - a silent failure that would look like 'the model misses gunshots'. A 1.0 s hop guarantees that any event of duration >= the hop spans at least two consecutive windows, which is the minimum required for the SRS's own confirmation rule to be satisfiable. Do not increase the hop to reduce compute without re-checking this.",
+    "perceptual_justification": "1-3 s is not the auditory integration window (loudness integration saturates well under 300 ms). It is the scale of an auditory EVENT: listeners segment the acoustic stream into discrete events on a roughly 1.5-2 s timescale (Sridharan, Levitin, Chafe, Berger & Menon 2007, Neuron 55(3):521-532). A 2 s window therefore matches the unit at which a human operator would say 'that was one thing', which is also the unit an operator can acknowledge. 2 s also covers the full duration of gunshot (0.2-0.8 s), glass shatter (0.3-1.5 s) and scream (0.5-2 s) events rather than only their onsets.",
+    "feature_frames_available": {
+      "n_mel_frames_at_hop_512_sr_22050": "roughly 86 frames per 2.0 s window - ample for frame-level and modulation features"
+    }
+  },
+
+  "amplitude_handling": {
+    "position": "Normalise for the model; measure and KEEP the level features. Normalisation and distance information are not actually in conflict - the conflict is an artefact of normalising the wrong quantity.",
+    "why": "Absolute SPL is unobservable from a file whose capture gain is unknown, so a normalisation step is mandatory for cross-device consistency (SRS Step 4 / FR xi). But peak normalisation also erases the peak-to-RMS ratio, and that ratio is one of the strongest cues in the whole system: impulsive events (gunshot, glass break) have crest factors above 15-20 dB, sustained events (alarm, machinery hum) sit at 3-8 dB. Normalising by RMS destroys this outright; normalising by peak preserves it but is vulnerable to a single outlier sample.",
+    "rules": [
+      "Compute and persist level features BEFORE any normalisation: rms_dbfs, peak_dbfs, crest_factor_db, loudness_range (short-term LUFS spread), noise_floor_dbfs.",
+      "Normalise the waveform for the model input (target a fixed RMS such as -20 dBFS with peak limiting at -1 dBFS) so the classifier is device-independent.",
+      "Feed the pre-normalisation level features to the classifier as separate scalar features. That is how 'distant and quiet' and 'close and loud' stay distinguishable after normalisation.",
+      "Do NOT attempt absolute distance estimation. It is not recoverable. Do estimate a RELATIVE distance cue that survives capture: direct-to-reverberant ratio (DRR), high-frequency attenuation above roughly 4 kHz (air absorption grows with distance), and RT60 from the decay tail. These are the cues a listener actually uses (Blauert, Spatial Hearing, MIT Press; Zahorik 2002, JASA 111(4):1832-1846), and they are all recoverable from an uncalibrated recording."
+    ],
+    "distance_cue_features_to_extract": ["drr_db", "hf_attenuation_4k_to_8k_db", "rt60_estimate_s", "decay_envelope_slope", "crest_factor_db"]
+  },
+
+  "audio_quality_thresholds": {
+    "note": "SRS Step 13 / FR xxxvii. Perceptually correct move: compute audibility in the event's critical band, not broadband. Broadband SNR is systematically optimistic about low-frequency events under a masking background and pessimistic about high-frequency ones.",
+    "silence": {
+      "rule": "Silent when the peak of the 95th-percentile frame is no more than 15 dB above the estimated noise floor, OR the overall RMS is below -50 dBFS with no frame above -40 dBFS.",
+      "why_15db": "Below roughly 10-15 dB above the noise floor a signal stops being reliably audible; the near-silent region is where a classifier will emit confident nonsense instead of admitting there is nothing there. SRS FR xii demands this so silence cannot produce a misleading classification.",
+      "thresholds": {"no_signal_peak_to_floor_db": 6.0, "very_weak_peak_to_floor_db": 15.0}
+    },
+    "clipping": {
+      "rule": "Ratio of samples at or within 0.5% of full scale, plus a run-length check (a clipped run of >= 3 consecutive full-scale samples is real clipping; an isolated peak is not).",
+      "thresholds": {"clip_ratio_warning": 0.001, "clip_ratio_poor": 0.01, "min_clipped_run_samples": 3},
+      "why_this_matters_more_than_it_looks": "Clipping is not merely a quality blemish - it creates broadband harmonic and intermodulation distortion with an impulsive envelope. That is the exact acoustic signature of Gunshot and Glass Breaking. A heavily clipped recording of a loud horn or a shout can therefore produce a high-confidence CRITICAL false positive. This is the physiological justification for SRS Step 15's requirement that 'acceptable audio quality' is a precondition for a confirmed critical alert. Clipping must gate critical alerts, not merely decorate the UI."
+    },
+    "noise": {
+      "rule": "Per-critical-band SNR in the bands that carry the event, plus a spectral-flatness term for stationarity.",
+      "thresholds": {"band_snr_good_db": 15.0, "band_snr_acceptable_db": 10.0, "band_snr_poor_db": 5.0},
+      "why_10db": "Speech and most events reach near-ceiling intelligibility/detectability above roughly +10-15 dB in-band SNR and degrade rapidly below about +5 dB (auditory masking, Fletcher 1940, Rev. Mod. Phys. 12:47-65). Below 0 dB in-band the signal is not perceptually present and no classifier can recover it - that is physics, and the app should say 'Unusable' rather than 'Uncertain'."
+    },
+    "quality_bands": {
+      "Good": "audible margin >= 15 dB in the event's bands, no clipping, duration adequate, signal present",
+      "Acceptable": "audible margin 10-15 dB, or minor clipping (ratio <= 0.1%), or a single encoding warning",
+      "Poor": "audible margin 5-10 dB, or clipping ratio > 0.1%, or excessive stationarity/noise; classification still shown but flagged",
+      "Unusable": "audible margin < 5 dB, or silent, or decoding failed, or clipping ratio > 1%, or unsuitable duration"
+    },
+    "overlapping_events": {
+      "rule": "Flag possible overlap when two or more classes each exceed the configured secondary-class confidence, or when a second strong onset occurs later in the window.",
+      "perceptual_justification": "Listeners segregate simultaneous sources by differences in onset time, F0 and spatial location (Bregman 1990, Auditory Scene Analysis; Darwin 2008, Phil. Trans. R. Soc. B 363:1071-1081). Two sounds that begin at different instants and differ in pitch are heard as two events; two sounds that are near-identical in both are genuinely hard, and the honest answer is a manual-review route rather than a confident single label."
+    }
+  },
+
+  "alerting_human_factors": {
+    "severity_means_to_a_human": "Severity answers one question for the operator: how fast must I act, and who else must know? It is not a restatement of the model's confidence. Confidence says how sure the model is; severity says what is at stake if it is right. Conflating them is the most common design error in alerting consoles and it is why a 0.99 'Vehicle Horn' must never look like a 0.72 'Gunshot'.",
+    "srs_conflict_note": "SRS Step 16 lists five levels (Informational / Low / Medium / High / Critical). SRS FR lii lists four (Informational / Low / Medium / Critical) and omits High. Step 16's per-class examples use High for Machinery Fault, Glass Breaking, Alarm or Siren and Aggression, so the five-level scale is the one the examples depend on. Recommendation: implement five configurable levels with High as a real, distinct level, and document the conflict. The level set itself must be config-driven so an evaluator can collapse it to four live.",
+    "startle_and_reflex_latency": {
+      "acoustic_startle_latency_ms": "roughly 30-40 ms for the eyeblink component",
+      "why_it_matters": "A critical alert is asking a human to respond on the timescale of a reflex, not a decision. The app's job is to get the alert on screen in the seconds it promised; anything the UI blocks behind animation, a chart redraw or a full page reload is eating into a reflex-scale response window."
+    },
+    "habituation": {
+      "finding": "The startle response habituates quickly - substantially within 5-10 presentations of the same stimulus (Blumenthal et al. 2005, Psychophysiology 42(1):1-15).",
+      "why_repeated_detection_exists": "This cuts both ways and is the physiological case for SRS Step 15. A single unstable detection is exactly the kind of stimulus the nervous system (and an operator) learns to ignore. Requiring detection in consecutive windows plus a confidence floor turns 'something twitched in the signal' into 'the same event persists in time', which is a far more habituation-resistant stimulus. Repeated detection is not bureaucratic caution; it is the difference between a signal that survives a night shift and one that stops being read by 3 a.m."
+    },
+    "false_alarm_cost": {
+      "evidence": "In clinical alarm research, 72-99% of monitored alarms are non-actionable (Cvach 2012, Biomed Instrum Technol 46(4):268-277; Sendelbach & Funk 2013, AACN Adv Crit Care 24(4):378-386); alarm fatigue is a recognised patient-safety hazard (The Joint Commission Sentinel Event Alert 50, 2013). In automation research, operators who experience false alarms begin to distrust and then to ignore the system - 'cry wolf' / alarm mistrust (Bliss & Dunn 2000, Ergonomics 43(9):1393-1407; Parasuraman & Riley 1997, Human Factors 39(2):230-253).",
+      "consequence_for_this_project": "A critical-event monitor that cries wolf is not a UX annoyance, it is a failed product. The false-alarm budget below is a hard requirement, not a nice-to-have, and it should drive the operating point on the critical classes rather than a default 0.5 threshold."
+    },
+    "false_alarm_budget": {
+      "target_false_critical_alerts_per_8h_shift": 1.0,
+      "equivalent_hourly_rate": 0.125,
+      "how_to_use_it": "Choose the critical-class decision threshold on the VALIDATION split as the smallest threshold whose measured false-positive rate meets this budget - do not choose thresholds on the test split, and do not report a threshold chosen on test. Both the budget and the resulting thresholds belong in config/. State the achieved precision and recall at that operating point in the comparison report.",
+      "inference": "On 225 validation clips (~22-23 per class) a single false positive is already a rate of roughly 4%; the budget therefore implies a high threshold on critical classes in this dataset size. Report the numbers you can actually measure and do not claim a budget you have not evaluated."
+    },
+    "acknowledgement_design": {
+      "acknowledge_or_escalate_s": 60,
+      "re_notification_cooldown_s": 300,
+      "why_60s": "An unacknowledged critical alert must escalate, or 'unacknowledged' and 'nobody is watching' become indistinguishable. 60 s is long enough not to punish a human who is mid-task and short enough to matter in an emergency.",
+      "why_300s_cooldown": "Suppression of repeats of the SAME event class within a cooldown window is what prevents an alarm storm - the pattern that causes operators to silence a whole system, after which real events are missed. Distinct events still alert normally.",
+      "anti_habituation_rule": "Do not use the same visual and auditory treatment for Informational and Critical. Escalate the treatment with severity so the most important level keeps its salience after the tenth alert of the shift.",
+      "severity_never_by_colour_alone": "WCAG 1.4.1. Severity must carry an explicit label/icon and text, always - roughly 8% of men have some red-green colour vision deficiency, and a Critical and a Low alert that differ only in hue are the same alert to a substantial fraction of operators."
+    },
+    "review_queue_priority": {
+      "why_a_priority_score": "A reviewer at 3 a.m. with a full queue and finite attention needs the costliest errors first. The score below is the ordering, not an opinion: severity (how bad if the model is wrong) multiplied by the probability that it is wrong (uncertainty/quality), with an added term for anything that was NOT alerted but might be critical.",
+      "score": "priority = severity_weight * (1 - effective_confidence) * quality_penalty + critical_miss_bonus",
+      "severity_weight": {"Informational": 1, "Low": 2, "Medium": 4, "High": 7, "Critical": 10},
+      "quality_penalty": {"Good": 1.0, "Acceptable": 1.1, "Poor": 1.4, "Unusable": 1.8},
+      "critical_miss_bonus": "Add a large fixed bonus when a critical class is a runner-up but was not the top prediction, or when the two models disagree on a critical class. A missed gunshot is the only error that is effectively unrecoverable, so it must outrank a cosmetic uncertainty about Background Noise.",
+      "ordering_rule": "Sort descending by score, then by event time. Never order the queue purely by arrival time - that is what makes a queue unusable under load."
+    }
+  },
+
+  "class_imbalance_note": {
+    "status": "Reported to the team with numbers, as requested.",
+    "the_problem_in_numbers": "Exactly balanced at 300 clips per class by design, so the training set is balanced. The imbalance that matters is not in the label distribution - it is the OPERATING-POINT imbalance. In deployment, critical classes are rare: if critical events are 1% of windows, a threshold tuned for 0.5 probability will still generate roughly 1 false critical alert for every 1-2 true ones at a realistic critical-class precision. Balanced accuracy on a balanced test set therefore overstates field performance for the critical classes.",
+    "recommendation": "Report precision AND recall for the critical classes at the operating point, not just accuracy. Prefer class_weight='balanced' (or an equivalent) so the model does not coast on Background Noise, and choose the critical thresholds to satisfy the false-alarm budget above. Name the operating point in the report - a number without its threshold is not a result."
+  },
+
+  "validation_caution": {
+    "do_not_augment_the_test_set_with_noise_and_report_it_as_noise_robustness_without_saying_so": "Noise-robustness results must be reported separately from clean-test results, at named SNRs, with the augmented status recorded. An augmented test set is not the unseen test set the SRS compares the two models on.",
+    "test_split_has_225_clips_in_this_dataset": "Read 450 as the SRS's stated test total; the per-class figures used above (225) follow the 450 test clips at 10 classes implied by the 70/15/15 split of 3,000. Recompute from the real manifest before quoting any per-class validation count."
+  }
+}

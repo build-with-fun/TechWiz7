@@ -1,0 +1,383 @@
+{
+  "schema_version": "1.0.0",
+  "produced_by": "amina (auditory neuroscience / psychoacoustics)",
+  "produced_on": "2026-09-23",
+  "purpose": "Machine-readable perceptual confusability map of the ten mandatory SonicSentinel classes. Consumers: omar (which pairs need extra sourcing/augmentation), bilal + nadia (error analysis on named confusion pairs), lorena (model selection and where to spend capacity), raheem (report/blog explanation of disagreement), sara (manual-review routing thresholds per class).",
+  "method": "Each pair is graded by the acoustics of the generating source and by whether a normal-hearing listener with full attention can separate the two when the audio is clean. Where listeners separate them only because they can see the source, the pair is labelled irreducible: no feature set available to this project recovers the missing information.",
+  "reason_class_legend": {
+    "irreducible": "The two sources can produce acoustically near-identical waveforms. Human listeners also need context/metadata. Expect residual confusion; handle with review routing, not with more features.",
+    "reducible_with_dedicated_features": "The difference exists in the signal but is not captured by generic MFCC+statistics. A named feature makes it separable.",
+    "reducible_with_augmentation": "Separable in principle but the model has not seen enough of the boundary. Needs targeted augmentation of the pair.",
+    "label_ambiguity": "The class definition itself overlaps. Needs a written label rule before any model can be fair."
+  },
+  "classes_are_exactly_the_srs_ten": true,
+  "note_on_pairs": "Pairs P01 and P02 reference SRS 1.2 optional classes (Vehicle Backfire, Fireworks) which are NOT among the ten mandatory classes, because those are precisely the sounds that will be absorbed into Gunshot or Background Noise. They are declared below so the set of classes named anywhere in this file is explicit and machine-checkable.",
+  "reference_classes_outside_the_ten": ["Vehicle Backfire", "Fireworks"],
+  "boundary_cases_that_must_be_decided_by_rule": [
+    {
+      "question": "Glass Breaking vs Machinery Fault vs an optional 'Door Impact' class: all three contain broadband impulsive transients.",
+      "rule": "Glass is labelled Glass Breaking only when the recording contains the shatter/ring-down phase (>= 150 ms of decaying modal energy), not a single crack. A single isolated impact with no ring-down is Machinery Fault unless provenance says otherwise. Record the rule in the dataset metadata so the label is defensible to an evaluator."
+    },
+    {
+      "question": "Gunshot vs Vehicle Backfire vs Fireworks (optional classes).",
+      "rule": "If the same underlying recording is acoustically plausible as both, label it Gunshot only when the source is documented; otherwise record source=A and accept irreducible error in this pair. Never relabel to make a metric look better."
+    },
+    {
+      "question": "Aggression vs Person Asking for Help: both are human speech with raised or urgent prosody.",
+      "rule": "Person Asking for Help is RESTRICTED to the five SRS safety phrases (Help me / Somebody help / Please help / Call for help / Emergency). Any other speech content, however loud, is Aggression only if it is hostile/conflict behaviour, else Background Noise. This lexical restriction is the ONLY reliable separator and it must be enforced at dataset build time, not discovered by the model."
+    },
+    {
+      "question": "Alarm or Siren as an alert-triggering class.",
+      "rule": "SRS Step 14 lists 'Alarm or siren' under critical event recognition, while Step 16 gives Alarm or Siren severity 'High' and SRS FR lii lists no High level at all. The class is treated as alert-worthy but not a life-safety event: severity High on the five-level scale, and it must NOT be allowed to trigger the same escalation as Gunshot. See documentation/perception/alert_human_factors.md."
+    }
+  ],
+  "classes": [
+    {
+      "class": "Machinery Fault",
+      "severity": {
+        "default": "High",
+        "allowed": ["High"],
+        "srs_step16_verbatim": "Machinery Fault: High",
+        "srs_fr_verbatim": "FR xli: Machinery Fault should generate a maintenance-related alert and recommended inspection action.",
+        "escalation_trigger": null
+      },
+      "critical_for_recall_nfr": false,
+      "perceptual_signature": "Periodic impacts or tonal components locked to a rotation rate (bearing defect frequencies, gear mesh), often a rising comb of harmonics with sidebands; energy concentrated low-mid (100 Hz - 4 kHz) and highly predictable in time.",
+      "human_cue": "Rhythm and pitch stability - the ear locks onto the repetition rate (a repeated 'tap' or a whine that is tonally steady).",
+      "key_features": ["spectral_centroid", "spectral_bandwidth", "mfcc_delta_2 (modulation)", "zero_crossing_rate", "onset_strength periodicity", "spectral_flatness (harmonicity)"],
+      "literature": "Randall & Antoni (2011), Mechanical Systems and Signal Processing 25(2):485-520 - bearing defect characteristic frequencies and envelope analysis."
+    },
+    {
+      "class": "Glass Breaking",
+      "severity": {
+        "default": "High",
+        "allowed": ["High"],
+        "srs_step16_verbatim": "Glass Breaking: High",
+        "srs_fr_verbatim": "FR xlii: Glass Breaking should generate a high-severity security alert when confidence requirements are satisfied.",
+        "escalation_trigger": null
+      },
+      "critical_for_recall_nfr": true,
+      "perceptual_signature": "Very short broadband onset (<= 20 ms rise) dominated by 2-10 kHz, followed by 150-1500 ms of decaying modal ring-down from the shards. High crest factor (> 15 dB). Rich in high-frequency energy that a smooth masking background cannot hide.",
+      "human_cue": "The sharp crack plus the showering, non-pitched ring-down; humans localise it instantly because it is a transient ITD/ILD cue with no competing periodicity.",
+      "key_features": ["onset_strength", "spectral_rolloff", "high_frequency_energy_ratio (4-10 kHz)", "crest_factor_db", "spectral_flux", "mel_spectrogram decay slope"],
+      "literature": "Maher (2007), IEEE SAFE - transient/impulsive characterisation of forensic acoustic events."
+    },
+    {
+      "class": "Alarm or Siren",
+      "severity": {
+        "default": "High",
+        "allowed": ["High"],
+        "srs_step16_verbatim": "Alarm or Siren: High",
+        "srs_fr_verbatim": "FR xliii: Alarm or Siren should generate a high-severity attention alert.",
+        "escalation_trigger": null,
+        "NOTE": "Step 14 lists Alarm or siren among critical acoustic events, but Step 16 and FR xliii both grade it High, not Critical. High is the defensible reading: it is alert-worthy but must not share Gunshot's escalation path."
+      },
+      "critical_for_recall_nfr": false,
+      "perceptual_signature": "Sustained, narrowband, tonal, with a low-rate frequency or amplitude modulation (roughly 0.5-4 Hz sweep or pulsed pattern). Very high harmonic-to-noise ratio; low crest factor (3-8 dB).",
+      "human_cue": "The sweep/pulse - a sound that is deliberately designed to be un-ignorable. Note this is a designed signal, not a natural one; its 'conspicuousness' is the reason FR xliii demands an alert.",
+      "key_features": ["spectral_centroid", "chroma (tonal stability)", "modulation spectrum 0.5-4 Hz", "spectral_flatness low", "tempo/modic tempo estimate of the sweep rate"],
+      "literature": "ISO 8201 / NFPA 72 Temporal-Three audible evacuation signal - the standardised pulse pattern this class is built around."
+    },
+    {
+      "class": "Vehicle Horn",
+      "severity": {
+        "default": "Low",
+        "allowed": ["Low", "Medium"],
+        "srs_step16_verbatim": "Vehicle Horn: Low or Medium",
+        "srs_fr_verbatim": "FR xliv: Vehicle Horn should be stored as a traffic or environmental sound event.",
+        "escalation_trigger": "The SRS itself gives a two-valued severity for this class, so the base level and the Medium escalation must both exist in config and be selectable. Recommend: Low by default, Medium when the event is confirmed across consecutive windows and quality is Good (e.g. a sustained horn in a no-horn zone)."
+      },
+      "critical_for_recall_nfr": false,
+      "perceptual_signature": "Sustained dual-tone harmonic stack, fundamental roughly 350-600 Hz with strong 2nd-5th harmonics, steady (no sweep), short-to-medium duration (0.2-2 s). Often two tones a few tens of Hz apart beating.",
+      "human_cue": "A steady, non-modulated blare at the pitch range of a human shout - which is exactly why it confuses with speech energy and with alarms.",
+      "key_features": ["chroma", "spectral_centroid", "spectral_flatness", "modulation spectrum (flat = horn, peak = siren)", "tonnetz"],
+      "literature": "Automotive horn acoustics: dual-tone pairs (e.g. 400 + 500 Hz) per ECE R28-type specifications; verify exact regulatory figures with sofia before quoting."
+    },
+    {
+      "class": "Animal Sound",
+      "severity": {
+        "default": "Low",
+        "allowed": ["Low", "Informational"],
+        "srs_step16_verbatim": "Animal Sound: Low",
+        "srs_fr_verbatim": "FR xlv: Animal Sound should be recorded as a non-critical or context-dependent event.",
+        "escalation_trigger": "FR xlv does not escalate it; a context rule may downgrade to Informational for a familiar/expected animal in a monitored environment."
+      },
+      "critical_for_recall_nfr": false,
+      "perceptual_signature": "Extremely broad within the class: bird chirps (fast FM sweeps 2-8 kHz), dog barks (broadband bursts at 200 Hz - 2 kHz with 0.1-0.5 s repetition), cattle (low 100-400 Hz), insects (narrowband 3-6 kHz).",
+      "human_cue": "Species-specific temporal and spectral shape - which is why one generic 'Animal Sound' class is inherently high-variance and will cap the ceiling here.",
+      "key_features": ["mfcc", "spectral_centroid", "onset_strength", "spectral_bandwidth", "zero_crossing_rate"],
+      "literature": "Standard bioacoustics: bark bouts are repetitive broadband bursts; bird song is fast frequency-modulated. This class is a known weak point because it is a grab-bag, not because a feature is missing."
+    },
+    {
+      "class": "Gunshot",
+      "severity": {
+        "default": "Critical",
+        "allowed": ["Critical"],
+        "srs_step16_verbatim": "Gunshot: Critical",
+        "srs_fr_verbatim": "FR xlvi: Gunshot should generate a critical alert only after configured confirmation and confidence rules are satisfied.",
+        "escalation_trigger": null,
+        "NOTE": "FR xlvi is explicit that Critical is GATED on confirmation and confidence rules - this is the requirement that makes the consecutive-window rule load-bearing rather than optional."
+      },
+      "critical_for_recall_nfr": true,
+      "perceptual_signature": "Extreme impulsive transient: 0.5-2 ms rise, peak sound pressure far above everything else in the scene, then an exponential decay of 100-500 ms plus environment reverberation (the 'tail' carries the room). Crest factor very high (> 20 dB). Low-frequency dominant muzzle blast with a high-frequency crack.",
+      "human_cue": "Not loudness - salience. A gunshot is a startle stimulus: it exceeds the acoustic startle threshold and is not habituated by ordinary background sound, which is why it captures attention pre-consciously.",
+      "key_features": ["onset_strength", "crest_factor_db", "spectral_flux", "decay_envelope_slope", "broadband_energy_ratio", "zero_crossing_rate"],
+      "literature": "Maher (2007), IEEE SAFE; Davis (2006), Am J Psychiatry 163(9):1491-1499 (startle circuitry and its resistance to habituation under threat)."
+    },
+    {
+      "class": "Panic Scream",
+      "severity": {
+        "default": "Critical",
+        "allowed": ["Critical"],
+        "srs_step16_verbatim": "Panic Scream: Critical",
+        "srs_fr_verbatim": "FR xlvii: Panic Scream should generate a critical safety alert when detected with sufficient confidence.",
+        "escalation_trigger": null
+      },
+      "critical_for_recall_nfr": true,
+      "perceptual_signature": "Human phonation at high subglottal pressure: high and rising F0, rough/chaotic (subharmonic, biphonation, jitter/shimmer) voice quality, long duration relative to a shout (0.5-2 s), and - the signature feature - rapid amplitude modulation in the roughness range.",
+      "human_cue": "Roughness. Arnal et al. show screams carry a distinctive fast amplitude modulation (tens of Hz) that makes them uniquely alarming and detectable against other loud sounds. This is a real, measurable, non-obvious feature.",
+      "key_features": ["F0 contour (rising)", "jitter / shimmer", "amplitude modulation spectrum 30-150 Hz (roughness)", "spectral_centroid high", "harmonic-to-noise ratio"],
+      "literature": "Arnal, Flinker, Kleinschmidt, Giraud & Poeppel (2015), Current Biology 25(15):2051-2056, 'Human screams occupy a privileged niche in the communication soundscape'."
+    },
+    {
+      "class": "Aggression",
+      "severity": {
+        "default": "High",
+        "allowed": ["High", "Critical"],
+        "srs_step16_verbatim": "Aggression: High",
+        "srs_fr_verbatim": "FR xlviii: Aggression or Violent Conflict should generate a high or critical alert depending on confidence and repeated detection.",
+        "escalation_trigger": "Verbatim from FR xlviii: escalate High -> Critical on confidence and repeated detection. This is the clearest SRS statement that severity is derived from class AND context, not a static class->level table. Both levels must be configurable."
+      },
+      "critical_for_recall_nfr": true,
+      "perceptual_signature": "Speech at raised intensity with elevated and unstable F0, fast speech rate, sharp prosodic contours, often overlapping voices; distinct from a scream by still being linguistically structured speech.",
+      "human_cue": "Prosody plus content. Humans use BOTH; a model that has only acoustics will confuse this with any loud speech, which is exactly SRS Step 14's 'Aggression vs normal conversation' pair.",
+      "key_features": ["F0 statistics (mean, range, slope)", "speech_rate estimate", "mfcc_delta", "rms energy variance", "spectral_flux"],
+      "literature": "Prosody of anger/aggression in speech: consistent pattern of raised F0 and increased intensity variance across languages; verify specific study citation with sofia."
+    },
+    {
+      "class": "Person Asking for Help",
+      "severity": {
+        "default": "Critical",
+        "allowed": ["Critical"],
+        "srs_step16_verbatim": "Person Asking for Help: Critical",
+        "srs_fr_verbatim": "FR xlix: Person Asking for Help Detection - The application should detect defined help phrases represented in the training dataset and generate a critical alert. (The SRS sentence is truncated mid-thought after 'critical' in FR xlix; the intended reading is 'generate a critical alert', consistent with Step 16.)",
+        "escalation_trigger": null
+      },
+      "critical_for_recall_nfr": true,
+      "perceptual_signature": "Ordinary human speech acoustics. The ONLY reliable discriminator is the linguistic content, restricted by the SRS to five safety phrases, delivered with urgency prosody.",
+      "human_cue": "Meaning (we understand the words) plus urgency in the voice. A model with no language model has neither, so this class sits at the edge of what a 10-way acoustic classifier can do, and the honest engineering answer is a content-aware route.",
+      "key_features": ["mfcc + deltas (phonetic content)", "F0 contour", "speech_rate", "spectral_centroid", "duration"],
+      "literature": "Phonemic restoration and the role of content vs acoustics: Warren (1970), Science 167:392-393; also see the boundary rule above - the five-phrase restriction is a labelling discipline, not a modelling trick."
+    },
+    {
+      "class": "Background Noise",
+      "severity": {
+        "default": "Informational",
+        "allowed": ["Informational", "Low", "Medium", "High"],
+        "srs_step16_verbatim": "Background Noise: Informational",
+        "srs_fr_verbatim": "FR l: Background Noise should normally be treated as non-critical unless the estimated noise level exceeds a configured limit.",
+        "escalation_trigger": "FR l: escalate above Informational when the estimated noise level exceeds a CONFIGURED limit. This is the class that makes a noise-level threshold a first-class config value, and it is why the quality/noise-floor estimator (taha) feeds the alerting path and not only the quality badge."
+      },
+      "critical_for_recall_nfr": false,
+      "perceptual_signature": "Stationary or slowly varying broadband spectrum with no strong periodic or impulsive structure: HVAC hum, traffic drone, crowd babble, wind. Low spectral flux, low crest factor over 2 s, high spectral flatness.",
+      "human_cue": "Nothing to attend to - the auditory system adapts to a stationary background and stops reporting it. The perceptual equivalent is that this class is defined by the absence of a foreground event.",
+      "key_features": ["spectral_flatness", "rms energy variance", "spectral_flux low", "zero_crossing_rate", "mfcc low variance across frames"],
+      "literature": "Auditory adaptation to stationary backgrounds and the way a foreground stream 'pops out': Bregman (1990), Auditory Scene Analysis, MIT Press."
+    }
+  ],
+  "pairs": [
+    {
+      "id": "P01",
+      "a": "Gunshot",
+      "b": "Vehicle Backfire",
+      "srs_citation": "Step 14 'Gunshot vs. vehicle backfire'",
+      "reason_class": "irreducible",
+      "human_cue": "None reliable. A backfire produces the same impulsive muzzle-blast-like waveform; trained listeners use context (was there a car?), which this project does not have.",
+      "perceptual_mechanism": "Both are impulsive combustion/gas-expansion events: fast rise, exponential decay, elevated low-frequency blast energy, reverberation tail from the environment. The generative physics are the same class of event.",
+      "mitigation": "Do not spend modelling capacity here. Label honestly from provenance, accept the confusion, and route any Gunshot-vs-Backfire disagreement to manual review rather than tuning it away. Report the residual rate explicitly in the model-comparison report - an evaluator will ask.",
+      "augmentation_plan": "None specific. Do ensure distance/reverb augmentation is applied to both so the model does not learn 'reverberant = gunshot'.",
+      "dedicated_features": ["crest_factor_db", "decay_envelope_slope (backfire decays slightly faster and cleaner in a road environment, but this is weak)"],
+      "expected_accuracy_ceiling": "0.6-0.75 on this pair; do not promise better."
+    },
+    {
+      "id": "P02",
+      "a": "Gunshot",
+      "b": "Fireworks",
+      "srs_citation": "Step 14 'Gunshot vs. fireworks'",
+      "reason_class": "reducible_with_dedicated_features",
+      "human_cue": "Fireworks are typically a multi-phase event: launch whistle, then burst, then a long crackling tail of many small pops. A gunshot is usually a single impulse (or a short burst) with one tail.",
+      "perceptual_mechanism": "Both are impulsive and broadband, but fireworks add a dense, stochastic micro-transient tail and often an ascending whistle before the burst.",
+      "mitigation": "Add a 'burst structure' feature family and make sure the dataset contains whole firework events, not just their burst. If Fireworks is not a class in the final ten-class model it will be absorbed into Gunshot and Background Noise - say so in the report rather than hiding it.",
+      "augmentation_plan": "Overlap augmentation combining impulsive transients with crackling tails; time-shift so the impulse is not always centred.",
+      "dedicated_features": ["onset_density in the 300-1500 ms after the first onset", "temporal_centroid", "spectral_flux variance", "count of onsets above threshold"],
+      "expected_accuracy_ceiling": "0.85-0.95 when whole firework events are present; much worse if only the burst is kept."
+    },
+    {
+      "id": "P03",
+      "a": "Alarm or Siren",
+      "b": "Vehicle Horn",
+      "srs_citation": "Step 14 'Alarm vs. vehicle horn'",
+      "reason_class": "reducible_with_dedicated_features",
+      "human_cue": "Movement of the pitch. A siren sweeps or pulses; a horn holds a steady pair of tones.",
+      "perceptual_mechanism": "Both are sustained tonal signals with strong harmonic stacks in the same 300 Hz - 2 kHz region, so their short-frame spectra are similar. The difference lives in the slow modulation (0.5-4 Hz) of frequency or amplitude - a timescale of a second, not a frame. MEASURED CORRECTION (2026-09-23, audit_corpus_realism.py section 4): on our own synthesised corpus the amplitude-modulation cue is WEAKER than this entry originally claimed, and the original claim was mine. A vehicle horn measured a 0.80 Hz envelope-modulation peak (spread 0.67-1.00 Hz over 10 clips) because the honk's own on/off gate radiates low-rate envelope energy; a siren measured 2.40 Hz. Both fall inside 0.5-4 Hz, so an envelope-modulation peak in that band does NOT separate the pair by itself. What DID separate the synthesised pair was spectral, by a wide margin: energy above 4 kHz was 7.75% of total for Alarm or Siren vs 0.31% for Vehicle Horn (a factor of 25), while crest factor was near-identical (11.14 vs 10.77 dB), exactly as two sustained signals should be.",
+      "mitigation": "Keep the whole-window modulation-spectrum idea - frame-level features genuinely cannot see a 1 Hz sweep - but do NOT let it carry the pair alone, which is what the first version of this file effectively recommended. Pair it with the spectral-shape cues that measurably separated the classes (high_frequency_energy_ratio, spectral_rolloff) and with the f0-trajectory cue. Report the pair's error rate separately so the modulation feature's real contribution is visible rather than assumed.",
+      "augmentation_plan": "Time-stretch / time-warp both classes so the sweep rate and the horn duration vary; do not pitch-shift only one of the pair or the model learns pitch as the separator. Also vary the horn's on/off duty cycle, since that gate is what generates the horn's misleading low-rate envelope energy.",
+      "dedicated_features": ["frequency_derivative_of_dominant_tonal_track", "high_frequency_energy_ratio 4-10 kHz", "spectral_rolloff", "pulse_pattern_interval_histogram", "tonal_track_duration", "amplitude_modulation_spectrum 0.5-4 Hz (retained, but confounded by the honk gate - see perceptual_mechanism; it is a supplement to the spectral cues, not the fix on its own)"],
+      "expected_accuracy_ceiling": "0.90-0.96 with the spectral-shape and f0-trajectory features; 0.6-0.75 without them. NOT independently verified for the modulation feature alone - that hypothesis is now marked disproved on our corpus."
+    },
+    {
+      "id": "P04",
+      "a": "Panic Scream",
+      "b": "Aggression",
+      "srs_citation": "Step 14 'Panic scream vs. normal shouting'",
+      "reason_class": "reducible_with_dedicated_features",
+      "human_cue": "Roughness and loss of linguistic structure. A shout is still speech; a scream is not.",
+      "perceptual_mechanism": "Same organ, same speaker, different phonation mode. A scream pushes subglottal pressure until the voice breaks into subharmonics, biphonation and fast amplitude modulation (tens of Hz); sustained shouting keeps a stable, if raised, F0 and intact phonemes.",
+      "mitigation": "Compute roughness and voice-quality features. This pair is critical for the NFR recall floor (both are critical classes), so it is worth the implementation cost.",
+      "augmentation_plan": "Do not augment one side only. If you add noise to screams, add the same noise to aggression, or the model learns 'noisy = scream'.",
+      "dedicated_features": ["amplitude_modulation_spectrum 30-150 Hz", "F0_contour_slope", "jitter_local", "shimmer_local", "harmonics_to_noise_ratio", "unvoiced_fraction"],
+      "expected_accuracy_ceiling": "0.85-0.93 with voice-quality features; 0.7-0.8 without."
+    },
+    {
+      "id": "P05",
+      "a": "Aggression",
+      "b": "Background Noise",
+      "srs_citation": "Step 14 'Aggression vs. normal conversation'",
+      "reason_class": "label_ambiguity",
+      "human_cue": "Content and intent, which this project does not model. Raised but non-hostile conversation is acoustically indistinguishable from low-grade aggression.",
+      "perceptual_mechanism": "Both are speech. The difference is social, not acoustic. Any model trained to separate them is being asked to infer intent from prosody alone.",
+      "mitigation": "Write the labelling rule down and apply it consistently (see boundary_cases_that_must_be_decided_by_rule). Then report this pair as the honest limitation it is. Do NOT try to recover it with more augmentation - you would be fitting label noise.",
+      "augmentation_plan": "Background-noise addition only, applied symmetrically to both.",
+      "dedicated_features": ["F0_range", "rms_energy_variance_over_2s", "speech_rate"],
+      "expected_accuracy_ceiling": "0.65-0.80. Treat lower values as a dataset-definition problem, not a model failure."
+    },
+    {
+      "id": "P06",
+      "a": "Glass Breaking",
+      "b": "Machinery Fault",
+      "srs_citation": "Step 14 'Glass breaking vs. metal impact' (Machinery Fault is the in-scope class that carries metal impact)",
+      "reason_class": "reducible_with_dedicated_features",
+      "human_cue": "The ring-down. Glass shatters into many shards giving a dense, wideband, non-harmonic, decaying shower; a metal impact gives a few strong, high-Q, harmonically related resonances that ring longer and cleaner.",
+      "perceptual_mechanism": "Both are broadband impulsive transients with high crest factor. They differ in what happens AFTER the onset: spectral density and Q (resonance sharpness) of the decay, over 0.15-1.5 s.",
+      "mitigation": "Compute decay-phase features, not just onset features. Onset detectors alone cannot separate this pair - a classic failure mode.",
+      "augmentation_plan": "Overlap augmentation: glass over machinery hum and vice versa, so neither class degenerates into 'has a transient'.",
+      "dedicated_features": ["decay_envelope_slope", "onset_density in the 150-800 ms after onset", "spectral_rolloff", "modal_Q estimate", "sub-band energy decay times per band"],
+      "expected_accuracy_ceiling": "0.88-0.95 with decay features; 0.7-0.8 with onset features only."
+    },
+    {
+      "id": "P07",
+      "a": "Machinery Fault",
+      "b": "Background Noise",
+      "srs_citation": "Step 14 'Machinery fault vs. normal machinery' (normal machinery is Background Noise in the ten-class set)",
+      "reason_class": "reducible_with_dedicated_features",
+      "human_cue": "Rhythm and tonality. A healthy machine hums smoothly; a faulty one ticks, grinds or whines in a repeating pattern.",
+      "perceptual_mechanism": "Fault energy is concentrated in narrow bands locked to a rotation rate and it introduces amplitude modulation at the defect rate; healthy machine noise is broadband and stationary. Perceptually this is a foreground/background (auditory stream) separation.",
+      "mitigation": "Add modulation and harmonicity features. Also apply the human-factors rule that an audible-margin requirement must be met before a Machinery Fault alert is raised - otherwise low-SNR noise is classified as fault and the maintenance team stops trusting the system.",
+      "augmentation_plan": "Mix fault recordings with normal-machinery background at a controlled SNR sweep (e.g. +15, +10, +5, 0 dB) so the boundary is represented, and record the SNR in metadata.",
+      "dedicated_features": ["harmonicity / spectral_flatness ratio", "spectral_flux periodicity (autocorrelation of the onset envelope)", "amplitude_modulation_spectrum at defect-rate multiples", "cepstral_peak_prominence"],
+      "expected_accuracy_ceiling": "0.85-0.93 with SNR-stratified training data; 0.7 without it."
+    },
+    {
+      "id": "P08",
+      "a": "Person Asking for Help",
+      "b": "Background Noise",
+      "srs_citation": "Step 14 'Help request vs. ordinary speech' (ordinary speech lands in Background Noise)",
+      "reason_class": "reducible_with_augmentation",
+      "human_cue": "The words. Humans hear 'Help me' and act; the acoustic signal alone is ordinary speech.",
+      "perceptual_mechanism": "The class is defined by content, not by acoustics. Under the SRS the content is restricted to five phrases, which is the only thing that makes the class learnable at all.",
+      "mitigation": "Three parts. (1) Enforce the five-phrase restriction at dataset build time so the model never sees out-of-definition content in this class. (2) Report this class's recall honestly with the caveat that it generalises only within the definition. (3) Push for a content-aware confirmation path (a small keyword spotter over the same window) as the defensible way to reach the 85% critical recall NFR - an acoustic-only 10-way classifier is the wrong tool for this one class, and saying so is the honest engineering position.",
+      "augmentation_plan": "Many speakers, both sexes, child and adult where ethically recorded; urgency prosody variation; the same five phrases at multiple SNRs and distances. This class needs speaker diversity more than it needs signal augmentation.",
+      "dedicated_features": ["mfcc + delta + delta2 (phonetic content)", "speech_rate", "F0 contour", "voiced_fraction", "duration above noise floor"],
+      "expected_accuracy_ceiling": "0.75-0.90 depending on speaker diversity in the dataset. Speaker diversity is the binding constraint, not the classifier."
+    },
+    {
+      "id": "P09",
+      "a": "Animal Sound",
+      "b": "Alarm or Siren",
+      "srs_citation": "Not listed in Step 14 - found by inspection of the ten classes",
+      "reason_class": "reducible_with_dedicated_features",
+      "human_cue": "Species character: animal calls are noisy/rough (dog bark) or rapidly FM (bird), while alarms are metronomically regular.",
+      "perceptual_mechanism": "Some bird and animal calls are sustained, tonal and high, which puts them in the same spectral region as a siren or a high alarm tone. The separator is the regularity and purity of the tonal track.",
+      "mitigation": "Add the tonal-track features already specified for P03; they serve both pairs.",
+      "augmentation_plan": "Include animal calls with reverberation, which is when they sound most siren-like.",
+      "dedicated_features": ["tonal_track_regularity", "spectral_flatness", "harmonicity", "onset_strength (animal calls often have repetitive bursts)"],
+      "expected_accuracy_ceiling": "0.88-0.95."
+    },
+    {
+      "id": "P10",
+      "a": "Panic Scream",
+      "b": "Person Asking for Help",
+      "srs_citation": "Not listed in Step 14 - both are critical classes and both are human voice",
+      "reason_class": "reducible_with_dedicated_features",
+      "human_cue": "Roughness vs words.",
+      "perceptual_mechanism": "Both are human vocalisations and both are among the SRS's critical classes, so a mistake here is a false critical alert of the most damaging kind. Screams are non-linguistic with chaotic phonation; help phrases are intact speech at high urgency.",
+      "mitigation": "Voice-quality features separate them when both classes have enough exemplars. This is the pair to inspect first in every error analysis, because both sides are Critical severity and both count toward the NFR recall floor.",
+      "augmentation_plan": "Apply identical noise/distance augmentation to both so urgency does not become a proxy for class.",
+      "dedicated_features": ["unvoiced_fraction", "amplitude_modulation_spectrum 30-150 Hz", "voiced_fraction", "mfcc stability across frames (speech is more dynamic)"],
+      "expected_accuracy_ceiling": "0.80-0.90."
+    },
+    {
+      "id": "P11",
+      "a": "Glass Breaking",
+      "b": "Gunshot",
+      "srs_citation": "Not listed in Step 14 - both are critical classes and both are impulsive transients",
+      "reason_class": "reducible_with_dedicated_features",
+      "human_cue": "Pitch content of the tail: glass rings with many non-harmonic high modes; a gunshot tail is reverberation of a low-frequency blast.",
+      "perceptual_mechanism": "Both sit at the extreme-impulsive end of the transient continuum, and both are critical classes, so a confusion here directly attacks the critical-recall NFR from two sides at once.",
+      "mitigation": "The decay-phase feature family (P06) plus a high-frequency energy ratio separates them. Check this pair explicitly in the confusion matrix and name it in the error analysis.",
+      "augmentation_plan": "Distance simulation for both - do not let 'reverberant' or 'distant' become a class proxy.",
+      "dedicated_features": ["high_frequency_energy_ratio 4-10 kHz", "spectral_centroid of the decay phase only", "decay_envelope_slope", "crest_factor_db"],
+      "expected_accuracy_ceiling": "0.90-0.96."
+    },
+    {
+      "id": "P12",
+      "a": "Alarm or Siren",
+      "b": "Background Noise",
+      "srs_citation": "Not listed in Step 14 - a low-SNR failure mode",
+      "reason_class": "reducible_with_augmentation",
+      "human_cue": "Audibility. A distant or heavily masked siren simply is not heard, by a person or by a model.",
+      "perceptual_mechanism": "This is energetic masking: if the siren's energy in its critical band does not exceed the masker's by roughly 10 dB, the signal is not perceptually present. No model can recover information the masking has destroyed - which is why SRS Step 15 makes 'acceptable audio quality' a precondition for a confirmed alert.",
+      "mitigation": "Enforce the audible-margin rule (see recommended_perceptual_params.json) before allowing an Alarm/Siren or any critical alert. Route low-margin windows to manual review instead of alerting. This is the physiological justification for the SRS's own quality requirement.",
+      "augmentation_plan": "SNR-stratified mixing so the model degrades gracefully rather than confidently.",
+      "dedicated_features": ["per_critical_band_snr", "audible_margin_db", "spectral_flatness"],
+      "expected_accuracy_ceiling": "Near chance below 0 dB in-band SNR. That is physics, not a code defect - document it."
+    }
+  ],
+  "augmentation_priority": [
+    {"rank": 1, "target": "SNR-stratified mixing at +15/+10/+5/0 dB for every class", "why": "Masking is the single largest real-world failure mode (P12) and the SRS explicitly tests with low volume, echo, distant sources and overlapping sounds (1.8 item 9)."},
+    {"rank": 2, "target": "Distance/reverberation simulation applied symmetrically to all ten classes", "why": "Prevents 'reverberant' becoming a class proxy, which would pass validation and fail on unseen distant recordings."},
+    {"rank": 3, "target": "Overlapping-event composites", "why": "FR xxxix requires overlapping-sound detection, and 1.8 item 9 says hidden tests contain overlapping sounds. Synthesise overlaps across class boundaries, and record them as augmented."},
+    {"rank": 4, "target": "Speaker and device diversity for the three speech classes", "why": "Speaker diversity, not signal augmentation, is the binding constraint on Person Asking for Help (P08)."},
+    {"rank": 5, "target": "Time warping for the modulation-based pairs (P03)", "why": "Sweep rate and duration are the discriminative dimension for Alarm vs Horn."}
+  ],
+  "measured_corpus_evidence": {
+    "produced_by": "documentation/perception/audit_corpus_realism.py (amina)",
+    "what_was_measured": "The generated audio itself, imported from data/generate_corpus.py and pushed through simulate_channel - not the generator's intent. Re-run with .venv/bin/python documentation/perception/audit_corpus_realism.py or --assert (assert mode exits non-zero if a property fails).",
+    "generator_revision_measured": "7d31c0e2d3ddb17b43daeda3e68ab069d7ba500360a7412b99d1fdf59ce54f0b (sha256, 37394 bytes, 2026-09-23 19:57:18). READ THIS BEFORE QUOTING ANY NUMBER BELOW: the generator is under active edit by the dataset owner, and the numbers genuinely moved between revisions while this audit was being run (Person Asking for Help crest factor measured 9.78 dB at one revision and 17.10 dB at this one). No measured claim from this audit may be used in the report unless the generator's sha256 is recorded next to it. Re-run after any change to data/generate_corpus.py.",
+    "findings": [
+      "ABSOLUTE LEVEL CARRIES NO DISTANCE INFORMATION. Peak level measured -6.0 dBFS at 1 m, 8 m AND 40 m (Glass Breaking, outdoor_open, intensity=normal). sample_profile draws intensity independently of distance and simulate_channel re-normalises each clip to a target peak, so the 1/d attenuation is undone. CONSEQUENCE: no feature may depend on absolute level, and a model that learned 'louder = more critical' would be learning a property of the corpus builder, not of the world. This is the measured basis for the recommended_perceptual_params rule to persist crest_factor_db / peak_dbfs before normalisation.",
+      "DISTANCE SURVIVES ONLY AS SPECTRAL SHAPE, and strongly. Energy above 4 kHz was 49.35% at 1 m, 48.54% at 8 m, 4.05% at 40 m; spectral centroid 4132 / 4111 / 2303 Hz. Air absorption in simulate_channel is real, so a distant-source robustness test is meaningful - but a metadata-only 'distance' claim would not be.",
+      "DISTANCE METADATA CAN BE PHYSICALLY INCOHERENT WITH INTENSITY. far_20-60m + clipped measured -0.7 dBFS, indistinguishable from near_0.5-2m + clipped. approx_distance_m must therefore never be used as a model input or an alert-rule input; it is provenance, not a measurement.",
+      "THE TRANSIENT/SUSTAINED AXIS IS REAL AND WELL SEPARATED. Crest factor (peak-to-RMS, dB): Gunshot 25.68, Glass Breaking 21.69, Aggression 18.90, Animal Sound 18.84, Background Noise 16.99, Machinery Fault 16.45, Panic Scream 16.10, Vehicle Horn 11.51, Alarm or Siren 10.85, Person Asking for Help 9.78. Gunshot exceeds Alarm or Siren by 14.82 dB and Background Noise by 8.68 dB.",
+      "PERSON ASKING FOR HELP IS A SUSTAINED VOICED CLASS, NOT A TRANSIENT ONE (crest 17.10 dB against Gunshot's 25.68 dB at generator revision 7d31c0e2d3dd; an earlier revision measured 9.78 dB, so treat the absolute value as revision-dependent and the ORDERING as the durable finding). Its separability rests on phonetic content, voiced-ness and F0 contour (P08/P10), NEVER on onset strength or crest factor. A review or alert design that assumes 'critical classes are impulsive' will systematically mishandle this class - and it is one of the five classes carrying the 85% recall NFR.",
+      "BACKGROUND NOISE HAS THE WIDEST CREST SPREAD (sd 4.82 dB, vs 0.51 for Gunshot). Expected for a heterogeneous bed class, but it means a single global threshold on any envelope statistic will misfire on it.",
+      "BUILD COST IS NEGLIGIBLE. 0.14 s/clip measured including the reverberant path => under 8 minutes for 3,000 clips. Corpus regeneration is not a schedule risk and should be re-run freely when synthesis changes.",
+      "SHORT-TIME SPECTRAL COSINE SIMILARITY (mean log-band spectrum, generator revision 7d31c0e2d3dd): Gunshot vs Vehicle Horn 0.726, Panic Scream vs Aggression 0.720, Panic Scream vs Person Asking for Help 0.632, Glass Breaking vs Machinery Fault 0.608. Gunshot-vs-Horn at 0.726 is the HIGHEST of these, which is awkward for a pair that is not even among the SRS Step-14 named pairs and reinforces that a whole-window spectral view alone will not carry the critical classes."
+    ],
+    "assert_mode_guarantees": [
+      "Every class produces finite audio, within [-1,1], of the requested length (10/10 classes).",
+      "HF energy above 4 kHz falls monotonically with distance: 0.494 > 0.485 > 0.040 (1 m / 8 m / 40 m).",
+      "Absolute peak does NOT encode distance: measured spread 0.00 dB between 1 m and 40 m, so the corpus is deliberately level-free and no feature may use absolute level.",
+      "Gunshot exceeds Alarm or Siren in crest factor by +14.82 dB and is the most impulsive class measured.",
+      "Person Asking for Help is less impulsive than Gunshot (17.10 < 25.68 dB), i.e. it is a sustained critical class.",
+      "A spectral cue separating Alarm or Siren from Vehicle Horn exists and is large: 26.1x more >4 kHz energy."
+    ],
+    "what_this_does_not_establish": "These are measurements of OUR synthesised corpus, so they establish that a cue is present in the training data and separable by construction. They say nothing about whether a real-world recording carries the same cue, and they must not be quoted as evidence about human listeners. The distance and masking conclusions apply to the corpus's own physics because that physics is written in simulate_channel; the P03/P10 conclusions are corpus-specific and should be re-measured against real recordings before going in the report as general claims."
+  },
+  "honest_limitations": [
+    "P01 (Gunshot vs Backfire) and P05 (Aggression vs conversation) are information-limited, not model-limited. State the residual rates in the report; do not tune them away on the test set.",
+    "Person Asking for Help is a content-defined class inside an acoustic classifier. Expect its recall to be the weakest of the five critical classes, and design the manual-review route around that fact rather than pretending otherwise.",
+    "Animal Sound is a heterogeneous grab-bag; its per-class F1 will be lower than its neighbours for reasons that have nothing to do with the pipeline.",
+    "The optional classes in SRS 1.2 (Fireworks, Backfire, Door Impact, Normal Machinery, Explosion) are exactly the confusable partners of the critical classes. If they are not implemented, their recordings will fall into Gunshot / Glass Breaking / Machinery Fault and inflate the apparent critical-class recall. Report which optional classes were implemented and which were not."
+  ]
+}

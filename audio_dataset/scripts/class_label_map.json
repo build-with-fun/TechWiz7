@@ -1,0 +1,91 @@
+{
+  "schema_version": "1.0.0",
+  "author": "omar",
+  "purpose": "Maps the 10 mandatory SonicSentinel classes to FSD50K ground-truth labels and sets how many REAL field recordings to source per class. Data, not logic: changing a target here changes the corpus, nothing is hard-coded in the fetch script.",
+  "corpus": {
+    "name": "FSD50K",
+    "version": "v1.0",
+    "paper": "Fonseca et al. 2020, FSD50K: An Open Dataset of Human-Labeled Sound Events, arXiv:2010.00475",
+    "zenodo_doi": "10.5281/zenodo.4060432",
+    "mirror": "huggingface.co/datasets/Fhrozen/FSD50k (per-clip WAVs)",
+    "clip_url_template": "https://huggingface.co/datasets/Fhrozen/FSD50k/resolve/main/clips/{split}/{fname}.wav",
+    "freesound_page_template": "https://freesound.org/s/{fname}/"
+  },
+  "licence_policy": {
+    "accept": {
+      "http://creativecommons.org/publicdomain/zero/1.0/": "CC0-1.0",
+      "http://creativecommons.org/licenses/by/3.0/": "CC-BY-3.0",
+      "http://creativecommons.org/licenses/sampling+/1.0/": "Sampling+-1.0"
+    },
+    "reject": {
+      "http://creativecommons.org/licenses/by-nc/3.0/": "CC-BY-NC-3.0 -- NON-COMMERCIAL, excluded from the shipped dataset",
+      "": "no licence recorded on Freesound -- excluded (an unlicensed clip may not enter the dataset)"
+    },
+    "note": "Accept-list matches what the team decided: only licences that permit redistribution and commercial use are eligible. NC clips are downloaded nowhere and appear in no manifest row."
+  },
+  "assignment_priority": [
+    "Gunshot",
+    "Glass Breaking",
+    "Panic Scream",
+    "Aggression",
+    "Vehicle Horn",
+    "Alarm or Siren",
+    "Machinery Fault",
+    "Animal Sound",
+    "Person Asking for Help",
+    "Background Noise"
+  ],
+  "assignment_note": "A clip is assigned to exactly ONE class -- the first class in this priority order that it matches. This keeps 'unique originals per class' honest: the same recording can never be counted in two classes. Hardest-to-source and Critical classes are resolved first.",
+  "classes": {
+    "Machinery Fault": {
+      "real_target": 120,
+      "labels": ["Drill", "Power_tool", "Chainsaw", "Hammer", "Idling", "Mechanical_fan", "Engine", "Motorcycle", "Printer", "Buzz"],
+      "label_note": "FSD50K has no 'machinery fault' label. These are real machines/power tools whose signals exhibit the rhythmic knocking, grinding and squeal the class describes. Mechanically-driven, label justified by the class description; the remainder of the class is procedural synthesis which generates the fault modes (bearing squeal, knock) directly."
+    },
+    "Glass Breaking": {
+      "real_target": 150,
+      "labels": ["Glass", "Shatter", "Crushing", "Crack"],
+      "label_note": "Shatter/Crushing are the shatter-and-ring-down events the class requires (amina's rule: a bare crack with no ring-down is not Glass Breaking)."
+    },
+    "Alarm or Siren": {
+      "real_target": 130,
+      "labels": ["Siren", "Alarm", "Doorbell", "Bell"],
+      "label_note": "Sustained tonal alerts. 'Alarm' in FSD50K is dominated by alarm-clock/vehicle alarms; the class description covers these plus security/industrial alarms."
+    },
+    "Vehicle Horn": {
+      "real_target": 130,
+      "labels": ["Vehicle_horn_and_car_horn_and_honking"],
+      "label_note": "Only 165 licence-clean clips with this label exist in FSD50K, so the target is capped at the population."
+    },
+    "Animal Sound": {
+      "real_target": 150,
+      "labels": ["Animal", "Bird", "Bird_vocalization_and_bird_call_and_bird_song", "Dog", "Bark", "Cat", "Meow", "Cricket", "Frog", "Growling", "Purr"],
+      "label_note": "Broadest, best-covered real class. Deliberately spans mammals, birds and insects so the class is not one species."
+    },
+    "Gunshot": {
+      "real_target": 150,
+      "labels": ["Gunshot_and_gunfire", "Machine_gun", "Artillery_fire", "Cap_gun", "Fusillade"],
+      "label_note": "Explosion/Fireworks deliberately EXCLUDED: the SRS lists Fireworks and Explosion as separate optional classes, and amina's P01/P02 say absorbing them into Gunshot destroys the only feature that separates them (the crackling multi-pop tail)."
+    },
+    "Panic Scream": {
+      "real_target": 100,
+      "labels": ["Screaming", "Yell"],
+      "label_note": "'Shout' is deliberately left to Aggression: amina P04 says scream vs shout is the phonation-mode boundary and must not be smeared by sourcing."
+    },
+    "Aggression": {
+      "real_target": 100,
+      "labels": ["Shout", "Growling", "Slam", "Thump_and_thud", "Bang"],
+      "label_note": "Aggression is a label-definition class (amina P05). Sourced as raised-voice/hostile-vocal plus the physical impacts of a violent conflict. Stated as a known limitation in the report."
+    },
+    "Person Asking for Help": {
+      "real_target": 0,
+      "labels": [],
+      "label_note": "ZERO real clips, deliberately. The SRS restricts this class to five phrases ('Help me', 'Somebody help', 'Please help', 'Call for help', 'Emergency'). Generic FSD50K speech is not the class, so using it would be a mislabelled dataset. This class is 100% procedural multi-speaker speech synthesis."
+    },
+    "Background Noise": {
+      "real_target": 120,
+      "labels": ["Wind", "Rain", "Water", "Stream", "Ocean", "Traffic_noise_and_roadway_noise", "Crackle", "Hiss"],
+      "label_note": "Real ambience: weather, water, roadway, electrical hiss. This is the class the model must not fire on, so real recordings matter here."
+    }
+  }
+}

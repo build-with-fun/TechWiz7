@@ -1,0 +1,54 @@
+{
+  "version": "1.0.0",
+  "owner": "lorena",
+  "note": "Every value here is read at runtime. The SRS states evaluators may demand a changed confidence threshold live, so no threshold may ever be a literal in code. src/inference and src/services read this file; the admin UI edits it.",
+  "confidence": {
+    "min_confidence": 0.60,
+    "low_confidence_band": 0.75,
+    "top_two_margin_min": 0.15,
+    "overlap_secondary_confidence": 0.25
+  },
+  "consistency": {
+    "strong_match_max_diff": 0.05,
+    "acceptable_match_max_diff": 0.15,
+    "weak_match_max_diff": 0.30,
+    "comment": "Difference = |python_top_confidence - gtm_top_confidence|. Above weak_match_max_diff and the models disagree on class => Model Disagreement. Same class but a large gap => Weak Match. Below min_confidence on both => Uncertain Result."
+  },
+  "repeat_detection": {
+    "required_consecutive_detections": 3,
+    "window_seconds": 8,
+    "requires_model_agreement": true,
+    "min_quality": "Acceptable",
+    "comment": "SRS Step 15. A single unstable prediction must not raise a critical alert."
+  },
+  "audio_quality": {
+    "silence_rms_dbfs_max": -50.0,
+    "clipping_ratio_max": 0.01,
+    "min_duration_sec": 0.5,
+    "max_duration_sec": 300.0,
+    "min_snr_db": 5.0,
+    "good_snr_db": 20.0,
+    "acceptable_snr_db": 12.0,
+    "poor_snr_db": 6.0
+  },
+  "audio": {
+    "target_sample_rate": 16000,
+    "target_channels": 1,
+    "segment_duration_sec": 3.0,
+    "max_upload_mb": 50,
+    "supported_formats": ["wav", "mp3", "flac", "ogg", "m4a"],
+    "live_window_sec": 2.0
+  },
+  "performance": {
+    "max_upload_seconds_budget": 8.0,
+    "max_live_window_budget": 3.0,
+    "clip_budget_seconds": 30.0
+  },
+  "robustness": {
+    "probe_snr_db": [20.0, 10.0, 5.0, 0.0],
+    "gain_shift_db": [-12.0, 6.0],
+    "probe_seed": 20260923,
+    "seek_quietest": false,
+    "comment": "Noise-robustness conditions. A probe scores DEGRADED test audio, so its numbers are not test accuracy and meets_floors() refuses to certify them. Hard rule: the probe runs ONCE, after python_models/selection.json is frozen. Choosing a model because it wins under noise would leak the test split into the selection, and the reported test accuracy would no longer be an unbiased estimate."
+  }
+}
