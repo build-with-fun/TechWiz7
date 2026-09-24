@@ -65,7 +65,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 DEFAULT_MANIFEST = "audio_dataset/manifest_with_split.csv"
 METRICS_DIR = "python_models/metrics"
-BEST_DIR = "python_models/best_model"
+BEST_DIR = "python_models/best"  # contract: src/services/pipeline.py DEFAULT_PYTHON_MODEL_DIR
 #: Shared with train_classical.py.  A feature cache keyed by audio id + feature version, so
 #: the deep and classical runs do not extract the same 3,000 files twice.
 FEATURE_CACHE = "python_models/.cache/features_{version}.json"

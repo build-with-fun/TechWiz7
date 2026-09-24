@@ -60,7 +60,7 @@ from python_models import classical, dataset, tuning  # noqa: E402
 
 DEFAULT_MANIFEST = "audio_dataset/manifest_with_split.csv"
 METRICS_DIR = "python_models/metrics"
-BEST_DIR = "python_models/best_model"
+BEST_DIR = "python_models/best"  # contract: src/services/pipeline.py DEFAULT_PYTHON_MODEL_DIR
 FEATURE_CACHE = "python_models/.cache/features_{version}.json"
 MODEL_VERSION = "1.0.0"
 
