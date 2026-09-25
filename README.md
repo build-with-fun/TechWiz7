@@ -1,192 +1,63 @@
-# SonicSentinel AI — Real-Time Sound-Event Detection
+# SonicSentinel AI
 
-Aptech **NextWave AI and ML** competition project (AcousticX Intelligence).
-SonicSentinel AI classifies uploaded clips and live microphone audio into ten sound
-classes with a locally trained **Python model**, independently classifies the same
-audio with a separately trained **Google Teachable Machine** model, compares the two,
-evaluates audio quality, assigns severity, and raises/escalates alerts for critical
-events.
+SonicSentinel is a sound-event review console for uploaded recordings and consented microphone sessions. It classifies ten types of sound, compares a locally trained Python model with a separately trained Google Teachable Machine (GTM) audio model, and keeps the evidence behind alerts and manual reviews. It is a competition prototype for supervised operators, not an emergency dispatch system.
 
-> © Aptech Limited — SRS v1.0. This repository is the competition submission.
+The ten categories are Machinery Fault, Glass Breaking, Alarm or Siren, Vehicle Horn, Animal Sound, Gunshot, Panic Scream, Aggression, Person Asking for Help, and Background Noise. The [SRS audit](PROJECT_AUDIT.md) maps every functional requirement to the implementation and remaining gaps.
 
-## The ten classes
+## What you can do
 
-Machinery Fault · Glass Breaking · Alarm or Siren · Vehicle Horn · Animal Sound ·
-Gunshot · Panic Scream · Aggression · Person Asking for Help · Background Noise
+- Upload WAV, MP3, FLAC, OGG, or M4A audio; inspect quality, both model scores, agreement, waveform, and an event record.
+- Start and stop a browser microphone session with explicit consent. Each window is associated with a stored event and session history.
+- Work through alerts and uncertain results using the security-operator and reviewer roles.
+- Search event history, inspect the audit trail, and generate event/period reports. Administrators can export CSV/XLSX and preview or run retention cleanup.
+- Edit validated alert and threshold configuration through the administrator interface.
 
-Critical classes (higher recall floor): Gunshot, Glass Breaking, Panic Scream,
-Aggression, Person Asking for Help.
+Analysis requires **both** model artifacts. The app starts without them, but upload and live classification return a clear unavailable response. This prevents a single-model result from being presented as a comparison. Check `/api/health/ready` before a demo. The current measured Python-model results and any GTM verification result are recorded in [PROJECT_REPORT.md](PROJECT_REPORT.md); do not infer accuracy from the interface.
 
-## Architecture at a glance
+**Model limitation:** the included GTM export is operational but scored only **27.78% accuracy on all 450 held-out clips** through the server path. The served Python model's recorded full-test accuracy is **69.78%**. Neither meets the SRS acceptance target. Use this as a review prototype, not as an unattended safety detector.
 
-- **Web app** — Flask 3 (blueprints under `src/api/`, Jinja templates, session auth).
-- **Audio pipeline** — `audio_preprocessing/` (decode → resample → quality verdict),
-  `feature_extraction/` (locked 254-column vector, `audiofeat-1.0.0`).
-- **Python model** — xgboost (selected over SVM/RF/ET/GB in the sweep), trained by
-  `python_models/train_classical.py` under the harness in `python_models/tuning.py`
-  (selection on validation only; test scored exactly once).
-- **GTM model** — trained in the browser at teachablemachine.withgoogle.com on the same
-  training recordings (2-second segments, `audio_dataset/gtm_samples/`), exported as
-  TF.js, converted to Keras and served by `src/inference/gtm_predictor.py`. The Python
-  model's prediction is structurally unable to reach it (`tests/test_model_independence.py`).
-- **Comparison** — `src/inference/consistency.py`: class match + |Python − GTM| top-class
-  difference → Strong / Acceptable / Weak Match, Model Disagreement, Uncertain Result.
-- **Alerts** — configurable JSON rules in `alert_rules/` (category, minimum confidence,
-  top-two margin, consecutive detections, model agreement, audio quality, severity,
-  escalation, manual review).
+## Run locally
 
-## 1. Installation
-
-### Prerequisites
-
-| Software | Version | Notes |
-|---|---|---|
-| OS | Linux (tested on Ubuntu 24.04) / macOS / Windows+WSL | |
-| Python | **3.12** | torch/librosa wheels; 3.13+ not supported |
-| FFmpeg | 6.x | `sudo apt install ffmpeg` — OGG/M4A transcode |
-| Git | any | |
-
-### Steps
+Use Python 3.12, FFmpeg, and a modern browser. From the repository root:
 
 ```bash
-git clone <repository-url> sonicsentinel-ai
-cd sonicsentinel-ai
-
-# virtual environment (Python 3.12)
 python3.12 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-# torch CPU wheel (already pinned in requirements.txt):
-.venv/bin/pip install torch==2.14.0+cpu \
-    --index-url https://download.pytorch.org/whl/cpu
-
-# convert the exported Teachable Machine model (gtm_model/model.json → gtm_model.h5)
-.venv/bin/pip install tensorflowjs==4.20.0 tensorflow==2.19.0
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python database/init_db.py
+SST_SECRET_KEY="$(.venv/bin/python -c 'import secrets; print(secrets.token_hex(32))')" \
+  .venv/bin/python -c 'from src.app import create_app; create_app().run(host="127.0.0.1", port=5055)'
 ```
 
-### Database configuration and initialization
+Open `http://127.0.0.1:5055/login`. The explicit `database/init_db.py` step creates the SQLite schema and demo accounts from `database/seed_credentials.json`; app startup creates only the schema if needed. The evaluator account is `evaluator` / `Eval#Sonic2026`; the reviewer is `reviewer` / `Review#Sonic2026`; the security operator is `operator` / `Operate#Sonic2026`. These are deliberately published demo credentials. Replace the seed file or set `SST_SEED_CREDENTIALS` before any public deployment, and set `SST_PRODUCTION=1` plus a strong `SST_SECRET_KEY` behind HTTPS so session cookies are secure. The default database is `database/sonicsentinel.db`, and audio evidence is under `data/storage/`; set `SST_DB_PATH` and `SST_STORAGE_DIR` to change those paths.
 
-SQLite by default — no server needed. The first app boot creates and seeds
-`database/sonicsentinel.db`. To force initialization:
+The Python bundle lives in `python_models/best/`. The separate GTM TensorFlow.js export, converted server model and frontend configuration live in `gtm_model/`. To reproduce training, generate train-only imports with `audio_dataset/scripts/make_gtm_imports.py`, then follow [the GTM handoff](gtm_model/upload_package/README.md). The training browser run uses Playwright as an optional tool dependency; install it with `.venv/bin/python -m pip install -r requirements-training.txt` and run `tools/train_gtm_browser.py`. The source audio and generated ZIPs are ignored by Git, so a clean clone needs the authorized corpus supplied separately.
+
+## Verify
 
 ```bash
-.venv/bin/python -c "
-from src.db import create_engine_for, default_db_path, init_db
-init_db(create_engine_for(default_db_path()))
-"
+.venv/bin/python -m pip install -r requirements-test.txt
+.venv/bin/python -m pytest -q
+.venv/bin/python audio_dataset/scripts/verify_dataset.py --strict
+.venv/bin/python tools/evaluate_gtm.py
+.venv/bin/python tools/check_e2e_upload.py
+.venv/bin/python -m compileall -q src audio_preprocessing feature_extraction python_models audio_dataset
 ```
 
-### Model placement
+`--quick` skips the expensive hash/content-uniqueness checks. The full test suite needs the optional PyTorch test dependency and its deep-model experiments may download pretrained MobileNet weights; see [TEST_PLAN.md](TEST_PLAN.md) for the latest actual result and any environment limitation. For a quick API check, visit `/api/health` and `/api/health/ready`.
 
-- **Python model:** `python_models/best/` (`model.joblib`, `label_encoder.json`,
-  `feature_config.json`, `model_meta.json`). Retrain:
-  `.venv/bin/python -m python_models.train_classical`
-- **GTM model:** `gtm_model/` — place the TM export (`metadata.json`, `model.json`,
-  `weights.bin`) here, then convert:
-  `.venv/bin/python -c "import tensorflowjs as tfjs; ..."` → `gtm_model.h5` (see
-  `gtm_model/upload_package/README.md`), and verify with
-  `tools/capture_gtm_frontend.py verify --recordings gtm_model/browser_recordings.json`.
-  Without an export the app still boots; live windows answer 503 `pipeline_unavailable`.
+To inspect a single clip without writing to the database, run `.venv/bin/python tools/predict.py sample_audio/gunshot.wav` when the local sample corpus is present. The two models currently disagree on this sample and route it to manual review; the output changes if the models are retrained.
 
-### Environment variables
+## Where to look
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `SONICSENTINEL_DB` | `database/sonicsentinel.db` | SQLite path |
-| `SECRET_KEY` | dev fallback | **Set in production** — session signing |
-| `FLASK_ENV` | `production` | |
+| Area | Files |
+|---|---|
+| Flask routes and role checks | `src/api/`, `src/auth.py`, `src/app.py` |
+| Audio and model pipeline | `audio_preprocessing/`, `feature_extraction/`, `src/inference/`, `src/services/pipeline.py` |
+| Storage and relational records | `src/models.py`, `src/services/persistence.py`, `src/db.py` |
+| Interface | `templates/`, `static/css/`, `static/js/` |
+| Configuration | `config/`, `alert_rules/` |
+| Training and evidence | `audio_dataset/`, `python_models/`, `gtm_model/`, `reports/` |
 
-## 2. Execution
+The [architecture](ARCHITECTURE.md), [API reference](API_DOCUMENTATION.md), [database schema](DATABASE_SCHEMA.md), [design system](DESIGN_SYSTEM.md), [data attribution](DATA_ATTRIBUTION.md), and [demo guide](DEMO_GUIDE.md) cover the details needed to develop or present the project. [AI_USAGE.md](AI_USAGE.md) records assistance disclosure; no team contribution or competition history is implied by generated files.
 
-```bash
-# development
-.venv/bin/python -c "from src.app import create_app; app = create_app(); app.run(port=5055)"
-
-# production
-.venv/bin/gunicorn -w 4 -b 0.0.0.0:8000 "src.app:create_app()"
-
-# health
-curl http://127.0.0.1:5055/api/health
-```
-
-Then open <http://127.0.0.1:5055/>.
-
-### Tests
-
-```bash
-.venv/bin/python -m pytest -q          # full suite
-.venv/bin/python -m pytest -q tests/test_alerts_api.py
-```
-
-## 3. Using the application
-
-1. **Register and log in** — `/register`, `/login`. Roles: normal user, audio reviewer,
-   security operator, maintenance operator, administrator.
-2. **Upload audio** — Audio page → choose a WAV/MP3/FLAC/OGG/M4A clip (≤ 60 s). The app
-   decodes it, shows metadata, waveform and spectrogram, then runs both models.
-3. **Python prediction** — predicted class + confidence for **every** class.
-4. **GTM prediction** — the same audio is preprocessed and classified by the exported
-   Teachable Machine model independently.
-5. **Model comparison** — class-match status, top-class confidence difference
-   |Python − GTM|, top-two margin, and the consistency verdict (Strong/Acceptable/
-   Weak Match, Model Disagreement, Uncertain Result).
-6. **Audio quality** — Good / Acceptable / Poor / Unusable verdict with reasons.
-7. **Alerts** — critical detections raise alerts; acknowledge / dismiss (with reason) /
-   escalate from the Alerts page.
-8. **Manual review** — reviewers confirm or override (final class/severity must be
-   justified in comments; re-deciding a decided review is rejected).
-9. **Dashboard** — event history with filters, severity distribution, model agreement.
-10. **Live monitoring** — Live page grants microphone consent; 1–3 s windows are pushed
-    continuously, repeated detections are grouped, critical windows alert immediately.
-11. **Reports & exports** — per-event and period reports; CSV/XLSX export (admin).
-
-### Administrator / evaluator credentials
-
-| Role | Username | Password |
-|---|---|---|
-| Administrator | `admin` | `Admin#Sonic2026` |
-| Audio reviewer | `reviewer` | `Review#Sonic2026` |
-| Security operator | `operator` | `Operate#Sonic2026` |
-
-*(Change these before any public deployment.)*
-
-## 4. Sample audio
-
-`sample_audio/` holds one permitted clip per class for quick evaluation, plus a silent
-clip, an invalid file, and a low-quality clip to exercise the failure paths.
-
-## 5. Assumptions and limitations
-
-- **Assumptions.** Single-node deployment; SQLite is sufficient for the expected load;
-  the microphone is available on the user's browser; evaluators test via the UI and the
-  REST API; clips longer than 60 s are truncated rather than streamed.
-- **Limitations.** Classical + deep models are trained on 300 originals/class — rare
-  real-world acoustic variation (far-field gunshots, multi-source overlap) is
-  under-represented; synthetic TTS clips make Person Asking for Help easier in-domain
-  than outdoors; the GTM model runs a 2-second frontend window, so long events are
-  scored on their loudest segment; CPU-only inference (no GPU assumed).
-- **Noise robustness, false positives/negatives** are analysed in
-  `documentation/perception/` and the project report.
-
-## 6. Repository map
-
-```
-src/                 Flask app: api/, services/, inference/, auth, db, errors
-templates/ static/   Jinja pages + assets
-audio_dataset/       manifest, frozen split, verify scripts, GTM samples
-python_models/       training scripts, harness, saved model (best/)
-gtm_model/           TM export + converted model + upload package
-feature_extraction/  locked 254-column extractor
-audio_preprocessing/ decode/resample/quality pipeline
-alert_rules/         configurable JSON rules (severity, review, retention)
-database/            SQLite database + schema scripts
-tests/               pytest suite (functional/integration/negative/security)
-documentation/       dev log, API contract, perception studies
-tools/               smoke_pipeline.py, capture_gtm_frontend.py
-reports/ notebooks/ screenshots/ sample_audio/  evidence folders
-```
-
-## 7. Integrity statement
-
-See `AI_USAGE.md` (AI tool declaration) and `documentation/devlog.md` (development
-log). The final sound classification is generated **only** by the Python model and the
-GTM model — never by an external generative-AI API.
+Visual review captures: desktop [sign-in](screenshots/13_login_refreshed.png), [dashboard](screenshots/14_dashboard_refreshed.png) and [live monitoring](screenshots/17_live_1440.png), plus 390px [registration](screenshots/15_register_mobile.png), [sign-in](screenshots/16_login_mobile.png), [upload](screenshots/17_upload_390.png) and [live monitoring](screenshots/17_live_390.png). They are layout evidence; model behavior is verified separately.
