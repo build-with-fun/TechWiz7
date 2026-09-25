@@ -4,7 +4,7 @@
 classifier and a Google Teachable Machine model — and what we learned by forcing them
 to disagree.*
 
-**Word count: ~2,300.**
+**Word count: ~2,500.**
 
 ---
 
@@ -154,7 +154,75 @@ them:
 - **Every decision is auditable.** Config edits, review decisions, retention purges
   (respecting legal holds) all land in an audit log with before/after content.
 
-## 8. What we would do differently
+## 8. Waves, spectrograms, and what the models actually see
+
+Before writing any model code, we spent a day just looking. The waveform view shows a
+gunshot as a single dense vertical burst and a siren as a slow amplitude wave; the
+spectrogram view shows a siren's frequency *sweep* (a rising ribbon), a vehicle horn's
+two steady horizontal harmonics, glass breaking as a spray of vertical broadband
+lines, and speech as formant bands that move with the words.
+
+Two design decisions came directly from staring at these pictures. First, why Animal
+Sound confuses the model: a dog bark and a rooster crow look nothing alike in a
+spectrogram — different fundamental frequencies, different temporal envelope — so one
+class was asking the model to draw one boundary around several unconnected phenomena.
+Second, why sirens and horns collide: in the mel scale's upper region both classes
+show strong harmonic stacks; they differ mainly in *how the harmonics move over time*,
+which is a property the 254 summary features average away but a CNN over mel frames
+retains. That observation drove the deep-model path more than any paper did.
+
+We also learned to distrust single measurements. A clip can have a perfect RMS level
+and still be unusable if it contains thirty seconds of silence followed by one second
+of event. So the quality verdict combines silence ratio, clipping fraction, and
+signal-to-noise estimate, and the preprocessing stage reports *why* it flagged a clip
+— reasons that end up in the event record and the review UI, not just a boolean.
+
+## 9. Noise robustness, false positives, false negatives
+
+We tested robustness the unglamorous way: by degrading our own test clips. Adding
+stationary pink noise at 10 dB SNR barely moved Gunshot or Glass Breaking recall —
+their broadband transients survive — but dropped Alarm or Siren noticeably, because
+tonal sweeps sit exactly where stationary noise lives. At 5 dB SNR, Background Noise
+recall *rose* (everything started looking like noise) while Aggression recall fell
+through the floor.
+
+The false-positive analysis told a sharper story than the accuracy number. Most false
+"Gunshot" alerts traced back to fireworks-adjacent transients and door slams inside
+Background Noise recordings — acoustically, a legitimate confusion; a shotgun and a
+car backfire share their first 100 ms. Most false negatives for "Panic Scream" were
+distant screams at low SNR, where the spectral fingerprint is real but buried. Both
+findings fed the alert rules: gunshot alerts now require either model agreement or a
+repeat detection within the window, and distant-scream events are routed to manual
+review rather than auto-dismissed.
+
+The false-negative analysis also changed the *severity* mapping. A missed gunshot
+that later surfaces in event history is worse than a false alarm that a human clears
+in two seconds — so the critical-class recall floor (0.85) is deliberately stricter
+than the accuracy floor, and alert thresholds for critical classes sit lower than for
+informational ones. Threshold tuning is a policy decision, and we made it explicit in
+`alert_rules.json` rather than hiding it in code.
+
+## 10. Security, privacy, and the things we refuse to do
+
+An audio monitoring system is a privacy instrument by definition, so the constraints
+are part of the design. Live monitoring requires explicit browser consent per session,
+recorded with the session row; sessions are stopped server-side, not abandoned.
+Retention is configurable per artifact type (event records, uploaded audio, live
+session audio) with a purge command that respects legal holds — a flagged
+investigation's audio survives retention expiry. Access is role-gated: a normal user
+sees events; only reviewers decide reviews; only administrators touch config, users,
+and retention; every privileged action lands in the audit log with actor, action,
+and content diff.
+
+On security: uploads are validated by content (magic bytes and decodability), not by
+extension; all API writes re-check authorization server-side rather than trusting the
+UI; passwords are stored hashed with per-user salts and a minimum-length policy
+enforced server-side; error envelopes return stable machine-readable codes without
+stack traces. And per the competition's integrity rules — which we agree with — no
+external generative-AI API participates in any runtime decision: the final sound
+classification comes only from the two trained models.
+
+## 11. What we would do differently
 
 Three things stand out. First, we would collect harder data *before* training: the
 Animal Sound class should have been split into sub-classes from the start, since one
