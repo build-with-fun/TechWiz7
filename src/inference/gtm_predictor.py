@@ -1,30 +1,9 @@
-"""
-Google Teachable Machine audio model adapter — the INDEPENDENT second model.
+"""Serve the separately trained Teachable Machine audio model.
 
-Owner: lorena.  SRS Step 9, Step 10, Step 11, Deliverable 3 and 4.
-
-INDEPENDENCE IS THE WHOLE POINT
--------------------------------
-The SRS requires two separately trained models and requires that the Python model's
-prediction or confidence is never an input to the GTM model. Read this module's public
-surface: `predict()` accepts an AudioSource and a preprocessor. There is no parameter
-anywhere on this path that accepts a class label, a confidence, a top-k list, or a
-PredictionResult. That is not an accident and it must stay that way — it is the structural
-guarantee that the independence claim is true rather than asserted.
-`tests/test_model_independence.py` proves it by inspection.
-
-WHY THE FRONTEND IS CONFIGURED, NOT GUESSED
--------------------------------------------
-GTM's exported TF.js model is the CNN only; the spectrogram that feeds it is computed by
-GTM's own JavaScript frontend outside the model. To run that model server-side we must
-reproduce that frontend exactly. A single wrong parameter (mel bands, frame count, sample
-rate, normalisation) yields a model that still runs, still returns confident numbers, and
-is completely wrong — the worst kind of failure.
-
-So every frontend parameter lives in `gtm_model/frontend_config.json`, captured from the
-real export, and `verify_frontend.py` checks our server-side predictions against
-predictions recorded from the browser on the same clips. Until that agreement check has
-run, the server-side GTM path reports itself as UNVERIFIED.
+The predictor receives audio, never the Python model's result. The exported network
+needs its matching browser-FFT frontend; a plausible but different spectrogram can
+produce confident, incorrect predictions. ``frontend_verified`` remains false until
+predictions on identical clips have been compared with the browser implementation.
 """
 
 from __future__ import annotations
@@ -56,10 +35,11 @@ class GtmFrontendConfig:
     n_frames: int
     fmin: float = 0.0
     fmax: float | None = None
-    normalize_mode: str = "none"          # "none" | "div100" | "log" | "max"
+    normalize_mode: str = "none"          # browser FFT uses "zscore"
     model_input_shape: list[int] | None = None
     frontend_id: str = "unverified"
     source: str = "unknown"
+    frontend_kind: str = "mel"
 
     @classmethod
     def load(cls, path: Path) -> "GtmFrontendConfig":
@@ -85,6 +65,7 @@ class GtmFrontendConfig:
             model_input_shape=raw.get("model_input_shape"),
             frontend_id=str(raw.get("frontend_id", "unverified")),
             source=str(raw.get("source", "unknown")),
+            frontend_kind=str(raw.get("frontend_kind", "mel")),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -99,6 +80,7 @@ class GtmFrontendConfig:
             "model_input_shape": self.model_input_shape,
             "frontend_id": self.frontend_id,
             "source": self.source,
+            "frontend_kind": self.frontend_kind,
         }
 
 
@@ -108,8 +90,28 @@ def compute_spectrogram(samples: Any, config: GtmFrontendConfig) -> Any:
     Implemented with numpy + librosa so it is testable and inspectable. The parameters are
     the config's, never literals, so a corrected frontend means editing JSON, not code.
     """
-    import librosa
     import numpy as np
+
+    if config.frontend_kind == "browser_fft":
+        y = np.asarray(samples, dtype="float32").ravel()
+        expected = int(round(config.window_sec * config.sample_rate))
+        y = np.pad(y[:expected], (0, max(0, expected - len(y))))
+        fft_size, hop = 2048, 1024
+        padded = np.pad(y, (fft_size - hop, fft_size))
+        window = np.blackman(fft_size).astype(np.float32)
+        blocks = np.stack([
+            padded[start:start + fft_size] * window
+            for start in np.arange(config.n_frames) * hop
+        ])
+        magnitudes = np.abs(np.fft.rfft(blocks, axis=1)[:, :config.n_mels]) / fft_size
+        result = np.clip(20 * np.log10(np.maximum(magnitudes, 1e-16)), -320, 0)
+        if config.normalize_mode == "zscore":
+            mean = result.mean()
+            std = result.std()
+            result = (result - mean) / (std + 1e-7)
+        return result.astype("float32")
+
+    import librosa
 
     y = np.asarray(samples, dtype="float32").ravel()
 
@@ -234,9 +236,9 @@ class GtmModelPredictor:
         keras_path = gtm_dir / "gtm_model.h5"
         if keras_path.exists():
             try:
-                import tensorflow as tf
+                import tf_keras
 
-                return tf.keras.models.load_model(str(keras_path), compile=False), "keras-h5"
+                return tf_keras.models.load_model(str(keras_path), compile=False), "keras-h5"
             except Exception as exc:  # noqa: BLE001 - surface the real reason
                 raise ModelLoadError(f"failed to load {keras_path}: {exc}") from exc
 
@@ -284,12 +286,12 @@ class GtmModelPredictor:
         window = self._select_window(preprocessed)
         spectrogram = compute_spectrogram(window, self.frontend)
 
-        model_input = spectrogram
+        model_input = spectrogram[None, ..., None]
         shape = self.frontend.model_input_shape
-        if shape:
-            model_input = spectrogram.reshape(shape) if len(shape) == 3 else spectrogram[None, ...]
-        else:
-            model_input = spectrogram[None, ..., None]
+        if shape and list(model_input.shape[1:]) != [value for value in shape if value is not None][-3:]:
+            raise ModelLoadError(
+                f"GTM frontend produced {model_input.shape}, expected {shape}"
+            )
 
         started = time.perf_counter()
         output = self.model.predict(np.asarray(model_input, dtype="float32"), verbose=0)
@@ -333,16 +335,14 @@ class GtmModelPredictor:
         import numpy as np
 
         y = np.asarray(preprocessed.samples, dtype="float32").ravel()
-        n = int(round(self.frontend.window_sec * self.frontend.sample_rate))
-        if y.size <= n:
-            return y
-
-        # resample to the frontend rate before windowing, if preprocessing used another
         if preprocessed.sample_rate != self.frontend.sample_rate:
             import librosa
 
             y = librosa.resample(y, orig_sr=preprocessed.sample_rate,
                                  target_sr=self.frontend.sample_rate).astype("float32")
+        n = int(round(self.frontend.window_sec * self.frontend.sample_rate))
+        if y.size <= n:
+            return y
 
         hop = max(1, n // 2)
         best_start, best_energy = 0, -1.0

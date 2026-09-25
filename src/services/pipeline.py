@@ -148,6 +148,9 @@ class RepeatTracker:
         confidence: float = 0.0,
         at: float | None = None,
         source: str = "upload",
+        needed: int | None = None,
+        min_quality: str | None = None,
+        requires_agreement: bool | None = None,
     ) -> dict[str, Any]:
         """Record one window and return the confirmation state for it.
 
@@ -157,6 +160,10 @@ class RepeatTracker:
         """
         now = float(at if at is not None else time.time())
         det = Detection(class_name, now, float(confidence), bool(agreed), str(quality), source)
+        required = max(1, int(needed if needed is not None else self.needed))
+        agreement_required = (self.requires_agreement if requires_agreement is None
+                              else bool(requires_agreement))
+        quality_floor = min_quality or self.min_quality
 
         with self._lock:
             # Any streak for a different class is over: this is what "consecutive" means.
@@ -165,15 +172,21 @@ class RepeatTracker:
                     self._streaks.pop(other, None)
                     self._confirmed.pop(other, None)
 
-            ok, why = self.qualifies(det)
+            if agreement_required and not det.agreed:
+                ok, why = False, "the two models named different classes"
+            elif self._store is not None and not self._store.quality_at_least(det.quality, quality_floor):
+                ok, why = False, f"audio quality '{det.quality}' is below {quality_floor}"
+            else:
+                ok, why = True, ""
             if not ok:
                 # A disqualifying window does not merely fail to add -- it breaks the streak.
                 self._streaks.pop(class_name, None)
                 self._confirmed.pop(class_name, None)
                 return {
                     "consecutive": 0,
-                    "needed": self.needed,
+                    "needed": required,
                     "confirmed": False,
+                    "newly_confirmed": False,
                     "window_seconds": self.window_seconds,
                     "qualifies": False,
                     "note": f"Not counted towards confirmation: {why}.",
@@ -182,36 +195,39 @@ class RepeatTracker:
             streak = self._streaks.setdefault(class_name, [])
             if streak and (now - streak[-1].at) > self.window_seconds:
                 streak.clear()  # the gap was too long to call these detections consecutive
+                self._confirmed.pop(class_name, None)
             streak.append(det)
 
             consecutive = len(streak)
             already = self._confirmed.get(class_name) is not None
-            confirmed = already or consecutive >= self.needed
+            confirmed = already or consecutive >= required
+            newly_confirmed = confirmed and not already
             if confirmed and not already:
                 self._confirmed[class_name] = now
 
             if already:
                 note = (
-                    f"{class_name} was already confirmed after {self.needed} consecutive "
+                    f"{class_name} was already confirmed after {required} consecutive "
                     "detections; the alert for this streak is not raised twice."
                 )
             elif confirmed:
                 note = (
                     f"Confirmed after {consecutive} consecutive detections within "
-                    f"{self.window_seconds:.0f} s (required {self.needed})."
+                    f"{self.window_seconds:.0f} s (required {required})."
                 )
                 streak.clear()  # start counting for a fresh alert after this one
             else:
                 note = (
-                    f"{consecutive} of {self.needed} consecutive detections; "
-                    f"{self.needed - consecutive} more needed within "
+                    f"{consecutive} of {required} consecutive detections; "
+                    f"{required - consecutive} more needed within "
                     f"{self.window_seconds:.0f} s."
                 )
 
             return {
                 "consecutive": consecutive,
-                "needed": self.needed,
+                "needed": required,
                 "confirmed": bool(confirmed),
+                "newly_confirmed": bool(newly_confirmed),
                 "window_seconds": self.window_seconds,
                 "qualifies": True,
                 "note": note,
@@ -437,6 +453,8 @@ def severity_block(
     quality: str,
     classes_agree: bool,
     critical: bool | None = None,
+    consecutive: int = 0,
+    noise_level_dbfs: float | None = None,
 ) -> dict[str, Any]:
     """The class's severity, its display name, its action, and whether the alert may fire.
 
@@ -481,7 +499,30 @@ def severity_block(
             ok = False
         gate("min_audio_quality", minimum, str(quality), ok)
 
+    gate("enabled", True, bool(rule.get("enabled", True)), bool(rule.get("enabled", True)))
+    if class_name == "Background Noise":
+        limit = float((rule.get("thresholds") or {}).get("noise_level_dbfs_limit", -35.0))
+        gate("noise_level_dbfs", limit, noise_level_dbfs,
+             noise_level_dbfs is not None and noise_level_dbfs >= limit)
+
     eligible = all(g["passed"] for g in gates) if gates else True
+
+    matched_escalation = None
+    for escalation in rule.get("escalation", []):
+        conditions = escalation.get("when") or {}
+        observed = {
+            "confidence": confidence,
+            "consecutive": consecutive,
+            "top_two_margin": top_two_margin,
+            "noise_level_dbfs": noise_level_dbfs,
+            "quality": quality,
+        }
+        if _escalation_matches(conditions, observed):
+            matched_escalation = escalation.get("id")
+            recorded = escalation.get("to_severity", recorded)
+            shown = store.display_severity(recorded)
+            rule = {**rule, "recommended_action": escalation.get("to_action", rule.get("recommended_action"))}
+            break
 
     return {
         "recorded": recorded,
@@ -494,7 +535,31 @@ def severity_block(
         "gates": gates,
         "srs_ref": rule.get("srs_ref"),
         "rule_class": rule.get("class", class_name),
+        "matched_escalation": matched_escalation,
     }
+
+
+def _escalation_matches(conditions: Mapping[str, Any], observed: Mapping[str, Any]) -> bool:
+    """Evaluate only conditions backed by measurements in this decision record."""
+    if "all" in conditions:
+        return all(_escalation_matches(item, observed) for item in conditions["all"])
+    fields = {
+        "confidence_gte": "confidence",
+        "consecutive_gte": "consecutive",
+        "top_two_margin_gte": "top_two_margin",
+        "noise_level_dbfs_gte": "noise_level_dbfs",
+    }
+    for key, required in conditions.items():
+        if key == "quality_in":
+            if observed.get("quality") not in required:
+                return False
+        elif key in fields:
+            value = observed.get(fields[key])
+            if value is None or float(value) < float(required):
+                return False
+        else:
+            return False
+    return bool(conditions)
 
 
 # ======================================================================================
@@ -831,12 +896,10 @@ class AnalysisPipeline:
         if not (Path(model_dir) / "model.joblib").exists():
             raise ModelsUnavailable(
                 f"no saved Python model at {model_dir}/model.joblib. "
-                "Owner: bilal/nadia (the winning model is saved by the training script via "
-                "src.inference.predictor.save_bundle). Run that training/save step before "
-                "starting the web app."
+                "Train and export the Python classifier before starting analysis."
             )
         try:
-            python_predictor = PythonModelPredictor.load(model_dir, extractor)
+            python_predictor = PythonModelPredictor.load(model_dir, extractor.extract)
         except Exception as exc:
             raise ModelsUnavailable(
                 f"the saved Python model at {model_dir} could not be loaded: {exc}"
@@ -845,9 +908,8 @@ class AnalysisPipeline:
         if not Path(gtm_dir).exists():
             raise ModelsUnavailable(
                 f"no Google Teachable Machine export at {gtm_dir}. "
-                "Owner: omar (download the TM audio export and record "
-                "gtm_model/frontend_config.json + metadata.json). The dual-model mandate "
-                "cannot be satisfied with one model."
+                "Install the separate Teachable Machine audio export and frontend "
+                "configuration before starting analysis."
             )
         try:
             gtm_predictor = GtmModelPredictor.load(gtm_dir)
@@ -940,6 +1002,7 @@ class AnalysisPipeline:
         origin: str = "upload",
         meta: Mapping[str, Any] | None = None,
         at: float | None = None,
+        persist: Callable[[dict[str, Any]], Any] | None = None,
     ) -> dict[str, Any]:
         """Classify one audio input and return the whole decision record.
 
@@ -1126,14 +1189,7 @@ class AnalysisPipeline:
         t0 = time.perf_counter()
         primary = py_result.predicted_class  # the Python model drives the decision; the
         #                                       GTM result grades it (SRS Step 11)
-        severity = severity_block(
-            primary,
-            store=self.store,
-            confidence=float(py_result.confidence),
-            top_two_margin=float(comparison.top_two_margin_python),
-            quality=str(record["quality"].get("verdict")),
-            classes_agree=bool(comparison.classes_agree),
-        )
+        rule = self.store.rule_for_class(primary)
         confirmation = self.tracker.observe(
             class_name=primary,
             agreed=bool(comparison.classes_agree),
@@ -1141,9 +1197,23 @@ class AnalysisPipeline:
             confidence=float(py_result.confidence),
             at=at,
             source=origin,
+            needed=rule.get("required_consecutive_detections"),
+            min_quality=rule.get("min_audio_quality"),
+            requires_agreement=rule.get("requires_model_agreement"),
+        )
+        noise_level = (record["quality"].get("measurements") or {}).get("rms_dbfs")
+        severity = severity_block(
+            primary,
+            store=self.store,
+            confidence=float(py_result.confidence),
+            top_two_margin=float(comparison.top_two_margin_python),
+            quality=str(record["quality"].get("verdict")),
+            classes_agree=bool(comparison.classes_agree),
+            consecutive=confirmation["consecutive"],
+            noise_level_dbfs=noise_level,
         )
         alert = {
-            "raised": bool(severity["alert_eligible"] and confirmation["confirmed"]),
+            "raised": bool(severity["alert_eligible"] and confirmation["newly_confirmed"]),
             "eligible": bool(severity["alert_eligible"]),
             "confirmed": bool(confirmation["confirmed"]),
             "consecutive": confirmation["consecutive"],
@@ -1251,14 +1321,21 @@ class AnalysisPipeline:
         }
 
         # -- persistence -------------------------------------------------------------------
-        if self.persist is not None:
+        callback = persist if persist is not None else self.persist
+        if callback is not None:
             t0 = time.perf_counter()
             try:
-                stored = self.persist(record)
+                stored = callback(record)
                 if isinstance(stored, Mapping):
                     record["stored"] = dict(stored)
+                    if stored.get("event_ids"):
+                        record["event_id"] = stored["event_ids"][0]
+                    record["audio_id"] = stored.get("audio_id")
+                    record["alert_id"] = stored.get("alert_id")
+                    record["review_id"] = stored.get("review_id")
                 elif stored is not None:
                     record["stored"] = {"event_id": stored}
+                    record["event_id"] = stored
             except Exception as exc:
                 # Losing the write must not lose the analysis the user is waiting for; it is
                 # recorded so the failure is visible instead of silently dropped.
@@ -1269,13 +1346,17 @@ class AnalysisPipeline:
         return self._finish(record, started)
 
     # -- convenience wrappers ----------------------------------------------------------
-    def analyse_file(self, path: str | Path, *, origin: str = "upload", **meta: Any) -> dict[str, Any]:
+    def analyse_file(
+        self, path: str | Path, *, origin: str = "upload",
+        persist: Callable[[dict[str, Any]], Any] | None = None, **meta: Any,
+    ) -> dict[str, Any]:
         from src.inference.contract import AudioSource
 
         path = Path(path)
         payload = dict(meta)
         payload.setdefault("filename", path.name)
-        return self.analyse(AudioSource.from_path(path, origin=origin), origin=origin, meta=payload)
+        return self.analyse(AudioSource.from_path(path, origin=origin), origin=origin,
+                            meta=payload, persist=persist)
 
     def analyse_bytes(
         self,
@@ -1283,7 +1364,9 @@ class AnalysisPipeline:
         *,
         filename: str = "upload.wav",
         origin: str = "upload",
-        **meta: Any,
+        meta: Mapping[str, Any] | None = None,
+        persist: Callable[[dict[str, Any]], Any] | None = None,
+        **extra_meta: Any,
     ) -> dict[str, Any]:
         """Analyse in-memory upload bytes without a round trip through a temp file."""
         from src.inference.contract import AudioSource
@@ -1297,10 +1380,12 @@ class AnalysisPipeline:
         tmp_path = tmp_dir / f"{digest}{suffix}"
         if not tmp_path.exists():
             tmp_path.write_bytes(data)
-        payload = dict(meta)
+        payload = dict(meta or {})
+        payload.update(extra_meta)
         payload.setdefault("filename", filename)
         payload["sha256"] = hashlib.sha256(data).hexdigest()
-        return self.analyse(AudioSource.from_path(tmp_path, origin=origin), origin=origin, meta=payload)
+        return self.analyse(AudioSource.from_path(tmp_path, origin=origin), origin=origin,
+                            meta=payload, persist=persist)
 
     def analyse_samples(
         self,
@@ -1308,6 +1393,7 @@ class AnalysisPipeline:
         sample_rate: int,
         *,
         origin: str = "live",
+        persist: Callable[[dict[str, Any]], Any] | None = None,
         **meta: Any,
     ) -> dict[str, Any]:
         """Analyse one already-captured window (the live microphone path)."""
@@ -1317,6 +1403,7 @@ class AnalysisPipeline:
             AudioSource.from_samples(samples, sample_rate, origin=origin),
             origin=origin,
             meta=dict(meta),
+            persist=persist,
         )
 
     # -- internals ---------------------------------------------------------------------

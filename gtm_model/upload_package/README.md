@@ -1,28 +1,24 @@
-# Teachable Machine upload package — SonicSentinel AI
+# Teachable Machine audio training handoff
 
-These ten zips contain the **GTM training samples**: 5,230 two-second, 16 kHz mono
-segments cut ONLY from the frozen **train**-split recordings of the Python dataset
-(SRS Step 9: "GTM training samples must originate from the same underlying training
-recordings used by the Python model"). No validation or test recording contributed a
-sample, so neither model has ever seen a val/test clip — proven by
-`audio_dataset/manifests/gtm_segment_rows.csv` (parent lineage) and
-`audio_dataset/scripts/verify_dataset.py --strict` (26/28 → 28/28 checks incl. leakage).
+Google Teachable Machine's audio uploader accepts ZIP archives made by its **Download Samples** feature: `samples.json` containing browser-FFT frequency frames plus the matching WebM recordings. A plain ZIP of WAV files does not import. The older WAV archives in this folder remain source material, not files to feed directly into Teachable Machine.
 
-## How to train (browser)
-1. Open https://teachablemachine.withgoogle.com/train/audio → New Audio Project.
-2. Create the ten classes with EXACTLY these names (same class names as the Python model,
-   SRS Step 9):
-   Machinery Fault, Glass Breaking, Alarm or Siren, Vehicle Horn, Animal Sound,
-   Gunshot, Panic Scream, Aggression, Person Asking for Help, Background Noise
-3. For each class: Upload Audio Samples → choose the matching zip's contents
-   (zip is just a container; extract and multi-select the wavs).
-4. Train (default epochs are fine; TM audio uses a 20 ms-hop log-mel frontend).
-5. Export Model → Tensorflow.js → Download. The export zip must contain:
-   `metadata.json`, `model.json`, `weights.bin`.
-6. Place the three files in this repo's `gtm_model/` directory, then run:
-   `.venv/bin/python scripts/capture_gtm_frontend_config.py`  (writes frontend_config.json)
-   and the frontend verification script to produce `frontend_verification.json`.
+`audio_dataset/scripts/make_gtm_imports.py` builds ten compatible archives in `tm_imports/`, using 32 distinct **train-split parent recordings per class**. It checks every parent ID against `audio_dataset/manifest.csv` and writes `tm_imports/index.json` with the lineage. Validation and test parents are excluded. The generated ZIPs and local source audio are ignored by Git; a clean clone requires the authorized corpus separately. The FFT extraction is an engineering approximation of the browser analyser and must be validated against browser predictions before treating server inference as equivalent.
 
-Backlight: TM caps per-class samples; if an upload is refused, use the stratified
-sub-list in `index.csv` order (first N of each class) and record the reduced count in
-`gtm_metrics.json`.
+To reproduce the browser model:
+
+```bash
+.venv/bin/python audio_dataset/scripts/make_gtm_imports.py
+.venv/bin/python -m pip install -r requirements-training.txt
+.venv/bin/python tools/train_gtm_browser.py
+```
+
+The automation opens `https://teachablemachine.withgoogle.com/train/audio` without account credentials, names the ten classes, imports each archive, trains the transfer model, and downloads the TensorFlow.js export to `gtm_model/`. It may take several minutes on CPU and requires Chrome plus network access. It does **not** use validation or test clips for training. If reproducing manually, start with Background Noise, create the remaining class names exactly as in `config/classes.json`, use each class's Upload control to select its matching `tm_imports/*.zip`, then train and export the TensorFlow.js model.
+
+The included export was converted for server inference with:
+
+```bash
+.venv/bin/tensorflowjs_converter --input_format tfjs_layers_model --output_format keras \
+  gtm_model/model.json gtm_model/gtm_model.h5
+```
+
+`frontend_config.json` records the exported `[43,232,1]` browser FFT input and z-score normalization. `tools/evaluate_gtm.py` scored the server path on all 450 held-out clips; the result in `gtm_model/gtm_metrics.json` is 0.2778 accuracy and 0.3200 critical-class recall. The browser/server feature comparison remains unverified, so `frontend_verification.json` does not exist. Write it only after measuring same-clip agreement. Never substitute Python-model scores for a GTM result or report the SRS thresholds as achieved.
