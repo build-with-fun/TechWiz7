@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui %}
+{% import "_presentation.html" as pres %}
+{# ==========================================================================
+   templates/alerts.html — the alert console (FR liv–lvi).
+
+   One tab per alert status; a severity multi-filter shared by GET form, so
+   every view is a URL. Actions (acknowledge / resolve / escalate) are plain
+   POST forms against the alerts API slice — no inline JS, the CSP holds.
+   ========================================================================== #}
+{% set page_id = "main.alerts" %}
+{% block title %}Alerts — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <div class="page-head__main">
+    <div class="breadcrumb"><a href="{{ url_for('main.dashboard') }}">Home</a><span>Alerts</span></div>
+    <h1 class="page-title">{{ page_title or 'Alert console' }}</h1>
+    <p class="page-sub">Raised alerts with the rule that fired and the recommended operator action.</p>
+  </div>
+</header>
+
+<nav class="row" aria-label="Alert status">
+  <ul class="tag-list">
+    {% set status_tabs = [('Open', 'Open'), ('Acknowledged', 'Acknowledged'), ('Escalated', 'Escalated'), ('Dismissed', 'Dismissed'), ('Closed', 'Closed'), ('all', 'All')] %}
+    {% for value, label in status_tabs %}
+    <li>
+      <a class="chip {{ 'chip--critical' if value == current_status else '' }}"
+         href="{{ url_for('main.alerts', status=value) }}"
+         {% if value == current_status %}aria-current="page"{% endif %}>
+        <span class="chip__text">{{ label }}</span>
+        <span class="chip__glyph mono">{{ counts.get(value, 0) if value != 'all' else counts.values()|sum }}</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+</nav>
+
+<section class="panel">
+  <div class="panel__head">
+    <h2 class="panel__title">{{ ui.icon('filter', 14) }} Filter by severity</h2>
+    <p class="panel__note">Multi-select; blank shows every severity.</p>
+  </div>
+  <div class="panel__body">
+    <form class="filters" method="get" action="{{ url_for('main.alerts') }}" role="search" aria-label="Filter alerts by severity">
+      <input type="hidden" name="status" value="{{ current_status }}">
+      <div class="checkgrid">
+        {% for severity in severities %}
+        <span class="checkline">
+          <input type="checkbox" id="sev-{{ loop.index }}" name="severity" value="{{ severity }}"
+                 {% if severity in request.args.getlist('severity') %}checked{% endif %}>
+          <label for="sev-{{ loop.index }}">{{ severity }}</label>
+        </span>
+        {% endfor %}
+      </div>
+      <div class="filters__actions">
+        <button type="submit" class="btn btn--primary">{{ ui.icon('filter', 14) }} Apply</button>
+        <a class="btn" href="{{ url_for('main.alerts', status=current_status) }}">Clear</a>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel__head">
+    <h2 class="panel__title">{{ ui.icon('bell', 14) }} {{ current_status }} alerts</h2>
+    <p class="panel__note">Most recent first · up to 200 shown</p>
+  </div>
+  <div class="panel__body">
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr>
+            <th scope="col">Alert</th>
+            <th scope="col">Event</th>
+            <th scope="col">Severity</th>
+            <th scope="col">Message &amp; action</th>
+            <th scope="col">Raised</th>
+            <th scope="col">Status</th>
+            <th scope="col" class="actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for alert in alerts %}
+          <tr data-testid="alert-row-{{ alert.id }}">
+            <td class="mono">#{{ alert.id }}</td>
+            <td>
+              <a class="mono" href="{{ url_for('main.event_detail', event_id=alert.event_id) }}">{{ alert.event_id }}</a>
+              {% if alert.event and alert.event.predicted_class %}
+              <div class="summary-note">{{ alert.event.predicted_class }}</div>
+              {% endif %}
+            </td>
+            <td>{{ ui.severity_chip(alert.severity) }}</td>
+            <td>
+              <div>{{ alert.message }}</div>
+              {% if alert.recommended_action %}<div class="summary-note">{{ ui.icon('info', 11) }} {{ alert.recommended_action }}</div>{% endif %}
+            </td>
+            <td>{{ alert.created_at }}</td>
+            <td>{{ ui.alert_chip(alert.status) }}</td>
+            <td class="actions">
+              {% if can_acknowledge and alert.status == 'Open' %}
+              <form method="post" action="/api/alerts/{{ alert.id }}/acknowledge" class="row row--end">
+                <button type="submit" class="btn btn--sm btn--primary">{{ ui.icon('check', 12) }} Acknowledge</button>
+              </form>
+              {% elif alert.acknowledged_by_id %}
+              <span class="field__hint">ack'd {{ alert.acknowledged_at }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr class="table-empty"><td colspan="7">
+            {{ ui.empty_state('No alerts here', 'No alerts with status "' ~ current_status ~ '" and the selected severities. Open alerts appear the moment a raised rule matches an event.', action_text='View all alerts', action_href=url_for('main.alerts', status='all')) }}
+          </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

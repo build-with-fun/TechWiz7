@@ -192,8 +192,8 @@
         "dashboard": url_for('main.dashboard'),
         "analytics": url_for('main.analytics'),
         "login": url_for('auth.login'),
-        "eventDetail": url_for('main.event_detail', audio_id='__AUDIO_ID__'),
-        "eventAudio": url_for('main.event_audio', audio_id='__AUDIO_ID__'),
+        "eventDetail": url_for('main.event_detail', event_id='__EVENT_ID__'),
+        "eventAudio": url_for('main.event_audio', event_id='__EVENT_ID__'),
         "liveWindow": url_for('main.live') ~ '/windows'
       } | tojson }},
     "thresholds": {{ thresholds | tojson }}

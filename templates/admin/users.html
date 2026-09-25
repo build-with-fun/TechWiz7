@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui %}
+{% import "_presentation.html" as pres %}
+{# ==========================================================================
+   templates/admin/users.html — accounts and roles (FR i–ii).
+
+   Administrator view: role mix, account state (lock, forced password change)
+   and the audit trail columns. User create/edit lives in the admin API slice
+   so every change is validated and logged.
+   ========================================================================== #}
+{% set page_id = "admin.users" %}
+{% block title %}Users — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <div class="page-head__main">
+    <div class="breadcrumb"><a href="{{ url_for('main.dashboard') }}">Home</a><span>Admin</span><span>Users</span></div>
+    <h1 class="page-title">{{ page_title or 'Users & roles' }}</h1>
+    <p class="page-sub">Accounts, roles and login state (FR i–ii). {{ users | length }} accounts registered.</p>
+  </div>
+</header>
+
+<section class="panel">
+  <div class="panel__head">
+    <h2 class="panel__title">{{ ui.icon('users', 14) }} Role mix</h2>
+    <p class="panel__note">{{ roles | map(attribute='label') | join(' · ') }}</p>
+  </div>
+  <div class="panel__body">
+    <ul class="tag-list">
+      {% for role in roles %}
+      <li class="chip">
+        <span class="chip__text">{{ role.label }}</span>
+        <span class="chip__glyph mono">{{ role_counts.get(role.value, 0) }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel__head">
+    <h2 class="panel__title">{{ ui.icon('users', 14) }} Accounts</h2>
+    <p class="panel__note">Locked accounts and forced password changes are enforcement of the login FRs, shown here so an administrator can spot them.</p>
+  </div>
+  <div class="panel__body">
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr>
+            <th scope="col">User</th>
+            <th scope="col">Email</th>
+            <th scope="col">Role</th>
+            <th scope="col">State</th>
+            <th scope="col">Created</th>
+            <th scope="col">Last login</th>
+            <th scope="col" class="num">Failed logins</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for user in users %}
+          <tr data-testid="user-row-{{ user.username }}">
+            <td>
+              <span class="mono">{{ user.username }}</span>
+              {% if user.display_name %}<div class="summary-note">{{ user.display_name }}</div>{% endif %}
+            </td>
+            <td class="mono">{{ user.email or '—' }}</td>
+            <td><span class="chip"><span class="chip__glyph" aria-hidden="true">{{ ui.icon('user', 11) }}</span><span class="chip__text">{{ user.role_label }}</span></span></td>
+            <td>
+              {% if not user.is_active %}
+              <span class="chip chip--quality-poor"><span class="chip__glyph" aria-hidden="true">✕</span><span class="chip__text">Disabled</span></span>
+              {% elif user.is_locked() %}
+              <span class="chip chip--sev-critical"><span class="chip__glyph" aria-hidden="true">⏸</span><span class="chip__text">Locked</span></span>
+              {% elif user.must_change_password %}
+              <span class="chip chip--sev-medium"><span class="chip__glyph" aria-hidden="true">!</span><span class="chip__text">Must change password</span></span>
+              {% else %}
+              <span class="chip chip--quality-good"><span class="chip__glyph" aria-hidden="true">●</span><span class="chip__text">Active</span></span>
+              {% endif %}
+            </td>
+            <td>{{ user.created_at }}</td>
+            <td>{{ user.last_login_at or 'never' }}</td>
+            <td class="num">{{ user.failed_login_count }}</td>
+          </tr>
+          {% else %}
+          <tr class="table-empty"><td colspan="7">
+            {{ ui.empty_state('No users', 'No accounts exist yet. The bootstrap administrator is created on first boot.') }}
+          </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

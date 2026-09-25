@@ -323,6 +323,23 @@ def create_app(config: Mapping[str, Any] | None = None, **overrides: Any) -> Fla
         days=float(app.config["SST_REMEMBER_DAYS"])
     )
 
+    # -- login rate limiters (FR i, FR lxxviii) ----------------------------------------
+    # The web layer looks these up as app extensions so every login path (page form and
+    # JSON API) shares the same counters. Limits come from config/auth.json, never a
+    # literal, so an administrator can change them mid-demo.
+    from src.services.ratelimit import RateLimiter
+
+    app.extensions["sst_limiter_login_ip"] = RateLimiter(
+        limit=int(store.auth_setting("rate_limits.login_per_ip_per_minute", 20)),
+        window_seconds=60.0,
+    )
+    app.extensions["sst_limiter_login_user"] = RateLimiter(
+        limit=int(store.auth_setting("rate_limits.login_per_username_per_minute", 10)),
+        window_seconds=60.0,
+    )
+
+    _configure_jinja(app, store)
+
     _configure_logging(app)
 
     # -- storage and database ---------------------------------------------------------
@@ -368,6 +385,59 @@ def create_app(config: Mapping[str, Any] | None = None, **overrides: Any) -> Fla
         "ready" if app.config.get("SST_PIPELINE") else "unavailable",
     )
     return app
+
+
+def _configure_jinja(app: Flask, store) -> None:
+    """The template plumbing the console pages assume but no code provided.
+
+    Since the first commit every base-template render needed two things that were
+    never registered: the ``fromjson`` filter used by the ``<script
+    type="application/json">`` blocks (parsing the JSON text that ``_macros.html``
+    and ``_presentation.html`` emit), and a context processor supplying the
+    config-derived vocabulary (severity scale, class list, model labels...).
+    Without them no page in this application has ever rendered; see the dev log.
+    """
+    import json as _json
+
+    def _fromjson(value):
+        # Macro payloads are already text; config values may arrive as real lists.
+        if isinstance(value, (list, dict)):
+            return value
+        if value is None or value == "":
+            return None
+        return _json.loads(value)
+
+    app.jinja_env.filters["fromjson"] = _fromjson
+
+    from src.models import (
+        ALERT_STATUSES,
+        CONSISTENCY_STATUSES,
+        MODEL_LABELS,
+        REVIEW_DECISIONS,
+    )
+
+    @app.context_processor
+    def _inject_template_globals():  # pragma: no cover - exercised via page renders
+        from src.app import APP_NAME, APP_VERSION  # local: avoid a circular import
+
+        return {
+            "app_name": APP_NAME,
+            "app_version": APP_VERSION,
+            "request_id": getattr(g, "request_id", None)
+            or getattr(request, "request_id", None),
+            "config": store,
+            "thresholds": store.thresholds(),
+            "severity_scale": store.severity_scale(),
+            "severity_levels": store.severity_levels(),
+            "class_names": store.class_names(),
+            "critical_classes": sorted(store.critical_classes()),
+            "quality_verdicts": store.quality_ordering(),
+            "consistency_statuses": list(CONSISTENCY_STATUSES),
+            "alert_statuses": list(ALERT_STATUSES),
+            "review_decisions": list(REVIEW_DECISIONS),
+            "review_conditions": store.review_conditions(),
+            "model_labels": dict(MODEL_LABELS),
+        }
 
 
 def _secret_key(config: Mapping[str, Any]) -> str:

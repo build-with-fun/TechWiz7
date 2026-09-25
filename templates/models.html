@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui %}
+{% import "_presentation.html" as pres %}
+{# ==========================================================================
+   templates/models.html — the model registry (FR lxxv).
+
+   Readable by any signed-in user: a person reading an event's result is
+   entitled to know which model version produced it. Registration and
+   activation need manage_models and live in the admin API slice.
+   ========================================================================== #}
+{% set page_id = "models.list" %}
+{% block title %}Models — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <div class="page-head__main">
+    <div class="breadcrumb"><a href="{{ url_for('main.dashboard') }}">Home</a><span>Models</span></div>
+    <h1 class="page-title">{{ page_title or 'Model registry' }}</h1>
+    <p class="page-sub">Every trained version of the Python classifier and the Teachable Machine model. Superseded versions are kept: past events point at the version that judged them.</p>
+  </div>
+</header>
+
+<section class="panel">
+  <div class="panel__head">
+    <h2 class="panel__title">{{ ui.icon('cpu', 14) }} Registered versions</h2>
+    <p class="panel__note">The active version is what the pipeline serves.</p>
+  </div>
+  <div class="panel__body">
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr>
+            <th scope="col">Model</th>
+            <th scope="col">Version</th>
+            <th scope="col">Algorithm</th>
+            <th scope="col">Features</th>
+            <th scope="col" class="num">Val / test accuracy</th>
+            <th scope="col" class="num">Macro F1</th>
+            <th scope="col" class="num">Critical recall</th>
+            <th scope="col">Registered</th>
+            <th scope="col">State</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for version in versions %}
+          {% set metrics = version.metrics or {} %}
+          {% set test_metrics = metrics.get('test') or {} %}
+          <tr data-testid="model-row-{{ version.model_name }}-{{ version.version }}">
+            <td>{{ version.label_text }}</td>
+            <td class="mono">{{ version.version }}{% if version.label %} <span class="summary-note">{{ version.label }}</span>{% endif %}</td>
+            <td>{{ version.algorithm or '—' }}</td>
+            <td class="mono">{{ version.feature_version or '—' }}</td>
+            <td class="num">
+              {%- if test_metrics -%}
+                {{ ui.percent(test_metrics.get('accuracy', 0)) }}
+              {%- elif metrics.get('accuracy') is not none -%}
+                {{ ui.percent(metrics.get('accuracy')) }}
+              {%- else -%}—{%- endif -%}
+            </td>
+            <td class="num">
+              {%- if test_metrics.get('macro_f1') is not none -%}
+                {{ ui.number(test_metrics.get('macro_f1'), 4) }}
+              {%- elif metrics.get('macro_f1') is not none -%}
+                {{ ui.number(metrics.get('macro_f1'), 4) }}
+              {%- else -%}—{% endif %}
+            </td>
+            <td class="num">
+              {%- if test_metrics.get('critical_recall') is not none -%}
+                {{ ui.number(test_metrics.get('critical_recall'), 4) }}
+              {%- elif metrics.get('critical_recall') is not none -%}
+                {{ ui.number(metrics.get('critical_recall'), 4) }}
+              {%- else -%}—{% endif %}
+            </td>
+            <td>{{ version.registered_at }}</td>
+            <td>
+              {% if version.is_active %}
+              <span class="chip chip--quality-good"><span class="chip__glyph" aria-hidden="true">●</span><span class="chip__text">Active</span></span>
+              {% else %}
+              <span class="chip"><span class="chip__glyph" aria-hidden="true">○</span><span class="chip__text">Superseded</span></span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr class="table-empty"><td colspan="9">
+            {{ ui.empty_state('No models registered', 'Register a trained model bundle to put it in the registry. The pipeline refuses to start without an active version.', action_text='Open configuration', action_href=url_for('admin.config')) }}
+          </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if can_manage %}
+    <p class="panel__note">{{ ui.icon('info', 11) }} Registration and activation are API operations (admin slice) so activation is auditable — this page deliberately stays read-only.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

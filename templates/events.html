@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui %}
+{% import "_presentation.html" as pres %}
+{# ==========================================================================
+   templates/events.html — the searchable event table (FR lxvii).
+
+   Server-rendered and CSP-safe (no inline JS or styles). The filter form is
+   built entirely from `filter_fields` (src/services/search.py), so a class or
+   severity added to the config files grows the form without a template edit.
+   Every filter state is a URL: the form GETs the same /events endpoint.
+   ========================================================================== #}
+{% set page_id = "main.events" %}
+{% block title %}Events — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <div class="page-head__main">
+    <div class="breadcrumb"><a href="{{ url_for('main.dashboard') }}">Home</a><span>Events</span></div>
+    <h1 class="page-title">{{ page_title or 'Event history' }}</h1>
+    <p class="page-sub">
+      Every classified sound event, searchable and filterable.
+      {%- if meta %} Showing {{ meta.first_row }}–{{ meta.last_row }} of {{ meta.total }} ({{ meta.scope }}).{% endif -%}
+    </p>
+  </div>
+  <div class="page-head__actions">
+    <a class="btn" href="{{ url_for('main.upload') }}">{{ ui.icon('upload', 14) }} <span>Upload audio</span></a>
+    <a class="btn" href="{{ url_for('main.live') }}">{{ ui.icon('mic', 14) }} <span>Live monitoring</span></a>
+  </div>
+</header>
+
+<section class="panel">
+  <div class="panel__head">
+    <h2 class="panel__title">{{ ui.icon('filter', 14) }} Search &amp; filters</h2>
+    <p class="panel__note">{{ filter_summary }}</p>
+  </div>
+  <div class="panel__body">
+    {{ ui.filter_form(filter_fields, filters.to_dict(), problems, reset_href=url_for('main.events')) }}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel__head">
+    <h2 class="panel__title">{{ ui.icon('list', 14) }} Results</h2>
+    <p class="panel__note">
+      {%- if meta and meta.page_count > 1 %}page {{ meta.page }} of {{ meta.page_count }}
+      {%- elif meta %}{{ meta.shown }} on this page{% endif -%}
+    </p>
+  </div>
+  <div class="panel__body">
+    {% if filters.is_filtered %}{{ ui.active_filters(filter_fields, filters.to_dict(), clear_href=url_for('main.events')) }}{% endif %}
+    <div class="table-wrap">
+      <table class="data">
+        <caption class="field__hint">Sorted by {{ meta.sort_label if meta else 'newest first' }}. Click an event ID for the full dual-model comparison.</caption>
+        <thead>
+          <tr>
+            <th scope="col">Event</th>
+            <th scope="col">Predicted class</th>
+            <th scope="col">Severity</th>
+            <th scope="col">Consistency</th>
+            <th scope="col" class="num">Confidence diff</th>
+            <th scope="col">Quality</th>
+            <th scope="col">Recorded</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for event in events %}
+          <tr data-testid="event-row-{{ event.id }}">
+            <td>
+              <a class="mono" href="{{ url_for('main.event_detail', event_id=event.id) }}">{{ event.id }}</a>
+              <div class="summary-note">{{ event.source|capitalize }}{% if event.is_critical %} · {{ ui.icon('alert', 11) }} critical category{% endif %}</div>
+            </td>
+            <td>
+              <div class="row row--between">
+                {{ ui.class_chip(event.predicted_class, critical=event.is_critical) }}
+                {{ ui.confidence(event.top_confidence) }}
+              </div>
+            </td>
+            <td>{{ ui.severity_chip(event.severity) }}</td>
+            <td>{{ ui.consistency_chip(event.consistency_status) }}</td>
+            <td class="num">{{ ui.percent(event.confidence_difference) }}</td>
+            <td>{{ ui.quality_chip(event.quality_verdict) }}</td>
+            <td>{{ event.created_at }}</td>
+            <td>{{ ui.status_chip(event.status) }}</td>
+          </tr>
+          {% else %}
+          <tr class="table-empty"><td colspan="8">
+            {{ ui.empty_state('No events found', 'No classified events match the current filters. Adjust the filters above or analyse new audio from the upload or live pages.', action_text='Clear all filters', action_href=url_for('main.events')) }}
+          </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if meta and meta.page_count > 1 %}
+    {{ ui.pagination(meta, 'main.events') }}
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

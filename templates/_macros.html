@@ -102,7 +102,7 @@
 
 {% macro percent(value, places=1) -%}
 {%- if value is none -%}--
-{%- elif value is number -%}{{ '%.' ~ places ~ 'f' | format(value * 100) }}%
+{%- elif value is number -%}{{ ('%.' ~ places ~ 'f') | format(value * 100) }}%
 {%- else -%}{{ value }}
 {%- endif -%}
 {% endmacro %}

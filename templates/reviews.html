@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui %}
+{% import "_presentation.html" as pres %}
+{# ==========================================================================
+   templates/reviews.html — the manual-review queue (FR lvii–lxi).
+
+   Every queue entry says WHY it is queued: the fired conditions are rendered
+   from the reviewer-conditions config, so a reviewer can tell whether to
+   distrust the model, the microphone or the class definition. Decisions are
+   plain POST forms to the reviews API slice (CSP-safe, no inline JS).
+   ========================================================================== #}
+{% set page_id = "main.reviews" %}
+{% block title %}Manual review — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <div class="page-head__main">
+    <div class="breadcrumb"><a href="{{ url_for('main.dashboard') }}">Home</a><span>Review</span></div>
+    <h1 class="page-title">{{ page_title or 'Manual review queue' }}</h1>
+    <p class="page-sub">Events the dual-model pipeline flagged for a human decision, oldest and most severe first.</p>
+  </div>
+</header>
+
+<nav class="row" aria-label="Queue status">
+  <ul class="tag-list">
+    {% set status_tabs = [('Pending Review', 'Pending review'), ('In Review', 'In review'), ('Reviewed', 'Reviewed'), ('all', 'All')] %}
+    {% for value, label in status_tabs %}
+    <li>
+      <a class="chip {{ 'chip--critical' if value == current_status else '' }}"
+         href="{{ url_for('main.reviews', status=value) }}"
+         {% if value == current_status %}aria-current="page"{% endif %}>
+        <span class="chip__text">{{ label }}</span>
+        <span class="chip__glyph mono">{{ counts.get(value, 0) if value != 'all' else counts.values()|sum }}</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+</nav>
+
+<section class="panel">
+  <div class="panel__head">
+    <h2 class="panel__title">{{ ui.icon('clipboard', 14) }} Queue</h2>
+    <p class="panel__note">{{ counts.get('Pending Review', 0) }} pending · {{ counts.get('In Review', 0) }} in review · {{ counts.get('Reviewed', 0) }} decided</p>
+  </div>
+  <div class="panel__body">
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr>
+            <th scope="col">Item</th>
+            <th scope="col">Event</th>
+            <th scope="col">Priority</th>
+            <th scope="col">Queued because</th>
+            <th scope="col">Original result</th>
+            <th scope="col">Queued</th>
+            <th scope="col">Decision</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for review in reviews %}
+          <tr data-testid="review-row-{{ review.id }}">
+            <td class="mono">#{{ review.id }}</td>
+            <td>
+              <a class="mono" href="{{ url_for('main.event_detail', event_id=review.event_id) }}">{{ review.event_id }}</a>
+              {% if review.event and review.event.predicted_class %}
+              <div class="summary-note">{{ review.event.predicted_class }} · {{ ui.severity_chip(review.event.severity) }}</div>
+              {% endif %}
+            </td>
+            <td>{{ review.priority or 'normal' }}</td>
+            <td>
+              {% if review.reason_text %}<div>{{ review.reason_text }}</div>{% endif %}
+              {% if review.condition_ids %}
+              <ul class="tag-list">
+                {% for cid in review.condition_ids %}
+                {% set cond = conditions | selectattr('id', 'equalto', cid) | list | first %}
+                <li class="chip"><span class="chip__glyph" aria-hidden="true">☰</span><span class="chip__text">{{ cond.srs_phrase if cond else cid }}</span></li>
+                {% endfor %}
+              </ul>
+              {% endif %}
+            </td>
+            <td>
+              <div class="row">
+                {{ ui.class_chip(review.original_python_class) }} {{ ui.confidence(review.original_python_confidence) }}
+              </div>
+              <div class="row">
+                {{ ui.class_chip(review.original_gtm_class) }} {{ ui.confidence(review.original_gtm_confidence) }}
+              </div>
+            </td>
+            <td>{{ review.queued_at }}</td>
+            <td>
+              {% if review.status == 'Reviewed' %}
+              <div>{{ ui.review_chip('Reviewed') }}</div>
+              {% if review.final_class %}<div class="summary-note">final: {{ review.final_class }}{% if review.final_severity %} · {{ review.final_severity }}{% endif %}</div>{% endif %}
+              {% if review.comments %}<div class="summary-note">{{ review.comments }}</div>{% endif %}
+              {% elif can_decide %}
+              <form method="post" action="/api/reviews/{{ review.id }}/decision" class="row row--end">
+                <input type="hidden" name="decision" value="confirm">
+                <button type="submit" class="btn btn--sm btn--primary">{{ ui.icon('check', 12) }} Confirm AI result</button>
+              </form>
+              <div class="summary-note">Override / reject is available on the event detail page.</div>
+              {% else %}
+              <span class="field__hint">{{ ui.review_chip(review.status) }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr class="table-empty"><td colspan="7">
+            {{ ui.empty_state('Queue is clear', 'No items with status "' ~ current_status ~ '". New items appear when a condition in the manual-review rule file matches an event.', action_text='View all', action_href=url_for('main.reviews', status='all')) }}
+          </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel__head">
+    <h2 class="panel__title">{{ ui.icon('clipboard', 14) }} Active review conditions</h2>
+    <p class="panel__note">From <span class="mono">alert_rules/manual_review_conditions.json</span> — every condition that fires is named on the item.</p>
+  </div>
+  <div class="panel__body">
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th scope="col">Condition</th><th scope="col">Priority</th><th scope="col">Meaning</th></tr></thead>
+        <tbody>
+          {% for cond in conditions %}
+          <tr>
+            <td class="mono">{{ cond.id }}</td>
+            <td>{{ cond.priority }}</td>
+            <td>{{ cond.srs_phrase }}</td>
+          </tr>
+          {% else %}
+          <tr class="table-empty"><td colspan="3">{{ ui.empty_state('No enabled conditions', 'The manual-review file has no enabled conditions — nothing will be queued.') }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

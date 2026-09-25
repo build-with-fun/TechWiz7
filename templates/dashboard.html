@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui %}
+{% import "_presentation.html" as pres %}
+{# ==========================================================================
+   templates/dashboard.html — the operational dashboards (FR lxiii–lxv).
+
+   Server-rendered, CSP-safe. Volume bars use the shared .bars/.bar-row
+   components; the fill width comes from a CSS custom property set via an
+   inline style attribute — style-src 'self' blocks <style> ELEMENTS and
+   inline <style> blocks, not style="" attributes. (Verified against the
+   app's CSP header before shipping.)
+   ========================================================================== #}
+{% set page_id = "main.dashboard" %}
+{% block title %}Dashboard — {{ app_name }}{% endblock %}
+
+{% set max_class = by_class | map(attribute='count') | max if by_class else 0 %}
+{% set max_sev = by_severity | map(attribute='count') | max if by_severity else 0 %}
+{% set max_status = by_status | map(attribute='count') | max if by_status else 0 %}
+
+{% block content %}
+<header class="page-head">
+  <div class="page-head__main">
+    <div class="breadcrumb"><span>Home</span></div>
+    <h1 class="page-title">{{ page_title or 'Operational dashboard' }}</h1>
+    <p class="page-sub">What the system has heard, raised and queued — the last 24 hours and 7 days at a glance.</p>
+  </div>
+  <div class="page-head__actions">
+    <a class="btn" href="{{ url_for('main.analytics') }}">{{ ui.icon('chart', 14) }} <span>Analytics</span></a>
+    <a class="btn" href="{{ url_for('main.events') }}">{{ ui.icon('list', 14) }} <span>All events</span></a>
+  </div>
+</header>
+
+<div class="summary-grid" data-testid="dashboard-totals">
+  <div class="summary-cell">
+    <span class="summary-label">Events · 24 h</span>
+    <span class="summary-value mono">{{ totals.events_24h }}</span>
+  </div>
+  <div class="summary-cell">
+    <span class="summary-label">Events · 7 d</span>
+    <span class="summary-value mono">{{ totals.events_7d }}</span>
+  </div>
+  <div class="summary-cell">
+    <span class="summary-label">Events · all time</span>
+    <span class="summary-value mono">{{ totals.events_total }}</span>
+  </div>
+  <div class="summary-cell">
+    <span class="summary-label">Open alerts</span>
+    <span class="summary-value mono {{ 'metric--warn' if totals.open_alerts else '' }}">{{ totals.open_alerts }}</span>
+    <span class="summary-note"><a href="{{ url_for('main.alerts') }}">go to console</a></span>
+  </div>
+  <div class="summary-cell">
+    <span class="summary-label">Awaiting manual review</span>
+    <span class="summary-value mono {{ 'metric--warn' if totals.awaiting_review else '' }}">{{ totals.awaiting_review }}</span>
+    <span class="summary-note"><a href="{{ url_for('main.reviews') }}">go to queue</a></span>
+  </div>
+  <div class="summary-cell">
+    <span class="summary-label">Critical severity · 7 d</span>
+    <span class="summary-value mono {{ 'metric--danger' if totals.critical_7d else '' }}">{{ totals.critical_7d }}</span>
+    <span class="summary-note">critical categories: {{ critical_classes | join(', ') }}</span>
+  </div>
+</div>
+
+<div class="grid grid--split">
+  <section class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">{{ ui.icon('chart', 14) }} Events by sound class</h2>
+      <p class="panel__note">last 7 days</p>
+    </div>
+    <div class="panel__body">
+      {% if by_class %}
+      <div class="bars">
+        {% for item in by_class | sort(attribute='count', reverse=true) %}
+        <div class="bar-row" data-testid="class-bar-{{ item.class }}">
+          <span class="chip__text">{{ item.class }}</span>
+          <span class="bar-row__track"><span class="bar-row__fill" style="width: {{ (item.count / max_class * 100) | round(1) }}%;"></span></span>
+          <span class="bar-row__value">{{ item.count }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      {{ ui.empty_state('No events yet', 'Once uploads or live sessions produce events, the per-class mix appears here.') }}
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">{{ ui.icon('alert', 14) }} Events by severity</h2>
+      <p class="panel__note">last 7 days · scale: {{ severity_scale | join(' → ') }}</p>
+    </div>
+    <div class="panel__body">
+      {% if by_severity %}
+      <div class="bars">
+        {% for item in by_severity | sort(attribute='count', reverse=true) %}
+        <div class="bar-row" data-testid="severity-bar-{{ item.severity }}">
+          <span>{{ ui.severity_chip(item.severity) }}</span>
+          <span class="bar-row__track"><span class="bar-row__fill" style="width: {{ (item.count / max_sev * 100) | round(1) }}%;"></span></span>
+          <span class="bar-row__value">{{ item.count }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      {{ ui.empty_state('No events yet', 'Severity counts appear as soon as events are recorded.') }}
+      {% endif %}
+    </div>
+  </section>
+</div>
+
+<section class="panel">
+  <div class="panel__head">
+    <h2 class="panel__title">{{ ui.icon('grid', 14) }} Event pipeline by status</h2>
+    <p class="panel__note">all time</p>
+  </div>
+  <div class="panel__body">
+    {% if by_status %}
+    <div class="bars">
+      {% for item in by_status %}
+      <div class="bar-row" data-testid="status-bar-{{ item.status }}">
+        <span>{{ ui.status_chip(item.status) }}</span>
+        <span class="bar-row__track"><span class="bar-row__fill" style="width: {{ (item.count / max_status * 100) | round(1) }}%;"></span></span>
+        <span class="bar-row__value">{{ item.count }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    {{ ui.empty_state('No events yet', 'Status mix appears as the pipeline processes audio.') }}
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

@@ -143,6 +143,18 @@ def _pagination(args, store) -> tuple[int, int]:
     return default, maximum
 
 
+def _event_id_int(value: str) -> int:
+    """Only real numeric ids reach the view logic.
+
+    ``__EVENT_ID__`` (the base.html placeholder for browser-side substitution) and any
+    other junk is refused as ``bad_request`` rather than blowing up mid-query.
+    """
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        raise ApiError("bad_request", "invalid event id")
+
+
 def _search_context(viewer, *, default_statuses=None) -> dict:
     """Everything the search page needs, built once so the page and the API agree."""
     store = _store()
@@ -334,12 +346,18 @@ def events():
     return _render("events.html", **context)
 
 
-@main_bp.get("/events/<int:event_id>")
+@main_bp.get("/events/<event_id>")
 @capability_required("view_own_events")
-def event_detail(event_id: int):
+def event_detail(event_id: str):
     """One event, in full: both models' classes and confidences, the comparison, the quality
-    verdict, the severity and the rule that fired -- FR xxxi-xxxvi, FR xl, FR lxii."""
+    verdict, the severity and the rule that fired -- FR xxxi-xxxvi, FR xl, FR lxii.
+
+    A ``<event_id>`` (not ``<int:...>``) converter: base.html builds a
+    ``__EVENT_ID__`` placeholder URL for the browser-side code, and the int
+    converter would 500 on it before the JS ever had a chance to substitute.
+    """
     store = _store()
+    event_id = _event_id_int(event_id)
     with session_scope(_factory()) as session:
         event = _visible_event(session, event_id)
         scores: dict[str, list] = {}
@@ -370,14 +388,16 @@ def event_detail(event_id: int):
     return _render("event_detail.html", **payload)
 
 
-@main_bp.get("/events/<int:event_id>/audio")
+@main_bp.get("/events/<event_id>/audio")
 @owner_or_capability("download_any_audio")
-def event_audio(event_id: int):
+def event_audio(event_id: str):
     """Stream the stored recording (FR lxxi: audio is stored on disk, not in the database).
 
     ``as_attachment`` is off by default so the detail page can play it inline; the download
-    button asks for ``?download=1``.
+    button asks for ``?download=1``. Same non-int converter as ``event_detail``: the
+    base.html placeholder URL must be buildable.
     """
+    event_id = _event_id_int(event_id)
     from flask import send_from_directory
 
     layout = current_app.config["SST_STORAGE"]
@@ -459,7 +479,7 @@ def alerts():
 def reviews():
     """FR lvii-lxi: the manual-review queue, oldest and most severe first."""
     store = _store()
-    status = request.args.get("status") or "Queued"
+    status = request.args.get("status") or "Pending Review"
     with session_scope(_factory()) as session:
         statement = (
             select(Review)
@@ -651,14 +671,18 @@ def users():
     )
 
 
-@models_bp.get("/")
+@models_bp.get("/", endpoint="list")
 @login_required
-def list():
+def model_list():
     """FR lxxv: which models are in service, and which is active.
 
     Open to any signed-in user on purpose: a person reading an event's result is entitled to
     know which model version produced it. Registering and activating is what needs
     ``manage_models``, and those are write endpoints in the admin API slice.
+
+    Named ``model_list`` rather than ``list``: a function called ``list`` shadows the
+    builtin for the whole module, which turned every later ``list(...)``
+    (severity scale, status tuples) into "list() takes 0 positional arguments".
     """
     with session_scope(_factory()) as session:
         rows = session.execute(

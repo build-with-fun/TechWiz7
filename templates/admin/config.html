@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui %}
+{% import "_presentation.html" as pres %}
+{# ==========================================================================
+   templates/admin/config.html — the live-editable configuration view
+   (FR liii / FR lxxx).
+
+   Read-only to look at. The write path is PUT /api/admin/config/<file> in the
+   admin API slice, which runs the same validator as boot before anything
+   touches the disk — so what an evaluator edits here is exactly what boot
+   would have accepted. Server-rendered, CSP-safe.
+   ========================================================================== #}
+{% set page_id = "admin.config" %}
+{% block title %}Configuration — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page-head">
+  <div class="page-head__main">
+    <div class="breadcrumb"><a href="{{ url_for('main.dashboard') }}">Home</a><span>Admin</span><span>Configuration</span></div>
+    <h1 class="page-title">{{ page_title or 'Configuration' }}</h1>
+    <p class="page-sub">
+      Every threshold, class and rule the engine reads at runtime — no value is ever a literal in code.
+      Config dir: <span class="mono">{{ config_dir }}</span> · rules dir: <span class="mono">{{ alert_rules_dir }}</span>
+    </p>
+  </div>
+  <div class="page-head__actions">
+    <span class="chip {{ 'chip--quality-good' if can_edit else '' }}">
+      <span class="chip__glyph" aria-hidden="true">{{ '✎' if can_edit else '🔒' }}</span>
+      <span class="chip__text">{{ 'Editable via admin API' if can_edit else 'Read-only for your role' }}</span>
+    </span>
+  </div>
+</header>
+
+<section class="panel">
+  <div class="panel__head">
+    <h2 class="panel__title">{{ ui.icon('sliders', 14) }} Active configuration snapshot</h2>
+    <p class="panel__note">Exactly which versions judged the current events — this snapshot is stored on every event record.</p>
+  </div>
+  <div class="panel__body">
+    <dl class="kv">
+      <dt>thresholds.json version</dt><dd class="mono">{{ snapshot.thresholds_version }}</dd>
+      <dt>classes.json version</dt><dd class="mono">{{ snapshot.classes_version }}</dd>
+      <dt>alert_rules.json version</dt><dd class="mono">{{ snapshot.alert_rules_version }}</dd>
+      <dt>manual_review_conditions.json version</dt><dd class="mono">{{ snapshot.manual_review_version }}</dd>
+      <dt>Severity scale in force</dt><dd>{{ snapshot.severity_scale }}</dd>
+    </dl>
+    <h3 class="panel__title">{{ ui.icon('shield', 12) }} Content hashes (integrity)</h3>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th scope="col">File</th><th scope="col">SHA-256</th></tr></thead>
+        <tbody>
+          {% for name, digest in (hashes or {}).items() %}
+          <tr><td class="mono">{{ name }}</td><td class="mono">{{ digest }}</td></tr>
+          {% else %}
+          <tr class="table-empty"><td colspan="2">{{ ui.empty_state('No hashes', 'Snapshot carries no content hashes.') }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel__head">
+    <h2 class="panel__title">{{ ui.icon('sliders', 14) }} Thresholds — config/thresholds.json</h2>
+    <p class="panel__note">An evaluator may demand a changed threshold live; the next analysis uses it, no restart.</p>
+  </div>
+  <div class="panel__body">
+    <div class="grid grid--split">
+      {% for section, values in thresholds.items() if section not in ('version', 'owner', 'note') %}
+      <div class="panel__body">
+        <h3 class="panel__title">{{ section | replace('_', ' ') | capitalize }}</h3>
+        <dl class="kv">
+          {% for key, value in values.items() if value is not mapping and value is not sequence %}
+          <dt class="mono">{{ key }}</dt><dd class="mono">{{ value }}</dd>
+          {% endfor %}
+        </dl>
+        {% for key, value in values.items() if value is mapping %}
+        <h4 class="field__label">{{ key }}</h4>
+        <dl class="kv">
+          {% for k2, v2 in value.items() %}<dt class="mono">{{ k2 }}</dt><dd class="mono">{{ v2 }}</dd>{% endfor %}
+        </dl>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel__head">
+    <h2 class="panel__title">{{ ui.icon('list', 14) }} Sound classes — config/classes.json</h2>
+    <p class="panel__note">The single source of truth for class names; adding one here grows every dropdown in the app.</p>
+  </div>
+  <div class="panel__body">
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th scope="col">Name</th><th scope="col">Code</th><th scope="col">Critical</th><th scope="col">Notes</th></tr></thead>
+        <tbody>
+          {% for cls in classes.get('classes', []) %}
+          <tr>
+            <td>{{ cls.name }}</td>
+            <td class="mono">{{ cls.code or '—' }}</td>
+            <td>{{ ui.class_chip(cls.name, class_code=cls.code, critical=cls.critical if cls.critical is defined else false) }}</td>
+            <td class="summary-note">{{ cls.description or cls.note or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel__head">
+    <h2 class="panel__title">{{ ui.icon('alert', 14) }} Severity scale &amp; levels</h2>
+    <p class="panel__note">active scale: <span class="mono">{{ severity_scale | join(' → ') }}</span></p>
+  </div>
+  <div class="panel__body">
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th scope="col">Level</th><th scope="col" class="num">Rank</th><th scope="col">Meaning</th></tr></thead>
+        <tbody>
+          {% for level in severity_levels.get('levels', []) %}
+          <tr>
+            <td>{{ ui.severity_chip(level.name) }}</td>
+            <td class="num">{{ level.rank }}</td>
+            <td>{{ level.description or level.note or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if severity_levels.get('mapping_between_scales', {}).get('five_level_to_four_level') %}
+    <p class="panel__note">{{ ui.icon('info', 11) }} Four-level scale mapping (FR lii): {{ severity_levels.mapping_between_scales.five_level_to_four_level.items() | map('join', ' → ') | join(', ') }}</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel__head">
+    <h2 class="panel__title">{{ ui.icon('bell', 14) }} Effective alert rules — alert_rules/alert_rules.json</h2>
+    <p class="panel__note">Per class, with defaults merged. This is the exact rule that fires when an event matches.</p>
+  </div>
+  <div class="panel__body">
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th scope="col">Class</th><th scope="col">Severity</th><th scope="col">Critical?</th><th scope="col">Alertable</th><th scope="col">Recommended action</th><th scope="col">Min consecutive</th></tr></thead>
+        <tbody>
+          {% for name, rule in effective_rules.items() %}
+          <tr data-testid="rule-row-{{ loop.index }}">
+            <td>{{ ui.class_chip(name, critical=rule.get('critical', false)) }}</td>
+            <td>{{ ui.severity_chip(rule.get('severity')) }}</td>
+            <td class="mono">{{ rule.get('critical', false) }}</td>
+            <td class="mono">{{ rule.get('alertable', true) }}</td>
+            <td>{{ rule.get('recommended_action', '—') }}</td>
+            <td class="num">{{ rule.get('min_consecutive_detections', '—') }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel__head">
+    <h2 class="panel__title">{{ ui.icon('clipboard', 14) }} Manual-review conditions</h2>
+    <p class="panel__note">Every condition that fires is named on the queue item.</p>
+  </div>
+  <div class="panel__body">
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th scope="col">ID</th><th scope="col">Priority</th><th scope="col">Meaning</th></tr></thead>
+        <tbody>
+          {% for cond in review_conditions %}
+          <tr>
+            <td class="mono">{{ cond.id }}</td>
+            <td>{{ cond.priority }}</td>
+            <td>{{ cond.srs_phrase }}</td>
+          </tr>
+          {% else %}
+          <tr class="table-empty"><td colspan="3">{{ ui.empty_state('No enabled conditions', 'Nothing will be queued for review.') }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel__head">
+    <h2 class="panel__title">{{ ui.icon('clock', 14) }} Retention — alert_rules/retention.json</h2>
+    <p class="panel__note">Windows are read at purge time, so a change takes effect at the next purge — no restart.</p>
+  </div>
+  <div class="panel__body">
+    <dl class="kv">
+      {% for key, value in retention.get('defaults', {}).items() %}
+      <dt class="mono">{{ key }}</dt><dd class="mono">{{ value if value is not none else 'indefinite' }}</dd>
+      {% endfor %}
+    </dl>
+  </div>
+</section>
+{% endblock %}

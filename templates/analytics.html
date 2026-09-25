@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui %}
+{% import "_presentation.html" as pres %}
+{# ==========================================================================
+   templates/analytics.html — the aggregate queries (FR lxviii).
+
+   The window (hours) is a GET parameter, so an evaluator's "and the last
+   hour?" is one link click. Server-rendered, CSP-safe, no inline JS.
+   ========================================================================== #}
+{% set page_id = "main.analytics" %}
+{% block title %}Analytics — {{ app_name }}{% endblock %}
+
+{% set max_count = by_class | map(attribute='count') | max if by_class else 0 %}
+{% set window_choices = [1, 6, 24, 24*7, 24*30] %}
+
+{% block content %}
+<header class="page-head">
+  <div class="page-head__main">
+    <div class="breadcrumb"><a href="{{ url_for('main.dashboard') }}">Home</a><span>Analytics</span></div>
+    <h1 class="page-title">{{ page_title or 'Aggregate analytics' }}</h1>
+    <p class="page-sub">Aggregates over the last {{ hours }} h — since {{ since }}.</p>
+  </div>
+  <div class="page-head__actions">
+    <nav class="row" aria-label="Analysis window">
+      {% for choice in window_choices %}
+      <a class="btn btn--sm {{ 'btn--primary' if choice == hours else '' }}"
+         href="{{ url_for('main.analytics', hours=choice) }}"
+         {% if choice == hours %}aria-current="page"{% endif %}>
+        {%- if choice >= 24 %}{{ choice // 24 }} d{% else %}{{ choice }} h{% endif -%}
+      </a>
+      {% endfor %}
+    </nav>
+  </div>
+</header>
+
+<section class="panel">
+  <div class="panel__head">
+    <h2 class="panel__title">{{ ui.icon('chart', 14) }} Per-class aggregates</h2>
+    <p class="panel__note">count, mean top-confidence and mean |python − gtm| difference per class, over the selected window</p>
+  </div>
+  <div class="panel__body">
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr>
+            <th scope="col">Sound class</th>
+            <th scope="col" class="num">Events</th>
+            <th scope="col" class="num">Mean confidence</th>
+            <th scope="col" class="num">Mean difference</th>
+            <th scope="col">Share</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in by_class | sort(attribute='count', reverse=true) %}
+          <tr data-testid="analytics-row-{{ loop.index }}">
+            <td>{{ ui.class_chip(row.class) }}</td>
+            <td class="num">{{ row.count }}</td>
+            <td class="num">{{ ui.confidence(row.mean_confidence) }}</td>
+            <td class="num">{{ ui.percent(row.mean_difference) }}</td>
+            <td>
+              <span class="bar-row__track"><span class="bar-row__fill" style="width: {{ (row.count / max_count * 100) | round(1) }}%;"></span></span>
+            </td>
+          </tr>
+          {% else %}
+          <tr class="table-empty"><td colspan="5">
+            {{ ui.empty_state('No events in this window', 'No events were recorded in the selected window. Try a wider window — 7 d or 30 d.', action_text='Last 30 days', action_href=url_for('main.analytics', hours=24*30)) }}
+          </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<div class="grid grid--split">
+  <section class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">{{ ui.icon('check', 14) }} Model consistency mix</h2>
+      <p class="panel__note">how often the two models agreed, over the window</p>
+    </div>
+    <div class="panel__body">
+      {% if by_consistency %}
+      <ul class="flow-list">
+        {% for item in by_consistency | sort(attribute='count', reverse=true) %}
+        <li class="row row--between">
+          {{ ui.consistency_chip(item.status) }}
+          <span class="mono">{{ item.count }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      {{ ui.empty_state('Nothing yet', 'Consistency verdicts appear as events accumulate.') }}
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">{{ ui.icon('volume', 14) }} Audio quality mix</h2>
+      <p class="panel__note">verdicts from the ingest quality check, over the window</p>
+    </div>
+    <div class="panel__body">
+      {% if by_quality %}
+      <ul class="flow-list">
+        {% for item in by_quality | sort(attribute='count', reverse=true) %}
+        <li class="row row--between">
+          {{ ui.quality_chip(item.verdict) }}
+          <span class="mono">{{ item.count }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      {{ ui.empty_state('Nothing yet', 'Quality verdicts appear as audio is ingested.') }}
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -190,7 +190,7 @@ def _register_login_manager(app) -> LoginManager:
     manager.init_app(app)
     # Prompt the *user*, not a route: the browser gets redirected to the sign-in page,
     # while the API gets a 401 envelope from the unauthorized handler below.
-    manager.login_view = "pages.login"
+    manager.login_view = "auth.login"
     manager.login_message = "Sign in to continue."
     manager.login_message_category = "warning"
     manager.session_protection = "strong"  # a stolen cookie is invalidated, not silently reused
@@ -214,7 +214,7 @@ def _register_login_manager(app) -> LoginManager:
         if wants_json():
             raise ApiError("not_authenticated")
         # A person following a link gets the sign-in page and comes back to where they were.
-        return redirect(url_for("pages.login", next=request.full_path.rstrip("?")))
+        return redirect(url_for("auth.login", next=request.full_path.rstrip("?")))
 
     return manager
 

@@ -31,7 +31,9 @@
   <div class="page-head__main">
     <h1 class="page-title">Live monitoring</h1>
     <p class="page-sub">
-      Captures <strong>{{ window_seconds|round(1) }}&nbsp;second{{ '' if window_seconds == 1 else 's' }}</strong>
+      {%- set ws_min = window_seconds[0] if window_seconds else 1 -%}
+      {%- set ws_max = window_seconds[-1] if window_seconds else 3 -%}
+      Captures <strong>{{ ws_min }}–{{ ws_max }}&nbsp;second{{ '' if ws_max == 1 else 's' }}</strong>
       at a time and classifies it with both models independently.
       A class is only reported once it has been seen in
       {{ config.thresholds.required_consecutive_detections if config and config.thresholds else 3 }}
@@ -183,7 +185,7 @@
     <div class="panel__head">
       <h2 class="panel__title">Recent windows</h2>
       <p class="panel__note">Newest last. A window is a single
-        {{ window_seconds|round(1) }}&nbsp;s capture.</p>
+        {{ ws_max }}&nbsp;s capture.</p>
     </div>
     <div class="panel__body panel__body--flush">
       <ol class="tape" data-live-tape>
