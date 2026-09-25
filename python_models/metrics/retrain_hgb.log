@@ -1,0 +1,16 @@
+==============================================================================
+SonicSentinel AI -- classical model training (SRS Step 7)
+==============================================================================
+  python      : 3.12.14 (x86_64)
+  classes     : 10  critical: 5
+  candidates  : svm_rbf, random_forest, extra_trees, gradient_boosting, xgboost, hist_gradient_boosting
+  weighting   : on (boost x2.0)
+  floors      : {'accuracy': 0.85, 'macro_f1': 0.8, 'critical_recall': 0.85}
+  test  :   450 rows (450 orig / 0 aug), 10/10 classes
+  train :  2100 rows (2100 orig / 0 aug), 10/10 classes
+  val   :   450 rows (450 orig / 0 aug), 10/10 classes
+
+[features] 254 columns, version audiofeat-1.0.0
+[features] train (2100 rows)...
+  features: 50/2100
+  features: 100/2100

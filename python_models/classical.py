@@ -363,9 +363,10 @@ CLASSICAL_CANDIDATES: dict[str, CandidateSpec] = {
         builder=_hist_gradient_boosting,
         preprocess="none",
         param_grid={
-            "max_iter": [300],
-            "learning_rate": [0.06, 0.1],
-            "max_leaf_nodes": [31, 63],
+            "max_iter": [400],
+            "learning_rate": [0.1],
+            "max_leaf_nodes": [31],
+            "max_depth": [8],
         },
         notes=(
             "Histogram gradient boosting (sklearn's LightGBM): the strongest classical "

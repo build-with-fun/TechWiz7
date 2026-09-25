@@ -112,3 +112,34 @@ SonicSentinel AI -- classical model training (SRS Step 7)
   cv fold 2/5: macro_f1=0.7327 acc=0.7310
   cv fold 3/5: macro_f1=0.7421 acc=0.7381
   cv fold 4/5: macro_f1=0.7568 acc=0.7524
+  cv fold 5/5: macro_f1=0.6930 acc=0.6952
+[cv] macro-F1 0.7314 +/- 0.0236 across 5 folds
+
+[final] refitting winner on train+val
+
+[final] TEST SPLIT (scored once, never used for selection)
+  accuracy          : 0.6978  (floor 0.85)
+  macro F1          : 0.7037  (floor 0.80)
+  critical recall   : 0.7867  (floor 0.85)
+  macro precision   : 0.7235
+  macro recall      : 0.6978
+  top-2 accuracy    : 0.8222
+  weakest classes   :
+    Animal Sound               recall=0.533 f1=0.444 support=45
+    Machinery Fault            recall=0.644 f1=0.598 support=45
+    Background Noise           recall=0.622 f1=0.615 support=45
+
+[save] best model -> python_models/best/repaired
+[save] metrics    -> python_models/metrics/classical_metrics_repaired.json
+[save] comparison -> python_models/metrics/classical_comparison_repaired.csv
+[save] confusion    -> python_models/metrics/confusion_matrix_winner_repaired.png
+
+==============================================================================
+RESULT: SRS floors NOT met --
+  - accuracy: 0.6978 < 0.8500 required
+  - macro_f1: 0.7037 < 0.8000 required
+  - critical_recall: 0.7867 < 0.8500 required
+==============================================================================
+
+[total] 7043.6s
+[total] meets_floors=False
