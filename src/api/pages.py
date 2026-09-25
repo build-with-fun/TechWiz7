@@ -51,7 +51,12 @@ from flask_login import current_user, login_required, login_user
 from sqlalchemy import func, select
 from jinja2 import TemplateNotFound
 
-from src.auth import capability_required, owner_or_capability
+from src.auth import (
+    audit_login,
+    capability_required,
+    has_capability,
+    owner_or_capability,
+)
 from src.db import session_scope
 from src.errors import ApiError
 from src.models import Alert, Event, ModelVersion, Review, utcnow
@@ -299,7 +304,10 @@ def _home_for(user) -> str:
         ("view_alerts", "main.alerts"),
         ("review_queue", "main.reviews"),
     ):
-        if user.can(capability):
+        # ``user`` may be the raw User row (fresh from authenticate) or the Flask-Login
+        # AuthUser wrapper; the role is the one thing both expose, so ask the matrix
+        # directly rather than depending on which shape arrived.
+        if has_capability(getattr(user, "role", None), capability):
             return url_for(endpoint)
     return url_for("main.events")
 

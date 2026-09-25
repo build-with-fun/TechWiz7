@@ -62,6 +62,7 @@ ERROR_CODES: tuple[str, ...] = (
     # configuration and models -- FR liii, lxxv, lxxx
     "config_invalid",
     "model_unavailable",
+    "pipeline_unavailable",
     # exports and reports -- FR lxix, lxx
     "export_too_large",
     "report_failed",
@@ -102,6 +103,7 @@ DEFAULT_STATUS: Mapping[str, int] = {
     "already_reviewed": 409,
     "config_invalid": 422,
     "model_unavailable": 503,
+    "pipeline_unavailable": 503,
     "export_too_large": 413,
     "report_failed": 500,
     "storage_error": 500,
@@ -138,6 +140,8 @@ DEFAULT_MESSAGES: Mapping[str, str] = {
                       "The running settings are unchanged.",
     "model_unavailable": "The detection models are not available right now. "
                          "Try again shortly.",
+    "pipeline_unavailable": "The analysis pipeline is not available right now. "
+                            "Try again shortly.",
     "export_too_large": "That export is too large to prepare at once. Narrow the filters.",
     "report_failed": "The report could not be produced. The event itself is unaffected.",
     "storage_error": "The audio storage is not available right now.",
