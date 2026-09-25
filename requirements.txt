@@ -13,7 +13,8 @@ soundfile==0.14.0
 librosa==1.0.0
 numba==0.67.0
 llvmlite==0.49.0
-mutagen==1.48.1          # MP3/M4A/FLAC metadata (FR ix: upload metadata)
+# mutagen was dropped: upload metadata (duration/sample rate) comes from the
+# decoded samples themselves, no container-tag parser is needed.
 # ffmpeg (system binary, not pip) handles OGG/M4A transcode -- see README
 
 # --- classical ML ---
@@ -28,11 +29,10 @@ torch==2.14.0+cpu
 # --- web app ---
 Flask==3.1.3
 Flask-Login==0.6.3
-Flask-SQLAlchemy==3.1.1
 gunicorn==26.2.0
+# SQLAlchemy (plain ORM, no Flask-SQLAlchemy) is the persistence layer -- src/models.py
 
 # --- config / reporting / charts ---
-PyYAML==6.0.3
 matplotlib==3.11.2
 pillow==12.3.0
 
