@@ -580,3 +580,7 @@ table.data td.actions { white-space: nowrap; text-align: right; }
   body { background: #fff; color: #000; }
   .card { border-color: #999; box-shadow: none; break-inside: avoid; }
 }
+
+/* Spectrogram legend swatches (kept out of inline styles for the CSP in config/auth.json) */
+.legend__swatch--quiet { background: #0b1220; }
+.legend__swatch--loud { background: #38bdf8; }

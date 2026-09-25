@@ -170,8 +170,8 @@
       <p class="canvas-caption">
         <span>Spectrogram — frequency over time</span>
         <span class="legend">
-          <span class="legend__item"><span class="legend__swatch" style="background:#0b1220"></span>quiet</span>
-          <span class="legend__item"><span class="legend__swatch" style="background:#38bdf8"></span>loud</span>
+          <span class="legend__item"><span class="legend__swatch legend__swatch--quiet"></span>quiet</span>
+          <span class="legend__item"><span class="legend__swatch legend__swatch--loud"></span>loud</span>
         </span>
       </p>
       <p class="field__hint">
@@ -211,7 +211,7 @@
             <span class="model-card__conf-unit">top-class confidence</span>
           </div>
           <div class="model-card__bar" aria-hidden="true">
-            <div class="model-card__bar-fill" style="width: {{ (top.confidence * 100)|round(1) }}%"></div>
+            <div class="model-card__bar-fill" data-bar-width="{{ (top.confidence * 100)|round(1) }}"></div>
           </div>
           {% if top.latency_sec is not none %}
           <p class="model-card__note">Inference {{ ui.ms(top.latency_sec * 1000) }}</p>
@@ -224,7 +224,7 @@
               <span class="pred__label">
                 <span class="pred__name"><span class="pred__name-text">{{ row.class_name }}</span></span>
                 <span class="pred__bar"><span class="pred__bar-fill"
-                       style="width: {{ (row.confidence * 100)|round(1) }}%"></span></span>
+                       data-bar-width="{{ (row.confidence * 100)|round(1) }}"></span></span>
               </span>
               <span class="pred__value">{{ ui.confidence(row.confidence, 2) }}</span>
             </li>

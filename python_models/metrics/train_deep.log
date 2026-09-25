@@ -1,0 +1,84 @@
+==============================================================================
+SonicSentinel AI -- deep model training (SRS Step 7)
+==============================================================================
+  python      : 3.12.14 (x86_64)
+  classes     : 10  critical: 5
+  candidates  : cnn1d, crnn, transfer
+  weighting   : on (boost x2.0)
+  floors      : {'accuracy': 0.85, 'macro_f1': 0.8, 'critical_recall': 0.85}
+  test  :   450 rows (450 orig / 0 aug), 10/10 classes
+  train :  2100 rows (2100 orig / 0 aug), 10/10 classes
+  val   :   450 rows (450 orig / 0 aug), 10/10 classes
+
+[features] 254 columns, version audiofeat-1.0.0
+[features] train (2100 rows)...
+  features: 50/2100
+  features: 100/2100
+  features: 150/2100
+  features: 200/2100
+  features: 250/2100
+  features: 300/2100
+  features: 350/2100
+  features: 400/2100
+  features: 450/2100
+  features: 500/2100
+  features: 550/2100
+  features: 600/2100
+  features: 650/2100
+  features: 700/2100
+  features: 750/2100
+  features: 800/2100
+  features: 850/2100
+  features: 900/2100
+  features: 950/2100
+  features: 1000/2100
+  features: 1050/2100
+  features: 1100/2100
+  features: 1150/2100
+  features: 1200/2100
+  features: 1250/2100
+  features: 1300/2100
+  features: 1350/2100
+  features: 1400/2100
+  features: 1450/2100
+  features: 1500/2100
+  features: 1550/2100
+  features: 1600/2100
+  features: 1650/2100
+  features: 1700/2100
+  features: 1750/2100
+  features: 1800/2100
+  features: 1850/2100
+  features: 1900/2100
+  features: 1950/2100
+  features: 2000/2100
+  features: 2050/2100
+  features: 2100/2100
+[features] val (450 rows)...
+  features: 50/450
+  features: 100/450
+  features: 150/450
+  features: 200/450
+  features: 250/450
+  features: 300/450
+  features: 350/450
+  features: 400/450
+  features: 450/450
+[features] test (450 rows)...
+  features: 50/450
+  features: 100/450
+  features: 150/450
+  features: 200/450
+  features: 250/450
+  features: 300/450
+  features: 350/450
+  features: 400/450
+  features: 450/450
+[features] done in 911.9s
+
+[tune] 8 candidate configurations x 1 seed(s)
+  cnn1d[channels=32,epochs=60] seed=0  val_macro_f1=0.4934  acc=0.5022  crit_recall=0.6133  fit=78.1s
+  cnn1d[channels=32,epochs=60]+cw seed=0  val_macro_f1=0.4934  acc=0.5022  crit_recall=0.6133  fit=59.2s
+  cnn1d[channels=64,epochs=60] seed=0  val_macro_f1=0.5306  acc=0.5400  crit_recall=0.6489  fit=110.3s
+  cnn1d[channels=64,epochs=60]+cw seed=0  val_macro_f1=0.5306  acc=0.5400  crit_recall=0.6489  fit=157.7s
+  crnn[channels=32,epochs=60,hidden=96] seed=0  val_macro_f1=0.6531  acc=0.6511  crit_recall=0.7022  fit=1104.9s

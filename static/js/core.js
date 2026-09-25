@@ -323,6 +323,7 @@
         delete root.dataset.state;
         clear(root);
         append(root, content);
+        initBars(root);
         return api;
       },
 
@@ -521,6 +522,19 @@
     });
   }
 
+  /* Server-rendered bar fills carry their width in `data-bar-width` (a percentage)
+     instead of a style="" attribute, because config/auth.json locks the CSP to
+     `style-src 'self'`. This turns the attribute into a CSSOM write, which CSP
+     permits. Any markup that renders a bar can use it; SST.region.render() calls
+     it again for bars inserted after the initial load. */
+  function initBars(root) {
+    qsa('[data-bar-width]', root || document).forEach(function (fill) {
+      var pct = parseFloat(fill.getAttribute('data-bar-width'));
+      fill.style.width = (isFinite(pct) ? Math.max(0, Math.min(100, pct)) : 0) + '%';
+      fill.removeAttribute('data-bar-width');
+    });
+  }
+
   function initTheme() {
     qsa('[data-theme-toggle]').forEach(function (button) {
       button.addEventListener('click', function () {
@@ -548,6 +562,7 @@
   document.addEventListener('DOMContentLoaded', function () {
     initTheme();
     initDelegates();
+    initBars();
   });
 
   /* ------------------------------------------------------------------ API - */
@@ -574,6 +589,7 @@
   SST.clear = clear;
   SST.byId = byId;
   SST.qsa = qsa;
+  SST.initBars = initBars;
   SST.on = on;
   SST.dispatch = dispatch;
   SST.region = region;

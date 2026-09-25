@@ -72,7 +72,7 @@
         {% for item in by_class | sort(attribute='count', reverse=true) %}
         <div class="bar-row" data-testid="class-bar-{{ item.class }}">
           <span class="chip__text">{{ item.class }}</span>
-          <span class="bar-row__track"><span class="bar-row__fill" style="width: {{ (item.count / max_class * 100) | round(1) }}%;"></span></span>
+          <span class="bar-row__track"><span class="bar-row__fill" data-bar-width="{{ (item.count / max_class * 100) | round(1) }}"></span></span>
           <span class="bar-row__value">{{ item.count }}</span>
         </div>
         {% endfor %}
@@ -94,7 +94,7 @@
         {% for item in by_severity | sort(attribute='count', reverse=true) %}
         <div class="bar-row" data-testid="severity-bar-{{ item.severity }}">
           <span>{{ ui.severity_chip(item.severity) }}</span>
-          <span class="bar-row__track"><span class="bar-row__fill" style="width: {{ (item.count / max_sev * 100) | round(1) }}%;"></span></span>
+          <span class="bar-row__track"><span class="bar-row__fill" data-bar-width="{{ (item.count / max_sev * 100) | round(1) }}"></span></span>
           <span class="bar-row__value">{{ item.count }}</span>
         </div>
         {% endfor %}
@@ -117,7 +117,7 @@
       {% for item in by_status %}
       <div class="bar-row" data-testid="status-bar-{{ item.status }}">
         <span>{{ ui.status_chip(item.status) }}</span>
-        <span class="bar-row__track"><span class="bar-row__fill" style="width: {{ (item.count / max_status * 100) | round(1) }}%;"></span></span>
+        <span class="bar-row__track"><span class="bar-row__fill" data-bar-width="{{ (item.count / max_status * 100) | round(1) }}"></span></span>
         <span class="bar-row__value">{{ item.count }}</span>
       </div>
       {% endfor %}

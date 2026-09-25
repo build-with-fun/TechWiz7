@@ -1,0 +1,104 @@
+==============================================================================
+SonicSentinel AI -- classical model training (SRS Step 7)
+==============================================================================
+  python      : 3.12.14 (x86_64)
+  classes     : 10  critical: 5
+  candidates  : svm_rbf, random_forest, extra_trees, gradient_boosting, xgboost
+  weighting   : on (boost x2.0)
+  floors      : {'accuracy': 0.85, 'macro_f1': 0.8, 'critical_recall': 0.85}
+  test  :   450 rows (450 orig / 0 aug), 10/10 classes
+  train :  2100 rows (2100 orig / 0 aug), 10/10 classes
+  val   :   450 rows (450 orig / 0 aug), 10/10 classes
+
+[features] 254 columns, version audiofeat-1.0.0
+[features] train (2100 rows)...
+  features: 50/2100
+  features: 100/2100
+  features: 150/2100
+  features: 200/2100
+  features: 250/2100
+  features: 300/2100
+  features: 350/2100
+  features: 400/2100
+  features: 450/2100
+  features: 500/2100
+  features: 550/2100
+  features: 600/2100
+  features: 650/2100
+  features: 700/2100
+  features: 750/2100
+  features: 800/2100
+  features: 850/2100
+  features: 900/2100
+  features: 950/2100
+  features: 1000/2100
+  features: 1050/2100
+  features: 1100/2100
+  features: 1150/2100
+  features: 1200/2100
+  features: 1250/2100
+  features: 1300/2100
+  features: 1350/2100
+  features: 1400/2100
+  features: 1450/2100
+  features: 1500/2100
+  features: 1550/2100
+  features: 1600/2100
+  features: 1650/2100
+  features: 1700/2100
+  features: 1750/2100
+  features: 1800/2100
+  features: 1850/2100
+  features: 1900/2100
+  features: 1950/2100
+  features: 2000/2100
+  features: 2050/2100
+  features: 2100/2100
+[features] val (450 rows)...
+  features: 50/450
+  features: 100/450
+  features: 150/450
+  features: 200/450
+  features: 250/450
+  features: 300/450
+  features: 350/450
+  features: 400/450
+  features: 450/450
+[features] test (450 rows)...
+  features: 50/450
+  features: 100/450
+  features: 150/450
+  features: 200/450
+  features: 250/450
+  features: 300/450
+  features: 350/450
+  features: 400/450
+  features: 450/450
+[features] done in 485.8s
+
+[tune] 26 candidate configurations x 1 seed(s)
+  svm_rbf[C=1.0,gamma=scale] seed=0  val_macro_f1=0.6179  acc=0.6444  crit_recall=0.7200  fit=1.6s
+  svm_rbf[C=1.0,gamma=scale]+cw seed=0  val_macro_f1=0.6179  acc=0.6444  crit_recall=0.7200  fit=1.5s
+  svm_rbf[C=10.0,gamma=scale] seed=0  val_macro_f1=0.6282  acc=0.6556  crit_recall=0.6933  fit=1.6s
+  svm_rbf[C=10.0,gamma=scale]+cw seed=0  val_macro_f1=0.6282  acc=0.6556  crit_recall=0.6933  fit=1.5s
+  svm_rbf[C=100.0,gamma=scale] seed=0  val_macro_f1=0.6335  acc=0.6622  crit_recall=0.6978  fit=1.5s
+  svm_rbf[C=100.0,gamma=scale]+cw seed=0  val_macro_f1=0.6335  acc=0.6622  crit_recall=0.6978  fit=1.7s
+  random_forest[min_samples_leaf=1,n_estimators=500] seed=0  val_macro_f1=0.7051  acc=0.7067  crit_recall=0.7956  fit=2.3s
+  random_forest[min_samples_leaf=1,n_estimators=500]+cw seed=0  val_macro_f1=0.7051  acc=0.7067  crit_recall=0.7956  fit=2.1s
+  random_forest[min_samples_leaf=2,n_estimators=500] seed=0  val_macro_f1=0.7013  acc=0.7044  crit_recall=0.7733  fit=2.2s
+  random_forest[min_samples_leaf=2,n_estimators=500]+cw seed=0  val_macro_f1=0.7013  acc=0.7044  crit_recall=0.7733  fit=2.6s
+  random_forest[max_depth=20,min_samples_leaf=1,n_estimators=500] seed=0  val_macro_f1=0.7094  acc=0.7111  crit_recall=0.7956  fit=2.5s
+  random_forest[max_depth=20,min_samples_leaf=1,n_estimators=500]+cw seed=0  val_macro_f1=0.7094  acc=0.7111  crit_recall=0.7956  fit=2.2s
+  random_forest[max_depth=20,min_samples_leaf=2,n_estimators=500] seed=0  val_macro_f1=0.7029  acc=0.7067  crit_recall=0.7689  fit=2.0s
+  random_forest[max_depth=20,min_samples_leaf=2,n_estimators=500]+cw seed=0  val_macro_f1=0.7029  acc=0.7067  crit_recall=0.7689  fit=2.0s
+  extra_trees[min_samples_leaf=1,n_estimators=500] seed=0  val_macro_f1=0.7030  acc=0.7067  crit_recall=0.7956  fit=1.1s
+  extra_trees[min_samples_leaf=1,n_estimators=500]+cw seed=0  val_macro_f1=0.7030  acc=0.7067  crit_recall=0.7956  fit=1.1s
+  extra_trees[min_samples_leaf=2,n_estimators=500] seed=0  val_macro_f1=0.6888  acc=0.6933  crit_recall=0.7778  fit=1.1s
+  extra_trees[min_samples_leaf=2,n_estimators=500]+cw seed=0  val_macro_f1=0.6888  acc=0.6933  crit_recall=0.7778  fit=1.1s
+  gradient_boosting[learning_rate=0.1,max_depth=3,n_estimators=200] seed=0  val_macro_f1=0.6895  acc=0.6889  crit_recall=0.7289  fit=253.7s
+  gradient_boosting[learning_rate=0.1,max_depth=3,n_estimators=200]+cw seed=0  val_macro_f1=0.6895  acc=0.6889  crit_recall=0.7289  fit=277.6s
+  gradient_boosting[learning_rate=0.1,max_depth=5,n_estimators=200] seed=0  val_macro_f1=0.7217  acc=0.7200  crit_recall=0.7422  fit=375.4s
+  gradient_boosting[learning_rate=0.1,max_depth=5,n_estimators=200]+cw seed=0  val_macro_f1=0.7217  acc=0.7200  crit_recall=0.7422  fit=471.8s
+  xgboost[learning_rate=0.1,max_depth=4,n_estimators=300] seed=0  val_macro_f1=0.7179  acc=0.7178  crit_recall=0.7689  fit=587.5s
+  xgboost[learning_rate=0.1,max_depth=4,n_estimators=300]+cw seed=0  val_macro_f1=0.7179  acc=0.7178  crit_recall=0.7689  fit=639.5s
+  xgboost[learning_rate=0.1,max_depth=6,n_estimators=300] seed=0  val_macro_f1=0.7176  acc=0.7200  crit_recall=0.7867  fit=763.5s

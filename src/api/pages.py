@@ -734,6 +734,18 @@ def visuals(event_id: int):
         duration = audio.duration_sec
         sample_rate = audio.sample_rate
 
+    try:
+        target = current_app.config["SST_STORAGE"].resolve(stored_path)
+    except ValueError:
+        raise ApiError("storage_error", "That recording could not be located.")
+    if not target.exists():
+        # Same policy as event_audio (FR lxxx): an expired/moved recording leaves the
+        # event's analysis intact, and the page says so instead of failing.
+        raise ApiError(
+            "no_audio",
+            "That recording is no longer on disk. Its analysis and history are unaffected.",
+        )
+
     payload = build_visuals(
         current_app.config["SST_STORAGE"],
         stored_path,

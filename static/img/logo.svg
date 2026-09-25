@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="SonicSentinel AI logo">
+  <!-- Shield: the sentinel. Waveform inside: the sound it listens to. -->
+  <path d="M32 4 56 12v18c0 15.6-10.1 25.9-24 30C18.1 55.9 8 45.6 8 30V12L32 4z"
+        fill="#0b1220" stroke="#38bdf8" stroke-width="3" stroke-linejoin="round"/>
+  <!-- waveform bars, symmetric around the centre line -->
+  <g stroke="#38bdf8" stroke-width="4" stroke-linecap="round">
+    <line x1="16" y1="34" x2="16" y2="30"/>
+    <line x1="23" y1="40" x2="23" y2="24"/>
+    <line x1="30" y1="45" x2="30" y2="19"/>
+    <line x1="37" y1="38" x2="37" y2="26"/>
+    <line x1="44" y1="43" x2="44" y2="21"/>
+    <line x1="51" y1="33" x2="51" y2="31"/>
+  </g>
+</svg>

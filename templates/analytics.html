@@ -58,7 +58,7 @@
             <td class="num">{{ ui.confidence(row.mean_confidence) }}</td>
             <td class="num">{{ ui.percent(row.mean_difference) }}</td>
             <td>
-              <span class="bar-row__track"><span class="bar-row__fill" style="width: {{ (row.count / max_count * 100) | round(1) }}%;"></span></span>
+              <span class="bar-row__track"><span class="bar-row__fill" data-bar-width="{{ (row.count / max_count * 100) | round(1) }}"></span></span>
             </td>
           </tr>
           {% else %}

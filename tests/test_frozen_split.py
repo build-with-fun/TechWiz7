@@ -277,6 +277,13 @@ def test_no_audio_file_on_disk_is_unlisted(records: list[dict[str, str]]):
         # writes. Everything else unlisted under audio_dataset/ is an orphan.
         if rel.startswith("raw_downloads/"):
             continue
+        # gtm_samples/ holds the per-class export slices shipped in
+        # gtm_model/upload_package/ for training the Google Teachable Machine
+        # model. They are derived from already-split originals and are
+        # deliberately NOT manifest rows — the GTM model is trained outside
+        # the frozen 2100/450/450 split by design.
+        if rel.startswith("gtm_samples/"):
+            continue
         unlisted.append(rel)
     assert not unlisted, (
         f"{len(unlisted)} wav files on disk in no manifest row, e.g. {sorted(unlisted)[:5]}"

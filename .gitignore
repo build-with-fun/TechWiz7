@@ -30,3 +30,12 @@ data/features/real_corpus_cache.json
 database/*.db
 audio_dataset/data/
 data/tmp/
+# SQLite WAL sidecars (db itself ignored via database/*.db)
+database/*.db-shm
+database/*.db-wal
+
+# Runtime storage (uploads/live/exports/visuals caches)
+data/storage/
+
+# Not-audio junk
+sample_audio/invalid.notaudio
