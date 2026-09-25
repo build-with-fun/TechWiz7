@@ -54,6 +54,14 @@ FROZEN_COLUMNS = [
 ]
 
 ID_RE = re.compile(r"^SS-([A-Z]{3})-(\d{4})$")
+# GTM segment lineage id: parent id plus a trailing S<n> (SS-AGG-0001S1).
+SEGMENT_ID_RE = re.compile(r"^SS-([A-Z]{3})-(\d{4})S\d+$")
+
+
+def id_class_code(audio_id: str) -> str | None:
+    """Return the class code for either id form (original or GTM segment)."""
+    m = ID_RE.match(audio_id) or SEGMENT_ID_RE.match(audio_id)
+    return m.group(1) if m else None
 
 
 class Report:
@@ -167,13 +175,12 @@ def main(argv: list[str] | None = None) -> int:
     dup_ids = [i for i, n in Counter(ids).items() if n > 1]
     rep.check("audio_id unique", not dup_ids, f"duplicates: {dup_ids[:5]}")
 
-    bad_fmt = [r["audio_id"] for r in rows if not ID_RE.match(r["audio_id"])]
-    rep.check("audio_id format SS-<CODE>-<NNNN>", not bad_fmt, f"bad: {bad_fmt[:5]}")
+    bad_fmt = [r["audio_id"] for r in rows if not (ID_RE.match(r["audio_id"]) or SEGMENT_ID_RE.match(r["audio_id"]))]
+    rep.check("audio_id format SS-<CODE>-<NNNN>[S<n>]", not bad_fmt, f"bad: {bad_fmt[:5]}")
 
     mismatched_code = [
         r["audio_id"] for r in rows
-        if ID_RE.match(r["audio_id"])
-        and code_to_name.get(ID_RE.match(r["audio_id"]).group(1)) != r["class_label"]
+        if code_to_name.get(id_class_code(r["audio_id"]) or "?") != r["class_label"]
     ]
     rep.check("audio_id class code matches class_label", not mismatched_code,
               f"{len(mismatched_code)} mismatched, e.g. {mismatched_code[:3]}")
@@ -283,9 +290,21 @@ def main(argv: list[str] | None = None) -> int:
         assign = split.get("assignments", {})
         rep.check("frozen split exists", True, f"{len(assign)} assignments")
 
-        unassigned = [r["audio_id"] for r in rows if r["audio_id"] not in assign]
-        rep.check("every manifest row is assigned to a split", not unassigned,
+        unassigned = [r["audio_id"] for r in rows
+                      if r["audio_id"] not in assign
+                      and r["parent_audio_id"].strip() not in assign]
+        rep.check("every manifest row is assigned to a split (directly or via parent)",
+                  not unassigned,
                   f"{len(unassigned)} unassigned, e.g. {unassigned[:3]}")
+
+        # a derived row whose parent is in the frozen split must agree with it
+        via_parent_mism = [r["audio_id"] for r in rows
+                           if r["audio_id"] not in assign
+                           and r["parent_audio_id"].strip() in assign
+                           and r["dataset_split"].strip()
+                           and r["dataset_split"].strip() != assign[r["parent_audio_id"].strip()]["split"]]
+        rep.check("parent-derived rows agree with their parent's frozen split",
+                  not via_parent_mism, f"{len(via_parent_mism)} mismatched")
 
         counts = Counter(a["split"] for a in assign.values())
         exp = int(round(sum(counts.values()) * 0.70))

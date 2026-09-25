@@ -40,6 +40,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 import sys
 from collections import Counter, defaultdict
 from datetime import date
@@ -160,6 +161,11 @@ def assemble(source_paths: list[Path]) -> tuple[list[str], list[dict], dict]:
                 problems.append(f"{where}: empty audio_id")
                 continue
             parts = aid.split("-")
+            # A trailing S<n> segment marker (SS-AGG-0013S2) is the GTM-sample lineage
+            # id: same key as the parent, same class code, cut n-th from that parent.
+            # Strip the marker before shape-checking; the parent number is still verified.
+            if len(parts) == 3 and re.search(r"S\d+$", parts[2]):
+                parts = parts[:-1] + [re.sub(r"S\d+$", "", parts[2])]
             if len(parts) != 3 or parts[0] != "SS" or not parts[2].isdigit():
                 problems.append(f"{where}: audio_id {aid!r} is not SS-<CODE>-<NNNN>")
                 continue
