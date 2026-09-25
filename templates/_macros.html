@@ -95,7 +95,7 @@
 {# ----------------------------------------------------- formatted values -- #}
 {% macro confidence(value, places=3) -%}
 {%- if value is none -%}--
-{%- elif value is number -%}{{ '%.' ~ places ~ 'f' | format(value) }}
+{%- elif value is number -%}{{ ('%.' ~ places ~ 'f') | format(value) }}
 {%- else -%}{{ value }}
 {%- endif -%}
 {% endmacro %}

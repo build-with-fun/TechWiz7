@@ -385,13 +385,16 @@ def event_detail(event_id: str):
             "rule": (event.config_snapshot or {}).get("alert_rule") if event.config_snapshot else None,
         }
         for name in ("event", "audio"):
-            if payload[name] is not None:
-                session.expunge(payload[name])
+            row = payload[name]
+            if row is not None and row in session:
+                session.expunge(row)
         for row in alerts + reviews:
-            session.expunge(row)
+            if row in session:
+                session.expunge(row)
         for rows in scores.values():
             for row in rows:
-                session.expunge(row)
+                if row in session:
+                    session.expunge(row)
     payload["page_title"] = f"Event {event_id}"
     return _render("event_detail.html", **payload)
 

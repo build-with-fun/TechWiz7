@@ -62,7 +62,7 @@
     <p class="summary-label">Final class</p>
     <div class="summary-value">
       {{ ui.class_chip(event.effective_class,
-                       class_names|default({}).get(event.effective_class) if class_names is defined else none,
+                       config.class_codes().get(event.effective_class) or none,
                        critical=event.is_critical) }}
     </div>
     {% if event.final_class and event.final_class != event.predicted_class %}
