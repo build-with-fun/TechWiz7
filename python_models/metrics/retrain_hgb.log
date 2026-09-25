@@ -14,3 +14,134 @@ SonicSentinel AI -- classical model training (SRS Step 7)
 [features] train (2100 rows)...
   features: 50/2100
   features: 100/2100
+  features: 150/2100
+  features: 200/2100
+  features: 250/2100
+  features: 300/2100
+  features: 350/2100
+  features: 400/2100
+  features: 450/2100
+  features: 500/2100
+  features: 550/2100
+  features: 600/2100
+  features: 650/2100
+  features: 700/2100
+  features: 750/2100
+  features: 800/2100
+  features: 850/2100
+  features: 900/2100
+  features: 950/2100
+  features: 1000/2100
+  features: 1050/2100
+  features: 1100/2100
+  features: 1150/2100
+  features: 1200/2100
+  features: 1250/2100
+  features: 1300/2100
+  features: 1350/2100
+  features: 1400/2100
+  features: 1450/2100
+  features: 1500/2100
+  features: 1550/2100
+  features: 1600/2100
+  features: 1650/2100
+  features: 1700/2100
+  features: 1750/2100
+  features: 1800/2100
+  features: 1850/2100
+  features: 1900/2100
+  features: 1950/2100
+  features: 2000/2100
+  features: 2050/2100
+  features: 2100/2100
+[features] val (450 rows)...
+  features: 50/450
+  features: 100/450
+  features: 150/450
+  features: 200/450
+  features: 250/450
+  features: 300/450
+  features: 350/450
+  features: 400/450
+  features: 450/450
+[features] test (450 rows)...
+  features: 50/450
+  features: 100/450
+  features: 150/450
+  features: 200/450
+  features: 250/450
+  features: 300/450
+  features: 350/450
+  features: 400/450
+  features: 450/450
+[features] done in 356.9s
+
+[tune] 28 candidate configurations x 1 seed(s)
+  svm_rbf[C=1.0,gamma=scale] seed=0  val_macro_f1=0.6179  acc=0.6444  crit_recall=0.7200  fit=1.4s
+  svm_rbf[C=1.0,gamma=scale]+cw seed=0  val_macro_f1=0.6179  acc=0.6444  crit_recall=0.7200  fit=1.3s
+  svm_rbf[C=10.0,gamma=scale] seed=0  val_macro_f1=0.6282  acc=0.6556  crit_recall=0.6933  fit=1.3s
+  svm_rbf[C=10.0,gamma=scale]+cw seed=0  val_macro_f1=0.6282  acc=0.6556  crit_recall=0.6933  fit=1.3s
+  svm_rbf[C=100.0,gamma=scale] seed=0  val_macro_f1=0.6335  acc=0.6622  crit_recall=0.6978  fit=1.4s
+  svm_rbf[C=100.0,gamma=scale]+cw seed=0  val_macro_f1=0.6335  acc=0.6622  crit_recall=0.6978  fit=1.4s
+  random_forest[min_samples_leaf=1,n_estimators=500] seed=0  val_macro_f1=0.7051  acc=0.7067  crit_recall=0.7956  fit=2.1s
+  random_forest[min_samples_leaf=1,n_estimators=500]+cw seed=0  val_macro_f1=0.7051  acc=0.7067  crit_recall=0.7956  fit=2.0s
+  random_forest[min_samples_leaf=2,n_estimators=500] seed=0  val_macro_f1=0.7013  acc=0.7044  crit_recall=0.7733  fit=2.0s
+  random_forest[min_samples_leaf=2,n_estimators=500]+cw seed=0  val_macro_f1=0.7013  acc=0.7044  crit_recall=0.7733  fit=1.9s
+  random_forest[max_depth=20,min_samples_leaf=1,n_estimators=500] seed=0  val_macro_f1=0.7094  acc=0.7111  crit_recall=0.7956  fit=1.9s
+  random_forest[max_depth=20,min_samples_leaf=1,n_estimators=500]+cw seed=0  val_macro_f1=0.7094  acc=0.7111  crit_recall=0.7956  fit=2.0s
+  random_forest[max_depth=20,min_samples_leaf=2,n_estimators=500] seed=0  val_macro_f1=0.7029  acc=0.7067  crit_recall=0.7689  fit=1.9s
+  random_forest[max_depth=20,min_samples_leaf=2,n_estimators=500]+cw seed=0  val_macro_f1=0.7029  acc=0.7067  crit_recall=0.7689  fit=1.9s
+  extra_trees[min_samples_leaf=1,n_estimators=500] seed=0  val_macro_f1=0.7030  acc=0.7067  crit_recall=0.7956  fit=1.1s
+  extra_trees[min_samples_leaf=1,n_estimators=500]+cw seed=0  val_macro_f1=0.7030  acc=0.7067  crit_recall=0.7956  fit=1.1s
+  extra_trees[min_samples_leaf=2,n_estimators=500] seed=0  val_macro_f1=0.6888  acc=0.6933  crit_recall=0.7778  fit=1.0s
+  extra_trees[min_samples_leaf=2,n_estimators=500]+cw seed=0  val_macro_f1=0.6888  acc=0.6933  crit_recall=0.7778  fit=1.0s
+  gradient_boosting[learning_rate=0.1,max_depth=3,n_estimators=200] seed=0  val_macro_f1=0.6895  acc=0.6889  crit_recall=0.7289  fit=216.6s
+  gradient_boosting[learning_rate=0.1,max_depth=3,n_estimators=200]+cw seed=0  val_macro_f1=0.6895  acc=0.6889  crit_recall=0.7289  fit=219.4s
+  gradient_boosting[learning_rate=0.1,max_depth=5,n_estimators=200] seed=0  val_macro_f1=0.7217  acc=0.7200  crit_recall=0.7422  fit=343.1s
+  gradient_boosting[learning_rate=0.1,max_depth=5,n_estimators=200]+cw seed=0  val_macro_f1=0.7217  acc=0.7200  crit_recall=0.7422  fit=343.2s
+  xgboost[learning_rate=0.1,max_depth=4,n_estimators=300] seed=0  val_macro_f1=0.7179  acc=0.7178  crit_recall=0.7689  fit=26.1s
+  xgboost[learning_rate=0.1,max_depth=4,n_estimators=300]+cw seed=0  val_macro_f1=0.7179  acc=0.7178  crit_recall=0.7689  fit=22.8s
+  xgboost[learning_rate=0.1,max_depth=6,n_estimators=300] seed=0  val_macro_f1=0.7176  acc=0.7200  crit_recall=0.7867  fit=28.5s
+  xgboost[learning_rate=0.1,max_depth=6,n_estimators=300]+cw seed=0  val_macro_f1=0.7176  acc=0.7200  crit_recall=0.7867  fit=29.5s
+  hist_gradient_boosting[learning_rate=0.1,max_depth=8,max_iter=400,max_leaf_nodes=31] seed=0  val_macro_f1=0.7590  acc=0.7600  crit_recall=0.8133  fit=10.3s
+  hist_gradient_boosting[learning_rate=0.1,max_depth=8,max_iter=400,max_leaf_nodes=31]+cw seed=0  val_macro_f1=0.7590  acc=0.7600  crit_recall=0.8133  fit=10.3s
+
+[tune] WINNER: hist_gradient_boosting[learning_rate=0.1,max_depth=8,max_iter=400,max_leaf_nodes=31]+cw
+       selected hist_gradient_boosting[learning_rate=0.1,max_depth=8,max_iter=400,max_leaf_nodes=31]+cw on validation macro_f1=0.7590 (val accuracy 0.7600, critical recall 0.8133) out of 28 trials; test split not used for selection. no candidate met the critical-recall floor of 0.85; selecting the best available on macro-F1 and flagging this in the report
+
+[cv] 5-fold stratified CV on training rows (winner only)
+  cv fold 1/5: macro_f1=0.7394 acc=0.7429
+  cv fold 2/5: macro_f1=0.7399 acc=0.7405
+  cv fold 3/5: macro_f1=0.7548 acc=0.7524
+  cv fold 4/5: macro_f1=0.7640 acc=0.7643
+  cv fold 5/5: macro_f1=0.7279 acc=0.7333
+[cv] macro-F1 0.7452 +/- 0.0142 across 5 folds
+
+[final] refitting winner on train+val
+
+[final] TEST SPLIT (scored once, never used for selection)
+  accuracy          : 0.6978  (floor 0.85)
+  macro F1          : 0.6968  (floor 0.80)
+  critical recall   : 0.8000  (floor 0.85)
+  macro precision   : 0.7108
+  macro recall      : 0.6978
+  top-2 accuracy    : 0.8444
+  weakest classes   :
+    Animal Sound               recall=0.556 f1=0.505 support=45
+    Machinery Fault            recall=0.578 f1=0.565 support=45
+    Alarm or Siren             recall=0.600 f1=0.600 support=45
+
+[save] best model -> python_models/best/hgb
+[save] metrics    -> python_models/metrics/classical_metrics_hgb.json
+[save] comparison -> python_models/metrics/classical_comparison_hgb.csv
+[save] confusion    -> python_models/metrics/confusion_matrix_winner_hgb.png
+
+==============================================================================
+RESULT: SRS floors NOT met --
+  - accuracy: 0.6978 < 0.8500 required
+  - macro_f1: 0.6968 < 0.8000 required
+  - critical_recall: 0.8000 < 0.8500 required
+==============================================================================
+
+[total] 1870.7s
+[total] meets_floors=False
