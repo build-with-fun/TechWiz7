@@ -150,6 +150,62 @@ def _gradient_boosting(params: Mapping[str, Any], seed: int, _rng: Any) -> Any:
     )
 
 
+def _hist_gradient_boosting(params: Mapping[str, Any], seed: int, _rng: Any) -> Any:
+    from sklearn.ensemble import HistGradientBoostingClassifier
+
+    return _HistGBShim(
+        HistGradientBoostingClassifier(
+            max_iter=int(params.get("max_iter", 300)),
+            learning_rate=float(params.get("learning_rate", 0.1)),
+            max_leaf_nodes=int(params.get("max_leaf_nodes", 63)),
+            max_depth=params.get("max_depth"),
+            l2_regularization=float(params.get("l2_regularization", 0.0)),
+            early_stopping=False,
+            random_state=seed,
+        )
+    )
+
+
+class _HistGBShim(BaseEstimator, ClassifierMixin):
+    """The two translations ``HistGradientBoostingClassifier`` needs to join the zoo.
+
+    HGB encodes string labels to integers internally, but validates a ``class_weight``
+    dict against the *encoded* integer labels -- a string-keyed dict (the zoo's convention,
+    the one ``critical_class_weights`` produces) raises ``ValueError: The classes, [0, 1, 2],
+    are not in class_weight``. So, exactly like ``_gradient_boosting``, the weights must
+    travel as row weights via :func:`fit_estimator`'s sample-weight path.
+
+    That path is chosen by ``_class_weight_key``/``_accepts_sample_weight``. A sklearn
+    ``get_params(deep=True)`` would expose the inner estimator's ``class_weight`` and make
+    ``build_estimator`` bake the string-keyed dict straight into HGB -- the crash above, at
+    fit time, on the weighted variants only. ``get_params`` is therefore deliberately
+    shallow: the shim hides the inner estimator's params and owns the translation itself.
+    """
+
+    def __init__(self, estimator: Any):
+        self.estimator = estimator
+
+    def get_params(self, deep: bool = True) -> dict[str, Any]:
+        # Deliberately shallow -- see the class docstring.
+        return {"estimator": self.estimator}
+
+    def fit(self, X, y, sample_weight=None, **fit_params):
+        labels = sorted({str(v) for v in y})
+        self._label_to_int_ = {label: i for i, label in enumerate(labels)}
+        self.classes_ = np.asarray(labels, dtype=object)
+        encoded = np.asarray([self._label_to_int_[str(v)] for v in y], dtype=np.int64)
+        self.estimator.fit(X, encoded, sample_weight=sample_weight)
+        return self
+
+    def predict(self, X):
+        return self.classes_[np.asarray(self.estimator.predict(X))]
+
+    def predict_proba(self, X):
+        # Columns follow the inner estimator's classes_ (sorted ints) == sorted strings,
+        # i.e. exactly ``self.classes_`` order -- the zoo-wide predict_proba contract.
+        return self.estimator.predict_proba(X)
+
+
 class _LabelEncodedClassifier(BaseEstimator, ClassifierMixin):
     """Fit an integer-only estimator on string class labels.
 
@@ -301,6 +357,21 @@ CLASSICAL_CANDIDATES: dict[str, CandidateSpec] = {
             "max_depth": [4, 6],
         },
         notes="Regularised boosted trees; native sample_weight for critical-class weighting.",
+    ),
+    "hist_gradient_boosting": CandidateSpec(
+        name="hist_gradient_boosting",
+        builder=_hist_gradient_boosting,
+        preprocess="none",
+        param_grid={
+            "max_iter": [300],
+            "learning_rate": [0.06, 0.1],
+            "max_leaf_nodes": [31, 63],
+        },
+        notes=(
+            "Histogram gradient boosting (sklearn's LightGBM): the strongest classical "
+            "family on this feature set. Critical-class weighting travels as row weights "
+            "via the shim, because HGB validates class_weight against its encoded labels."
+        ),
     ),
 }
 

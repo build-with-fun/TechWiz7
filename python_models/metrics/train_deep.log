@@ -82,3 +82,68 @@ SonicSentinel AI -- deep model training (SRS Step 7)
   cnn1d[channels=64,epochs=60] seed=0  val_macro_f1=0.5306  acc=0.5400  crit_recall=0.6489  fit=110.3s
   cnn1d[channels=64,epochs=60]+cw seed=0  val_macro_f1=0.5306  acc=0.5400  crit_recall=0.6489  fit=157.7s
   crnn[channels=32,epochs=60,hidden=96] seed=0  val_macro_f1=0.6531  acc=0.6511  crit_recall=0.7022  fit=1104.9s
+  crnn[channels=32,epochs=60,hidden=96]+cw seed=0  val_macro_f1=0.6531  acc=0.6511  crit_recall=0.7022  fit=697.6s
+2026-09-25 12:00:08.235075: I external/local_xla/xla/tsl/cuda/cudart_stub.cc:32] Could not find cuda drivers on your machine, GPU will not be used.
+2026-09-25 12:00:08.238972: I external/local_xla/xla/tsl/cuda/cudart_stub.cc:32] Could not find cuda drivers on your machine, GPU will not be used.
+2026-09-25 12:00:08.247294: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:467] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+E0000 00:00:1790319608.260926   98405 cuda_dnn.cc:8579] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+E0000 00:00:1790319608.264904   98405 cuda_blas.cc:1407] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+W0000 00:00:1790319608.275885   98405 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+W0000 00:00:1790319608.275929   98405 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+W0000 00:00:1790319608.275939   98405 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+W0000 00:00:1790319608.275960   98405 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+2026-09-25 12:00:08.279202: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+AttributeError: 'MessageFactory' object has no attribute 'GetPrototype'
+AttributeError: 'MessageFactory' object has no attribute 'GetPrototype'
+AttributeError: 'MessageFactory' object has no attribute 'GetPrototype'
+AttributeError: 'MessageFactory' object has no attribute 'GetPrototype'
+AttributeError: 'MessageFactory' object has no attribute 'GetPrototype'
+/home/ammar/Downloads/SRS_NextWave AI and ML/sonicsentinel-ai/.venv/lib/python3.12/site-packages/keras/src/applications/mobilenet_v3.py:454: UserWarning: `input_shape` is undefined or non-square, or `rows` is not 224. Weights for input shape (224, 224) will be loaded as the default.
+  return MobileNetV3(
+E0000 00:00:1790319611.156337   98405 cuda_executor.cc:1228] INTERNAL: CUDA Runtime error: Failed call to cudaGetRuntimeVersion: Error loading CUDA libraries. GPU will not be used.: Error loading CUDA libraries. GPU will not be used.
+W0000 00:00:1790319611.157088   98405 gpu_device.cc:2341] Cannot dlopen some GPU libraries. Please make sure the missing libraries mentioned above are installed properly if you would like to use GPU. Follow the guide at https://www.tensorflow.org/install/gpu for how to download and setup the required libraries for your platform.
+Skipping registering GPU devices...
+  transfer[epochs=40,head_units=128] seed=0  val_macro_f1=0.5914  acc=0.5911  crit_recall=0.6711  fit=85.7s
+  transfer[epochs=40,head_units=128]+cw seed=0  val_macro_f1=0.5914  acc=0.5911  crit_recall=0.6711  fit=79.2s
+
+[tune] WINNER: crnn[channels=32,epochs=60,hidden=96]+cw
+       selected crnn[channels=32,epochs=60,hidden=96]+cw on validation macro_f1=0.6531 (val accuracy 0.6511, critical recall 0.7022) out of 8 trials; test split not used for selection. no candidate met the critical-recall floor of 0.85; selecting the best available on macro-F1 and flagging this in the report
+
+[cv] 3-fold stratified CV on training rows (winner only)
+  cv fold 1/3: macro_f1=0.6168 acc=0.6243
+  cv fold 2/3: macro_f1=0.5866 acc=0.5900
+  cv fold 3/3: macro_f1=0.5889 acc=0.5957
+[cv] macro-F1 0.5975 +/- 0.0168 across 3 folds
+
+[final] refitting winner on train+val
+
+[final] TEST SPLIT (scored once, never used for selection)
+  accuracy          : 0.6156  (floor 0.85)
+  macro F1          : 0.6119  (floor 0.80)
+  critical recall   : 0.7333  (floor 0.85)
+  macro precision   : 0.6160
+  macro recall      : 0.6156
+  top-2 accuracy    : 0.7622
+  weakest classes   :
+    Animal Sound               recall=0.378 f1=0.410 support=45
+    Alarm or Siren             recall=0.467 f1=0.488 support=45
+    Aggression                 recall=0.467 f1=0.488 support=45
+
+[save] best model -> python_models/best/deep
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/ammar/Downloads/SRS_NextWave AI and ML/sonicsentinel-ai/python_models/train_deep.py", line 719, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/home/ammar/Downloads/SRS_NextWave AI and ML/sonicsentinel-ai/python_models/train_deep.py", line 706, in main
+    run_training(
+  File "/home/ammar/Downloads/SRS_NextWave AI and ML/sonicsentinel-ai/python_models/train_deep.py", line 560, in run_training
+    per_candidate = _per_candidate_metrics(protocol, selection, class_names, critical)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ammar/Downloads/SRS_NextWave AI and ML/sonicsentinel-ai/python_models/train_deep.py", line 247, in _per_candidate_metrics
+    for tag, trial in protocol.trials_by_candidate.items():
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'TuningProtocol' object has no attribute 'trials_by_candidate'

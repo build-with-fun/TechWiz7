@@ -102,3 +102,13 @@ SonicSentinel AI -- classical model training (SRS Step 7)
   xgboost[learning_rate=0.1,max_depth=4,n_estimators=300] seed=0  val_macro_f1=0.7179  acc=0.7178  crit_recall=0.7689  fit=587.5s
   xgboost[learning_rate=0.1,max_depth=4,n_estimators=300]+cw seed=0  val_macro_f1=0.7179  acc=0.7178  crit_recall=0.7689  fit=639.5s
   xgboost[learning_rate=0.1,max_depth=6,n_estimators=300] seed=0  val_macro_f1=0.7176  acc=0.7200  crit_recall=0.7867  fit=763.5s
+  xgboost[learning_rate=0.1,max_depth=6,n_estimators=300]+cw seed=0  val_macro_f1=0.7176  acc=0.7200  crit_recall=0.7867  fit=748.9s
+
+[tune] WINNER: gradient_boosting[learning_rate=0.1,max_depth=5,n_estimators=200]
+       selected gradient_boosting[learning_rate=0.1,max_depth=5,n_estimators=200] on validation macro_f1=0.7217 (val accuracy 0.7200, critical recall 0.7422) out of 26 trials; test split not used for selection. no candidate met the critical-recall floor of 0.85; selecting the best available on macro-F1 and flagging this in the report
+
+[cv] 5-fold stratified CV on training rows (winner only)
+  cv fold 1/5: macro_f1=0.7323 acc=0.7286
+  cv fold 2/5: macro_f1=0.7327 acc=0.7310
+  cv fold 3/5: macro_f1=0.7421 acc=0.7381
+  cv fold 4/5: macro_f1=0.7568 acc=0.7524

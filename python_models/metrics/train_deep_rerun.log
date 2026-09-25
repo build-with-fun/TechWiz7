@@ -1,0 +1,107 @@
+==============================================================================
+SonicSentinel AI -- deep model training (SRS Step 7)
+==============================================================================
+  python      : 3.12.14 (x86_64)
+  classes     : 10  critical: 5
+  candidates  : cnn1d, crnn, transfer
+  weighting   : on (boost x2.0)
+  floors      : {'accuracy': 0.85, 'macro_f1': 0.8, 'critical_recall': 0.85}
+  test  :   450 rows (450 orig / 0 aug), 10/10 classes
+  train :  2100 rows (2100 orig / 0 aug), 10/10 classes
+  val   :   450 rows (450 orig / 0 aug), 10/10 classes
+
+[features] 254 columns, version audiofeat-1.0.0
+[features] train (2100 rows)...
+  features: 50/2100
+  features: 100/2100
+  features: 150/2100
+  features: 200/2100
+  features: 250/2100
+  features: 300/2100
+  features: 350/2100
+  features: 400/2100
+  features: 450/2100
+  features: 500/2100
+  features: 550/2100
+  features: 600/2100
+  features: 650/2100
+  features: 700/2100
+  features: 750/2100
+  features: 800/2100
+  features: 850/2100
+  features: 900/2100
+  features: 950/2100
+  features: 1000/2100
+  features: 1050/2100
+  features: 1100/2100
+  features: 1150/2100
+  features: 1200/2100
+  features: 1250/2100
+  features: 1300/2100
+  features: 1350/2100
+  features: 1400/2100
+  features: 1450/2100
+  features: 1500/2100
+  features: 1550/2100
+  features: 1600/2100
+  features: 1650/2100
+  features: 1700/2100
+  features: 1750/2100
+  features: 1800/2100
+  features: 1850/2100
+  features: 1900/2100
+  features: 1950/2100
+  features: 2000/2100
+  features: 2050/2100
+  features: 2100/2100
+[features] val (450 rows)...
+  features: 50/450
+  features: 100/450
+  features: 150/450
+  features: 200/450
+  features: 250/450
+  features: 300/450
+  features: 350/450
+  features: 400/450
+  features: 450/450
+[features] test (450 rows)...
+  features: 50/450
+  features: 100/450
+  features: 150/450
+  features: 200/450
+  features: 250/450
+  features: 300/450
+  features: 350/450
+  features: 400/450
+  features: 450/450
+[features] done in 0.9s
+
+[tune] 8 candidate configurations x 1 seed(s)
+  cnn1d[channels=32,epochs=60] seed=0  val_macro_f1=0.4934  acc=0.5022  crit_recall=0.6133  fit=8.5s
+  cnn1d[channels=32,epochs=60]+cw seed=0  val_macro_f1=0.4934  acc=0.5022  crit_recall=0.6133  fit=7.4s
+  cnn1d[channels=64,epochs=60] seed=0  val_macro_f1=0.5306  acc=0.5400  crit_recall=0.6489  fit=15.6s
+  cnn1d[channels=64,epochs=60]+cw seed=0  val_macro_f1=0.5306  acc=0.5400  crit_recall=0.6489  fit=15.6s
+  crnn[channels=32,epochs=60,hidden=96] seed=0  val_macro_f1=0.6531  acc=0.6511  crit_recall=0.7022  fit=111.3s
+  crnn[channels=32,epochs=60,hidden=96]+cw seed=0  val_macro_f1=0.6531  acc=0.6511  crit_recall=0.7022  fit=177.0s
+2026-09-25 12:27:50.429516: I external/local_xla/xla/tsl/cuda/cudart_stub.cc:32] Could not find cuda drivers on your machine, GPU will not be used.
+2026-09-25 12:27:50.433172: I external/local_xla/xla/tsl/cuda/cudart_stub.cc:32] Could not find cuda drivers on your machine, GPU will not be used.
+2026-09-25 12:27:50.443079: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:467] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+E0000 00:00:1790321270.464180  111639 cuda_dnn.cc:8579] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+E0000 00:00:1790321270.470508  111639 cuda_blas.cc:1407] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+W0000 00:00:1790321270.486087  111639 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+W0000 00:00:1790321270.486131  111639 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+W0000 00:00:1790321270.486141  111639 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+W0000 00:00:1790321270.486160  111639 computation_placer.cc:177] computation placer already registered. Please check linkage and avoid linking the same target more than once.
+2026-09-25 12:27:50.490552: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+AttributeError: 'MessageFactory' object has no attribute 'GetPrototype'
+AttributeError: 'MessageFactory' object has no attribute 'GetPrototype'
+AttributeError: 'MessageFactory' object has no attribute 'GetPrototype'
+AttributeError: 'MessageFactory' object has no attribute 'GetPrototype'
+AttributeError: 'MessageFactory' object has no attribute 'GetPrototype'
+/home/ammar/Downloads/SRS_NextWave AI and ML/sonicsentinel-ai/.venv/lib/python3.12/site-packages/keras/src/applications/mobilenet_v3.py:454: UserWarning: `input_shape` is undefined or non-square, or `rows` is not 224. Weights for input shape (224, 224) will be loaded as the default.
+  return MobileNetV3(
+E0000 00:00:1790321274.107225  111639 cuda_executor.cc:1228] INTERNAL: CUDA Runtime error: Failed call to cudaGetRuntimeVersion: Error loading CUDA libraries. GPU will not be used.: Error loading CUDA libraries. GPU will not be used.
+W0000 00:00:1790321274.107915  111639 gpu_device.cc:2341] Cannot dlopen some GPU libraries. Please make sure the missing libraries mentioned above are installed properly if you would like to use GPU. Follow the guide at https://www.tensorflow.org/install/gpu for how to download and setup the required libraries for your platform.
+Skipping registering GPU devices...

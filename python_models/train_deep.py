@@ -244,7 +244,8 @@ def _per_candidate_metrics(
     ``classical.feature_importances`` makes the same choice for models that expose nothing.
     """
     rows: list[dict[str, Any]] = []
-    for tag, trial in protocol.trials_by_candidate.items():
+    for trial in protocol.trials:
+        tag = trial.candidate
         entry = {
             "candidate": tag,
             "family": _base_name(tag),
