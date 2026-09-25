@@ -364,6 +364,16 @@ def build_clip(plan: dict, rng: np.random.Generator, wav_out: Path) -> tuple[flo
     # mic self-noise then gain staging
     y = y + (10 ** (floor_db / 20.0)) * rng.standard_normal(len(y))
     y = y * float(rng.uniform(*RECORDER_GAIN))
+    # Level floor: the distance attenuation above can push far clips below the
+    # corpus silence gate (RMS -50 dBFS, audio_preprocessing/io.py), which would
+    # waste the clip.  Renormalise the *signal* to a floor that keeps every clip
+    # clearly audible while preserving the relative loudness spread between clips.
+    # Applied after the whole chain so the bed/noise stay proportional (SNR is
+    # preserved -- bed was mixed relative to sig_rms).
+    rms_after = _rms(y)
+    target_floor = 0.02  # -34 dBFS, comfortably above the -50 dBFS gate
+    if rms_after < target_floor:
+        y = y * (target_floor / max(rms_after, 1e-9))
     if float(np.max(np.abs(y))) > 0.95:
         y = np.tanh(y) * 0.97
     y = np.clip(y, -1.0, 1.0)

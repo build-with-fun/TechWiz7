@@ -25,3 +25,8 @@ data/uscraping/download.log
 
 # Generated caches
 data/features/real_corpus_cache.json
+
+# Runtime artifacts
+database/*.db
+audio_dataset/data/
+data/tmp/

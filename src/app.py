@@ -155,13 +155,22 @@ def _register_session_hooks(app: Flask) -> None:
 
 
 def _register_blueprints(app: Flask) -> None:
-    from src.api.auth_api import bp as auth_bp
+    from src.api.auth_api import bp as auth_api_bp
     from src.api.health import bp as health_bp
+    from src.api import pages as pages_module
     from src.api.pages import bp as pages_bp
 
     app.register_blueprint(health_bp)
-    app.register_blueprint(auth_bp)
+    # auth_api.py owns /api/auth/*; pages.py's auth_bp owns the HTML /login, /logout.
+    app.register_blueprint(auth_api_bp)
     app.register_blueprint(pages_bp)
+    # pages.py contributes five blueprints (its BLUEPRINTS tuple): auth, main, admin,
+    # models, event_visuals. Registering only `bp` (main) left /login, /logout, /admin/*,
+    # /models and the evidence-visuals endpoint dead while their templates and guards
+    # referenced them -- every render that built those url_for calls 500'd.
+    for extra in pages_module.BLUEPRINTS:
+        if extra is not pages_bp:
+            app.register_blueprint(extra)
 
     # Optional API slices. Each is registered only when its module is importable, so this
     # file does not have to change every time another engineer lands an endpoint group --

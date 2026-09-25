@@ -65,6 +65,7 @@ from datetime import date
 from pathlib import Path
 
 import soundfile as sf
+import numpy as np
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 AUDIO_DATASET = SCRIPT_DIR.parent
@@ -82,7 +83,7 @@ FROZEN_COLUMNS = [
 ]
 EXTRA_COLUMNS = [
     "source_category", "corpus_id", "salience", "environment_basis",
-    "fetch_batch", "original_filename", "licence_url",
+    "fetch_batch", "original_filename", "licence_url", "notes",
 ]
 ALL_COLUMNS = FROZEN_COLUMNS + EXTRA_COLUMNS
 
@@ -245,6 +246,26 @@ def _audio_meta(blob: bytes, tmp: Path) -> tuple[float, int, int] | None:
     return (info.duration, info.samplerate, 1 if info.channels == 1 else 2)
 
 
+def _passes_quality(blob: bytes, tmp: Path) -> bool:
+    """Corpus quality gate (SRS self-created dataset): every original must clear
+    the 0.5 s preprocessing floor and contain an audible signal, so no clip is
+    ever refused by audio_preprocessing at training/inference time.
+
+    Same thresholds as audio_preprocessing/config.py QUALITY_DEFAULTS:
+    min_duration_sec 0.5, silence below -50 dBFS (RMS 0.00316)."""
+    min_dur, silence_rms = 0.5, 10 ** (-50.0 / 20.0)
+    try:
+        tmp.write_bytes(blob)
+        y, sr = sf.read(str(tmp), dtype="float32", always_2d=True)
+        mono = y.mean(axis=1)
+        if (len(mono) / sr) < min_dur:
+            return False
+        rms = float(np.sqrt(np.mean(mono.astype(np.float64) ** 2)))
+        return rms > silence_rms
+    except Exception:
+        return False
+
+
 def _emit(rows: list[dict], prov: dict, category: str, audio_id: str,
           filename: str, class_label: str, meta: tuple[float, int, int],
           digest: str, extra: dict) -> None:
@@ -284,11 +305,14 @@ def _ingest_blob(rows: list[dict], prov: dict, category: str, class_label: str,
                  slug: str, code: str, next_id: list[int], have_sha: set[str],
                  stats: Counter, skipped: Counter, blob: bytes, extra: dict,
                  tmp: Path, room: dict[str, int]) -> bool:
-    """Decode one in-memory WAV blob; if unique, emit a row and write it into
-    originals/<slug>/. Returns True when a clip was accepted."""
+    """Decode one in-memory WAV blob; if unique and audible, emit a row and write
+    it into originals/<slug>/. Returns True when a clip was accepted."""
     meta = _audio_meta(blob, tmp)
     if meta is None:
         skipped["undecodable"] += 1
+        return False
+    if not _passes_quality(blob, tmp):
+        skipped["quality_too_short_or_silent"] += 1
         return False
     # hash the raw bytes we ship, matching the existing FSD50K rows and the QA
     # test that re-hashes the file on disk.
@@ -606,6 +630,16 @@ def main(argv=None) -> int:
 
     room = {name: max(0, args.per_class - existing[name]) for name in classes}
     next_id = {name: [ID_START] for name in classes}
+    # seed ids above any already-assigned id (restored CSVs hold ids up to 6xx),
+    # so a rerun never collides with clips emitted by earlier runs.
+    if OUT_MANIFEST.exists():
+        with OUT_MANIFEST.open(newline="", encoding="utf-8") as fh:
+            for r in csv.DictReader(fh):
+                cls, aid = r.get("class_label", ""), r.get("audio_id", "")
+                if cls in next_id and aid.startswith("SS-"):
+                    parts = aid.split("-")
+                    if len(parts) == 3 and parts[2].isdigit():
+                        next_id[cls][0] = max(next_id[cls][0], int(parts[2]) + 1)
     have_sha: set[str] = set()
     stats: Counter = Counter()
     skipped: Counter = Counter()
@@ -639,6 +673,9 @@ def main(argv=None) -> int:
         pass
 
     rows.sort(key=lambda r: (r["class_label"], r["audio_id"]))
+    # guard: rows may come from an older CSV with columns this version dropped
+    # (or carry strays); never let an hour-long run die at the final write.
+    rows = [{k: r.get(k, "") for k in ALL_COLUMNS} for r in rows]
     OUT_MANIFEST.parent.mkdir(parents=True, exist_ok=True)
     with OUT_MANIFEST.open("w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=ALL_COLUMNS)

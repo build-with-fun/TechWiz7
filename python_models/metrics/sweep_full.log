@@ -1,0 +1,144 @@
+==============================================================================
+SonicSentinel AI -- classical model training (SRS Step 7)
+==============================================================================
+  python      : 3.12.14 (x86_64)
+  classes     : 10  critical: 5
+  candidates  : svm_rbf, random_forest, extra_trees, gradient_boosting, xgboost
+  weighting   : on (boost x2.0)
+  floors      : {'accuracy': 0.85, 'macro_f1': 0.8, 'critical_recall': 0.85}
+  test  :   450 rows (450 orig / 0 aug), 10/10 classes
+  train :  2100 rows (2100 orig / 0 aug), 10/10 classes
+  val   :   450 rows (450 orig / 0 aug), 10/10 classes
+
+[features] 254 columns, version audiofeat-1.0.0
+[features] train (2100 rows)...
+  features: 50/2100
+  features: 100/2100
+  features: 150/2100
+  features: 200/2100
+  features: 250/2100
+  features: 300/2100
+  features: 350/2100
+  features: 400/2100
+  features: 450/2100
+  features: 500/2100
+  features: 550/2100
+  features: 600/2100
+  features: 650/2100
+  features: 700/2100
+  features: 750/2100
+  features: 800/2100
+  features: 850/2100
+  features: 900/2100
+  features: 950/2100
+  features: 1000/2100
+  features: 1050/2100
+  features: 1100/2100
+  features: 1150/2100
+  features: 1200/2100
+  features: 1250/2100
+  features: 1300/2100
+  features: 1350/2100
+  features: 1400/2100
+  features: 1450/2100
+  features: 1500/2100
+  features: 1550/2100
+  features: 1600/2100
+  features: 1650/2100
+  features: 1700/2100
+  features: 1750/2100
+  features: 1800/2100
+  features: 1850/2100
+  features: 1900/2100
+  features: 1950/2100
+  features: 2000/2100
+  features: 2100/2100
+[features] val (450 rows)...
+  features: 50/450
+  features: 100/450
+  features: 150/450
+  features: 250/450
+  features: 300/450
+  features: 350/450
+  features: 400/450
+  features: 450/450
+[features] test (450 rows)...
+  features: 50/450
+  features: 100/450
+  features: 150/450
+  features: 200/450
+  features: 250/450
+  features: 300/450
+  features: 350/450
+  features: 400/450
+  features: 450/450
+[features] done in 2.0s
+[features] WARNING: 146 recording(s) failed the audio-quality gate and are excluded from the matrix ({'train': 94, 'val': 26, 'test': 26}); reasons: ['unreadable_format']
+
+[tune] 26 candidate configurations x 1 seed(s)
+  svm_rbf[C=1.0,gamma=scale] seed=0  val_macro_f1=0.5866  acc=0.6132  crit_recall=0.7073  fit=1.6s
+  svm_rbf[C=1.0,gamma=scale]+cw seed=0  val_macro_f1=0.5866  acc=0.6132  crit_recall=0.7073  fit=1.4s
+  svm_rbf[C=10.0,gamma=scale] seed=0  val_macro_f1=0.6027  acc=0.6368  crit_recall=0.7017  fit=1.3s
+  svm_rbf[C=10.0,gamma=scale]+cw seed=0  val_macro_f1=0.6027  acc=0.6368  crit_recall=0.7017  fit=1.2s
+  svm_rbf[C=100.0,gamma=scale] seed=0  val_macro_f1=0.6242  acc=0.6509  crit_recall=0.7019  fit=1.4s
+  svm_rbf[C=100.0,gamma=scale]+cw seed=0  val_macro_f1=0.6242  acc=0.6509  crit_recall=0.7019  fit=1.6s
+  random_forest[min_samples_leaf=1,n_estimators=500] seed=0  val_macro_f1=0.6935  acc=0.6958  crit_recall=0.7855  fit=2.2s
+  random_forest[min_samples_leaf=1,n_estimators=500]+cw seed=0  val_macro_f1=0.6935  acc=0.6958  crit_recall=0.7855  fit=2.0s
+  random_forest[min_samples_leaf=2,n_estimators=500] seed=0  val_macro_f1=0.6824  acc=0.6840  crit_recall=0.7756  fit=2.1s
+  random_forest[min_samples_leaf=2,n_estimators=500]+cw seed=0  val_macro_f1=0.6824  acc=0.6840  crit_recall=0.7756  fit=1.9s
+  random_forest[max_depth=20,min_samples_leaf=1,n_estimators=500] seed=0  val_macro_f1=0.6939  acc=0.6958  crit_recall=0.7900  fit=2.1s
+  random_forest[max_depth=20,min_samples_leaf=1,n_estimators=500]+cw seed=0  val_macro_f1=0.6939  acc=0.6958  crit_recall=0.7900  fit=2.0s
+  random_forest[max_depth=20,min_samples_leaf=2,n_estimators=500] seed=0  val_macro_f1=0.6846  acc=0.6863  crit_recall=0.7802  fit=2.0s
+  random_forest[max_depth=20,min_samples_leaf=2,n_estimators=500]+cw seed=0  val_macro_f1=0.6846  acc=0.6863  crit_recall=0.7802  fit=2.1s
+  extra_trees[min_samples_leaf=1,n_estimators=500] seed=0  val_macro_f1=0.6990  acc=0.7028  crit_recall=0.8092  fit=1.1s
+  extra_trees[min_samples_leaf=1,n_estimators=500]+cw seed=0  val_macro_f1=0.6990  acc=0.7028  crit_recall=0.8092  fit=1.1s
+  extra_trees[min_samples_leaf=2,n_estimators=500] seed=0  val_macro_f1=0.6729  acc=0.6769  crit_recall=0.7906  fit=1.1s
+  extra_trees[min_samples_leaf=2,n_estimators=500]+cw seed=0  val_macro_f1=0.6729  acc=0.6769  crit_recall=0.7906  fit=1.0s
+  gradient_boosting[learning_rate=0.1,max_depth=3,n_estimators=200] seed=0  val_macro_f1=0.6823  acc=0.6792  crit_recall=0.7487  fit=225.2s
+  gradient_boosting[learning_rate=0.1,max_depth=3,n_estimators=200]+cw seed=0  val_macro_f1=0.6823  acc=0.6792  crit_recall=0.7487  fit=211.8s
+  gradient_boosting[learning_rate=0.1,max_depth=5,n_estimators=200] seed=0  val_macro_f1=0.7101  acc=0.7075  crit_recall=0.7588  fit=467.9s
+  gradient_boosting[learning_rate=0.1,max_depth=5,n_estimators=200]+cw seed=0  val_macro_f1=0.7101  acc=0.7075  crit_recall=0.7588  fit=493.6s
+  xgboost[learning_rate=0.1,max_depth=4,n_estimators=300] seed=0  val_macro_f1=0.7112  acc=0.7123  crit_recall=0.7804  fit=188.6s
+  xgboost[learning_rate=0.1,max_depth=4,n_estimators=300]+cw seed=0  val_macro_f1=0.7112  acc=0.7123  crit_recall=0.7804  fit=29.8s
+  xgboost[learning_rate=0.1,max_depth=6,n_estimators=300] seed=0  val_macro_f1=0.7162  acc=0.7170  crit_recall=0.7896  fit=35.6s
+  xgboost[learning_rate=0.1,max_depth=6,n_estimators=300]+cw seed=0  val_macro_f1=0.7162  acc=0.7170  crit_recall=0.7896  fit=38.6s
+
+[tune] WINNER: xgboost[learning_rate=0.1,max_depth=6,n_estimators=300]
+       selected xgboost[learning_rate=0.1,max_depth=6,n_estimators=300] on validation macro_f1=0.7162 (val accuracy 0.7170, critical recall 0.7896) out of 26 trials; test split not used for selection. no candidate met the critical-recall floor of 0.85; selecting the best available on macro-F1 and flagging this in the report
+
+[cv] 5-fold stratified CV on training rows (winner only)
+  cv fold 1/5: macro_f1=0.7139 acc=0.7139
+  cv fold 2/5: macro_f1=0.7464 acc=0.7481
+  cv fold 3/5: macro_f1=0.7088 acc=0.7082
+  cv fold 4/5: macro_f1=0.7263 acc=0.7257
+  cv fold 5/5: macro_f1=0.7176 acc=0.7207
+[cv] macro-F1 0.7226 +/- 0.0147 across 5 folds
+
+[final] refitting winner on train+val
+
+[final] TEST SPLIT (scored once, never used for selection)
+  accuracy          : 0.6934  (floor 0.85)
+  macro F1          : 0.6932  (floor 0.80)
+  critical recall   : 0.7988  (floor 0.85)
+  macro precision   : 0.7003
+  macro recall      : 0.6938
+  top-2 accuracy    : 0.8255
+  weakest classes   :
+    Animal Sound               recall=0.488 f1=0.462 support=43
+    Alarm or Siren             recall=0.558 f1=0.565 support=43
+    Aggression                 recall=0.488 f1=0.583 support=43
+
+[save] best model -> python_models/best_model
+[save] metrics    -> python_models/metrics/classical_metrics.json
+[save] comparison -> python_models/metrics/classical_comparison.csv
+[save] confusion    -> python_models/metrics/confusion_matrix_winner.png
+
+==============================================================================
+RESULT: SRS floors NOT met --
+  - accuracy: 0.6934 < 0.8500 required
+  - macro_f1: 0.6932 < 0.8000 required
+  - critical_recall: 0.7988 < 0.8500 required
+==============================================================================
+
+[total] 1886.1s
+[total] meets_floors=False

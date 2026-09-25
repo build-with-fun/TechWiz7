@@ -49,7 +49,7 @@
       </div>
     {% endif %}
 
-    <form class="auth-form stack" method="post" action="{{ url_for('auth_api.session') }}"
+    <form class="auth-form stack" method="post" action="{{ url_for('auth.session') }}"
           data-login-form novalidate>
       {{ csrf_token() if csrf_token is defined }}
       <input type="hidden" name="next" value="{{ next }}">

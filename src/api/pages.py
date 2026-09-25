@@ -187,6 +187,79 @@ def login():
     )
 
 
+@auth_bp.post("/session")
+def session_login():
+    """HTML form sign-in target (``auth_api.session`` in the template).
+
+    The JSON endpoint ``POST /api/auth/login`` serves JavaScript clients; a browser with
+    JavaScript off posts the form here and follows a redirect. Credentials are verified by
+    the same :func:`src.auth.authenticate` (lockout, rate limit and audit apply through the
+    shared limiter extensions), so there is exactly one authentication path.
+
+    Failure re-renders the sign-in page with the banner; success redirects to ``next`` --
+    which is only followed when it is a relative path, so the form cannot be used as an
+    open redirect.
+    """
+    from src.auth import authenticate, client_ip, sign_in
+    from flask import g
+
+    username = str(request.form.get("username", "")).strip()
+    password = request.form.get("password", "")
+    remember = request.form.get("remember") == "1"
+
+    def _fail(message: str):
+        return _render(
+            "auth/login.html",
+            next=request.form.get("next") or "",
+            error=message,
+            switch=False,
+        ), 401 if message != "Too many sign-in attempts. Try again shortly." else 429
+
+    if not username or not password:
+        return _fail("Enter both a username and a password.")
+
+    factory = _factory()
+    request_id = getattr(g, "request_id", None)
+    limiter_ip = current_app.extensions["sst_limiter_login_ip"]
+    limiter_user = current_app.extensions["sst_limiter_login_user"]
+    for limiter, key, label in (
+        (limiter_ip, client_ip(), "this address"),
+        (limiter_user, username.lower(), "this account"),
+    ):
+        result = limiter.check(key)
+        if not result.allowed:
+            with session_scope(factory) as s:
+                audit_login(s, action="login_blocked", username=username, outcome="failure",
+                            detail=f"rate limited ({label})", request_id=request_id)
+            return _fail(f"Too many sign-in attempts from {label}. Try again in "
+                         f"{result.retry_after_seconds} seconds.")
+
+    with session_scope(factory) as s:
+        outcome = authenticate(s, username, password, store=_store())
+        if outcome.ok:
+            row = outcome.user
+            audit_login(s, action="login_success", username=row.username, role=row.role,
+                        user_id=row.id, request_id=request_id,
+                        detail=f"signed in from {client_ip()} (form)")
+            s.expunge(row)
+        else:
+            audit_login(s, action="login_failure", username=username, outcome="failure",
+                        detail=outcome.code, request_id=request_id)
+
+    if not outcome.ok:
+        # Same wording the JSON path uses: never reveal whether the username exists.
+        return _fail("Sign-in failed. Check the username and password, "
+                     "or the account may be locked or disabled.")
+
+    limiter_user.reset(username.lower())
+    sign_in(outcome.user, remember=remember)
+
+    next_url = request.form.get("next") or ""
+    if next_url.startswith("/") and not next_url.startswith("//"):
+        return redirect(next_url)
+    return redirect(_home_for(outcome.user))
+
+
 @auth_bp.post("/logout")
 @login_required
 def logout():

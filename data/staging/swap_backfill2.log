@@ -1,0 +1,39 @@
+  fetched 25/857; gained so far: {'Animal Sound': 12, 'Background Noise': 12, 'Machinery Fault': 2, 'Alarm or Siren': 7, 'Gunshot': 7, 'Vehicle Horn': 50}
+  fetched 50/857; gained so far: {'Animal Sound': 12, 'Background Noise': 12, 'Machinery Fault': 2, 'Alarm or Siren': 7, 'Gunshot': 7, 'Vehicle Horn': 50, 'Glass Breaking': 4}
+  fetched 75/857; gained so far: {'Animal Sound': 12, 'Background Noise': 12, 'Machinery Fault': 2, 'Alarm or Siren': 7, 'Gunshot': 7, 'Vehicle Horn': 50, 'Glass Breaking': 15}
+  fetched 100/857; gained so far: {'Animal Sound': 12, 'Background Noise': 12, 'Machinery Fault': 2, 'Alarm or Siren': 7, 'Gunshot': 7, 'Vehicle Horn': 50, 'Glass Breaking': 18}
+acquired 109 new real clips (1539 total in acquired_rows.csv) -> /home/ammar/Downloads/SRS_NextWave AI and ML/sonicsentinel-ai/audio_dataset/manifests/acquired_rows.csv
+
+  class                     have  gained  room left
+  Aggression                 250       0         50  <-- still short
+  Alarm or Siren             293       7          0
+  Animal Sound               288      12          0
+  Background Noise           288      12          0
+  Glass Breaking             282      18          0
+  Gunshot                    293       7          0
+  Machinery Fault            298       2          0
+  Panic Scream               274       1         25  <-- still short
+  Person Asking for Help       0       0        300  <-- still short
+  Vehicle Horn               250      50          0
+
+skipped (11282):
+    1066  dupe_sha256
+    1000  unmapped:dog_bark
+    1000  unmapped:children_playing
+    1000  unmapped:air_conditioner
+    1000  unmapped:street_music
+    1000  unmapped:engine_idling
+    1000  unmapped:jackhammer
+    1000  unmapped:drilling
+     832  unmapped:siren
+     416  fsd_dev:already_used
+     240  unmapped:car_horn
+     217  unmapped:gun_shot
+     141  fsd_dev:licence_refused:http://creativecommons.org/licenses/by-nc/3.0/
+      66  quality_too_short_or_silent
+      40  unmapped:door_wood_knock
+      40  unmapped:can_opening
+      40  unmapped:clapping
+      40  unmapped:fireworks
+      40  unmapped:airplane
+      40  unmapped:mouse_click
