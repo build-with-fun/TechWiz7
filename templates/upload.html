@@ -1,20 +1,3 @@
-{# ==========================================================================
-   templates/upload.html — the audio upload screen.
-
-   Owner: hina (front end).
-
-   Context (src/api/pages.py::upload):
-     accepted       list[str] the accepted mime types and extensions
-     max_bytes      int   the per-file byte ceiling
-     max_mb         float the same, human
-     quality_verdicts list[str] the quality vocabulary
-     analysis_ready bool  both models loaded and a pipeline built
-     pipeline_error str   why the pipeline is unavailable, when it isn't
-
-   The form is progressively enhanced by static/js/upload.js, which posts to the
-   audio slice. When the slice is not installed the page says so and offers the
-   fallback: an HTML form that posts to the same endpoint.
-   ========================================================================== #}
 {% extends "base.html" %}
 {% import "_macros.html" as ui %}
 
@@ -27,7 +10,8 @@
     <h1 class="page-title">Upload audio</h1>
     <p class="page-sub">Drop a recording and both models classify it independently — the
       Python model and the Google Teachable Machine model. The result shows each
-      prediction, each confidence, the difference, and the consistency verdict.</p>
+      prediction, each confidence, the difference, and the consistency verdict.
+      Listen to the recording before acting on a result.</p>
   </div>
   <div class="page-head__actions">
     <span class="pip pip--{% if analysis_ready %}ok{% else %}warn{% endif %}">
@@ -43,9 +27,8 @@
   <div class="banner banner--warn">
     <span class="banner__icon" aria-hidden="true">{{ ui.icon('warn', 20) }}</span>
     <div class="banner__body">
-      <p class="banner__text">No trained model is loaded, so an upload will be stored and
-        quality-checked but not classified. Once a model is trained and the app restarts,
-        the same file is analysed on demand.</p>
+      <p class="banner__text">Analysis is unavailable until both model artifacts are installed.
+        Upload requests will return an error; your recording will not be saved.</p>
     </div>
   </div>
 {% endif %}
@@ -55,25 +38,25 @@
   <section class="panel">
     <div class="panel__head">
       <h2 class="panel__title">Add a recording</h2>
-      <p class="panel__note">Accepted: {{ accepted|join(', ') }} · up to
+      <p class="panel__note">WAV, MP3, FLAC, OGG or M4A · up to
         <strong>{{ max_mb|round(1) }} MB</strong></p>
     </div>
     <div class="panel__body">
       <form class="dropzone" method="post" enctype="multipart/form-data"
-            action="{{ url_for('audio_api.upload') if audio_api is defined else '#' }}"
+            action="{{ url_for('audio_api.upload') }}"
             data-dropzone data-testid="upload-dropzone">
-        {{ csrf_token() if csrf_token is defined }}
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <span class="dropzone__icon" aria-hidden="true">{{ ui.icon('upload', 40) }}</span>
         <p class="dropzone__title">Drag a file here, or choose one</p>
-        <p class="dropzone__hint">
-          {% if accepted %}{{ accepted|join(', ') }}{% else %}Any audio format{% endif %}
-          · {{ max_mb|round(1) }} MB ceiling
-        </p>
-        <button class="btn btn--primary" type="button" data-dropzone-pick>
-          {{ ui.icon('upload', 16) }} <span>Choose a file</span>
-        </button>
-        <input type="file" name="audio" id="audio-input" data-dropzone-input hidden
+        <p class="dropzone__hint" id="audio-format-hint">WAV, MP3, FLAC, OGG or M4A ·
+          {{ max_mb|round(1) }} MB per file</p>
+        <input class="dropzone__file-input" type="file" name="file" id="audio-input"
+               data-dropzone-input aria-describedby="audio-format-hint" required
                accept="{{ accepted|join(',') if accepted else 'audio/*' }}">
+        <label class="btn btn--primary dropzone__pick" for="audio-input" data-dropzone-pick>
+          {{ ui.icon('upload', 16) }} <span>Choose audio</span>
+        </label>
+        <noscript><button class="btn btn--secondary" type="submit">Analyze selected file</button></noscript>
       </form>
 
       {# ---- the queue: what is happening to each file. ----------------------- #}
@@ -95,10 +78,9 @@
         <li class="steps__item">
           <span class="steps__n">1</span>
           <div>
-            <p class="steps__title">Stored as the original</p>
-            <p class="steps__body">The file is written under
-              <span class="mono">audio_dataset/originals/</span> hashed by content, so the
-              same bytes never land twice.</p>
+            <p class="steps__title">Checked and stored</p>
+            <p class="steps__body">Accepted audio is kept in private storage. Its hash
+              helps identify exact repeat uploads.</p>
           </div>
         </li>
         <li class="steps__item">
@@ -134,9 +116,8 @@
         {{ ui.quality_chip(verdict) }}
         {% endfor %}
       </p>
-      <p class="field__hint">A recording scored <strong>Poor</strong> or
-        <strong>Unusable</strong> is not discarded — its event is flagged so the
-        prediction is read with that in mind.</p>
+      <p class="field__hint">A <strong>Poor</strong> recording is flagged with its
+        prediction. <strong>Unusable</strong> audio is rejected with a reason.</p>
     </div>
   </section>
 </div>

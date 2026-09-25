@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Create account · {{ app_name }}{% endblock %}
+{% block page_id %}register{% endblock %}
+{% block body_class %}page-auth{% endblock %}
+{% block content %}
+<div class="auth-shell">
+  <aside class="auth-hero" aria-label="About SonicSentinel">
+    <div class="auth-hero__eyebrow"><span class="auth-hero__beacon"></span> SOUND EVENT INTELLIGENCE</div>
+    <h2>Start with the sound.<br><em>Keep the evidence.</em></h2>
+    <p>Create a personal account to submit recordings and inspect your own results. Review and operator access is assigned by an administrator.</p>
+    <div class="auth-visual" aria-hidden="true">
+      <div class="auth-visual__ring auth-visual__ring--one"></div>
+      <div class="auth-visual__ring auth-visual__ring--two"></div>
+      <div class="auth-visual__ring auth-visual__ring--three"></div>
+      <div class="auth-visual__core"><img src="{{ url_for('static', filename='img/logo.svg') }}" alt=""></div>
+    </div>
+  </aside>
+  <div class="auth-card">
+    <div class="auth-card__brand">
+      <img class="auth-card__logo" src="{{ url_for('static', filename='img/logo.svg') }}" alt="" width="36" height="36">
+      <div><h1 class="auth-card__title">Create account</h1><p class="auth-card__sub">Your own sound-event workspace</p></div>
+    </div>
+    {% if error %}<div class="banner banner--error" role="alert"><p class="banner__text">{{ error }}</p></div>{% endif %}
+    <form class="auth-form stack" method="post" action="{{ url_for('auth.register') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field"><label class="field__label" for="username">Username</label><input class="input" id="username" name="username" autocomplete="username" required minlength="3" maxlength="64"></div>
+      <div class="field"><label class="field__label" for="email">Email</label><input class="input" id="email" name="email" type="email" autocomplete="email" required></div>
+      <div class="field"><label class="field__label" for="display_name">Display name</label><input class="input" id="display_name" name="display_name" autocomplete="name" maxlength="128"></div>
+      <div class="field"><label class="field__label" for="password">Password</label><input class="input" id="password" name="password" type="password" autocomplete="new-password" required><small>Use at least 10 characters with an uppercase letter, a number and a symbol.</small></div>
+      <button class="btn btn--primary" type="submit">Create account</button>
+    </form>
+    <p class="auth-card__footer">Already have an account? <a href="{{ url_for('auth.login') }}">Sign in</a></p>
+  </div>
+</div>
+{% endblock %}

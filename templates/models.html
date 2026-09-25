@@ -1,13 +1,6 @@
 {% extends "base.html" %}
 {% import "_macros.html" as ui %}
 {% import "_presentation.html" as pres %}
-{# ==========================================================================
-   templates/models.html — the model registry (FR lxxv).
-
-   Readable by any signed-in user: a person reading an event's result is
-   entitled to know which model version produced it. Registration and
-   activation need manage_models and live in the admin API slice.
-   ========================================================================== #}
 {% set page_id = "models.list" %}
 {% block title %}Models — {{ app_name }}{% endblock %}
 
@@ -16,14 +9,14 @@
   <div class="page-head__main">
     <div class="breadcrumb"><a href="{{ url_for('main.dashboard') }}">Home</a><span>Models</span></div>
     <h1 class="page-title">{{ page_title or 'Model registry' }}</h1>
-    <p class="page-sub">Every trained version of the Python classifier and the Teachable Machine model. Superseded versions are kept: past events point at the version that judged them.</p>
+    <p class="page-sub">Registered classifier versions and their measured results. Past events keep the version that produced each decision.</p>
   </div>
 </header>
 
 <section class="panel">
   <div class="panel__head">
     <h2 class="panel__title">{{ ui.icon('cpu', 14) }} Registered versions</h2>
-    <p class="panel__note">The active version is what the pipeline serves.</p>
+    <p class="panel__note">The pipeline loads the saved artifacts at startup; registry state tracks the selected record.</p>
   </div>
   <div class="panel__body">
     <div class="table-wrap">
@@ -34,7 +27,7 @@
             <th scope="col">Version</th>
             <th scope="col">Algorithm</th>
             <th scope="col">Features</th>
-            <th scope="col" class="num">Val / test accuracy</th>
+            <th scope="col" class="num">Test accuracy</th>
             <th scope="col" class="num">Macro F1</th>
             <th scope="col" class="num">Critical recall</th>
             <th scope="col">Registered</th>
@@ -55,6 +48,7 @@
                 {{ ui.percent(test_metrics.get('accuracy', 0)) }}
               {%- elif metrics.get('accuracy') is not none -%}
                 {{ ui.percent(metrics.get('accuracy')) }}
+                {%- if metrics.get('n_clips') %}<span class="summary-note"> · {{ metrics.get('n_clips') }} clips</span>{% endif -%}
               {%- else -%}—{%- endif -%}
             </td>
             <td class="num">
@@ -69,12 +63,14 @@
                 {{ ui.number(test_metrics.get('critical_recall'), 4) }}
               {%- elif metrics.get('critical_recall') is not none -%}
                 {{ ui.number(metrics.get('critical_recall'), 4) }}
+              {%- elif metrics.get('critical_macro_recall') is not none -%}
+                {{ ui.number(metrics.get('critical_macro_recall'), 4) }}
               {%- else -%}—{% endif %}
             </td>
             <td>{{ version.registered_at }}</td>
             <td>
               {% if version.is_active %}
-              <span class="chip chip--quality-good"><span class="chip__glyph" aria-hidden="true">●</span><span class="chip__text">Active</span></span>
+              <span class="chip chip--quality-good"><span class="chip__glyph" aria-hidden="true">●</span><span class="chip__text">Registry active</span></span>
               {% else %}
               <span class="chip"><span class="chip__glyph" aria-hidden="true">○</span><span class="chip__text">Superseded</span></span>
               {% endif %}
@@ -82,14 +78,14 @@
           </tr>
           {% else %}
           <tr class="table-empty"><td colspan="9">
-            {{ ui.empty_state('No models registered', 'Register a trained model bundle to put it in the registry. The pipeline refuses to start without an active version.', action_text='Open configuration', action_href=url_for('admin.config')) }}
+            {{ ui.empty_state('No models registered', 'Run database/init_db.py after installing the model artifacts to populate the registry.') }}
           </td></tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
     {% if can_manage %}
-    <p class="panel__note">{{ ui.icon('info', 11) }} Registration and activation are API operations (admin slice) so activation is auditable — this page deliberately stays read-only.</p>
+    <p class="panel__note">{{ ui.icon('info', 11) }} Use database/init_db.py to register a version. Changing registry status alone does not swap the saved bundle loaded by the running process; replace the artifact and restart the app for that.</p>
     {% endif %}
   </div>
 </section>

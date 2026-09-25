@@ -1,20 +1,4 @@
-{# ==========================================================================
-   templates/auth/login.html — the sign-in screen.
-
-   Owner: hina (front end). Renders into base.html, which supplies the shared
-   chrome and the two `<script type="application/json">` data blocks.
-
-   Context (src/api/pages.py::login):
-     next     str  where to go after a successful sign-in, already validated
-     error    str  a failure message from the POST body, or None
-     switch   bool the user asked to switch account rather than be redirected on
-
-   The form posts to the JSON session endpoint and is progressively enhanced by
-   static/js/login.js: without JavaScript it is a normal form that posts to
-   /api/auth/session and the browser follows the redirect; with JavaScript the
-   failure is shown inline without a page reload. Either path works — the page
-   is not dependent on the client runtime.
-   ========================================================================== #}
+{# The form posts to the HTML session route; login.js only adds client-side feedback. #}
 {% extends "base.html" %}
 {% import "_macros.html" as ui %}
 
@@ -25,13 +9,30 @@
 
 {% block content %}
 <div class="auth-shell">
+  <aside class="auth-hero" aria-label="About SonicSentinel">
+    <div class="auth-hero__eyebrow"><span class="auth-hero__beacon"></span> SOUND EVENT INTELLIGENCE</div>
+    <h2>Hear the signal.<br><em>Understand the moment.</em></h2>
+    <p>Classify site audio, compare two independent model predictions, and give operators the evidence behind each decision.</p>
+    <div class="auth-visual" aria-hidden="true">
+      <div class="auth-visual__ring auth-visual__ring--one"></div>
+      <div class="auth-visual__ring auth-visual__ring--two"></div>
+      <div class="auth-visual__ring auth-visual__ring--three"></div>
+      <div class="auth-visual__core"><img src="{{ url_for('static', filename='img/logo.svg') }}" alt=""></div>
+      <div class="auth-visual__wave">
+        {% for _ in range(22) %}
+        <span></span>
+        {% endfor %}
+      </div>
+    </div>
+    <p class="auth-hero__foot">Built for transparent review, with every prediction tied to its source recording.</p>
+  </aside>
   <div class="auth-card" data-testid="login-card">
     <div class="auth-card__brand">
       <img class="auth-card__logo" src="{{ url_for('static', filename='img/logo.svg') }}"
            alt="" width="36" height="36" aria-hidden="true">
       <div>
         <h1 class="auth-card__title">{{ app_name }}</h1>
-        <p class="auth-card__sub">AcousticX Intelligence · dual-model sound event detection</p>
+        <p class="auth-card__sub">Sign in to your monitoring workspace</p>
       </div>
     </div>
 
@@ -51,26 +52,21 @@
 
     <form class="auth-form stack" method="post" action="{{ url_for('auth.session_login') }}"
           data-login-form novalidate>
-      {{ csrf_token() if csrf_token is defined }}
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="next" value="{{ next }}">
 
       <div class="field">
         <label class="field__label" for="username">Username</label>
         <input class="input" id="username" name="username" type="text" autocomplete="username"
                spellcheck="false" autocapitalize="off" required
-               aria-describedby="username-hint"
                {% if error %}aria-invalid="true"{% endif %}>
-        <p class="field__hint" id="username-hint">The account your role was created under.</p>
       </div>
 
       <div class="field">
         <label class="field__label" for="password">Password</label>
         <input class="input" id="password" name="password" type="password"
                autocomplete="current-password" required
-               aria-describedby="password-hint"
                {% if error %}aria-invalid="true"{% endif %}>
-        <p class="field__hint" id="password-hint">Access is granted per capability, not per role
-          name — what you can open is decided after you sign in.</p>
       </div>
 
       <div class="row row--between">
@@ -84,13 +80,7 @@
       </div>
     </form>
 
-    <hr>
-
-    <p class="field__hint">
-      Predictions on this console come from two independently trained models — the project's
-      own Python model and a Google Teachable Machine model — and every result shows both,
-      side by side, with the difference between them. Neither model sees the other's output.
-    </p>
+    <p class="auth-card__footer">New here? <a href="{{ url_for('auth.register') }}">Create a personal account</a>. An administrator can assign review or operator access.</p>
   </div>
 </div>
 {% endblock %}

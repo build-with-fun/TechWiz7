@@ -37,11 +37,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="dark light">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>{% block title %}{{ app_name | default('SonicSentinel AI') }}{% endblock %}</title>
   <meta name="description" content="{% block description %}SonicSentinel AI — real-time sound event detection with a dual-model consistency check. Every prediction is shown from the project's own Python model and from a separately trained Teachable Machine model so the two can be compared on the same clip.{% endblock %}">
-  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo.svg') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/product.css') }}">
 </head>
 <body data-page="{% block page_id %}page{% endblock %}">
   <a class="skip-link" href="#main">Skip to main content</a>
@@ -71,15 +73,16 @@
         </button>
 
         {% if current_user is defined and current_user and current_user.is_authenticated %}
-          <span class="chip" title="Signed in">
+          <a class="chip" href="{{ url_for('auth.profile') }}" title="Open your profile">
             <span class="chip__glyph" aria-hidden="true">{{ ui.icon('user', 12) }}</span>
             <span class="chip__text">{{ current_user.username }}</span>
-          </span>
+          </a>
           <span class="chip chip--role" title="Role: {{ role_labels.get(current_user.role, current_user.role) if role_labels is defined else current_user.role }}">
             <span class="chip__glyph" aria-hidden="true">{{ ui.icon('shield', 12) }}</span>
             <span class="chip__text">{{ role_labels.get(current_user.role, current_user.role) if role_labels is defined else current_user.role }}</span>
           </span>
           <form method="post" action="{{ url_for('auth.logout') }}" class="logout-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn--sm">
               {{ ui.icon('logout', 14) }} <span>Sign out</span>
             </button>
@@ -119,6 +122,11 @@
 
       <div class="nav__group push">
         <p class="nav__label">System</p>
+        {% if current_user is defined and current_user and current_user.is_authenticated %}
+          <a class="nav__link" href="{{ url_for('auth.profile') }}" {% if request.endpoint == 'auth.profile' %}aria-current="page"{% endif %}>
+            <span aria-hidden="true">{{ ui.icon('user', 18) }}</span><span>Your profile</span>
+          </a>
+        {% endif %}
         <a class="nav__link" href="{{ url_for('health.health') }}" target="_blank" rel="noopener">
           <span aria-hidden="true">{{ ui.icon('info', 18) }}</span><span>Service health</span>
           <span class="visually-hidden">(opens in a new tab)</span>

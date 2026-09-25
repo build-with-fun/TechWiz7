@@ -557,12 +557,16 @@ table.data td.actions { white-space: nowrap; text-align: right; }
 
 /* Phone: nav becomes a horizontal scroller under the topbar; tables scroll. */
 @media (max-width: 720px) {
+  html { overflow-x: clip; }
   .app { grid-template-columns: minmax(0, 1fr); grid-template-areas: "topbar" "nav" "main"; }
   .nav {
     flex-direction: row; overflow-x: auto; border-right: 0;
     border-bottom: 1px solid var(--border); padding: var(--sp-2); gap: var(--sp-2);
+    min-width: 0; width: 100%;
   }
   .nav__group { flex-direction: row; gap: var(--sp-1); }
+  .nav__group { flex: none; }
+  .nav__link { flex: none; white-space: nowrap; }
   .nav__link span { display: inline; }
   .main { padding: var(--sp-3); gap: var(--sp-4); }
   .grid--2, .grid--3, .grid--4 { grid-template-columns: minmax(0, 1fr); }

@@ -49,6 +49,7 @@ from flask import (
 )
 from flask_login import current_user, login_required, login_user
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from jinja2 import TemplateNotFound
 
 from src.auth import (
@@ -202,6 +203,76 @@ def login():
         error=None,
         switch=request.args.get("switch") == "1",
     )
+
+
+@auth_bp.route("/register", methods=["GET", "POST"])
+def register():
+    """Create a normal-user account; privileged roles remain administrator-assigned."""
+    from src.auth import client_ip, hash_password, password_problems, sign_in
+    from src.db import record_audit
+    from src.models import User
+
+    if request.method == "GET":
+        return _render("auth/register.html", error=None)
+
+    username = str(request.form.get("username", "")).strip()
+    email = str(request.form.get("email", "")).strip().lower()
+    display_name = str(request.form.get("display_name", "")).strip()
+    password = request.form.get("password", "")
+    if not (3 <= len(username) <= 64) or not all(c.isalnum() or c in "_-" for c in username):
+        return _render("auth/register.html", error="Use 3–64 letters, numbers, underscores or hyphens for the username."), 400
+    if not (3 <= len(email) <= 255) or email.count("@") != 1 or "." not in email.rsplit("@", 1)[-1]:
+        return _render("auth/register.html", error="Enter a valid email address."), 400
+    if len(display_name) > 128:
+        return _render("auth/register.html", error="Display name must be 128 characters or fewer."), 400
+    problems = password_problems(password, _store())
+    if problems:
+        return _render("auth/register.html", error="Password " + "; ".join(problems) + "."), 400
+
+    try:
+        with session_scope(_factory()) as session:
+            user = User(username=username, email=email, display_name=display_name or username,
+                        password_hash=hash_password(password), role="normal_user")
+            session.add(user)
+            session.flush()
+            record_audit(session, action="user_create", actor=user, target_type="user",
+                         target_id=str(user.id), detail="self-registered normal-user account",
+                         ip_address=client_ip())
+            session.expunge(user)
+    except IntegrityError:
+        return _render("auth/register.html", error="That username or email is already in use."), 409
+    sign_in(user)
+    return redirect(url_for("main.index"))
+
+
+@auth_bp.route("/profile", methods=["GET", "POST"])
+@login_required
+def profile():
+    """Let a signed-in user maintain their own contact and display details."""
+    from src.db import record_audit
+    from src.models import User
+
+    if request.method == "POST":
+        display_name = str(request.form.get("display_name", "")).strip()
+        email = str(request.form.get("email", "")).strip().lower()
+        if len(display_name) > 128 or not display_name:
+            return _render("auth/profile.html", error="Enter a display name of up to 128 characters."), 400
+        if not (3 <= len(email) <= 255) or email.count("@") != 1 or "." not in email.rsplit("@", 1)[-1]:
+            return _render("auth/profile.html", error="Enter a valid email address."), 400
+        try:
+            with session_scope(_factory()) as session:
+                row = session.get(User, current_user.id)
+                before = {"display_name": row.display_name, "email": row.email}
+                row.display_name = display_name
+                row.email = email
+                record_audit(session, action="user_update", actor=row, target_type="user",
+                             target_id=str(row.id), before=before,
+                             after={"display_name": display_name, "email": email})
+        except IntegrityError:
+            return _render("auth/profile.html", error="That email address is already in use."), 409
+        flash("Profile updated.", "success")
+        return redirect(url_for("auth.profile"))
+    return _render("auth/profile.html", error=None)
 
 
 @auth_bp.post("/session")
@@ -424,7 +495,7 @@ def event_audio(event_id: str):
         # A path that escapes the storage root is not a missing file, it is a bad record.
         logger.error("stored path for event %s escapes the storage root", event_id)
         raise ApiError("storage_error", "That recording could not be located.")
-    if not target.exists():
+    if not stored_path or not target.is_file():
         # The recording is gone -- expired by the FR lxxx retention policy, or moved. The
         # event's analysis is still intact and still auditable, and saying so is the point.
         raise ApiError(
@@ -738,7 +809,7 @@ def visuals(event_id: int):
         target = current_app.config["SST_STORAGE"].resolve(stored_path)
     except ValueError:
         raise ApiError("storage_error", "That recording could not be located.")
-    if not target.exists():
+    if not stored_path or not target.is_file():
         # Same policy as event_audio (FR lxxx): an expired/moved recording leaves the
         # event's analysis intact, and the page says so instead of failing.
         raise ApiError(

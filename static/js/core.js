@@ -110,6 +110,10 @@
     var opts = options || {};
     var method = (opts.method || 'GET').toUpperCase();
     var headers = Object.assign({ 'Accept': 'application/json' }, opts.headers || {});
+    if (method !== 'GET' && method !== 'HEAD') {
+      var csrf = document.querySelector('meta[name="csrf-token"]');
+      if (csrf) { headers['X-CSRF-Token'] = csrf.content; }
+    }
     var init = { method: method, credentials: 'same-origin', headers: headers };
 
     if (opts.signal) init.signal = opts.signal;
@@ -563,6 +567,10 @@
     initTheme();
     initDelegates();
     initBars();
+    if (window.matchMedia('(max-width: 720px)').matches) {
+      var activeNav = document.querySelector('.nav__link[aria-current="page"]');
+      if (activeNav) activeNav.scrollIntoView({ block: 'nearest', inline: 'center' });
+    }
   });
 
   /* ------------------------------------------------------------------ API - */

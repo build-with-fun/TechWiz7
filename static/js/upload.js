@@ -9,20 +9,19 @@
  *
  * DOM contract (from upload.html):
  *   [data-dropzone]        the drop target
- *   [data-dropzone-pick]   the "choose a file" button
- *   [data-dropzone-input]  the hidden <input type=file>
+ *   [data-dropzone-input]  the file input, labelled by its visible picker
  *   [data-upload-queue]    the <ol> the queue items render into
  */
 "use strict";
 
 (function (SST) {
   var dropzone = document.querySelector("[data-dropzone]");
-  var pick = document.querySelector("[data-dropzone-pick]");
   var input = document.querySelector("[data-dropzone-input]");
   var queue = document.querySelector("[data-upload-queue]");
-  if (!dropzone || !pick || !input || !queue || typeof SST === "undefined") {
+  if (!dropzone || !input || !queue || typeof SST === "undefined") {
     return; // progressive enhancement: plain form POST still works.
   }
+  input.multiple = true;
 
   /* ------------------------------------------------------------- queue ui - */
 
@@ -110,19 +109,15 @@
   function handleFiles(files) {
     Array.prototype.forEach.call(files || [], function (file) {
       var slot = addItem(file.name);
-      var type = file.type || "";
-      if (type && type.indexOf("audio") !== 0 && type !== "video/webm") {
-        slot.region.error({
-          title: "Unsupported file type",
-          message: type + " — send WAV, FLAC, MP3, OGG or WebM audio."
-        });
-        return;
-      }
       send(file, false, slot);
     });
   }
 
-  pick.addEventListener("click", function () { input.click(); });
+  dropzone.addEventListener("submit", function (event) {
+    event.preventDefault();
+    handleFiles(input.files);
+    input.value = "";
+  });
   input.addEventListener("change", function () {
     handleFiles(input.files);
     input.value = "";

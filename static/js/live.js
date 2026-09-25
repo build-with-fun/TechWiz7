@@ -35,6 +35,7 @@
 
   var byId = SST.byId || function (id) { return document.getElementById(id); };
   var el = SST.el;
+  var analysisReady = root.getAttribute("data-analysis-ready") === "1";
 
   var consentPanel = document.querySelector("[data-consent-panel]");
   var consentCheck = document.querySelector("[data-consent-check]");
@@ -60,20 +61,16 @@
     };
   });
 
-  var analysisReady = root.getAttribute("data-analysis-ready") === "1" ||
-    !document.querySelector('[data-testid="pipeline-state"] .banner--error');
-
   var session = null;          // { id, … } from POST /api/live/sessions
   var stream = null;           // MediaStream
   var audioContext = null;
-  var processor = null;
   var muted = false;
   var running = false;
   var seq = 0;
   var windowsSeen = 0;
   var confirmedEvents = 0;
   var classCounts = {};
-  var teardowns = [];
+  var sessionsPanel = document.querySelector("[data-live-sessions]");
 
   var windowSeconds = SST.threshold("audio.live_window_sec", 2) || 2;
   var sampleRate = 16000;
@@ -126,6 +123,10 @@
   }
 
   function createSession() {
+    if (!analysisReady) {
+      SST.toast("Install both model artifacts and restart the service before monitoring.");
+      return;
+    }
     setState("Opening session…");
     SST.api("/api/live/sessions", {
       method: "POST",
@@ -156,7 +157,6 @@
       var ctx = audioContext;
       var source = ctx.createMediaStreamSource(stream);
       var proc = ctx.createScriptProcessor(4096, 1, 1);
-      processor = proc;
       source.connect(proc);
       // ScriptProcessor needs a destination to fire in some browsers; mute it.
       var silent = ctx.createGain();
@@ -226,13 +226,7 @@
       var s = Math.max(-1, Math.min(1, samples[i]));
       view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
     }
-    var bytes = new Uint8Array(buffer);
-    var binary = "";
-    var CHUNK = 0x8000;
-    for (var j = 0; j < bytes.length; j += CHUNK) {
-      binary += String.fromCharCode.apply(null, bytes.subarray(j, j + CHUNK));
-    }
-    return window.btoa(binary);
+    return new Uint8Array(buffer);
   }
 
   /* -------------------------------------------------------------- round -- */
@@ -276,7 +270,7 @@
   function toBase64(samples, rate) {
     // The server accepts a WAV container (RIFF) through the same decode path
     // as an upload, so a live window and an uploaded clip are analysed identically.
-    return base64FromBytes(new Uint8Array(encodeWav(samples, rate)));
+    return base64FromBytes(encodeWav(samples, rate));
   }
 
   /* -------------------------------------------------------------- render -- */
@@ -391,7 +385,7 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({})
-      }).catch(function () { /* best effort; the server expires idle sessions */ });
+      }).then(refreshSessions).catch(function () { refreshSessions(); });
     }
     session = null;
     if (sessionLabel) { sessionLabel.textContent = "no session"; }
@@ -442,7 +436,35 @@
 
   onTeardown(stop);
 
+  function refreshSessions() {
+    if (!sessionsPanel) { return; }
+    SST.api("/api/live/sessions").then(function (payload) {
+      var rows = (payload && payload.data) || [];
+      sessionsPanel.textContent = "";
+      if (!rows.length) {
+        sessionsPanel.appendChild(el("p", { "class": "prose", text: "No microphone sessions yet." }));
+        return;
+      }
+      var list = el("ol", { "class": "session-list" });
+      rows.forEach(function (row) {
+        var item = el("li", { "class": "session-list__item" });
+        item.appendChild(el("span", { "class": "session-list__date",
+          text: row.started_at ? new Date(row.started_at).toLocaleString() : "Unknown time" }));
+        item.appendChild(el("span", { "class": "session-list__meta",
+          text: row.status + " · " + row.window_count + " windows · " + row.alert_count + " alerts" }));
+        list.appendChild(item);
+      });
+      sessionsPanel.appendChild(list);
+    }).catch(function (error) {
+      sessionsPanel.textContent = "";
+      sessionsPanel.appendChild(el("p", { "class": "prose",
+        text: (error && error.message) || "Session history could not be loaded." }));
+    });
+  }
+
   // A reload that lands back on this page with an active session cannot be
   // resumed (the streak state lives server-side); show the consent gate again.
   setButtons();
+  if (!analysisReady) { setState("Models unavailable"); }
+  refreshSessions();
 })(window.SST = window.SST || {});

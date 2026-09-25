@@ -1,24 +1,3 @@
-{# ==========================================================================
-   templates/live.html — the live monitoring console.
-
-   Owner: hina (front end). This is the screen a person watches.
-
-   Context (src/api/pages.py::live):
-     analysis_ready   bool  both models loaded and a pipeline built
-     pipeline_error   str   why the pipeline is unavailable, when it isn't
-     window_seconds   float the live window length (thresholds.live_window_sec)
-     classes          list  the class vocabulary, for the visual scale
-
-   The whole screen is driven by static/js/live.js against the /api/live slice:
-     POST /api/live/session        start/stop a session
-     GET  /api/live/session/<id>   session state
-     POST /api/live/session/<id>/window   a captured window in for prediction
-     GET  /api/live/sessions       past sessions
-   When the slice is not installed the page says so plainly rather than spinning.
-   The two model cards are the point: Python on the left, Teachable Machine on
-   the right, top class and confidence each, the difference and the verdict
-   between them. Neither model is told the other's number.
-   ========================================================================== #}
 {% extends "base.html" %}
 {% import "_macros.html" as ui %}
 {% import "_presentation.html" as pres %}
@@ -35,9 +14,8 @@
       {%- set ws_max = window_seconds[-1] if window_seconds else 3 -%}
       Captures <strong>{{ ws_min }}–{{ ws_max }}&nbsp;second{{ '' if ws_max == 1 else 's' }}</strong>
       at a time and classifies it with both models independently.
-      A class is only reported once it has been seen in
-      {{ config.thresholds.required_consecutive_detections if config and config.thresholds else 3 }}
-      consecutive windows.
+      Alerts require consecutive confirmation under the class rule; review the
+      audio before acting on a prediction.
     </p>
   </div>
   <div class="page-head__actions">
@@ -59,15 +37,14 @@
   <div class="banner banner--warn">
     <span class="banner__icon" aria-hidden="true">{{ ui.icon('warn', 20) }}</span>
     <div class="banner__body">
-      <p class="banner__text">The classification pipeline is not built yet, so a live session
-        will start but windows cannot be predicted. Upload a recording in the meantime —
-        once a model is loaded this screen picks it up without a restart.</p>
+      <p class="banner__text">Live classification needs both model artifacts. Once they are
+        installed, restart the service and return here to start monitoring.</p>
     </div>
   </div>
 {% endif %}
 
 {# ---- the consent gate. FR lxxix: capture is consent-gated. ----------------- #}
-<section class="panel" data-consent-panel hidden>
+<section class="panel" data-consent-panel>
   <div class="panel__head">
     <h2 class="panel__title">Microphone consent</h2>
     <p class="panel__note">Capture is only started after you say so, and the consent is
@@ -75,7 +52,7 @@
   </div>
   <div class="panel__body">
     <label class="checkline" for="consent">
-      <input type="checkbox" id="consent" data-consent-check>
+      <input type="checkbox" id="consent" data-consent-check {% if not analysis_ready %}disabled{% endif %}>
       <span>I understand this console captures audio from this device and stores it as part
         of a security monitoring session, subject to the configured retention policy.</span>
     </label>
@@ -88,7 +65,7 @@
 </section>
 
 {# ---- the console. ---------------------------------------------------------- #}
-<section class="live" data-live-root aria-live="polite">
+<section class="live" data-live-root data-analysis-ready="{{ '1' if analysis_ready else '0' }}" aria-live="polite">
   <div class="live__controls">
     <div class="live__identity">
       <span class="live__state" data-live-state>Idle</span>
@@ -202,9 +179,8 @@
     <p class="panel__note">Loaded from <code>/api/live/sessions</code> when the live slice is
       installed.</p>
   </div>
-  <div class="panel__body panel__body--flush" data-live-sessions
-       data-endpoint="{{ url_for('live_api.sessions') if live_api is defined else '' }}">
-    <p class="prose">Session history is unavailable in this build.</p>
+  <div class="panel__body panel__body--flush" data-live-sessions>
+    <p class="prose">Loading your recent sessions…</p>
   </div>
 </section>
 {% endblock %}

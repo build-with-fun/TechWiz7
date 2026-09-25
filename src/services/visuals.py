@@ -1,17 +1,7 @@
-"""Server-side waveform peaks and mel spectrogram for the event detail page (FR xxi-xxii).
+"""Build cached waveform peaks and a mel-spectrogram visualization for event detail.
 
-WHY SERVER-SIDE
----------------
-The SRS asks for the recording's waveform and spectrogram, and the honest version draws
-``the same signal the models were given``. If the browser decoded the audio file itself it
-would be a second, independent decoding -- different resampling, different scaling -- and
-"what you see is what they heard" would become a hope rather than a fact. So the peaks and
-the mel spectrogram are computed here, once, from the stored file, and cached on disk next
-to it. The browser receives a bounded JSON payload and draws it on a canvas.
-
-The spectrogram deliberately reuses :func:`~src.inference.gtm_predictor.compute_spectrogram`
--- the exact frontend the GTM model consumes -- so the picture on screen and the GTM input
-are the same transform, not merely similar ones.
+The display transform covers the whole recording and is intentionally separate from
+the short browser-FFT window consumed by the Teachable Machine model.
 """
 
 from __future__ import annotations

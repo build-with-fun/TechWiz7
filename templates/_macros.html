@@ -204,7 +204,7 @@
 {% macro class_chip(name, class_code=None, critical=false, extra="") -%}
 <span class="chip {{ 'chip--critical' if critical else '' }} {{ extra }}"
       data-sound-class="{{ name }}"
-      {%- if critical %} title="Critical category: {{ name }} — this triggers an acknowledgeable alert"{% endif %}>
+      {%- if critical %} title="Critical category: {{ name }}. Alert rules decide when to notify an operator."{% endif %}>
   <span class="chip__glyph" aria-hidden="true">{{ '⚠' if critical else '♪' }}</span><span class="chip__text">{{ name }}{% if class_code %} <span class="mono">({{ class_code }})</span>{% endif %}</span>
 </span>
 {% endmacro %}
