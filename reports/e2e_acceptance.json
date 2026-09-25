@@ -1,0 +1,94 @@
+{
+  "protocol": "local sample_audio WAVs; process-level analysis without persistence; not a 30-second recording benchmark",
+  "n_clips": 13,
+  "clip_latency_mean_s": 0.329,
+  "clip_latency_max_s": 1.35,
+  "window_latency_mean_s": 0.191,
+  "window_latency_max_s": 0.291,
+  "budgets": {
+    "clip_s": 8.0,
+    "window_s": 3.0
+  },
+  "passed": true,
+  "failures": [],
+  "rows": [
+    {
+      "clip": "aggression.wav",
+      "latency_s": 1.35,
+      "ok": true,
+      "status": "analysed"
+    },
+    {
+      "clip": "alarm_or_siren.wav",
+      "latency_s": 0.262,
+      "ok": true,
+      "status": "analysed"
+    },
+    {
+      "clip": "animal_sound.wav",
+      "latency_s": 0.205,
+      "ok": true,
+      "status": "analysed"
+    },
+    {
+      "clip": "background_noise.wav",
+      "latency_s": 0.222,
+      "ok": true,
+      "status": "analysed"
+    },
+    {
+      "clip": "clipped_loud_tone.wav",
+      "latency_s": 0.212,
+      "ok": true,
+      "status": "analysed"
+    },
+    {
+      "clip": "glass_breaking.wav",
+      "latency_s": 0.421,
+      "ok": true,
+      "status": "analysed"
+    },
+    {
+      "clip": "gunshot.wav",
+      "latency_s": 0.415,
+      "ok": true,
+      "status": "analysed"
+    },
+    {
+      "clip": "low_quality_quiet_tone.wav",
+      "latency_s": 0.004,
+      "ok": false,
+      "status": "rejected"
+    },
+    {
+      "clip": "machinery_fault.wav",
+      "latency_s": 0.252,
+      "ok": true,
+      "status": "analysed"
+    },
+    {
+      "clip": "panic_scream.wav",
+      "latency_s": 0.301,
+      "ok": true,
+      "status": "analysed"
+    },
+    {
+      "clip": "person_asking_for_help.wav",
+      "latency_s": 0.223,
+      "ok": true,
+      "status": "analysed"
+    },
+    {
+      "clip": "silence.wav",
+      "latency_s": 0.003,
+      "ok": false,
+      "status": "rejected"
+    },
+    {
+      "clip": "vehicle_horn.wav",
+      "latency_s": 0.41,
+      "ok": true,
+      "status": "analysed"
+    }
+  ]
+}

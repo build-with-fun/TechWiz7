@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
-"""Acceptance check: REAL bundles, REAL audio, end to end, with latency budget gates.
+"""Smoke-check both saved bundles on the local sample audio and record elapsed time.
 
 Loads python_models/best (or --model-dir variant) plus gtm_model/, runs
-AnalysisPipeline.analyse over permitted sample clips (one per class, all test-split
-— never trained on), and asserts:
+AnalysisPipeline.analyse over the locally available sample clips and checks:
 
   1. both models return a class + top confidence for every usable clip
   2. the consistency verdict is within the frozen taxonomy
   3. the quality verdict is one of the four allowed values
-  4. latency: 30-second clip <= 8 s; live window <= 3 s (SRS NFR floors)
+  4. each tested clip <= 8 s; each live window <= 3 s
   5. an unusable clip (silence) comes back ok=False with a rejection reason
 
-Writes reports/e2e_acceptance.json so evidence is reproducible:
+This is process-level analysis without HTTP, database writes or a 30-second clip.
+It cannot establish the SRS latency target on longer recordings. Writes
+reports/e2e_acceptance.json so this sample run is inspectable:
     .venv/bin/python tools/check_e2e_upload.py [--model-dir python_models/best]
 """
 from __future__ import annotations
@@ -69,13 +70,13 @@ def main(argv: list[str] | None = None) -> int:
         row = {"clip": clip.name, "latency_s": round(dt, 3),
                "ok": rec.get("ok"), "status": rec.get("status")}
         if rec.get("ok"):
-            py_cls = rec.get("python", {}).get("predicted_class")
-            gtm_cls = rec.get("gtm", {}).get("predicted_class")
+            py_cls = rec.get("predictions", {}).get("python", {}).get("predicted_class")
+            gtm_cls = rec.get("predictions", {}).get("gtm", {}).get("predicted_class")
             if not py_cls:
                 failures.append(f"{clip.name}: missing python class")
             if not gtm_cls:
                 failures.append(f"{clip.name}: missing gtm class")
-            verdict = rec.get("comparison", {}).get("consistency_verdict")
+            verdict = rec.get("comparison", {}).get("consistency_status")
             if verdict not in VERDICTS:
                 failures.append(f"{clip.name}: bad consistency verdict {verdict!r}")
             q = rec.get("quality", {}).get("verdict")
@@ -83,7 +84,7 @@ def main(argv: list[str] | None = None) -> int:
                 failures.append(f"{clip.name}: bad quality verdict {q!r}")
             if dt > args.max_clip_s:
                 failures.append(f"{clip.name}: clip latency {dt:.2f}s > {args.max_clip_s}s")
-        elif clip.name != "silence.wav":
+        elif clip.name not in {"silence.wav", "low_quality_quiet_tone.wav"}:
             failures.append(f"{clip.name}: unexpectedly rejected: "
                             f"{rec.get('rejection', {}).get('code')!r}")
         rows.append(row)
@@ -103,6 +104,8 @@ def main(argv: list[str] | None = None) -> int:
             failures.append(f"{clip.name}: window latency {wdt:.2f}s > {args.max_window_s}s")
 
     summary = {
+        "protocol": "local sample_audio WAVs; process-level analysis without persistence; "
+                    "not a 30-second recording benchmark",
         "n_clips": len(clips),
         "clip_latency_mean_s": round(statistics.mean(clip_lat), 3) if clip_lat else None,
         "clip_latency_max_s": round(max(clip_lat), 3) if clip_lat else None,

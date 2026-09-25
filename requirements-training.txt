@@ -1,0 +1,4 @@
+# Install after requirements.txt when converting a Teachable Machine TF.js export.
+# Optional PyTorch deep-model tests use requirements-test.txt.
+tensorflowjs==4.20.0
+playwright==1.62.0

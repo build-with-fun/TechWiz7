@@ -4,6 +4,7 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 .venv/
+.xeno/
 python_models/.cache/
 
 # Audio / dataset binaries
