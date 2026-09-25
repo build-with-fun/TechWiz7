@@ -2,11 +2,12 @@
 
 Owner: sara.
 
-Two endpoints, serving two different consumers:
+Three endpoints, serving different consumers:
 
 * ``/api/health`` -- for the load balancer and for monitoring. Fast, no database, no model
   inference. It must answer while the database is down, because that 503 *is* the signal.
-* ``/api/health/detail`` -- for an administrator, and for the demo. It reports the state of
+* ``/api/health/ready`` -- reports whether the database and both models can serve analysis.
+* ``/api/health/detail`` -- for signed-in dashboard users. It reports the state of
   the pipeline, the database, the storage tree, the configuration, the model versions and
   the anomaly counters. It is deliberately readable: an evaluator asking "how do you know
   it is up?" gets a page, not a shrug.
@@ -75,7 +76,7 @@ def health():
         "analysis_ready": bool(status.get("ready")),
         "checks": {
             "database": "not checked by this endpoint",
-            "models": "ready" if status.get("ready") else status.get("reason", "unavailable"),
+            "models": "ready" if status.get("ready") else "unavailable",
         },
     }
     # 200 while the console is usable. A missing model is reported in the body and by the
@@ -87,11 +88,7 @@ def health():
 
 @bp.get("/api/health/ready")
 def ready():
-    """Readiness: is everything this instance needs actually available?
-
-    503 when the database cannot be reached, because that is the one dependency without
-    which no request is meaningful.
-    """
+    """Return 503 when the database or dual-model analysis is unavailable."""
     try:
         factory = current_app.config["SST_SESSION_FACTORY"]
         with session_scope(factory) as session:
@@ -102,7 +99,9 @@ def ready():
             "reason": "database unreachable",
             "detail": type(exc).__name__,
         }), 503
-    return jsonify({"status": "ready"})
+    if current_app.config.get("SST_PIPELINE") is None:
+        return jsonify({"status": "unavailable", "reason": "analysis models unavailable"}), 503
+    return jsonify({"status": "ready", "analysis_ready": True})
 
 
 @bp.get("/api/health/detail")
@@ -152,7 +151,6 @@ def health_detail():
                     }
                     for v in versions
                 ],
-                "path": current_app.config["SST_DB_PATH"],
             }
     except Exception as exc:
         db = {"ok": False, "error": type(exc).__name__}

@@ -27,6 +27,8 @@ from __future__ import annotations
 import datetime as dt
 import logging
 import os
+import hmac
+import secrets
 import time
 import uuid
 from pathlib import Path
@@ -154,6 +156,28 @@ def _register_session_hooks(app: Flask) -> None:
         app.permanent_session_lifetime = dt.timedelta(minutes=minutes)
 
 
+def _register_csrf(app: Flask) -> None:
+    """Protect cookie-authenticated writes, including the sign-in and sign-out forms."""
+
+    def token() -> str:
+        if "_csrf_token" not in session:
+            session["_csrf_token"] = secrets.token_urlsafe(32)
+        return session["_csrf_token"]
+
+    app.jinja_env.globals["csrf_token"] = token
+
+    @app.before_request
+    def _check_csrf():
+        if not app.config["SST_CSRF_ENABLED"] or request.method in {"GET", "HEAD", "OPTIONS"}:
+            return
+        supplied = request.headers.get("X-CSRF-Token") or request.form.get("csrf_token", "")
+        expected = session.get("_csrf_token", "")
+        if not expected or not hmac.compare_digest(supplied, expected):
+            from src.errors import ApiError
+
+            raise ApiError("forbidden", "This form expired. Refresh the page and try again.")
+
+
 def _register_blueprints(app: Flask) -> None:
     from src.api.auth_api import bp as auth_api_bp
     from src.api.health import bp as health_bp
@@ -252,13 +276,21 @@ def _load_models(app: Flask, pipeline: Any | None) -> Any | None:
         logger.warning("analysis pipeline unavailable at start-up: %s", reason)
         set_pipeline(None)
         app.config["SST_PIPELINE"] = None
-        app.config["SST_PIPELINE_ERROR"] = reason
+        app.config["SST_PIPELINE_ERROR"] = (
+            "Analysis models are unavailable. Ask an administrator to check the server "
+            "logs and install the saved model artifacts."
+        )
         return None
 
     set_pipeline(loaded)
     app.config["SST_PIPELINE"] = loaded
     app.config["SST_PIPELINE_ERROR"] = None
-    logger.info("analysis pipeline loaded: %s", loaded.models.describe())
+    logger.info(
+        "analysis pipeline loaded: python=%s gtm=%s frontend_verified=%s",
+        loaded.models.python.model_version,
+        loaded.models.gtm.model_version,
+        loaded.models.gtm.verified,
+    )
     return loaded
 
 
@@ -292,6 +324,7 @@ def create_app(config: Mapping[str, Any] | None = None, **overrides: Any) -> Fla
         "SST_LOAD_MODELS": True,
         "JSON_SORT_KEYS": False,
         "MAX_CONTENT_LENGTH": 64 * 1024 * 1024,
+        "SST_CSRF_ENABLED": not supplied.get("TESTING", False),
     }
     app.config.update(defaults)
     app.config.update(supplied)
@@ -314,6 +347,7 @@ def create_app(config: Mapping[str, Any] | None = None, **overrides: Any) -> Fla
         "session.cookie_samesite", "Lax"
     )
     app.config["SESSION_COOKIE_SECURE"] = bool(
+        os.environ.get("SST_PRODUCTION") == "1" or
         store.auth_setting("session.cookie_secure", False)
     )
     app.config["PERMANENT_SESSION_LIFETIME"] = dt.timedelta(
@@ -368,6 +402,7 @@ def create_app(config: Mapping[str, Any] | None = None, **overrides: Any) -> Fla
 
     # -- HTTP behaviour -------------------------------------------------------------------
     _apply_request_context(app)
+    _register_csrf(app)
     _apply_security_headers(app, store)
     _register_session_hooks(app)
     register_error_handlers(app)
@@ -452,6 +487,8 @@ def _secret_key(config: Mapping[str, Any]) -> str:
         return configured
     if config.get("TESTING"):
         return "testing-secret-key"
+    if os.environ.get("SST_PRODUCTION") == "1":
+        raise RuntimeError("SST_SECRET_KEY must be set when SST_PRODUCTION=1")
     import hashlib
 
     logger.warning(
