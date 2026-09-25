@@ -1,0 +1,11 @@
+class,zip,n_samples
+Aggression,gtm_model/upload_package/aggression.zip,522
+Alarm or Siren,gtm_model/upload_package/alarm_or_siren.zip,531
+Animal Sound,gtm_model/upload_package/animal_sound.zip,598
+Background Noise,gtm_model/upload_package/background_noise.zip,619
+Glass Breaking,gtm_model/upload_package/glass_breaking.zip,533
+Gunshot,gtm_model/upload_package/gunshot.zip,445
+Machinery Fault,gtm_model/upload_package/machinery_fault.zip,609
+Panic Scream,gtm_model/upload_package/panic_scream.zip,486
+Person Asking for Help,gtm_model/upload_package/person_asking_for_help.zip,404
+Vehicle Horn,gtm_model/upload_package/vehicle_horn.zip,483
