@@ -25,8 +25,7 @@ import io
 import json
 import logging
 import zipfile
-import datetime as _dt
-from datetime import datetime as _dtm
+from dataclasses import replace
 from xml.sax.saxutils import escape as _xml_escape
 
 from flask import Blueprint, Response, current_app, jsonify, request
@@ -34,7 +33,7 @@ from sqlalchemy import func as _sa_func, select
 
 from src.auth import capability_required, client_ip, current_user
 from src.db import record_audit, session_scope
-from src.errors import current_request_id, not_found, validation_error
+from src.errors import ApiError, current_request_id, not_found, validation_error
 from src.models import Alert, Event, Review, utcnow
 from src.services.config import get_store
 from src.services.search import parse_filters, run_search
@@ -147,8 +146,8 @@ def period_report():
     to_raw = request.args.get("to")
     from_raw = request.args.get("from")
     try:
-        end = _dtm.fromisoformat(to_raw).replace(tzinfo=_dtm.timezone.utc) if to_raw else utcnow()
-        start = _dtm.fromisoformat(from_raw).replace(tzinfo=_dtm.timezone.utc) if from_raw else (
+        end = _parse_utc(to_raw) if to_raw else _dt.datetime.now(_dt.timezone.utc)
+        start = _parse_utc(from_raw) if from_raw else (
             end - _dt.timedelta(days=7)
         )
     except ValueError:
@@ -214,6 +213,12 @@ def period_report():
     )
 
 
+def _parse_utc(value: str) -> _dt.datetime:
+    parsed = _dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    return (parsed.replace(tzinfo=_dt.timezone.utc) if parsed.tzinfo is None
+            else parsed.astimezone(_dt.timezone.utc))
+
+
 def _period_report_html(data: dict) -> str:
     def table(title: str, mapping: dict[str, int]) -> str:
         rows = "".join(
@@ -248,14 +253,12 @@ def _period_report_html(data: dict) -> str:
 @capability_required("export_data")
 def export_csv():
     """FR lxxi: CSV of the events the active filters select, streamed, audited."""
-    viewer = current_user._get_current_object()
     store = get_store()
-    filters = parse_filters(request.args, store)
+    filters = parse_filters(request.args, store, viewer=current_user._get_current_object())
     if filters.problems:
         raise validation_error("Invalid export filters.", problems=filters.problems)
     with session_scope(current_app.config["SST_SESSION_FACTORY"]) as session:
-        rows, meta = run_search(session, filters, store)
-        total = meta["total"]
+        rows, total = _export_rows(session, filters, store)
     buffer = io.StringIO()
     writer = csv.writer(buffer)
     writer.writerow([header for _, header in _CSV_COLUMNS])
@@ -274,14 +277,12 @@ def export_xlsx():
     """Same rows as the CSV, as a real (stdlib-written) XLSX workbook."""
     import xml.etree.ElementTree as ET
 
-    user = current_user._get_current_object()
     with session_scope(current_app.config["SST_SESSION_FACTORY"]) as session:
         store = get_store()
-        filters = parse_filters(request.args, store)
+        filters = parse_filters(request.args, store, viewer=current_user._get_current_object())
         if filters.problems:
             raise validation_error("Invalid export filters.", problems=filters.problems)
-        rows, meta = run_search(session, filters, store)
-        total = meta["total"]
+        rows, total = _export_rows(session, filters, store)
 
     ET.register_namespace("", "http://schemas.openxmlformats.org/spreadsheetml/2006/main")
     ns = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
@@ -357,7 +358,45 @@ def _csv_cell(value) -> str:
         return ""
     if isinstance(value, bool):
         return "true" if value else "false"
-    return str(value)
+    cell = str(value)
+    if cell.lstrip().startswith(("=", "+", "-", "@", "\t", "\r")):
+        return "'" + cell
+    return cell
+
+
+def _export_rows(session, filters, store) -> tuple[list[dict], int]:
+    """Export all matching rows up to a bounded size, using the search scope and filters."""
+    output: list[dict] = []
+    page = 1
+    total = 0
+    while True:
+        batch, meta = run_search(session, replace(filters, page=page, page_size=200), store)
+        total = meta["total"]
+        if total > 10_000:
+            raise ApiError("export_too_large", "More than 10,000 events match. Narrow the filters.")
+        for event in batch:
+            audio = event.audio_file
+            output.append({
+                "event_id": event.id,
+                "audio_id": audio.audio_id if audio else None,
+                "filename": audio.filename if audio else None,
+                "created_at": event.created_at.isoformat() + "Z" if event.created_at else None,
+                "created_by": event.created_by.username if event.created_by else None,
+                "source": audio.source if audio else None,
+                "predicted_class": event.predicted_class,
+                "severity": event.severity,
+                "consistency_status": event.consistency_status,
+                "confidence_difference": event.confidence_difference,
+                "top_confidence": event.top_confidence,
+                "quality_verdict": event.quality_verdict,
+                "status": event.status,
+                "requires_manual_review": bool(event.requires_manual_review),
+                "location": event.location,
+            })
+        if not meta["has_next"]:
+            break
+        page += 1
+    return output, total
 
 
 def _audit_export(action: str, *, target: str | None = None, rows: int | None = None) -> None:

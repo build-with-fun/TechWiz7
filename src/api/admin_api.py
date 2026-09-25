@@ -23,10 +23,11 @@ import logging
 import os
 import shutil
 import tempfile
+from datetime import timedelta
 from pathlib import Path
 
 from flask import Blueprint, current_app, jsonify, request
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, update
 
 from src.auth import capability_required, client_ip, current_user, hash_password
 from src.db import record_audit, session_scope
@@ -87,7 +88,7 @@ def _path_for(store, file_key: str) -> Path:
             "Unknown configuration file.",
             file={"given": file_key, "accepted": sorted(EDITABLE_FILES)},
         )
-    return (store.config_dir if where == "config" else store.alert_rules_dir) / f"{file_key}.json"
+    return (store.config_dir if where == "config" else store.alert_rules_dir) / f"{file_key.replace('-', '_')}.json"
 
 
 @bp.put("/config/<file_key>")
@@ -115,7 +116,15 @@ def put_config(file_key: str):
         with handle:
             json.dump(body, handle, indent=2, ensure_ascii=False, sort_keys=False)
             handle.write("\n")
-        problems = store.validate()
+        from src.services.config import ConfigStore
+
+        class ProposedConfigStore(ConfigStore):
+            def _load(self, candidate_path):
+                if candidate_path.resolve() == path.resolve():
+                    return body
+                return super()._load(candidate_path)
+
+        problems = ProposedConfigStore(store.config_dir, store.alert_rules_dir).validate()
         if problems:
             temp_name.unlink(missing_ok=True)
             raise validation_error(
@@ -143,7 +152,7 @@ def put_config(file_key: str):
             target_type="config",
             target_id=file_key,
             outcome="success",
-            detail=f"{file_key} updated ({path.name}); boot validator passed",
+            detail=f"{file_key} updated ({path.name}); candidate validation passed",
             before={"content": before},
             after={"content": after},
             ip_address=client_ip(),
@@ -453,35 +462,71 @@ def retention_purge():
 
 
 def _retention(*, dry_run: bool):
-    from src.models import AudioFile, Event
+    from src.models import Alert, AudioFile, Event, LiveWindow
 
     store = get_store()
     now = utcnow()
+    policy = store.retention()
+    defaults = policy.get("defaults", {})
+    overrides = policy.get("overrides_by_severity", {})
+    batch_size = max(1, min(5000, int(policy.get("purge_batch_size", 500))))
+
+    def days_for(artifact: str, events: list[Event]) -> int | None:
+        base = defaults.get(f"{artifact}_days")
+        if base is None:
+            return None
+        return max([base, *[
+            overrides.get(event.severity or "", {}).get(f"{artifact}_days", base)
+            for event in events
+        ]])
+
+    def has_hold(session, audio: AudioFile) -> bool:
+        if audio.flagged_for_investigation:
+            return True
+        ids = [event.id for event in audio.events]
+        if not ids:
+            return False
+        pending_review = session.execute(
+            select(func.count(Review.id)).where(
+                Review.event_id.in_(ids), Review.status == "Pending Review"
+            )
+        ).scalar() or 0
+        open_alert = session.execute(
+            select(func.count(Alert.id)).where(
+                Alert.event_id.in_(ids), Alert.status.in_(["Open", "Escalated", "Acknowledged"])
+            )
+        ).scalar() or 0
+        return bool(pending_review or open_alert)
+
     with session_scope(current_app.config["SST_SESSION_FACTORY"]) as session:
-        plan: dict[str, int] = {}
-        # The artifact keys match alert_rules/retention.json "defaults" exactly
-        # (event_records_days, audio_days, microphone_session_audio_days) so an
-        # administrator renaming a key in the rule file never leaves this endpoint
-        # asking for a key the file does not define.
-        for artifact in ("event_records", "audio", "microphone_session_audio"):
-            days = store.retention_days(artifact)
-            if days is None:
+        plan: dict[str, int] = {"event_records": 0, "audio": 0,
+                                "microphone_session_audio": 0}
+        files = session.execute(select(AudioFile).order_by(AudioFile.created_at, AudioFile.id)).scalars().all()
+        for audio in files:
+            if has_hold(session, audio):
                 continue
-            cutoff = now - __import__("datetime").timedelta(days=days)
-            if artifact == "event_records":
-                # The legal-hold flag lives on AudioFile (FR lxi: the flag protects the
-                # recording and everything classified from it), so the count joins
-                # through the audio file.
-                plan[artifact] = session.execute(
-                    select(func.count(Event.id))
-                    .join(AudioFile, Event.audio_file_id == AudioFile.id)
-                    .where(
-                        Event.created_at < cutoff,
-                        AudioFile.flagged_for_investigation.is_(False),
-                    )
-                ).scalar() or 0
-            else:
-                plan[artifact] = 0
+            events = list(audio.events)
+            for event in events:
+                days = days_for("event_records", [event])
+                if days is not None and event.created_at < now - timedelta(days=days):
+                    if plan["event_records"] < batch_size:
+                        plan["event_records"] += 1
+                        if not dry_run:
+                            session.execute(update(LiveWindow).where(
+                                LiveWindow.event_id == event.id
+                            ).values(event_id=None))
+                            session.delete(event)
+            artifact = "microphone_session_audio" if audio.source == "microphone" else "audio"
+            days = days_for(artifact, events)
+            if (days is None or not audio.stored_path
+                    or audio.created_at >= now - timedelta(days=days)
+                    or plan[artifact] >= batch_size):
+                continue
+            plan[artifact] += 1
+            if not dry_run:
+                path = current_app.config["SST_STORAGE"].resolve(audio.stored_path)
+                path.unlink(missing_ok=True)
+                audio.stored_path = ""
         record_audit(
             session,
             action="retention_preview" if dry_run else "retention_purge",

@@ -182,15 +182,23 @@ def discover_model_artifacts() -> list[dict]:
     """
     found: list[dict] = []
 
-    for meta in sorted((REPO_ROOT / "python_models").glob("**/model_meta.json")):
+    serving_meta = REPO_ROOT / "python_models" / "best" / "model_meta.json"
+    candidates = sorted((REPO_ROOT / "python_models").glob("**/model_meta.json"),
+                        key=lambda path: (path != serving_meta, len(path.parts), str(path)))
+    seen_python_versions: set[str] = set()
+    for meta in candidates:
         try:
             payload = json.loads(meta.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             continue
+        version = str(payload.get("model_version") or payload.get("version") or "0.0.0")
+        if version in seen_python_versions:
+            continue
+        seen_python_versions.add(version)
         found.append(
             {
                 "model_name": "python",
-                "version": str(payload.get("model_version") or payload.get("version") or "0.0.0"),
+                "version": version,
                 "label": payload.get("model_name"),
                 "artifact_path": str(meta.parent.relative_to(REPO_ROOT)),
                 "feature_version": payload.get("feature_version"),
@@ -211,16 +219,39 @@ def discover_model_artifacts() -> list[dict]:
         labels = payload.get("wordLabels") or []
         if not labels:
             continue
+        frontend_path = meta.parent / "frontend_config.json"
+        frontend_id = None
+        if frontend_path.exists():
+            try:
+                frontend_id = json.loads(frontend_path.read_text(encoding="utf-8")).get(
+                    "frontend_id"
+                )
+            except (OSError, json.JSONDecodeError):
+                pass
+        version = str(payload.get("modelVersion") or payload.get("version")
+                      or (f"gtm-{frontend_id}" if frontend_id else "0.0.0"))
+        metrics = None
+        metrics_path = meta.parent / "gtm_metrics.json"
+        if metrics_path.exists():
+            try:
+                measured = json.loads(metrics_path.read_text(encoding="utf-8"))
+                if measured.get("model_version") == version:
+                    metrics = {key: measured[key] for key in (
+                        "n_clips", "accuracy", "macro_f1", "critical_macro_recall",
+                        "frontend_verified", "protocol"
+                    ) if key in measured}
+            except (OSError, json.JSONDecodeError):
+                pass
         found.append(
             {
                 "model_name": "gtm",
-                "version": str(payload.get("model_version") or payload.get("version") or "0.0.0"),
+                "version": version,
                 "label": payload.get("model_name") or "Teachable Machine audio model",
                 "artifact_path": str(meta.parent.relative_to(REPO_ROOT)),
                 "feature_version": payload.get("feature_version"),
                 "algorithm": "Google Teachable Machine (audio)",
-                "metrics": payload.get("metrics"),
-                "trained_at": _parse_dt(payload.get("trained_at")),
+                "metrics": metrics or payload.get("metrics"),
+                "trained_at": _parse_dt(payload.get("trained_at") or payload.get("timeStamp")),
                 "dataset_manifest_hash": payload.get("dataset_manifest_hash"),
             }
         )
@@ -249,11 +280,20 @@ def register_models(session, artifacts: list[dict], *, verbose: bool = True) -> 
             )
         ).scalar_one_or_none()
         if exists is not None:
+            for field in ("label", "artifact_path", "feature_version", "algorithm",
+                          "metrics", "trained_at", "dataset_manifest_hash"):
+                if spec.get(field) is not None:
+                    setattr(exists, field, spec[field])
+            active_seen.add(spec["model_name"])
             skipped += 1
             continue
         activate = spec["model_name"] not in active_seen
         if activate:
             active_seen.add(spec["model_name"])
+            for row in session.execute(select(ModelVersion).where(
+                    ModelVersion.model_name == spec["model_name"],
+                    ModelVersion.is_active.is_(True))).scalars():
+                row.is_active = False
         session.add(
             ModelVersion(
                 model_name=spec["model_name"],

@@ -61,8 +61,7 @@ ROLE_CAPABILITIES: Mapping[str, frozenset[str]] = {
                                   "maintenance_operator", "administrator"}),
     "view_analytics": frozenset({"audio_reviewer", "security_operator",
                                  "maintenance_operator", "administrator"}),
-    "export_data": frozenset({"audio_reviewer", "security_operator",
-                              "maintenance_operator", "administrator"}),
+    "export_data": frozenset({"administrator"}),
     "download_report": frozenset({"audio_reviewer", "security_operator",
                                   "maintenance_operator", "administrator"}),
     # Manual review -- FR lvii-lxi. Maintenance keeps out on purpose: they change how the

@@ -88,7 +88,7 @@ def upload():
     normal outcomes and both name the existing resource or the reason.
     """
     from src.services.persistence import make_persistence_callback
-    from src.services.pipeline import get_pipeline
+    from src.services.pipeline import ModelsUnavailable, PipelineError, get_pipeline
 
     store = get_store()
     raw = _request_body()
@@ -138,7 +138,22 @@ def upload():
                 details={"audio_id": existing.audio_id, "sha256": digest},
             )
 
-    pipeline = get_pipeline()
+    try:
+        pipeline = get_pipeline()
+    except PipelineError as exc:
+        # Every "cannot analyse" start-up failure descends from PipelineError, and
+        # get_pipeline() raises the *base* class when nothing was ever loaded. Guarding
+        # on ModelsUnavailable alone let that base class escape to the catch-all handler
+        # and become a 500 internal_error, contradicting the documented 503
+        # (README: "upload and live classification return a clear unavailable response").
+        # live_api.py already degrades correctly; this brings upload in line.
+        if isinstance(exc, ModelsUnavailable):
+            # Names the missing artifact on purpose -- a pathless "not found" costs the
+            # next person twenty minutes.
+            raise ApiError("pipeline_unavailable", str(exc)) from exc
+        # The pipeline was never initialised. That is an internal wiring detail, so answer
+        # with the standard user-facing sentence rather than the app-factory instructions.
+        raise ApiError("pipeline_unavailable") from exc
     storage = current_app.config["SST_STORAGE"]
     actor = current_user._get_current_object() if hasattr(current_user, "_get_current_object") else current_user
 
@@ -152,6 +167,14 @@ def upload():
         request_id=current_request_id(),
         allow_duplicate=allow_duplicate,
     )
+    factory = current_app.config["SST_SESSION_FACTORY"]
+    with session_scope(factory) as session:
+        candidates = session.execute(
+            select(AudioFile.audio_id, AudioFile.perceptual_fingerprint)
+            .where(AudioFile.perceptual_fingerprint.is_not(None))
+            .order_by(AudioFile.created_at.desc())
+            .limit(500)
+        ).all()
     try:
         record = pipeline.analyse_bytes(
             raw,
@@ -165,6 +188,8 @@ def upload():
                 "client_ip": client_ip(),
                 "content_type": request.files.get("file", None)
                 and request.files["file"].mimetype,
+                "near_duplicate_candidates": [(audio_id, fingerprint)
+                                              for audio_id, fingerprint in candidates],
             },
             persist=persist,
         )
@@ -178,6 +203,12 @@ def upload():
             details={"request_id": current_request_id(), "detail": type(exc).__name__},
         )
 
+    if (record.get("stored") or {}).get("error") or (
+        record.get("status") == "analysed" and not record.get("event_id")
+    ):
+        _LOGGER.error("analysis could not be stored for request %s: %s",
+                      current_request_id(), (record.get("stored") or {}).get("error"))
+        raise ApiError("storage_error", "The analysis finished, but the result could not be saved. Try again.")
     return {"data": _response_for(record, store)}, 201
 
 
@@ -196,6 +227,8 @@ def download(audio_pk: int):
         ).scalar_one_or_none()
         if audio is None:
             raise ApiError("not_found", "No audio file has that id.")
+        if not audio.stored_path:
+            raise ApiError("no_audio", "This recording has reached its retention limit.")
         path = current_app.config["SST_STORAGE"].resolve(audio.stored_path)
         if not path.is_file():
             _LOGGER.warning("stored audio is missing on disk: %s", audio.stored_path)
@@ -249,7 +282,11 @@ def _response_for(record: dict, store) -> dict:
     from src.api.events_api import event_to_dict
 
     status = record.get("status")
-    if status in {"rejected", "error"}:
+    if status == "error":
+        _LOGGER.error("analysis failed at %s for request %s",
+                      (record.get("error") or {}).get("stage"), current_request_id())
+        raise ApiError("model_unavailable", "The models could not analyse this clip. Try again shortly.")
+    if status == "rejected":
         # FR xxxvii's unusable verdict and an undecodable clip both stop here. The caller
         # gets a 422 naming the reason, not a 201 with an empty event.
         rejection = record.get("rejection") or {}
@@ -262,7 +299,6 @@ def _response_for(record: dict, store) -> dict:
             details={
                 "verdict": quality.get("verdict"),
                 "problems": quality.get("problems"),
-                "audio_id": record.get("audio", {}).get("source_path"),
             },
         )
     return event_to_dict(record, store)

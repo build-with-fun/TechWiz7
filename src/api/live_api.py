@@ -282,6 +282,13 @@ def push_window(session_id: str):
             "The analysis pipeline is not ready; live windows cannot be classified yet.",
         )
 
+    from src.services.persistence import make_persistence_callback
+
+    persist = make_persistence_callback(
+        storage=current_app.config["SST_STORAGE"],
+        actor=current_user._get_current_object(),
+        request_id=current_request_id(),
+    )
     with session_scope(current_app.config["SST_SESSION_FACTORY"]) as session:
         row = _load_owned_session(session, session_id)
         if row.status != "active":
@@ -320,11 +327,20 @@ def push_window(session_id: str):
             # the same decode path an upload takes, so a live window and an uploaded clip
             # cannot disagree about decoding.
             record = pipeline.analyse_bytes(
-                audio_bytes, filename=f"window_{seq}.wav", origin="live", **meta
+                audio_bytes, filename=f"window_{seq}.wav", origin="live",
+                persist=persist, **meta
             )
         else:
             # Raw little-endian float32 PCM from a client that streams without a header.
-            record = pipeline.analyse_samples(audio_bytes, sample_rate, origin="live", **meta)
+            record = pipeline.analyse_samples(audio_bytes, sample_rate, origin="live",
+                                              persist=persist, **meta)
+
+        if (record.get("stored") or {}).get("error") or (
+            record.get("status") == "analysed" and not record.get("event_id")
+        ):
+            _LOGGER.error("live window could not be stored for request %s: %s",
+                          current_request_id(), (record.get("stored") or {}).get("error"))
+            raise ApiError("storage_error", "This window was analysed but could not be saved. Try again.")
 
         predictions = record.get("predictions") or {}
         comparison = record.get("comparison") or {}
@@ -356,7 +372,7 @@ def push_window(session_id: str):
             consecutive=int(repeat.get("consecutive") or 0),
             needed=int(repeat.get("needed") or 0),
             latency_ms=latency_ms,
-            event_id=(record.get("event") or {}).get("id"),
+            event_id=record.get("event_id"),
         )
         session.add(window_row)
         row.window_count = (row.window_count or 0) + 1
@@ -389,7 +405,7 @@ def push_window(session_id: str):
             "consecutive": int(repeat.get("consecutive") or 0),
             "needed": int(repeat.get("needed") or 0),
             "alert": alert_block if alert_block.get("raised") else None,
-            "event_id": (record.get("event") or {}).get("id"),
+            "event_id": record.get("event_id"),
             "latency_ms": latency_ms,
             "within_budget": bool(record.get("within_budget", True)),
             "requeue_hint_ms": 500,

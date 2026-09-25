@@ -1083,6 +1083,41 @@ def test_init_db_discovers_a_python_model_artifact(tmp_path: Path, monkeypatch):
     assert artifacts[0]["metrics"]["accuracy"] == 0.91
 
 
+def test_init_db_registers_served_bundle_when_experiments_share_a_version(
+        tmp_path: Path, monkeypatch):
+    init = _load_init_module()
+    best = tmp_path / "python_models" / "best"
+    (best / "deep").mkdir(parents=True)
+    (best / "model_meta.json").write_text(json.dumps({
+        "model_name": "serving model", "model_version": "1.0.0",
+    }))
+    (best / "deep" / "model_meta.json").write_text(json.dumps({
+        "model_name": "experiment", "model_version": "1.0.0",
+    }))
+    monkeypatch.setattr(init, "REPO_ROOT", tmp_path)
+
+    artifacts = init.discover_model_artifacts()
+    assert len(artifacts) == 1
+    assert artifacts[0]["artifact_path"] == "python_models/best"
+    assert artifacts[0]["label"] == "serving model"
+
+
+def test_init_db_activates_new_export_and_refreshes_existing_metadata(session):
+    init = _load_init_module()
+    old = _model_version(session, model_name="gtm", version="0.0.0")
+    spec = {"model_name": "gtm", "version": "gtm-frontend-v1",
+            "artifact_path": "gtm_model", "metrics": {"accuracy": 0.3}}
+    assert init.register_models(session, [spec], verbose=False) == (1, 0)
+    session.flush()
+    current = session.execute(select(ModelVersion).where(
+        ModelVersion.version == "gtm-frontend-v1")).scalar_one()
+    assert current.is_active
+    assert not old.is_active
+    assert init.register_models(session, [{**spec, "metrics": {"accuracy": 0.4}}],
+                                verbose=False) == (0, 1)
+    assert current.metrics == {"accuracy": 0.4}
+
+
 def test_init_db_reports_no_models_rather_than_inventing_one(tmp_path: Path, monkeypatch, capsys):
     """No trained artifact means the app says so; it must never register a fake version."""
     init = _load_init_module()

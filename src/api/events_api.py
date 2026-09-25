@@ -156,12 +156,20 @@ def _event_row_to_dict(event: Event, store) -> dict:
     gtm = event.gtm_model_version
     creator = event.created_by
 
-    def _score_block(model_name: str, version, predicted: str | None) -> dict:
+    def _score_block(model_name: str, version) -> dict:
+        scores = sorted(
+            (score for score in event.confidence_scores if score.model_name == model_name),
+            key=lambda score: score.rank,
+        )
+        top = next((score for score in scores if score.is_top), scores[0] if scores else None)
         return {
             "name": model_name,
             "version": version.version if version else None,
-            "predicted_class": predicted,
-            "confidence": event.top_confidence if predicted is not None else None,
+            "predicted_class": top.class_name if top else None,
+            "confidence": top.confidence if top else None,
+            "confidences": {score.class_name: score.confidence for score in scores},
+            "top3": [{"class": score.class_name, "confidence": score.confidence}
+                     for score in scores[:3]],
         }
 
     return {
@@ -199,8 +207,8 @@ def _event_row_to_dict(event: Event, store) -> dict:
         ),
         "location": event.location,
         "models": {
-            "python": _score_block("python", py, event.predicted_class),
-            "gtm": _score_block("gtm", gtm, event.predicted_class),
+            "python": _score_block("python", py),
+            "gtm": _score_block("gtm", gtm),
         },
         "timing": None,
         "config_snapshot": event.config_snapshot,
@@ -328,6 +336,8 @@ def event_audio(event_id: int):
     audio = event.audio_file
     if audio is None:
         raise ApiError("not_found", "This event has no stored audio.")
+    if not audio.stored_path:
+        raise ApiError("no_audio", "This recording has reached its retention limit.")
     storage = current_app.config["SST_STORAGE"]
     path = storage.resolve(audio.stored_path)
     if not path.is_file():

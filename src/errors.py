@@ -67,6 +67,7 @@ ERROR_CODES: tuple[str, ...] = (
     "export_too_large",
     "report_failed",
     # storage
+    "no_audio",
     "storage_error",
     "database_error",
     # catch-all
@@ -106,6 +107,7 @@ DEFAULT_STATUS: Mapping[str, int] = {
     "pipeline_unavailable": 503,
     "export_too_large": 413,
     "report_failed": 500,
+    "no_audio": 410,
     "storage_error": 500,
     "database_error": 500,
     "internal_error": 500,
@@ -144,6 +146,7 @@ DEFAULT_MESSAGES: Mapping[str, str] = {
                             "Try again shortly.",
     "export_too_large": "That export is too large to prepare at once. Narrow the filters.",
     "report_failed": "The report could not be produced. The event itself is unaffected.",
+    "no_audio": "This recording is no longer stored. Its analysis history is still available.",
     "storage_error": "The audio storage is not available right now.",
     "database_error": "The service is temporarily unable to read its records.",
     "internal_error": "Something went wrong on our side. The error has been logged.",

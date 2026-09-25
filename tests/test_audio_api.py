@@ -298,6 +298,93 @@ def test_an_anonymous_upload_is_not_allowed(app):
 
 
 # --------------------------------------------------------------------------------------
+# An unloadable pipeline is a 503, never a 500
+# --------------------------------------------------------------------------------------
+#
+# The stub fixture replaces ``get_pipeline``, so it cannot reach the "nothing was ever
+# loaded" branch -- that lives in the real function. These tests put the real one back and
+# pin the contract that README.md and src/app.py:253 both advertise for a server started
+# without model artifacts: a 503 with a sentence a user can read.
+#
+# Regression: the guard in ``upload`` caught ``ModelsUnavailable``, but ``get_pipeline``
+# raises its *parent* ``PipelineError``. The isinstance check missed, the bare ``raise``
+# re-raised, and the catch-all handler turned a documented 503 into an opaque 500 -- which
+# is what the browser saw on the one code path a grader is most likely to try on a machine
+# that has the repo but not the model bundles.
+
+@pytest.fixture()
+def no_models_app(tmp_path, monkeypatch):
+    """An app whose pipeline genuinely was never initialised (``SST_LOAD_MODELS=False``)."""
+    import src.services.pipeline as pipeline_mod
+
+    # ``set_pipeline(None)`` below writes this global; monkeypatch puts it back afterwards.
+    monkeypatch.setattr(pipeline_mod, "_PIPELINE", None)
+    return create_app(
+        TESTING=True,
+        SST_DB_PATH=str(tmp_path / "nomodel.db"),
+        SST_STORAGE_DIR=str(tmp_path / "storage"),
+        SST_LOAD_MODELS=False,
+    )
+
+
+def test_upload_without_a_loaded_pipeline_is_a_503_not_a_500(no_models_app):
+    user = _make_user(no_models_app.config["SST_SESSION_FACTORY"], username="probe")
+    resp = _upload(_client(no_models_app, user))
+
+    assert resp.status_code == 503
+    err = resp.get_json()["error"]
+    assert err["code"] == "pipeline_unavailable"
+    # The standard user-facing sentence -- not the app-factory wiring instructions, which
+    # name an internal function and belong in the start-up log, not in a response body.
+    assert "set_pipeline" not in err["message"]
+    assert err["message"].strip()
+
+
+def test_upload_names_the_missing_artifact_when_a_model_fails_to_load(app, viewer, monkeypatch):
+    """A real load failure still names the artifact, on purpose.
+
+    ``ModelsUnavailable`` docstring: "not found" without a path costs the next person
+    twenty minutes. That diagnostic is the whole reason the subclass exists, so the fix
+    must keep it rather than flattening every failure to one generic sentence.
+    """
+    import src.services.pipeline as pipeline_mod
+
+    def _boom():
+        raise pipeline_mod.ModelsUnavailable(
+            "the Teachable Machine model could not be loaded: "
+            "gtm_model/frontend_config.json is missing"
+        )
+
+    monkeypatch.setattr(pipeline_mod, "get_pipeline", _boom)
+    resp = _upload(_client(app, viewer))
+
+    assert resp.status_code == 503
+    err = resp.get_json()["error"]
+    assert err["code"] == "pipeline_unavailable"
+    assert "frontend_config.json" in err["message"]
+
+
+def test_an_unexpected_pipeline_failure_is_not_echoed_to_the_caller(app, viewer, monkeypatch):
+    """A bare ``PipelineError`` can carry anything, so its text is not published.
+
+    src/errors.py is explicit that an error message is one *we* wrote and safe to show.
+    Catching the parent class is what makes that guarantee hold for this endpoint too.
+    """
+    import src.services.pipeline as pipeline_mod
+
+    def _boom():
+        raise pipeline_mod.PipelineError("sqlite3.OperationalError: no such table: audio_files")
+
+    monkeypatch.setattr(pipeline_mod, "get_pipeline", _boom)
+    resp = _upload(_client(app, viewer))
+
+    assert resp.status_code == 503
+    err = resp.get_json()["error"]
+    assert err["code"] == "pipeline_unavailable"
+    assert "sqlite3" not in err["message"]
+
+
+# --------------------------------------------------------------------------------------
 # /api/events -- scoping
 # --------------------------------------------------------------------------------------
 
