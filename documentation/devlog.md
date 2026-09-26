@@ -25,6 +25,43 @@ Written down before the runs below started, so that validation decides and test 
   baseline (validation 0.504 accuracy, 0.490 macro-F1, 0.613 critical recall). Only the
   winner is scored on test, once.
 
+### Work completed
+- **Install fix.** `requirements.txt` still described the CNN14 model and did not list
+  `transformers`, so a fresh install that followed the README could not load the served AST
+  model. Added the transformers stack at the versions in use and changed the README install
+  step to `tools/fetch_pretrained.py --ast`.
+- **FR li wording.** Uncertain events now read "Manual Review Required" on the event page and
+  in the upload result, the SRS's own phrase (they said "Routed to manual review").
+- **Deployment kit (NFR 5).** Render's free 512 MB plan cannot hold the AST model.
+  `deploy/huggingface/` builds a Docker image for a free Hugging Face CPU Space (16 GB);
+  `scripts/deploy_hf_space.sh` publishes the committed tree with the owner's token;
+  `tools/uptime_probe.py` records `/api/health/ready` and reports uptime against 99 %.
+- **Screenshot tool.** `tools/capture_screenshots.py` deleted the whole `screenshots/`
+  folder before capturing, which removed the Teachable Machine training evidence twice.
+  It now clears only its own `screenshots/ui/`.
+- **Teachable Machine with more samples.** Built the import package from all 210 training
+  recordings per class (2,100 samples). TM imported every class and then stayed at
+  "Preparing training data" with the browser idle: 11 minutes on the Intel GPU that headless
+  Chrome picks by default, and again after `--nvidia-offload` moved WebGL to the NVIDIA card
+  (confirmed through the WebGL renderer string). Screenshots
+  `screenshots/gtm/20260927_v4_2100*` show both stalls. The limit is in TM, not the graphics.
+  1,750 samples (175 per class) stalled the same way (`20260927_v5_1750*`), so about 1,400
+  is the most this TM build trains here.
+- **Python candidates, decided on validation.** The augmented copies were embedded with AST
+  (4,088 of 4,200; the rest are refused by the preprocessor as the app would refuse them).
+
+  | Candidate (validation, 450 recordings) | Chosen head | Accuracy | Macro-F1 | Critical recall | Lowest critical class | Score |
+  |---|---|---:|---:|---:|---|---:|
+  | AST, training recordings (served) | logreg C=0.01 | 0.873 | 0.872 | 0.898 | Aggression 0.733 | 0.8851 |
+  | AST, + augmented copies | MLP α=0.1 | 0.873 | 0.872 | 0.898 | Aggression 0.689 | 0.8847 |
+
+  Neither reaches 0.85 on every critical class, and the scores differ by 0.0004, under the
+  0.005 margin, so the served model stays. No new test scoring was done. Aggression is the
+  weakest class on validation as well as on test; its training data mixes real aggression
+  with door slams (`BASELINE_AUDIT.md` §4), which more classifier tuning does not fix.
+  `transfer_selection_ast_current.json` was regenerated to add the per-class numbers; its
+  choice is unchanged.
+
 ---
 
 ## Day 4, evening — 2026-09-26

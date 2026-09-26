@@ -88,6 +88,9 @@ def main() -> None:
                   f"in {time.time() - loaded_from:.0f}s", flush=True)
 
         if args.epochs:
+            # TM's second tour card ("2. Train your Model") sits over the Training panel
+            # once two classes exist and swallows the click.
+            page.locator("tm-onboard-box").evaluate_all("els => els.forEach(e => e.remove())")
             page.get_by_text("Advanced", exact=True).first.click()
             page.wait_for_timeout(800)
             epochs = page.locator("input[type=number]:visible").first
