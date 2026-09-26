@@ -13,7 +13,6 @@ adds their own rows and signs at the bottom.
 AI assistance was limited to **document summarization, research, and the writing of code
 comments and documentation**. No AI tool produced a model, a dataset, a prediction, or any
 part of the runtime decision logic.
-The Ai is used in docs , summarizations , comments and image generation only.
 
 ## 2. What was NOT used, and never will be
 
