@@ -1,0 +1,428 @@
+{
+  "generated_at": "2026-09-26T23:12:31.080807+00:00",
+  "machine": {
+    "cpu_threads": 8,
+    "platform": "Linux-7.0.0-34-generic-x86_64-with-glibc2.43",
+    "python": "3.12.14"
+  },
+  "server": "gunicorn -w 2 --threads 4 (same as scripts/deploy_render.sh)",
+  "database": {
+    "engine": "SQLite",
+    "events": 20000,
+    "audio_files": 20000,
+    "users": 6,
+    "seconds": 4.5,
+    "db_file_mb": 20.8,
+    "note": "synthetic rows, location 'scale-test'; no audio files behind them"
+  },
+  "pass_line": {
+    "read_p95_s_at_10_users": 1.0,
+    "errors": 0,
+    "csv_export_s": 10.0
+  },
+  "reads_per_request": 17,
+  "rounds_per_user": 3,
+  "levels": [
+    {
+      "users": 1,
+      "requests": 51,
+      "errors": 0,
+      "error_samples": [],
+      "wall_clock_s": 1.72,
+      "requests_per_s": 29.7,
+      "all_reads": {
+        "n": 51,
+        "median_s": 0.0271,
+        "p95_s": 0.0755,
+        "max_s": 0.0932
+      },
+      "worst_endpoint_p95": {
+        "endpoint": "page_dashboard",
+        "p95_s": 0.0932
+      },
+      "per_endpoint": {
+        "api_analytics_classes": {
+          "n": 3,
+          "median_s": 0.028,
+          "p95_s": 0.0313,
+          "max_s": 0.0313
+        },
+        "api_dashboard_summary": {
+          "n": 3,
+          "median_s": 0.0527,
+          "p95_s": 0.0583,
+          "max_s": 0.0583
+        },
+        "api_timeline": {
+          "n": 3,
+          "median_s": 0.0118,
+          "p95_s": 0.0119,
+          "max_s": 0.0119
+        },
+        "events_list": {
+          "n": 3,
+          "median_s": 0.0187,
+          "p95_s": 0.021,
+          "max_s": 0.021
+        },
+        "filter_class": {
+          "n": 3,
+          "median_s": 0.0245,
+          "p95_s": 0.0271,
+          "max_s": 0.0271
+        },
+        "filter_combined": {
+          "n": 3,
+          "median_s": 0.02,
+          "p95_s": 0.0229,
+          "max_s": 0.0229
+        },
+        "filter_confidence": {
+          "n": 3,
+          "median_s": 0.029,
+          "p95_s": 0.0379,
+          "max_s": 0.0379
+        },
+        "filter_consistency": {
+          "n": 3,
+          "median_s": 0.0229,
+          "p95_s": 0.0238,
+          "max_s": 0.0238
+        },
+        "filter_dates": {
+          "n": 3,
+          "median_s": 0.0127,
+          "p95_s": 0.0135,
+          "max_s": 0.0135
+        },
+        "filter_quality": {
+          "n": 3,
+          "median_s": 0.0267,
+          "p95_s": 0.0285,
+          "max_s": 0.0285
+        },
+        "filter_severity": {
+          "n": 3,
+          "median_s": 0.0275,
+          "p95_s": 0.0368,
+          "max_s": 0.0368
+        },
+        "filter_source": {
+          "n": 3,
+          "median_s": 0.0251,
+          "p95_s": 0.0283,
+          "max_s": 0.0283
+        },
+        "filter_status": {
+          "n": 3,
+          "median_s": 0.026,
+          "p95_s": 0.0272,
+          "max_s": 0.0272
+        },
+        "filter_text": {
+          "n": 3,
+          "median_s": 0.068,
+          "p95_s": 0.0755,
+          "max_s": 0.0755
+        },
+        "page_analytics": {
+          "n": 3,
+          "median_s": 0.0578,
+          "p95_s": 0.0585,
+          "max_s": 0.0585
+        },
+        "page_dashboard": {
+          "n": 3,
+          "median_s": 0.0816,
+          "p95_s": 0.0932,
+          "max_s": 0.0932
+        },
+        "page_events": {
+          "n": 3,
+          "median_s": 0.0284,
+          "p95_s": 0.0295,
+          "max_s": 0.0295
+        }
+      }
+    },
+    {
+      "users": 10,
+      "requests": 498,
+      "errors": 0,
+      "error_samples": [],
+      "wall_clock_s": 7.87,
+      "requests_per_s": 63.3,
+      "all_reads": {
+        "n": 498,
+        "median_s": 0.0978,
+        "p95_s": 0.3874,
+        "max_s": 0.6962
+      },
+      "worst_endpoint_p95": {
+        "endpoint": "filter_text",
+        "p95_s": 0.6681
+      },
+      "per_endpoint": {
+        "api_analytics_classes": {
+          "n": 27,
+          "median_s": 0.0737,
+          "p95_s": 0.1244,
+          "max_s": 0.1253
+        },
+        "api_dashboard_summary": {
+          "n": 27,
+          "median_s": 0.1765,
+          "p95_s": 0.2751,
+          "max_s": 0.281
+        },
+        "api_timeline": {
+          "n": 27,
+          "median_s": 0.0361,
+          "p95_s": 0.1182,
+          "max_s": 0.1881
+        },
+        "events_list": {
+          "n": 30,
+          "median_s": 0.0944,
+          "p95_s": 0.1624,
+          "max_s": 0.3617
+        },
+        "filter_class": {
+          "n": 30,
+          "median_s": 0.0814,
+          "p95_s": 0.1409,
+          "max_s": 0.1536
+        },
+        "filter_combined": {
+          "n": 30,
+          "median_s": 0.0746,
+          "p95_s": 0.1658,
+          "max_s": 0.4753
+        },
+        "filter_confidence": {
+          "n": 30,
+          "median_s": 0.0989,
+          "p95_s": 0.1284,
+          "max_s": 0.1485
+        },
+        "filter_consistency": {
+          "n": 30,
+          "median_s": 0.0777,
+          "p95_s": 0.4022,
+          "max_s": 0.4399
+        },
+        "filter_dates": {
+          "n": 30,
+          "median_s": 0.0756,
+          "p95_s": 0.1149,
+          "max_s": 0.1375
+        },
+        "filter_quality": {
+          "n": 30,
+          "median_s": 0.0852,
+          "p95_s": 0.1495,
+          "max_s": 0.1602
+        },
+        "filter_severity": {
+          "n": 30,
+          "median_s": 0.0807,
+          "p95_s": 0.1439,
+          "max_s": 0.3309
+        },
+        "filter_source": {
+          "n": 30,
+          "median_s": 0.0813,
+          "p95_s": 0.1451,
+          "max_s": 0.4874
+        },
+        "filter_status": {
+          "n": 30,
+          "median_s": 0.0754,
+          "p95_s": 0.4141,
+          "max_s": 0.4411
+        },
+        "filter_text": {
+          "n": 30,
+          "median_s": 0.3968,
+          "p95_s": 0.6681,
+          "max_s": 0.6962
+        },
+        "page_analytics": {
+          "n": 27,
+          "median_s": 0.1984,
+          "p95_s": 0.2278,
+          "max_s": 0.278
+        },
+        "page_dashboard": {
+          "n": 30,
+          "median_s": 0.2448,
+          "p95_s": 0.3441,
+          "max_s": 0.4212
+        },
+        "page_events": {
+          "n": 30,
+          "median_s": 0.0979,
+          "p95_s": 0.1553,
+          "max_s": 0.5003
+        }
+      }
+    },
+    {
+      "users": 20,
+      "requests": 984,
+      "errors": 0,
+      "error_samples": [],
+      "wall_clock_s": 16.12,
+      "requests_per_s": 61.0,
+      "all_reads": {
+        "n": 984,
+        "median_s": 0.2354,
+        "p95_s": 0.6477,
+        "max_s": 1.4749
+      },
+      "worst_endpoint_p95": {
+        "endpoint": "filter_text",
+        "p95_s": 1.337
+      },
+      "per_endpoint": {
+        "api_analytics_classes": {
+          "n": 51,
+          "median_s": 0.1818,
+          "p95_s": 0.3506,
+          "max_s": 0.4678
+        },
+        "api_dashboard_summary": {
+          "n": 51,
+          "median_s": 0.3762,
+          "p95_s": 0.5577,
+          "max_s": 0.6647
+        },
+        "api_timeline": {
+          "n": 51,
+          "median_s": 0.1743,
+          "p95_s": 0.3432,
+          "max_s": 0.5108
+        },
+        "events_list": {
+          "n": 60,
+          "median_s": 0.1834,
+          "p95_s": 0.3785,
+          "max_s": 0.5253
+        },
+        "filter_class": {
+          "n": 60,
+          "median_s": 0.1827,
+          "p95_s": 0.3134,
+          "max_s": 0.3396
+        },
+        "filter_combined": {
+          "n": 60,
+          "median_s": 0.2442,
+          "p95_s": 0.9326,
+          "max_s": 1.2264
+        },
+        "filter_confidence": {
+          "n": 60,
+          "median_s": 0.1917,
+          "p95_s": 0.3238,
+          "max_s": 0.6137
+        },
+        "filter_consistency": {
+          "n": 60,
+          "median_s": 0.1651,
+          "p95_s": 0.3494,
+          "max_s": 0.4502
+        },
+        "filter_dates": {
+          "n": 60,
+          "median_s": 0.1857,
+          "p95_s": 0.2946,
+          "max_s": 0.3242
+        },
+        "filter_quality": {
+          "n": 60,
+          "median_s": 0.1459,
+          "p95_s": 0.2861,
+          "max_s": 0.3225
+        },
+        "filter_severity": {
+          "n": 60,
+          "median_s": 0.1899,
+          "p95_s": 0.3169,
+          "max_s": 0.7136
+        },
+        "filter_source": {
+          "n": 60,
+          "median_s": 0.1697,
+          "p95_s": 0.3572,
+          "max_s": 0.379
+        },
+        "filter_status": {
+          "n": 60,
+          "median_s": 0.163,
+          "p95_s": 0.5284,
+          "max_s": 0.5414
+        },
+        "filter_text": {
+          "n": 60,
+          "median_s": 0.6415,
+          "p95_s": 1.337,
+          "max_s": 1.4749
+        },
+        "page_analytics": {
+          "n": 51,
+          "median_s": 0.2997,
+          "p95_s": 0.6254,
+          "max_s": 0.7106
+        },
+        "page_dashboard": {
+          "n": 60,
+          "median_s": 0.4023,
+          "p95_s": 0.6649,
+          "max_s": 0.6782
+        },
+        "page_events": {
+          "n": 60,
+          "median_s": 0.2303,
+          "p95_s": 0.342,
+          "max_s": 1.0174
+        }
+      }
+    }
+  ],
+  "csv_export": {
+    "all_rows": {
+      "status": 413,
+      "seconds": 0.04,
+      "rows": 0,
+      "bytes": 146,
+      "message": "More than 10,000 events match. Narrow the filters."
+    },
+    "date_range": {
+      "status": 200,
+      "seconds": 1.98,
+      "rows": 9334,
+      "bytes": 1893687,
+      "message": null
+    },
+    "within_limit": true
+  },
+  "uploads_30s": {
+    "clip_s": 30,
+    "sequential": {
+      "n": 3,
+      "median_s": 5.7246,
+      "p95_s": 6.1692,
+      "max_s": 6.1692
+    },
+    "four_clients": {
+      "n": 8,
+      "median_s": 15.6323,
+      "p95_s": 25.0603,
+      "max_s": 25.0603,
+      "wall_clock_s": 40.58
+    }
+  },
+  "meets_read_line_at_10_users": true,
+  "meets_export_line": true
+}
