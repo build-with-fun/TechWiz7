@@ -83,6 +83,23 @@ deployment):
 Anyone can register at `/register` as a normal user; an administrator assigns other roles
 under Admin → Users.
 
+**Several users at once**: serve with gunicorn instead of the development server. Each
+worker loads its own copy of both models, so size `-w` to the machine's memory and cores:
+
+```bash
+set -a; . ./.env; set +a
+SST_TORCH_THREADS=4 .venv/bin/gunicorn -w 2 --threads 4 --timeout 300 -b 127.0.0.1:5055 "src.app:create_app()"
+```
+
+`tools/benchmark_scale.py` measures this setup with 20,000 events and up to 20 users
+(`reports/scale.json`).
+
+**Hosted deployment** (Hugging Face Docker Space, free CPU tier): create a Docker Space,
+add the secret `SST_SECRET_KEY`, then `HF_TOKEN=hf_... scripts/deploy_hf_space.sh
+<owner>/<space>`. Details in `deploy/huggingface/SPACE.md`. To record availability (NFR 5),
+leave `tools/uptime_probe.py https://<owner>-<space>.hf.space` running through the
+evaluation window and read `reports/uptime_summary.json`.
+
 **Behind a reverse proxy** (nginx, Render, Cloudflare): set `SST_TRUSTED_PROXY_HOPS` to
 the number of proxies in front of the app — `1` for a single nginx, `2` if a CDN sits in
 front of it. The app reads client IPs from `X-Forwarded-For` only when this is non-zero;

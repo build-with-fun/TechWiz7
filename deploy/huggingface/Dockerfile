@@ -18,7 +18,8 @@ ENV HOME=/home/app \
     SST_STORAGE_DIR=/home/app/data/storage \
     SST_PRODUCTION=1 \
     SST_LOAD_MODELS=1 \
-    SST_TORCH_THREADS=2
+    SST_TORCH_THREADS=2 \
+    SST_TRUSTED_PROXY_HOPS=1
 WORKDIR /home/app/sonicsentinel
 
 COPY --chown=app:app requirements.txt .
