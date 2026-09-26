@@ -200,6 +200,8 @@ def select(variant: str, include_augmented: bool, backbone: str = "cnn14") -> di
         per_clip_ms = (time.time() - t0) / len(Xva) * 1000
         rows.append({"family": family, "params": params, "val_accuracy": res.accuracy,
                      "val_macro_f1": res.macro_f1, "val_critical_recall": res.critical_recall,
+                     "val_critical_recall_by_class": res.critical_recall_by_class,
+                     "val_min_critical_recall": min(res.critical_recall_by_class.values()),
                      "selection_score": selection_score(res.macro_f1, res.critical_recall),
                      "fit_seconds": round(fit_s, 2), "predict_ms_per_clip": round(per_clip_ms, 3)})
         print(f"{family:8s} {json.dumps(params):32s} acc={res.accuracy:.4f} "

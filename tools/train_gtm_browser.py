@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import time
 import zipfile
 from pathlib import Path
@@ -20,6 +21,14 @@ INDEX = ROOT / "gtm_model/upload_package/tm_imports/index.json"
 EXPORT = ROOT / "gtm_model"
 # Screenshots are SRS deliverable-5 evidence (classes, sample counts, training, export).
 SHOTS = ROOT / "screenshots" / "gtm"
+# On a laptop with Intel + NVIDIA graphics, headless Chrome renders on the Intel GPU, where
+# "Preparing training data" never finished for 2,100 samples. These PRIME offload variables
+# move Chrome's WebGL onto the NVIDIA card.
+NVIDIA_OFFLOAD = {
+    "__NV_PRIME_RENDER_OFFLOAD": "1",
+    "__GLX_VENDOR_LIBRARY_NAME": "nvidia",
+    "__EGL_VENDOR_LIBRARY_FILENAMES": "/usr/share/glvnd/egl_vendor.d/10_nvidia.json",
+}
 
 
 def main() -> None:
@@ -27,16 +36,24 @@ def main() -> None:
     parser.add_argument("--out", default=str(EXPORT),
                         help="folder for metadata.json, model.json and weights.bin "
                              "(use gtm_model/candidates/<name> to compare before serving)")
-    out = Path(parser.parse_args().out)
+    parser.add_argument("--nvidia-offload", action="store_true",
+                        help="run Chrome's WebGL on the NVIDIA GPU of a hybrid-graphics laptop")
+    parser.add_argument("--epochs", type=int, default=0,
+                        help="Advanced > Epochs in TM (0 keeps TM's default of 50)")
+    parser.add_argument("--tag", default="",
+                        help="added to screenshot names so several runs on one day are all kept")
+    args = parser.parse_args()
+    out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     SHOTS.mkdir(parents=True, exist_ok=True)
-    stamp = time.strftime("%Y%m%d")
+    stamp = time.strftime("%Y%m%d") + (f"_{args.tag}" if args.tag else "")
     classes = json.loads(INDEX.read_text(encoding="utf-8"))
     ordered = [next(item for item in classes if item["class"] == "Background Noise")]
     ordered += [item for item in classes if item["class"] != "Background Noise"]
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(
             executable_path="/usr/bin/google-chrome", headless=True,
+            env={**os.environ, **NVIDIA_OFFLOAD} if args.nvidia_offload else None,
             # Headless Chrome defaults to SwiftShader (software WebGL). TM runs its network
             # in WebGL, and with 2,100 samples "Preparing training data" had not finished
             # after an hour. ANGLE over desktop GL uses the real GPU instead.
@@ -70,6 +87,13 @@ def main() -> None:
             print("Imported", item["class"], item["sample_count"],
                   f"in {time.time() - loaded_from:.0f}s", flush=True)
 
+        if args.epochs:
+            page.get_by_text("Advanced", exact=True).first.click()
+            page.wait_for_timeout(800)
+            epochs = page.locator("input[type=number]:visible").first
+            epochs.fill(str(args.epochs))
+            epochs.press("Tab")
+            print("Epochs set to", epochs.input_value(), flush=True)
         page.screenshot(path=str(SHOTS / f"{stamp}_01_classes_imported.png"), full_page=True)
         print("buttons before training", [x.strip() for x in page.locator("button").all_text_contents()][-25:], flush=True)
         # A JS click sometimes lands before TM has finished laying out the imported
