@@ -163,14 +163,16 @@ training recordings per class, taken in a fixed hash order so every source is re
 sample each (the loudest second after preprocessing, the same rule the server uses). 1,400 is
 the most this browser's Teachable Machine would train without stalling. Exported as TensorFlow.js
 and converted to Keras for the server, which averages the scores of every one-second window of a
-clip weighted by energy (chosen on the validation split). Training configuration: TM defaults.
+clip weighted by energy (chosen on the validation split). Training configuration: TM defaults
+except Epochs = 200 (chosen on validation over 50 and 100 on 27 Sep).
 Evidence: `screenshots/gtm/`, `gtm_model/metadata.json`, `gtm_model/upload_package/tm_imports/index.json`,
 `audio_dataset/gtm_samples/`.
 
-Test result: **0.493 accuracy, 0.473 macro F1, 0.591 mean critical-class recall**
+Test result: **0.511 accuracy, 0.492 macro F1, 0.600 mean critical-class recall**
 (`gtm_model/gtm_metrics.json`). History: the first export (32 samples per class, first second of
 each clip) scored 0.278; a 1,400-sample export in audio-id order (mostly FSD50K clips) scored
-0.462. The model stays far below the SRS targets; `documentation/MODEL_EVALUATION.md` explains
+0.462; the same samples in hash order with TM's default 50 epochs scored 0.493. Runs with 1,750
+and 2,100 samples stalled inside TM on both GPUs. The model stays far below the SRS targets; `documentation/MODEL_EVALUATION.md` explains
 why and what we tried.
 
 ### 8.3 Prediction and confidence comparison
@@ -179,16 +181,17 @@ why and what we tried.
 with every SRS column: both predictions, all ten confidences for each model, class match, the
 top-class confidence difference, top-two margins, quality, severity, alert status, review
 status, final decision, correctness and an explanation of each disagreement.
-**Summary across all 450 unseen test recordings.** The two models agreed on the predicted
-class in 222 of 450 cases (49.3 %): 26 Strong Matches (5.8 %), 22 Acceptable Matches
-(4.9 %) and 42 Weak Matches (9.3 %). They disagreed outright on 39 recordings (8.7 %),
-and 321 recordings (71.3 %) fell to Uncertain Result — most often because the Teachable
-Machine model is far less accurate than the Python model, which drags the top-class
-confidence difference up. Where the models agree they are right 94.6 % of the time. The
-comparison is genuinely useful as a result: 403 of 450 recordings (89.6 %) were routed to
-the manual-review queue with a reason, and all 47 automatically decided recordings were
-correct (100 %) versus 0.493 for the Teachable Machine model on its own. Where the two
-models agree, they are right most of the time; where they disagree, the disagreement is
+**Summary across all 450 unseen test recordings** (Python AST+logreg, Teachable Machine
+200-epoch export, 27 Sep). The two models agreed on the predicted class in 223 of 450 cases
+(49.6 %): 36 Strong Matches (8.0 %), 26 Acceptable Matches (5.8 %) and 46 Weak Matches
+(10.2 %). They disagreed outright on 47 recordings (10.4 %), and 295 recordings (65.6 %) fell
+to Uncertain Result — most often because the Teachable Machine model is far less accurate than
+the Python model, which drags the top-class confidence difference up. Where the models agree
+they are right 97.3 % of the time. The comparison is genuinely useful as a result: 388 of 450
+recordings (86.2 %) were routed to the manual-review queue with a reason, and 61 of the 62
+automatically decided recordings were correct (98.4 %) versus 0.511 for the Teachable Machine
+model on its own. Where the two models agree, they are right most of the time; where they
+disagree, the disagreement is
 itself the safety-relevant signal, so it is escalated rather than averaged away.
 
 ## 9. Team and task allotment

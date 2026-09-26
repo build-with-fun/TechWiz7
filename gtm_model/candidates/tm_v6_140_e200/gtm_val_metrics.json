@@ -1,0 +1,2860 @@
+{
+  "evaluated_at": "2026-09-26T22:42:54.244076+00:00",
+  "split": "val",
+  "protocol": "all 45 val clips per class of split v2; only training recordings were used to train the model",
+  "n_clips": 450,
+  "model_version": "tm-20260926T2241-ew",
+  "frontend_verified": false,
+  "window_aggregation": "energy_weighted",
+  "accuracy": 0.5355555555555556,
+  "macro_f1": 0.5224031667620225,
+  "critical_macro_recall": 0.6666666666666666,
+  "recall_by_class": {
+    "Aggression": 0.24444444444444444,
+    "Alarm or Siren": 0.3333333333333333,
+    "Animal Sound": 0.2,
+    "Background Noise": 0.5333333333333333,
+    "Glass Breaking": 0.5777777777777777,
+    "Gunshot": 0.8222222222222222,
+    "Machinery Fault": 0.5111111111111111,
+    "Panic Scream": 0.7555555555555555,
+    "Person Asking for Help": 0.9333333333333333,
+    "Vehicle Horn": 0.4444444444444444
+  },
+  "labels": [
+    "Aggression",
+    "Alarm or Siren",
+    "Animal Sound",
+    "Background Noise",
+    "Glass Breaking",
+    "Gunshot",
+    "Machinery Fault",
+    "Panic Scream",
+    "Person Asking for Help",
+    "Vehicle Horn"
+  ],
+  "confusion_matrix": [
+    [
+      11,
+      2,
+      3,
+      7,
+      5,
+      8,
+      4,
+      3,
+      0,
+      2
+    ],
+    [
+      5,
+      15,
+      1,
+      1,
+      1,
+      1,
+      7,
+      7,
+      0,
+      7
+    ],
+    [
+      2,
+      9,
+      9,
+      5,
+      2,
+      3,
+      7,
+      8,
+      0,
+      0
+    ],
+    [
+      0,
+      2,
+      2,
+      24,
+      4,
+      4,
+      9,
+      0,
+      0,
+      0
+    ],
+    [
+      1,
+      2,
+      4,
+      3,
+      26,
+      7,
+      0,
+      0,
+      1,
+      1
+    ],
+    [
+      1,
+      0,
+      0,
+      2,
+      2,
+      37,
+      2,
+      0,
+      0,
+      1
+    ],
+    [
+      0,
+      2,
+      1,
+      13,
+      0,
+      2,
+      23,
+      3,
+      0,
+      1
+    ],
+    [
+      4,
+      1,
+      2,
+      0,
+      0,
+      2,
+      1,
+      34,
+      0,
+      1
+    ],
+    [
+      2,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      42,
+      1
+    ],
+    [
+      1,
+      0,
+      2,
+      3,
+      2,
+      3,
+      13,
+      1,
+      0,
+      20
+    ]
+  ],
+  "samples": [
+    {
+      "audio_id": "SS-AGG-0002",
+      "truth": "Aggression",
+      "prediction": "Gunshot",
+      "confidence": 0.332091
+    },
+    {
+      "audio_id": "SS-AGG-0014",
+      "truth": "Aggression",
+      "prediction": "Glass Breaking",
+      "confidence": 0.44694
+    },
+    {
+      "audio_id": "SS-AGG-0019",
+      "truth": "Aggression",
+      "prediction": "Aggression",
+      "confidence": 0.44957
+    },
+    {
+      "audio_id": "SS-AGG-0024",
+      "truth": "Aggression",
+      "prediction": "Gunshot",
+      "confidence": 0.51198
+    },
+    {
+      "audio_id": "SS-AGG-0034",
+      "truth": "Aggression",
+      "prediction": "Glass Breaking",
+      "confidence": 0.329942
+    },
+    {
+      "audio_id": "SS-AGG-0036",
+      "truth": "Aggression",
+      "prediction": "Gunshot",
+      "confidence": 0.311252
+    },
+    {
+      "audio_id": "SS-AGG-0042",
+      "truth": "Aggression",
+      "prediction": "Gunshot",
+      "confidence": 0.442077
+    },
+    {
+      "audio_id": "SS-AGG-0046",
+      "truth": "Aggression",
+      "prediction": "Glass Breaking",
+      "confidence": 0.42709
+    },
+    {
+      "audio_id": "SS-AGG-0047",
+      "truth": "Aggression",
+      "prediction": "Gunshot",
+      "confidence": 0.324627
+    },
+    {
+      "audio_id": "SS-AGG-0065",
+      "truth": "Aggression",
+      "prediction": "Machinery Fault",
+      "confidence": 0.270681
+    },
+    {
+      "audio_id": "SS-AGG-0074",
+      "truth": "Aggression",
+      "prediction": "Gunshot",
+      "confidence": 0.683383
+    },
+    {
+      "audio_id": "SS-AGG-0076",
+      "truth": "Aggression",
+      "prediction": "Gunshot",
+      "confidence": 0.809949
+    },
+    {
+      "audio_id": "SS-AGG-0081",
+      "truth": "Aggression",
+      "prediction": "Glass Breaking",
+      "confidence": 0.438566
+    },
+    {
+      "audio_id": "SS-AGG-0082",
+      "truth": "Aggression",
+      "prediction": "Animal Sound",
+      "confidence": 0.388103
+    },
+    {
+      "audio_id": "SS-AGG-0084",
+      "truth": "Aggression",
+      "prediction": "Machinery Fault",
+      "confidence": 0.313919
+    },
+    {
+      "audio_id": "SS-AGG-0088",
+      "truth": "Aggression",
+      "prediction": "Machinery Fault",
+      "confidence": 0.382401
+    },
+    {
+      "audio_id": "SS-AGG-0099",
+      "truth": "Aggression",
+      "prediction": "Background Noise",
+      "confidence": 0.258961
+    },
+    {
+      "audio_id": "SS-AGG-0501",
+      "truth": "Aggression",
+      "prediction": "Background Noise",
+      "confidence": 0.401071
+    },
+    {
+      "audio_id": "SS-AGG-0532",
+      "truth": "Aggression",
+      "prediction": "Animal Sound",
+      "confidence": 0.543638
+    },
+    {
+      "audio_id": "SS-AGG-0540",
+      "truth": "Aggression",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.25239
+    },
+    {
+      "audio_id": "SS-AGG-0545",
+      "truth": "Aggression",
+      "prediction": "Aggression",
+      "confidence": 0.280469
+    },
+    {
+      "audio_id": "SS-AGG-0553",
+      "truth": "Aggression",
+      "prediction": "Machinery Fault",
+      "confidence": 0.415768
+    },
+    {
+      "audio_id": "SS-AGG-0560",
+      "truth": "Aggression",
+      "prediction": "Panic Scream",
+      "confidence": 0.432253
+    },
+    {
+      "audio_id": "SS-AGG-0567",
+      "truth": "Aggression",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.914315
+    },
+    {
+      "audio_id": "SS-AGG-0577",
+      "truth": "Aggression",
+      "prediction": "Aggression",
+      "confidence": 0.442039
+    },
+    {
+      "audio_id": "SS-AGG-0587",
+      "truth": "Aggression",
+      "prediction": "Aggression",
+      "confidence": 0.815249
+    },
+    {
+      "audio_id": "SS-AGG-0588",
+      "truth": "Aggression",
+      "prediction": "Animal Sound",
+      "confidence": 0.756568
+    },
+    {
+      "audio_id": "SS-AGG-0590",
+      "truth": "Aggression",
+      "prediction": "Aggression",
+      "confidence": 0.506044
+    },
+    {
+      "audio_id": "SS-AGG-0600",
+      "truth": "Aggression",
+      "prediction": "Aggression",
+      "confidence": 0.644013
+    },
+    {
+      "audio_id": "SS-AGG-0629",
+      "truth": "Aggression",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.267467
+    },
+    {
+      "audio_id": "SS-AGG-0633",
+      "truth": "Aggression",
+      "prediction": "Panic Scream",
+      "confidence": 0.890078
+    },
+    {
+      "audio_id": "SS-AGG-0641",
+      "truth": "Aggression",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.497243
+    },
+    {
+      "audio_id": "SS-AGG-0644",
+      "truth": "Aggression",
+      "prediction": "Glass Breaking",
+      "confidence": 0.411193
+    },
+    {
+      "audio_id": "SS-AGG-0659",
+      "truth": "Aggression",
+      "prediction": "Panic Scream",
+      "confidence": 0.394843
+    },
+    {
+      "audio_id": "SS-AGG-0702",
+      "truth": "Aggression",
+      "prediction": "Background Noise",
+      "confidence": 0.866822
+    },
+    {
+      "audio_id": "SS-AGG-0706",
+      "truth": "Aggression",
+      "prediction": "Aggression",
+      "confidence": 0.997552
+    },
+    {
+      "audio_id": "SS-AGG-0713",
+      "truth": "Aggression",
+      "prediction": "Background Noise",
+      "confidence": 0.491881
+    },
+    {
+      "audio_id": "SS-AGG-0715",
+      "truth": "Aggression",
+      "prediction": "Aggression",
+      "confidence": 0.440277
+    },
+    {
+      "audio_id": "SS-AGG-0716",
+      "truth": "Aggression",
+      "prediction": "Aggression",
+      "confidence": 0.65742
+    },
+    {
+      "audio_id": "SS-AGG-0720",
+      "truth": "Aggression",
+      "prediction": "Aggression",
+      "confidence": 0.845309
+    },
+    {
+      "audio_id": "SS-AGG-0723",
+      "truth": "Aggression",
+      "prediction": "Background Noise",
+      "confidence": 0.767944
+    },
+    {
+      "audio_id": "SS-AGG-0734",
+      "truth": "Aggression",
+      "prediction": "Background Noise",
+      "confidence": 0.333309
+    },
+    {
+      "audio_id": "SS-AGG-0736",
+      "truth": "Aggression",
+      "prediction": "Aggression",
+      "confidence": 0.713371
+    },
+    {
+      "audio_id": "SS-AGG-0739",
+      "truth": "Aggression",
+      "prediction": "Background Noise",
+      "confidence": 0.427305
+    },
+    {
+      "audio_id": "SS-AGG-0750",
+      "truth": "Aggression",
+      "prediction": "Gunshot",
+      "confidence": 0.368202
+    },
+    {
+      "audio_id": "SS-ALM-0001",
+      "truth": "Alarm or Siren",
+      "prediction": "Glass Breaking",
+      "confidence": 0.67461
+    },
+    {
+      "audio_id": "SS-ALM-0010",
+      "truth": "Alarm or Siren",
+      "prediction": "Animal Sound",
+      "confidence": 0.332155
+    },
+    {
+      "audio_id": "SS-ALM-0029",
+      "truth": "Alarm or Siren",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.999423
+    },
+    {
+      "audio_id": "SS-ALM-0036",
+      "truth": "Alarm or Siren",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.614304
+    },
+    {
+      "audio_id": "SS-ALM-0043",
+      "truth": "Alarm or Siren",
+      "prediction": "Aggression",
+      "confidence": 0.282656
+    },
+    {
+      "audio_id": "SS-ALM-0046",
+      "truth": "Alarm or Siren",
+      "prediction": "Aggression",
+      "confidence": 0.359623
+    },
+    {
+      "audio_id": "SS-ALM-0049",
+      "truth": "Alarm or Siren",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.316237
+    },
+    {
+      "audio_id": "SS-ALM-0082",
+      "truth": "Alarm or Siren",
+      "prediction": "Panic Scream",
+      "confidence": 0.47559
+    },
+    {
+      "audio_id": "SS-ALM-0114",
+      "truth": "Alarm or Siren",
+      "prediction": "Gunshot",
+      "confidence": 0.616669
+    },
+    {
+      "audio_id": "SS-ALM-0126",
+      "truth": "Alarm or Siren",
+      "prediction": "Aggression",
+      "confidence": 0.432753
+    },
+    {
+      "audio_id": "SS-ALM-0507",
+      "truth": "Alarm or Siren",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.738103
+    },
+    {
+      "audio_id": "SS-ALM-0510",
+      "truth": "Alarm or Siren",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.999996
+    },
+    {
+      "audio_id": "SS-ALM-0532",
+      "truth": "Alarm or Siren",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.999996
+    },
+    {
+      "audio_id": "SS-ALM-0534",
+      "truth": "Alarm or Siren",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.814328
+    },
+    {
+      "audio_id": "SS-ALM-0541",
+      "truth": "Alarm or Siren",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.47449
+    },
+    {
+      "audio_id": "SS-ALM-0554",
+      "truth": "Alarm or Siren",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.996528
+    },
+    {
+      "audio_id": "SS-ALM-0556",
+      "truth": "Alarm or Siren",
+      "prediction": "Background Noise",
+      "confidence": 0.342068
+    },
+    {
+      "audio_id": "SS-ALM-0628",
+      "truth": "Alarm or Siren",
+      "prediction": "Machinery Fault",
+      "confidence": 0.575902
+    },
+    {
+      "audio_id": "SS-ALM-0629",
+      "truth": "Alarm or Siren",
+      "prediction": "Machinery Fault",
+      "confidence": 0.339412
+    },
+    {
+      "audio_id": "SS-ALM-0630",
+      "truth": "Alarm or Siren",
+      "prediction": "Aggression",
+      "confidence": 0.335509
+    },
+    {
+      "audio_id": "SS-ALM-0631",
+      "truth": "Alarm or Siren",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.403001
+    },
+    {
+      "audio_id": "SS-ALM-0632",
+      "truth": "Alarm or Siren",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.416749
+    },
+    {
+      "audio_id": "SS-ALM-0633",
+      "truth": "Alarm or Siren",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.609542
+    },
+    {
+      "audio_id": "SS-ALM-0634",
+      "truth": "Alarm or Siren",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.707818
+    },
+    {
+      "audio_id": "SS-ALM-0635",
+      "truth": "Alarm or Siren",
+      "prediction": "Panic Scream",
+      "confidence": 0.292015
+    },
+    {
+      "audio_id": "SS-ALM-0636",
+      "truth": "Alarm or Siren",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.250829
+    },
+    {
+      "audio_id": "SS-ALM-0637",
+      "truth": "Alarm or Siren",
+      "prediction": "Machinery Fault",
+      "confidence": 0.554012
+    },
+    {
+      "audio_id": "SS-ALM-0638",
+      "truth": "Alarm or Siren",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.404425
+    },
+    {
+      "audio_id": "SS-ALM-0639",
+      "truth": "Alarm or Siren",
+      "prediction": "Panic Scream",
+      "confidence": 0.425849
+    },
+    {
+      "audio_id": "SS-ALM-0640",
+      "truth": "Alarm or Siren",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.404344
+    },
+    {
+      "audio_id": "SS-ALM-0641",
+      "truth": "Alarm or Siren",
+      "prediction": "Panic Scream",
+      "confidence": 0.496771
+    },
+    {
+      "audio_id": "SS-ALM-0642",
+      "truth": "Alarm or Siren",
+      "prediction": "Panic Scream",
+      "confidence": 0.394205
+    },
+    {
+      "audio_id": "SS-ALM-0643",
+      "truth": "Alarm or Siren",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.491494
+    },
+    {
+      "audio_id": "SS-ALM-0644",
+      "truth": "Alarm or Siren",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.461802
+    },
+    {
+      "audio_id": "SS-ALM-0645",
+      "truth": "Alarm or Siren",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.598716
+    },
+    {
+      "audio_id": "SS-ALM-0646",
+      "truth": "Alarm or Siren",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.658389
+    },
+    {
+      "audio_id": "SS-ALM-0647",
+      "truth": "Alarm or Siren",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.24715
+    },
+    {
+      "audio_id": "SS-ALM-0648",
+      "truth": "Alarm or Siren",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.410253
+    },
+    {
+      "audio_id": "SS-ALM-0649",
+      "truth": "Alarm or Siren",
+      "prediction": "Machinery Fault",
+      "confidence": 0.419359
+    },
+    {
+      "audio_id": "SS-ALM-0650",
+      "truth": "Alarm or Siren",
+      "prediction": "Machinery Fault",
+      "confidence": 0.536333
+    },
+    {
+      "audio_id": "SS-ALM-0651",
+      "truth": "Alarm or Siren",
+      "prediction": "Machinery Fault",
+      "confidence": 0.46271
+    },
+    {
+      "audio_id": "SS-ALM-0652",
+      "truth": "Alarm or Siren",
+      "prediction": "Machinery Fault",
+      "confidence": 0.402019
+    },
+    {
+      "audio_id": "SS-ALM-0653",
+      "truth": "Alarm or Siren",
+      "prediction": "Panic Scream",
+      "confidence": 0.316214
+    },
+    {
+      "audio_id": "SS-ALM-0654",
+      "truth": "Alarm or Siren",
+      "prediction": "Panic Scream",
+      "confidence": 0.343587
+    },
+    {
+      "audio_id": "SS-ALM-0655",
+      "truth": "Alarm or Siren",
+      "prediction": "Aggression",
+      "confidence": 0.320039
+    },
+    {
+      "audio_id": "SS-ANI-0003",
+      "truth": "Animal Sound",
+      "prediction": "Panic Scream",
+      "confidence": 0.297352
+    },
+    {
+      "audio_id": "SS-ANI-0022",
+      "truth": "Animal Sound",
+      "prediction": "Gunshot",
+      "confidence": 0.300101
+    },
+    {
+      "audio_id": "SS-ANI-0027",
+      "truth": "Animal Sound",
+      "prediction": "Gunshot",
+      "confidence": 0.461346
+    },
+    {
+      "audio_id": "SS-ANI-0030",
+      "truth": "Animal Sound",
+      "prediction": "Machinery Fault",
+      "confidence": 0.857045
+    },
+    {
+      "audio_id": "SS-ANI-0033",
+      "truth": "Animal Sound",
+      "prediction": "Glass Breaking",
+      "confidence": 0.323187
+    },
+    {
+      "audio_id": "SS-ANI-0048",
+      "truth": "Animal Sound",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.365602
+    },
+    {
+      "audio_id": "SS-ANI-0059",
+      "truth": "Animal Sound",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.931675
+    },
+    {
+      "audio_id": "SS-ANI-0073",
+      "truth": "Animal Sound",
+      "prediction": "Machinery Fault",
+      "confidence": 0.306321
+    },
+    {
+      "audio_id": "SS-ANI-0076",
+      "truth": "Animal Sound",
+      "prediction": "Aggression",
+      "confidence": 0.542882
+    },
+    {
+      "audio_id": "SS-ANI-0078",
+      "truth": "Animal Sound",
+      "prediction": "Aggression",
+      "confidence": 0.187027
+    },
+    {
+      "audio_id": "SS-ANI-0085",
+      "truth": "Animal Sound",
+      "prediction": "Machinery Fault",
+      "confidence": 0.313493
+    },
+    {
+      "audio_id": "SS-ANI-0086",
+      "truth": "Animal Sound",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.301915
+    },
+    {
+      "audio_id": "SS-ANI-0087",
+      "truth": "Animal Sound",
+      "prediction": "Glass Breaking",
+      "confidence": 0.262523
+    },
+    {
+      "audio_id": "SS-ANI-0089",
+      "truth": "Animal Sound",
+      "prediction": "Machinery Fault",
+      "confidence": 0.664956
+    },
+    {
+      "audio_id": "SS-ANI-0094",
+      "truth": "Animal Sound",
+      "prediction": "Panic Scream",
+      "confidence": 0.969317
+    },
+    {
+      "audio_id": "SS-ANI-0095",
+      "truth": "Animal Sound",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.957687
+    },
+    {
+      "audio_id": "SS-ANI-0103",
+      "truth": "Animal Sound",
+      "prediction": "Background Noise",
+      "confidence": 0.662455
+    },
+    {
+      "audio_id": "SS-ANI-0105",
+      "truth": "Animal Sound",
+      "prediction": "Background Noise",
+      "confidence": 0.502983
+    },
+    {
+      "audio_id": "SS-ANI-0121",
+      "truth": "Animal Sound",
+      "prediction": "Animal Sound",
+      "confidence": 0.743047
+    },
+    {
+      "audio_id": "SS-ANI-0124",
+      "truth": "Animal Sound",
+      "prediction": "Background Noise",
+      "confidence": 0.815568
+    },
+    {
+      "audio_id": "SS-ANI-0129",
+      "truth": "Animal Sound",
+      "prediction": "Machinery Fault",
+      "confidence": 0.444294
+    },
+    {
+      "audio_id": "SS-ANI-0134",
+      "truth": "Animal Sound",
+      "prediction": "Panic Scream",
+      "confidence": 0.427873
+    },
+    {
+      "audio_id": "SS-ANI-0138",
+      "truth": "Animal Sound",
+      "prediction": "Background Noise",
+      "confidence": 0.398741
+    },
+    {
+      "audio_id": "SS-ANI-0150",
+      "truth": "Animal Sound",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.563569
+    },
+    {
+      "audio_id": "SS-ANI-0529",
+      "truth": "Animal Sound",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.390749
+    },
+    {
+      "audio_id": "SS-ANI-0542",
+      "truth": "Animal Sound",
+      "prediction": "Panic Scream",
+      "confidence": 0.260653
+    },
+    {
+      "audio_id": "SS-ANI-0554",
+      "truth": "Animal Sound",
+      "prediction": "Panic Scream",
+      "confidence": 0.734964
+    },
+    {
+      "audio_id": "SS-ANI-0555",
+      "truth": "Animal Sound",
+      "prediction": "Animal Sound",
+      "confidence": 0.337271
+    },
+    {
+      "audio_id": "SS-ANI-0556",
+      "truth": "Animal Sound",
+      "prediction": "Panic Scream",
+      "confidence": 0.616059
+    },
+    {
+      "audio_id": "SS-ANI-0559",
+      "truth": "Animal Sound",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.746282
+    },
+    {
+      "audio_id": "SS-ANI-0560",
+      "truth": "Animal Sound",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.630124
+    },
+    {
+      "audio_id": "SS-ANI-0579",
+      "truth": "Animal Sound",
+      "prediction": "Machinery Fault",
+      "confidence": 0.589791
+    },
+    {
+      "audio_id": "SS-ANI-0587",
+      "truth": "Animal Sound",
+      "prediction": "Machinery Fault",
+      "confidence": 0.510572
+    },
+    {
+      "audio_id": "SS-ANI-0602",
+      "truth": "Animal Sound",
+      "prediction": "Animal Sound",
+      "confidence": 0.586254
+    },
+    {
+      "audio_id": "SS-ANI-0623",
+      "truth": "Animal Sound",
+      "prediction": "Animal Sound",
+      "confidence": 0.448477
+    },
+    {
+      "audio_id": "SS-ANI-0624",
+      "truth": "Animal Sound",
+      "prediction": "Animal Sound",
+      "confidence": 0.505282
+    },
+    {
+      "audio_id": "SS-ANI-0627",
+      "truth": "Animal Sound",
+      "prediction": "Gunshot",
+      "confidence": 0.329319
+    },
+    {
+      "audio_id": "SS-ANI-0640",
+      "truth": "Animal Sound",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.648019
+    },
+    {
+      "audio_id": "SS-ANI-0646",
+      "truth": "Animal Sound",
+      "prediction": "Background Noise",
+      "confidence": 0.830183
+    },
+    {
+      "audio_id": "SS-ANI-0650",
+      "truth": "Animal Sound",
+      "prediction": "Panic Scream",
+      "confidence": 0.372849
+    },
+    {
+      "audio_id": "SS-ANI-0651",
+      "truth": "Animal Sound",
+      "prediction": "Panic Scream",
+      "confidence": 0.488367
+    },
+    {
+      "audio_id": "SS-ANI-0653",
+      "truth": "Animal Sound",
+      "prediction": "Animal Sound",
+      "confidence": 0.533725
+    },
+    {
+      "audio_id": "SS-ANI-0654",
+      "truth": "Animal Sound",
+      "prediction": "Animal Sound",
+      "confidence": 0.364573
+    },
+    {
+      "audio_id": "SS-ANI-0655",
+      "truth": "Animal Sound",
+      "prediction": "Animal Sound",
+      "confidence": 0.536504
+    },
+    {
+      "audio_id": "SS-ANI-0656",
+      "truth": "Animal Sound",
+      "prediction": "Animal Sound",
+      "confidence": 0.759252
+    },
+    {
+      "audio_id": "SS-BGN-0007",
+      "truth": "Background Noise",
+      "prediction": "Machinery Fault",
+      "confidence": 0.65611
+    },
+    {
+      "audio_id": "SS-BGN-0008",
+      "truth": "Background Noise",
+      "prediction": "Machinery Fault",
+      "confidence": 0.319737
+    },
+    {
+      "audio_id": "SS-BGN-0014",
+      "truth": "Background Noise",
+      "prediction": "Background Noise",
+      "confidence": 0.332534
+    },
+    {
+      "audio_id": "SS-BGN-0040",
+      "truth": "Background Noise",
+      "prediction": "Glass Breaking",
+      "confidence": 0.560803
+    },
+    {
+      "audio_id": "SS-BGN-0048",
+      "truth": "Background Noise",
+      "prediction": "Machinery Fault",
+      "confidence": 0.462339
+    },
+    {
+      "audio_id": "SS-BGN-0051",
+      "truth": "Background Noise",
+      "prediction": "Background Noise",
+      "confidence": 0.48308
+    },
+    {
+      "audio_id": "SS-BGN-0077",
+      "truth": "Background Noise",
+      "prediction": "Machinery Fault",
+      "confidence": 0.496001
+    },
+    {
+      "audio_id": "SS-BGN-0079",
+      "truth": "Background Noise",
+      "prediction": "Background Noise",
+      "confidence": 0.882942
+    },
+    {
+      "audio_id": "SS-BGN-0084",
+      "truth": "Background Noise",
+      "prediction": "Machinery Fault",
+      "confidence": 0.570132
+    },
+    {
+      "audio_id": "SS-BGN-0097",
+      "truth": "Background Noise",
+      "prediction": "Glass Breaking",
+      "confidence": 0.49487
+    },
+    {
+      "audio_id": "SS-BGN-0100",
+      "truth": "Background Noise",
+      "prediction": "Animal Sound",
+      "confidence": 0.304986
+    },
+    {
+      "audio_id": "SS-BGN-0101",
+      "truth": "Background Noise",
+      "prediction": "Background Noise",
+      "confidence": 0.928256
+    },
+    {
+      "audio_id": "SS-BGN-0108",
+      "truth": "Background Noise",
+      "prediction": "Machinery Fault",
+      "confidence": 0.483327
+    },
+    {
+      "audio_id": "SS-BGN-0115",
+      "truth": "Background Noise",
+      "prediction": "Background Noise",
+      "confidence": 0.315112
+    },
+    {
+      "audio_id": "SS-BGN-0505",
+      "truth": "Background Noise",
+      "prediction": "Background Noise",
+      "confidence": 0.693001
+    },
+    {
+      "audio_id": "SS-BGN-0506",
+      "truth": "Background Noise",
+      "prediction": "Background Noise",
+      "confidence": 0.273774
+    },
+    {
+      "audio_id": "SS-BGN-0513",
+      "truth": "Background Noise",
+      "prediction": "Gunshot",
+      "confidence": 0.599623
+    },
+    {
+      "audio_id": "SS-BGN-0514",
+      "truth": "Background Noise",
+      "prediction": "Background Noise",
+      "confidence": 0.382728
+    },
+    {
+      "audio_id": "SS-BGN-0526",
+      "truth": "Background Noise",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.621896
+    },
+    {
+      "audio_id": "SS-BGN-0537",
+      "truth": "Background Noise",
+      "prediction": "Background Noise",
+      "confidence": 0.507683
+    },
+    {
+      "audio_id": "SS-BGN-0539",
+      "truth": "Background Noise",
+      "prediction": "Background Noise",
+      "confidence": 0.747215
+    },
+    {
+      "audio_id": "SS-BGN-0550",
+      "truth": "Background Noise",
+      "prediction": "Background Noise",
+      "confidence": 0.572629
+    },
+    {
+      "audio_id": "SS-BGN-0561",
+      "truth": "Background Noise",
+      "prediction": "Background Noise",
+      "confidence": 0.387384
+    },
+    {
+      "audio_id": "SS-BGN-0579",
+      "truth": "Background Noise",
+      "prediction": "Background Noise",
+      "confidence": 0.420137
+    },
+    {
+      "audio_id": "SS-BGN-0586",
+      "truth": "Background Noise",
+      "prediction": "Glass Breaking",
+      "confidence": 0.375682
+    },
+    {
+      "audio_id": "SS-BGN-0591",
+      "truth": "Background Noise",
+      "prediction": "Background Noise",
+      "confidence": 0.230003
+    },
+    {
+      "audio_id": "SS-BGN-0608",
+      "truth": "Background Noise",
+      "prediction": "Background Noise",
+      "confidence": 0.402622
+    },
+    {
+      "audio_id": "SS-BGN-0614",
+      "truth": "Background Noise",
+      "prediction": "Machinery Fault",
+      "confidence": 0.536464
+    },
+    {
+      "audio_id": "SS-BGN-0623",
+      "truth": "Background Noise",
+      "prediction": "Machinery Fault",
+      "confidence": 0.423369
+    },
+    {
+      "audio_id": "SS-BGN-0624",
+      "truth": "Background Noise",
+      "prediction": "Background Noise",
+      "confidence": 0.466395
+    },
+    {
+      "audio_id": "SS-BGN-0630",
+      "truth": "Background Noise",
+      "prediction": "Background Noise",
+      "confidence": 0.588049
+    },
+    {
+      "audio_id": "SS-BGN-0633",
+      "truth": "Background Noise",
+      "prediction": "Glass Breaking",
+      "confidence": 0.521498
+    },
+    {
+      "audio_id": "SS-BGN-0636",
+      "truth": "Background Noise",
+      "prediction": "Gunshot",
+      "confidence": 0.885175
+    },
+    {
+      "audio_id": "SS-BGN-0645",
+      "truth": "Background Noise",
+      "prediction": "Background Noise",
+      "confidence": 0.421144
+    },
+    {
+      "audio_id": "SS-BGN-0649",
+      "truth": "Background Noise",
+      "prediction": "Machinery Fault",
+      "confidence": 0.46561
+    },
+    {
+      "audio_id": "SS-BGN-0650",
+      "truth": "Background Noise",
+      "prediction": "Animal Sound",
+      "confidence": 0.286284
+    },
+    {
+      "audio_id": "SS-BGN-0651",
+      "truth": "Background Noise",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.333762
+    },
+    {
+      "audio_id": "SS-BGN-0654",
+      "truth": "Background Noise",
+      "prediction": "Background Noise",
+      "confidence": 0.641749
+    },
+    {
+      "audio_id": "SS-BGN-0668",
+      "truth": "Background Noise",
+      "prediction": "Background Noise",
+      "confidence": 0.764588
+    },
+    {
+      "audio_id": "SS-BGN-0669",
+      "truth": "Background Noise",
+      "prediction": "Background Noise",
+      "confidence": 0.757395
+    },
+    {
+      "audio_id": "SS-BGN-0670",
+      "truth": "Background Noise",
+      "prediction": "Background Noise",
+      "confidence": 0.748184
+    },
+    {
+      "audio_id": "SS-BGN-0671",
+      "truth": "Background Noise",
+      "prediction": "Gunshot",
+      "confidence": 0.429324
+    },
+    {
+      "audio_id": "SS-BGN-0672",
+      "truth": "Background Noise",
+      "prediction": "Background Noise",
+      "confidence": 0.453901
+    },
+    {
+      "audio_id": "SS-BGN-0673",
+      "truth": "Background Noise",
+      "prediction": "Background Noise",
+      "confidence": 0.559487
+    },
+    {
+      "audio_id": "SS-BGN-0675",
+      "truth": "Background Noise",
+      "prediction": "Gunshot",
+      "confidence": 0.421702
+    },
+    {
+      "audio_id": "SS-GLA-0001",
+      "truth": "Glass Breaking",
+      "prediction": "Background Noise",
+      "confidence": 0.598164
+    },
+    {
+      "audio_id": "SS-GLA-0005",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.948839
+    },
+    {
+      "audio_id": "SS-GLA-0007",
+      "truth": "Glass Breaking",
+      "prediction": "Gunshot",
+      "confidence": 0.608215
+    },
+    {
+      "audio_id": "SS-GLA-0010",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.34661
+    },
+    {
+      "audio_id": "SS-GLA-0026",
+      "truth": "Glass Breaking",
+      "prediction": "Animal Sound",
+      "confidence": 0.227528
+    },
+    {
+      "audio_id": "SS-GLA-0041",
+      "truth": "Glass Breaking",
+      "prediction": "Gunshot",
+      "confidence": 0.698795
+    },
+    {
+      "audio_id": "SS-GLA-0044",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.861064
+    },
+    {
+      "audio_id": "SS-GLA-0048",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.511925
+    },
+    {
+      "audio_id": "SS-GLA-0053",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.403043
+    },
+    {
+      "audio_id": "SS-GLA-0062",
+      "truth": "Glass Breaking",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.777526
+    },
+    {
+      "audio_id": "SS-GLA-0065",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.402717
+    },
+    {
+      "audio_id": "SS-GLA-0074",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.35941
+    },
+    {
+      "audio_id": "SS-GLA-0082",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.921203
+    },
+    {
+      "audio_id": "SS-GLA-0084",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.490154
+    },
+    {
+      "audio_id": "SS-GLA-0087",
+      "truth": "Glass Breaking",
+      "prediction": "Gunshot",
+      "confidence": 0.456949
+    },
+    {
+      "audio_id": "SS-GLA-0092",
+      "truth": "Glass Breaking",
+      "prediction": "Animal Sound",
+      "confidence": 0.893234
+    },
+    {
+      "audio_id": "SS-GLA-0107",
+      "truth": "Glass Breaking",
+      "prediction": "Aggression",
+      "confidence": 0.399567
+    },
+    {
+      "audio_id": "SS-GLA-0117",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.50976
+    },
+    {
+      "audio_id": "SS-GLA-0123",
+      "truth": "Glass Breaking",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.428806
+    },
+    {
+      "audio_id": "SS-GLA-0126",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.933823
+    },
+    {
+      "audio_id": "SS-GLA-0131",
+      "truth": "Glass Breaking",
+      "prediction": "Background Noise",
+      "confidence": 0.419457
+    },
+    {
+      "audio_id": "SS-GLA-0144",
+      "truth": "Glass Breaking",
+      "prediction": "Gunshot",
+      "confidence": 0.33068
+    },
+    {
+      "audio_id": "SS-GLA-0520",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.310894
+    },
+    {
+      "audio_id": "SS-GLA-0525",
+      "truth": "Glass Breaking",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.335833
+    },
+    {
+      "audio_id": "SS-GLA-0540",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.803893
+    },
+    {
+      "audio_id": "SS-GLA-0551",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.471592
+    },
+    {
+      "audio_id": "SS-GLA-0552",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.444811
+    },
+    {
+      "audio_id": "SS-GLA-0557",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.394365
+    },
+    {
+      "audio_id": "SS-GLA-0558",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.356245
+    },
+    {
+      "audio_id": "SS-GLA-0559",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.40288
+    },
+    {
+      "audio_id": "SS-GLA-0560",
+      "truth": "Glass Breaking",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.322285
+    },
+    {
+      "audio_id": "SS-GLA-0561",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.635718
+    },
+    {
+      "audio_id": "SS-GLA-0562",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.683712
+    },
+    {
+      "audio_id": "SS-GLA-0582",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.342613
+    },
+    {
+      "audio_id": "SS-GLA-0595",
+      "truth": "Glass Breaking",
+      "prediction": "Animal Sound",
+      "confidence": 0.765263
+    },
+    {
+      "audio_id": "SS-GLA-0599",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.279579
+    },
+    {
+      "audio_id": "SS-GLA-0609",
+      "truth": "Glass Breaking",
+      "prediction": "Gunshot",
+      "confidence": 0.296242
+    },
+    {
+      "audio_id": "SS-GLA-0610",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.571007
+    },
+    {
+      "audio_id": "SS-GLA-0622",
+      "truth": "Glass Breaking",
+      "prediction": "Background Noise",
+      "confidence": 0.847852
+    },
+    {
+      "audio_id": "SS-GLA-0629",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.481402
+    },
+    {
+      "audio_id": "SS-GLA-0633",
+      "truth": "Glass Breaking",
+      "prediction": "Gunshot",
+      "confidence": 0.467911
+    },
+    {
+      "audio_id": "SS-GLA-0655",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.653591
+    },
+    {
+      "audio_id": "SS-GLA-0656",
+      "truth": "Glass Breaking",
+      "prediction": "Glass Breaking",
+      "confidence": 0.902688
+    },
+    {
+      "audio_id": "SS-GLA-0659",
+      "truth": "Glass Breaking",
+      "prediction": "Gunshot",
+      "confidence": 0.562076
+    },
+    {
+      "audio_id": "SS-GLA-0665",
+      "truth": "Glass Breaking",
+      "prediction": "Animal Sound",
+      "confidence": 0.406601
+    },
+    {
+      "audio_id": "SS-GUN-0012",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.780771
+    },
+    {
+      "audio_id": "SS-GUN-0013",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.512646
+    },
+    {
+      "audio_id": "SS-GUN-0018",
+      "truth": "Gunshot",
+      "prediction": "Glass Breaking",
+      "confidence": 0.447769
+    },
+    {
+      "audio_id": "SS-GUN-0023",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.490948
+    },
+    {
+      "audio_id": "SS-GUN-0028",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.524855
+    },
+    {
+      "audio_id": "SS-GUN-0052",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.747285
+    },
+    {
+      "audio_id": "SS-GUN-0057",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.76334
+    },
+    {
+      "audio_id": "SS-GUN-0060",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.787185
+    },
+    {
+      "audio_id": "SS-GUN-0065",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.354469
+    },
+    {
+      "audio_id": "SS-GUN-0069",
+      "truth": "Gunshot",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.302381
+    },
+    {
+      "audio_id": "SS-GUN-0080",
+      "truth": "Gunshot",
+      "prediction": "Background Noise",
+      "confidence": 0.339194
+    },
+    {
+      "audio_id": "SS-GUN-0100",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.415529
+    },
+    {
+      "audio_id": "SS-GUN-0101",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.490475
+    },
+    {
+      "audio_id": "SS-GUN-0105",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.767517
+    },
+    {
+      "audio_id": "SS-GUN-0110",
+      "truth": "Gunshot",
+      "prediction": "Machinery Fault",
+      "confidence": 0.286382
+    },
+    {
+      "audio_id": "SS-GUN-0112",
+      "truth": "Gunshot",
+      "prediction": "Background Noise",
+      "confidence": 0.392841
+    },
+    {
+      "audio_id": "SS-GUN-0117",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.788442
+    },
+    {
+      "audio_id": "SS-GUN-0118",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.815241
+    },
+    {
+      "audio_id": "SS-GUN-0121",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.356004
+    },
+    {
+      "audio_id": "SS-GUN-0122",
+      "truth": "Gunshot",
+      "prediction": "Aggression",
+      "confidence": 0.156888
+    },
+    {
+      "audio_id": "SS-GUN-0144",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.98887
+    },
+    {
+      "audio_id": "SS-GUN-0146",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.336312
+    },
+    {
+      "audio_id": "SS-GUN-0149",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.754075
+    },
+    {
+      "audio_id": "SS-GUN-0505",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.735656
+    },
+    {
+      "audio_id": "SS-GUN-0564",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.698937
+    },
+    {
+      "audio_id": "SS-GUN-0565",
+      "truth": "Gunshot",
+      "prediction": "Glass Breaking",
+      "confidence": 0.67489
+    },
+    {
+      "audio_id": "SS-GUN-0566",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.775171
+    },
+    {
+      "audio_id": "SS-GUN-0568",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.982452
+    },
+    {
+      "audio_id": "SS-GUN-0569",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.996181
+    },
+    {
+      "audio_id": "SS-GUN-0570",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.373251
+    },
+    {
+      "audio_id": "SS-GUN-0571",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.991751
+    },
+    {
+      "audio_id": "SS-GUN-0572",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.962549
+    },
+    {
+      "audio_id": "SS-GUN-0573",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.801334
+    },
+    {
+      "audio_id": "SS-GUN-0574",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.618896
+    },
+    {
+      "audio_id": "SS-GUN-0575",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.661523
+    },
+    {
+      "audio_id": "SS-GUN-0576",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.828739
+    },
+    {
+      "audio_id": "SS-GUN-0577",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.670934
+    },
+    {
+      "audio_id": "SS-GUN-0578",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.998935
+    },
+    {
+      "audio_id": "SS-GUN-0579",
+      "truth": "Gunshot",
+      "prediction": "Machinery Fault",
+      "confidence": 0.466897
+    },
+    {
+      "audio_id": "SS-GUN-0580",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.981288
+    },
+    {
+      "audio_id": "SS-GUN-0581",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.965739
+    },
+    {
+      "audio_id": "SS-GUN-0582",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.382337
+    },
+    {
+      "audio_id": "SS-GUN-0583",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.991744
+    },
+    {
+      "audio_id": "SS-GUN-0628",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.638025
+    },
+    {
+      "audio_id": "SS-GUN-0629",
+      "truth": "Gunshot",
+      "prediction": "Gunshot",
+      "confidence": 0.735513
+    },
+    {
+      "audio_id": "SS-MAC-0016",
+      "truth": "Machinery Fault",
+      "prediction": "Machinery Fault",
+      "confidence": 0.755539
+    },
+    {
+      "audio_id": "SS-MAC-0027",
+      "truth": "Machinery Fault",
+      "prediction": "Background Noise",
+      "confidence": 0.46177
+    },
+    {
+      "audio_id": "SS-MAC-0041",
+      "truth": "Machinery Fault",
+      "prediction": "Background Noise",
+      "confidence": 0.332549
+    },
+    {
+      "audio_id": "SS-MAC-0043",
+      "truth": "Machinery Fault",
+      "prediction": "Machinery Fault",
+      "confidence": 0.418319
+    },
+    {
+      "audio_id": "SS-MAC-0049",
+      "truth": "Machinery Fault",
+      "prediction": "Machinery Fault",
+      "confidence": 0.645078
+    },
+    {
+      "audio_id": "SS-MAC-0053",
+      "truth": "Machinery Fault",
+      "prediction": "Panic Scream",
+      "confidence": 0.384828
+    },
+    {
+      "audio_id": "SS-MAC-0055",
+      "truth": "Machinery Fault",
+      "prediction": "Machinery Fault",
+      "confidence": 0.761197
+    },
+    {
+      "audio_id": "SS-MAC-0057",
+      "truth": "Machinery Fault",
+      "prediction": "Panic Scream",
+      "confidence": 0.818541
+    },
+    {
+      "audio_id": "SS-MAC-0061",
+      "truth": "Machinery Fault",
+      "prediction": "Gunshot",
+      "confidence": 0.365262
+    },
+    {
+      "audio_id": "SS-MAC-0069",
+      "truth": "Machinery Fault",
+      "prediction": "Machinery Fault",
+      "confidence": 0.491162
+    },
+    {
+      "audio_id": "SS-MAC-0075",
+      "truth": "Machinery Fault",
+      "prediction": "Machinery Fault",
+      "confidence": 0.302608
+    },
+    {
+      "audio_id": "SS-MAC-0078",
+      "truth": "Machinery Fault",
+      "prediction": "Machinery Fault",
+      "confidence": 0.796681
+    },
+    {
+      "audio_id": "SS-MAC-0080",
+      "truth": "Machinery Fault",
+      "prediction": "Gunshot",
+      "confidence": 0.330989
+    },
+    {
+      "audio_id": "SS-MAC-0086",
+      "truth": "Machinery Fault",
+      "prediction": "Animal Sound",
+      "confidence": 0.581329
+    },
+    {
+      "audio_id": "SS-MAC-0094",
+      "truth": "Machinery Fault",
+      "prediction": "Machinery Fault",
+      "confidence": 0.714667
+    },
+    {
+      "audio_id": "SS-MAC-0111",
+      "truth": "Machinery Fault",
+      "prediction": "Background Noise",
+      "confidence": 0.453097
+    },
+    {
+      "audio_id": "SS-MAC-0113",
+      "truth": "Machinery Fault",
+      "prediction": "Machinery Fault",
+      "confidence": 0.766773
+    },
+    {
+      "audio_id": "SS-MAC-0512",
+      "truth": "Machinery Fault",
+      "prediction": "Machinery Fault",
+      "confidence": 0.495946
+    },
+    {
+      "audio_id": "SS-MAC-0513",
+      "truth": "Machinery Fault",
+      "prediction": "Machinery Fault",
+      "confidence": 0.666554
+    },
+    {
+      "audio_id": "SS-MAC-0531",
+      "truth": "Machinery Fault",
+      "prediction": "Machinery Fault",
+      "confidence": 0.905855
+    },
+    {
+      "audio_id": "SS-MAC-0535",
+      "truth": "Machinery Fault",
+      "prediction": "Machinery Fault",
+      "confidence": 0.53909
+    },
+    {
+      "audio_id": "SS-MAC-0537",
+      "truth": "Machinery Fault",
+      "prediction": "Machinery Fault",
+      "confidence": 0.68807
+    },
+    {
+      "audio_id": "SS-MAC-0538",
+      "truth": "Machinery Fault",
+      "prediction": "Machinery Fault",
+      "confidence": 0.295568
+    },
+    {
+      "audio_id": "SS-MAC-0567",
+      "truth": "Machinery Fault",
+      "prediction": "Background Noise",
+      "confidence": 0.413838
+    },
+    {
+      "audio_id": "SS-MAC-0568",
+      "truth": "Machinery Fault",
+      "prediction": "Machinery Fault",
+      "confidence": 0.582212
+    },
+    {
+      "audio_id": "SS-MAC-0572",
+      "truth": "Machinery Fault",
+      "prediction": "Background Noise",
+      "confidence": 0.5229
+    },
+    {
+      "audio_id": "SS-MAC-0573",
+      "truth": "Machinery Fault",
+      "prediction": "Background Noise",
+      "confidence": 0.355134
+    },
+    {
+      "audio_id": "SS-MAC-0574",
+      "truth": "Machinery Fault",
+      "prediction": "Machinery Fault",
+      "confidence": 0.47143
+    },
+    {
+      "audio_id": "SS-MAC-0575",
+      "truth": "Machinery Fault",
+      "prediction": "Machinery Fault",
+      "confidence": 0.679794
+    },
+    {
+      "audio_id": "SS-MAC-0584",
+      "truth": "Machinery Fault",
+      "prediction": "Background Noise",
+      "confidence": 0.593878
+    },
+    {
+      "audio_id": "SS-MAC-0587",
+      "truth": "Machinery Fault",
+      "prediction": "Machinery Fault",
+      "confidence": 0.689446
+    },
+    {
+      "audio_id": "SS-MAC-0591",
+      "truth": "Machinery Fault",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.219138
+    },
+    {
+      "audio_id": "SS-MAC-0592",
+      "truth": "Machinery Fault",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.373092
+    },
+    {
+      "audio_id": "SS-MAC-0606",
+      "truth": "Machinery Fault",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.350855
+    },
+    {
+      "audio_id": "SS-MAC-0607",
+      "truth": "Machinery Fault",
+      "prediction": "Machinery Fault",
+      "confidence": 0.748727
+    },
+    {
+      "audio_id": "SS-MAC-0611",
+      "truth": "Machinery Fault",
+      "prediction": "Background Noise",
+      "confidence": 0.608169
+    },
+    {
+      "audio_id": "SS-MAC-0612",
+      "truth": "Machinery Fault",
+      "prediction": "Machinery Fault",
+      "confidence": 0.464589
+    },
+    {
+      "audio_id": "SS-MAC-0614",
+      "truth": "Machinery Fault",
+      "prediction": "Background Noise",
+      "confidence": 0.699122
+    },
+    {
+      "audio_id": "SS-MAC-0615",
+      "truth": "Machinery Fault",
+      "prediction": "Background Noise",
+      "confidence": 0.527605
+    },
+    {
+      "audio_id": "SS-MAC-0616",
+      "truth": "Machinery Fault",
+      "prediction": "Background Noise",
+      "confidence": 0.50213
+    },
+    {
+      "audio_id": "SS-MAC-0636",
+      "truth": "Machinery Fault",
+      "prediction": "Machinery Fault",
+      "confidence": 0.384083
+    },
+    {
+      "audio_id": "SS-MAC-0664",
+      "truth": "Machinery Fault",
+      "prediction": "Background Noise",
+      "confidence": 0.521238
+    },
+    {
+      "audio_id": "SS-MAC-0665",
+      "truth": "Machinery Fault",
+      "prediction": "Background Noise",
+      "confidence": 0.594828
+    },
+    {
+      "audio_id": "SS-MAC-0671",
+      "truth": "Machinery Fault",
+      "prediction": "Machinery Fault",
+      "confidence": 0.504041
+    },
+    {
+      "audio_id": "SS-MAC-0673",
+      "truth": "Machinery Fault",
+      "prediction": "Panic Scream",
+      "confidence": 0.39496
+    },
+    {
+      "audio_id": "SS-SCR-0013",
+      "truth": "Panic Scream",
+      "prediction": "Aggression",
+      "confidence": 0.586511
+    },
+    {
+      "audio_id": "SS-SCR-0017",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.947223
+    },
+    {
+      "audio_id": "SS-SCR-0028",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.904399
+    },
+    {
+      "audio_id": "SS-SCR-0030",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.575006
+    },
+    {
+      "audio_id": "SS-SCR-0031",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.988229
+    },
+    {
+      "audio_id": "SS-SCR-0034",
+      "truth": "Panic Scream",
+      "prediction": "Machinery Fault",
+      "confidence": 0.262418
+    },
+    {
+      "audio_id": "SS-SCR-0053",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.819419
+    },
+    {
+      "audio_id": "SS-SCR-0061",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.678835
+    },
+    {
+      "audio_id": "SS-SCR-0063",
+      "truth": "Panic Scream",
+      "prediction": "Aggression",
+      "confidence": 0.673632
+    },
+    {
+      "audio_id": "SS-SCR-0065",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.846556
+    },
+    {
+      "audio_id": "SS-SCR-0073",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.900494
+    },
+    {
+      "audio_id": "SS-SCR-0086",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.999251
+    },
+    {
+      "audio_id": "SS-SCR-0097",
+      "truth": "Panic Scream",
+      "prediction": "Animal Sound",
+      "confidence": 0.335942
+    },
+    {
+      "audio_id": "SS-SCR-0098",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.804479
+    },
+    {
+      "audio_id": "SS-SCR-0504",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.99985
+    },
+    {
+      "audio_id": "SS-SCR-0508",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.758254
+    },
+    {
+      "audio_id": "SS-SCR-0516",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.795861
+    },
+    {
+      "audio_id": "SS-SCR-0526",
+      "truth": "Panic Scream",
+      "prediction": "Alarm or Siren",
+      "confidence": 0.998928
+    },
+    {
+      "audio_id": "SS-SCR-0530",
+      "truth": "Panic Scream",
+      "prediction": "Animal Sound",
+      "confidence": 0.314262
+    },
+    {
+      "audio_id": "SS-SCR-0541",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.736909
+    },
+    {
+      "audio_id": "SS-SCR-0548",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.920356
+    },
+    {
+      "audio_id": "SS-SCR-0557",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.811636
+    },
+    {
+      "audio_id": "SS-SCR-0563",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.998034
+    },
+    {
+      "audio_id": "SS-SCR-0564",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.980466
+    },
+    {
+      "audio_id": "SS-SCR-0570",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.959495
+    },
+    {
+      "audio_id": "SS-SCR-0578",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.985835
+    },
+    {
+      "audio_id": "SS-SCR-0583",
+      "truth": "Panic Scream",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.946107
+    },
+    {
+      "audio_id": "SS-SCR-0586",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.614837
+    },
+    {
+      "audio_id": "SS-SCR-0605",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.638768
+    },
+    {
+      "audio_id": "SS-SCR-0608",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.989934
+    },
+    {
+      "audio_id": "SS-SCR-0610",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.676741
+    },
+    {
+      "audio_id": "SS-SCR-0622",
+      "truth": "Panic Scream",
+      "prediction": "Aggression",
+      "confidence": 0.414587
+    },
+    {
+      "audio_id": "SS-SCR-0627",
+      "truth": "Panic Scream",
+      "prediction": "Gunshot",
+      "confidence": 0.70077
+    },
+    {
+      "audio_id": "SS-SCR-0628",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.467267
+    },
+    {
+      "audio_id": "SS-SCR-0637",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.358178
+    },
+    {
+      "audio_id": "SS-SCR-0664",
+      "truth": "Panic Scream",
+      "prediction": "Gunshot",
+      "confidence": 0.82263
+    },
+    {
+      "audio_id": "SS-SCR-0672",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.997823
+    },
+    {
+      "audio_id": "SS-SCR-0674",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.962459
+    },
+    {
+      "audio_id": "SS-SCR-0704",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.779709
+    },
+    {
+      "audio_id": "SS-SCR-0711",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.564134
+    },
+    {
+      "audio_id": "SS-SCR-0712",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.987033
+    },
+    {
+      "audio_id": "SS-SCR-0717",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.789805
+    },
+    {
+      "audio_id": "SS-SCR-0720",
+      "truth": "Panic Scream",
+      "prediction": "Aggression",
+      "confidence": 0.737351
+    },
+    {
+      "audio_id": "SS-SCR-0722",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.835761
+    },
+    {
+      "audio_id": "SS-SCR-0740",
+      "truth": "Panic Scream",
+      "prediction": "Panic Scream",
+      "confidence": 0.628057
+    },
+    {
+      "audio_id": "SS-HAL-0501",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.963312
+    },
+    {
+      "audio_id": "SS-HAL-0503",
+      "truth": "Person Asking for Help",
+      "prediction": "Aggression",
+      "confidence": 0.358164
+    },
+    {
+      "audio_id": "SS-HAL-0506",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.980636
+    },
+    {
+      "audio_id": "SS-HAL-0516",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.892614
+    },
+    {
+      "audio_id": "SS-HAL-0534",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.437726
+    },
+    {
+      "audio_id": "SS-HAL-0535",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.972386
+    },
+    {
+      "audio_id": "SS-HAL-0539",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.922515
+    },
+    {
+      "audio_id": "SS-HAL-0549",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.994325
+    },
+    {
+      "audio_id": "SS-HAL-0550",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.94707
+    },
+    {
+      "audio_id": "SS-HAL-0572",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.98942
+    },
+    {
+      "audio_id": "SS-HAL-0575",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.932926
+    },
+    {
+      "audio_id": "SS-HAL-0576",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.782739
+    },
+    {
+      "audio_id": "SS-HAL-0578",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.587177
+    },
+    {
+      "audio_id": "SS-HAL-0581",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.994836
+    },
+    {
+      "audio_id": "SS-HAL-0592",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.99705
+    },
+    {
+      "audio_id": "SS-HAL-0595",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.99507
+    },
+    {
+      "audio_id": "SS-HAL-0605",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.994732
+    },
+    {
+      "audio_id": "SS-HAL-0607",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.983708
+    },
+    {
+      "audio_id": "SS-HAL-0619",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.992537
+    },
+    {
+      "audio_id": "SS-HAL-0620",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.858804
+    },
+    {
+      "audio_id": "SS-HAL-0622",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.347339
+    },
+    {
+      "audio_id": "SS-HAL-0625",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.715133
+    },
+    {
+      "audio_id": "SS-HAL-0627",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.933285
+    },
+    {
+      "audio_id": "SS-HAL-0629",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.976357
+    },
+    {
+      "audio_id": "SS-HAL-0658",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.775368
+    },
+    {
+      "audio_id": "SS-HAL-0660",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.384695
+    },
+    {
+      "audio_id": "SS-HAL-0661",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.980757
+    },
+    {
+      "audio_id": "SS-HAL-0671",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.755648
+    },
+    {
+      "audio_id": "SS-HAL-0672",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.999988
+    },
+    {
+      "audio_id": "SS-HAL-0673",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.955623
+    },
+    {
+      "audio_id": "SS-HAL-0681",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.995411
+    },
+    {
+      "audio_id": "SS-HAL-0691",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.351961
+    },
+    {
+      "audio_id": "SS-HAL-0699",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.894386
+    },
+    {
+      "audio_id": "SS-HAL-0718",
+      "truth": "Person Asking for Help",
+      "prediction": "Aggression",
+      "confidence": 0.351
+    },
+    {
+      "audio_id": "SS-HAL-0721",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.885696
+    },
+    {
+      "audio_id": "SS-HAL-0724",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.998864
+    },
+    {
+      "audio_id": "SS-HAL-0726",
+      "truth": "Person Asking for Help",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.251714
+    },
+    {
+      "audio_id": "SS-HAL-0728",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.818059
+    },
+    {
+      "audio_id": "SS-HAL-0743",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.35822
+    },
+    {
+      "audio_id": "SS-HAL-0760",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.579666
+    },
+    {
+      "audio_id": "SS-HAL-0770",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.288826
+    },
+    {
+      "audio_id": "SS-HAL-0772",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.992878
+    },
+    {
+      "audio_id": "SS-HAL-0782",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.998411
+    },
+    {
+      "audio_id": "SS-HAL-0798",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.370703
+    },
+    {
+      "audio_id": "SS-HAL-0799",
+      "truth": "Person Asking for Help",
+      "prediction": "Person Asking for Help",
+      "confidence": 0.959109
+    },
+    {
+      "audio_id": "SS-HOR-0004",
+      "truth": "Vehicle Horn",
+      "prediction": "Machinery Fault",
+      "confidence": 0.684616
+    },
+    {
+      "audio_id": "SS-HOR-0009",
+      "truth": "Vehicle Horn",
+      "prediction": "Aggression",
+      "confidence": 0.285466
+    },
+    {
+      "audio_id": "SS-HOR-0013",
+      "truth": "Vehicle Horn",
+      "prediction": "Machinery Fault",
+      "confidence": 0.292705
+    },
+    {
+      "audio_id": "SS-HOR-0025",
+      "truth": "Vehicle Horn",
+      "prediction": "Animal Sound",
+      "confidence": 0.310833
+    },
+    {
+      "audio_id": "SS-HOR-0050",
+      "truth": "Vehicle Horn",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.399365
+    },
+    {
+      "audio_id": "SS-HOR-0051",
+      "truth": "Vehicle Horn",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.877531
+    },
+    {
+      "audio_id": "SS-HOR-0064",
+      "truth": "Vehicle Horn",
+      "prediction": "Machinery Fault",
+      "confidence": 0.447026
+    },
+    {
+      "audio_id": "SS-HOR-0067",
+      "truth": "Vehicle Horn",
+      "prediction": "Machinery Fault",
+      "confidence": 0.837209
+    },
+    {
+      "audio_id": "SS-HOR-0070",
+      "truth": "Vehicle Horn",
+      "prediction": "Gunshot",
+      "confidence": 0.288886
+    },
+    {
+      "audio_id": "SS-HOR-0071",
+      "truth": "Vehicle Horn",
+      "prediction": "Machinery Fault",
+      "confidence": 0.451891
+    },
+    {
+      "audio_id": "SS-HOR-0073",
+      "truth": "Vehicle Horn",
+      "prediction": "Machinery Fault",
+      "confidence": 0.402406
+    },
+    {
+      "audio_id": "SS-HOR-0077",
+      "truth": "Vehicle Horn",
+      "prediction": "Background Noise",
+      "confidence": 0.476625
+    },
+    {
+      "audio_id": "SS-HOR-0089",
+      "truth": "Vehicle Horn",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.769353
+    },
+    {
+      "audio_id": "SS-HOR-0096",
+      "truth": "Vehicle Horn",
+      "prediction": "Machinery Fault",
+      "confidence": 0.284721
+    },
+    {
+      "audio_id": "SS-HOR-0107",
+      "truth": "Vehicle Horn",
+      "prediction": "Glass Breaking",
+      "confidence": 0.580766
+    },
+    {
+      "audio_id": "SS-HOR-0122",
+      "truth": "Vehicle Horn",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.843521
+    },
+    {
+      "audio_id": "SS-HOR-0123",
+      "truth": "Vehicle Horn",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.461745
+    },
+    {
+      "audio_id": "SS-HOR-0501",
+      "truth": "Vehicle Horn",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.253337
+    },
+    {
+      "audio_id": "SS-HOR-0504",
+      "truth": "Vehicle Horn",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.535319
+    },
+    {
+      "audio_id": "SS-HOR-0507",
+      "truth": "Vehicle Horn",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.703177
+    },
+    {
+      "audio_id": "SS-HOR-0508",
+      "truth": "Vehicle Horn",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.60153
+    },
+    {
+      "audio_id": "SS-HOR-0513",
+      "truth": "Vehicle Horn",
+      "prediction": "Machinery Fault",
+      "confidence": 0.689209
+    },
+    {
+      "audio_id": "SS-HOR-0519",
+      "truth": "Vehicle Horn",
+      "prediction": "Background Noise",
+      "confidence": 0.255948
+    },
+    {
+      "audio_id": "SS-HOR-0524",
+      "truth": "Vehicle Horn",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.465787
+    },
+    {
+      "audio_id": "SS-HOR-0533",
+      "truth": "Vehicle Horn",
+      "prediction": "Machinery Fault",
+      "confidence": 0.391921
+    },
+    {
+      "audio_id": "SS-HOR-0538",
+      "truth": "Vehicle Horn",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.689077
+    },
+    {
+      "audio_id": "SS-HOR-0539",
+      "truth": "Vehicle Horn",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.35936
+    },
+    {
+      "audio_id": "SS-HOR-0540",
+      "truth": "Vehicle Horn",
+      "prediction": "Machinery Fault",
+      "confidence": 0.280515
+    },
+    {
+      "audio_id": "SS-HOR-0574",
+      "truth": "Vehicle Horn",
+      "prediction": "Machinery Fault",
+      "confidence": 0.622409
+    },
+    {
+      "audio_id": "SS-HOR-0587",
+      "truth": "Vehicle Horn",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.714442
+    },
+    {
+      "audio_id": "SS-HOR-0610",
+      "truth": "Vehicle Horn",
+      "prediction": "Machinery Fault",
+      "confidence": 0.767591
+    },
+    {
+      "audio_id": "SS-HOR-0613",
+      "truth": "Vehicle Horn",
+      "prediction": "Glass Breaking",
+      "confidence": 0.418982
+    },
+    {
+      "audio_id": "SS-HOR-0631",
+      "truth": "Vehicle Horn",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.450001
+    },
+    {
+      "audio_id": "SS-HOR-0634",
+      "truth": "Vehicle Horn",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.987774
+    },
+    {
+      "audio_id": "SS-HOR-0649",
+      "truth": "Vehicle Horn",
+      "prediction": "Panic Scream",
+      "confidence": 0.806597
+    },
+    {
+      "audio_id": "SS-HOR-0653",
+      "truth": "Vehicle Horn",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.393188
+    },
+    {
+      "audio_id": "SS-HOR-0659",
+      "truth": "Vehicle Horn",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.786253
+    },
+    {
+      "audio_id": "SS-HOR-0660",
+      "truth": "Vehicle Horn",
+      "prediction": "Background Noise",
+      "confidence": 0.808249
+    },
+    {
+      "audio_id": "SS-HOR-0661",
+      "truth": "Vehicle Horn",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.783083
+    },
+    {
+      "audio_id": "SS-HOR-0662",
+      "truth": "Vehicle Horn",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.410818
+    },
+    {
+      "audio_id": "SS-HOR-0665",
+      "truth": "Vehicle Horn",
+      "prediction": "Gunshot",
+      "confidence": 0.364699
+    },
+    {
+      "audio_id": "SS-HOR-0666",
+      "truth": "Vehicle Horn",
+      "prediction": "Animal Sound",
+      "confidence": 0.757389
+    },
+    {
+      "audio_id": "SS-HOR-0667",
+      "truth": "Vehicle Horn",
+      "prediction": "Vehicle Horn",
+      "confidence": 0.474588
+    },
+    {
+      "audio_id": "SS-HOR-0668",
+      "truth": "Vehicle Horn",
+      "prediction": "Machinery Fault",
+      "confidence": 0.21632
+    },
+    {
+      "audio_id": "SS-HOR-0670",
+      "truth": "Vehicle Horn",
+      "prediction": "Gunshot",
+      "confidence": 0.383209
+    }
+  ]
+}

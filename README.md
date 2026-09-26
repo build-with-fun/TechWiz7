@@ -21,17 +21,25 @@ tuned on. The split keeps every source recording in one partition (see
 | Python: AST embeddings + logistic regression (served) | **0.891** | **0.892** | **0.907** | `python_models/metrics/transfer_test_ast_current.json` |
 | Python: CNN14 embeddings + MLP (previous) | 0.840 | 0.840 | 0.862 | `python_models/metrics/transfer_test_current.json` |
 | Python baseline: HistGradientBoosting, 254 hand-made features | 0.731 | 0.730 | 0.822 | `python_models/metrics/classical_metrics_hgb_split_v2.json` |
-| Teachable Machine audio model | see `gtm_model/gtm_metrics.json` | | | `tools/evaluate_gtm.py` |
+| Teachable Machine audio model (served, 200 epochs) | 0.511 | 0.492 | 0.600 | `gtm_model/gtm_metrics.json` |
 | SRS target (both models) | 0.85 | 0.80 | 0.85 per class | |
 
-The served Python model **meets all three SRS targets**: accuracy 0.891 ≥ 0.85, macro F1
-0.892 ≥ 0.80, critical recall 0.907 ≥ 0.85. Per critical class it reaches Help 1.00,
-Gunshot 0.96, Glass 0.91, Aggression 0.84 and Panic Scream 0.82; two of five critical
-classes are below 0.85 individually even though their mean clears it, so those two remain
-the honest weak point. Where it goes wrong is described in
+The served Python model meets the accuracy target (0.891 ≥ 0.85) and the macro-F1 target
+(0.892 ≥ 0.80). The SRS asks for 85 % recall **per critical class**: Help 1.00, Gunshot
+0.96 and Glass 0.91 meet it; Aggression 0.84 (38/45) and Panic Scream 0.82 (37/45) do not,
+although the five average 0.907. Those two are confused with each other, and 43/45
+Aggression and 41/45 Panic Scream clips are still flagged as *some* critical class, so the
+alert fires. A Day 5 retrain with augmented copies did not do better on validation
+([devlog](documentation/devlog.md)). Where it goes wrong is described in
 [MODEL_EVALUATION.md](documentation/MODEL_EVALUATION.md) and
 [ROBUSTNESS.md](reports/ROBUSTNESS.md). A confidence score is the model's own estimate,
-not proof: 21 of 450 test predictions were wrong at 0.9 or higher.
+not proof: 10 of 450 test predictions were wrong at 0.9 or higher.
+
+The Teachable Machine model is far below all three targets. Teachable Machine trains one layer
+on top of a frozen speech-command network and, in this build, stalls above about 1,400 training
+samples; 200 epochs instead of the default 50 was the last setting left to try (test accuracy
+0.493 → 0.511). The app does not average it away: a disagreement or a low TM confidence sends
+the clip to manual review. Details: [MODEL_EVALUATION.md](documentation/MODEL_EVALUATION.md).
 
 ## Install (Ubuntu 22.04+ or Windows 10/11 with WSL; Python 3.12)
 

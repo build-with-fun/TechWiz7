@@ -31,9 +31,10 @@ The older 25 Sep WAV cut is withdrawn; see `audio_dataset/manifests/archive_spli
 
 ## Current export
 
-The served model (26 Sep) was trained from `--max-per-class 140`: 1,400 samples, the most this
-browser's Teachable Machine would train without stalling at "Preparing training data". On the
-test split it scores 0.493 accuracy, 0.473 macro-F1 and 0.591 critical-class recall
+The served model (27 Sep) was trained from `--max-per-class 140`: 1,400 samples, the most
+Teachable Machine would train here without stalling at "Preparing training data" (1,750 and
+2,100 stalled), with Advanced → Epochs set to 200 (`tools/train_gtm_browser.py --epochs 200`).
+On the test split it scores 0.511 accuracy, 0.492 macro-F1 and 0.600 critical-class recall
 (`gtm_model/gtm_metrics.json`), well below the SRS targets; `documentation/MODEL_EVALUATION.md`
 has the full history.
 

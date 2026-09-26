@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-26T19:32:15.199448+00:00",
+  "generated_at": "2026-09-26T22:57:41.472502+00:00",
   "split": "test",
   "clips_scored": 450,
   "clips_failed": 0,
@@ -11,95 +11,95 @@
     },
     "gtm": {
       "model_name": "Google Teachable Machine",
-      "model_version": "tm-20260926T1246-ew"
+      "model_version": "tm-20260926T2241-ew"
     }
   },
   "python_accuracy": 0.8911111111111111,
-  "gtm_accuracy": 0.49333333333333335,
-  "agreement_rate": 0.49333333333333335,
-  "accuracy_when_models_agree": 0.9459459459459459,
-  "sent_to_manual_review": 403,
-  "auto_decided": 47,
-  "accuracy_of_auto_decisions": 1.0,
-  "alerts_raised": 179,
+  "gtm_accuracy": 0.5111111111111111,
+  "agreement_rate": 0.4955555555555556,
+  "accuracy_when_models_agree": 0.9730941704035875,
+  "sent_to_manual_review": 388,
+  "auto_decided": 62,
+  "accuracy_of_auto_decisions": 0.9838709677419355,
+  "alerts_raised": 176,
   "consistency_status_counts": {
-    "Uncertain Result": 321,
-    "Weak Match": 42,
-    "Model Disagreement": 39,
-    "Acceptable Match": 22,
-    "Strong Match": 26
+    "Uncertain Result": 295,
+    "Model Disagreement": 47,
+    "Strong Match": 36,
+    "Weak Match": 46,
+    "Acceptable Match": 26
   },
   "per_class": {
     "Aggression": {
       "n": 45,
       "python": 38,
-      "gtm": 16,
-      "agree": 17,
-      "review": 45
+      "gtm": 17,
+      "agree": 18,
+      "review": 44
     },
     "Alarm or Siren": {
       "n": 45,
       "python": 38,
       "gtm": 6,
-      "agree": 8,
+      "agree": 5,
       "review": 44
     },
     "Animal Sound": {
       "n": 45,
       "python": 39,
-      "gtm": 5,
-      "agree": 7,
-      "review": 45
+      "gtm": 11,
+      "agree": 13,
+      "review": 44
     },
     "Background Noise": {
       "n": 45,
       "python": 40,
-      "gtm": 26,
-      "agree": 26,
+      "gtm": 24,
+      "agree": 23,
       "review": 42
     },
     "Glass Breaking": {
       "n": 45,
       "python": 41,
-      "gtm": 23,
-      "agree": 23,
-      "review": 44
+      "gtm": 16,
+      "agree": 15,
+      "review": 43
     },
     "Gunshot": {
       "n": 45,
       "python": 43,
-      "gtm": 22,
-      "agree": 21,
-      "review": 45
+      "gtm": 35,
+      "agree": 33,
+      "review": 43
     },
     "Machinery Fault": {
       "n": 45,
       "python": 41,
-      "gtm": 26,
-      "agree": 26,
-      "review": 45
+      "gtm": 28,
+      "agree": 28,
+      "review": 42
     },
     "Panic Scream": {
       "n": 45,
       "python": 37,
-      "gtm": 28,
-      "agree": 27,
-      "review": 37
+      "gtm": 22,
+      "agree": 21,
+      "review": 36
     },
     "Person Asking for Help": {
       "n": 45,
       "python": 45,
-      "gtm": 44,
-      "agree": 44,
-      "review": 22
+      "gtm": 45,
+      "agree": 45,
+      "review": 16
     },
     "Vehicle Horn": {
       "n": 45,
       "python": 39,
       "gtm": 26,
-      "agree": 23,
+      "agree": 22,
       "review": 34
     }
   },
-  "median_total_ms": 1847.035
+  "median_total_ms": 1428.327
 }

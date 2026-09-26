@@ -147,10 +147,11 @@ test. Taking the recordings in a fixed hash order spreads them across sources, a
 every one-second window of a clip (weighted by energy) instead of only the loudest one helped
 again. Both choices were made on the validation split.
 
-The served export scores **0.493 accuracy and 0.473 macro F1** on the test split
-(`gtm_model/gtm_metrics.json`), far below the 85 % the SRS asks for. Teachable Machine
-freezes a network trained on spoken words and trains one layer on top, on 0-5 kHz and one
-second of audio at a time; sirens and animal calls barely register (recall 0.13 and 0.11).
+The served export, trained for 200 epochs instead of TM's default 50 (chosen on validation),
+scores **0.511 accuracy and 0.492 macro F1** on the test split (`gtm_model/gtm_metrics.json`),
+far below the 85 % the SRS asks for. Teachable Machine freezes a network trained on spoken
+words and trains one layer on top, on 0-5 kHz and one second of audio at a time; sirens and
+animal calls barely register (recall 0.13 and 0.24).
 We have not measured whether our server-side FFT exactly matches the browser's analyser, so
 these numbers describe the server path only.
 

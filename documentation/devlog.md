@@ -61,6 +61,23 @@ Written down before the runs below started, so that validation decides and test 
   with door slams (`BASELINE_AUDIT.md` §4), which more classifier tuning does not fix.
   `transfer_selection_ast_current.json` was regenerated to add the per-class numbers; its
   choice is unchanged.
+- **Teachable Machine: more epochs, same 1,400 samples.** `train_gtm_browser.py --epochs`
+  sets TM's Advanced → Epochs (the tour card covering the Training panel is hidden first).
+  Same import package as the served model (rebuilt byte-for-byte; only the fetch date in
+  the evidence rows differed, so the committed rows were kept).
+
+  | TM export (validation, 450 recordings) | Epochs | Accuracy | Macro-F1 | Critical recall | Score |
+  |---|---:|---:|---:|---:|---:|
+  | served until today (`archive/v2_2026-09-26`) | 50 | 0.504 | 0.490 | 0.613 | 0.552 |
+  | `candidates/tm_v6_140_e100` | 100 | 0.522 | 0.504 | 0.667 | 0.585 |
+  | `candidates/tm_v6_140_e200` | 200 | 0.536 | 0.522 | 0.667 | 0.595 |
+
+  The 200-epoch export won on validation and now serves (`tm-20260926T2241-ew`). Scored
+  once on test: **0.511 accuracy, 0.492 macro-F1, 0.600 critical recall** (was 0.493 /
+  0.473 / 0.591). Part of a gap this size can be run-to-run variation (TM picks its own
+  random start and internal split); one run per setting was all the time allowed. The
+  search stopped at 200 epochs because the gain had shrunk to 0.01 and no setting comes
+  near the 0.85 target. `init_db.py` registered the new version as active.
 
 ---
 

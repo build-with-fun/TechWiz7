@@ -146,22 +146,26 @@ for a site that prefers more reviews over missed critical events; it is a team d
 
 ## Teachable Machine model
 
-Trained in Google Teachable Machine's own audio project (default settings, run in a headless
-Chrome by `tools/train_gtm_browser.py`) from training-split recordings only. Each sample is
+Trained in Google Teachable Machine's own audio project (run in a headless Chrome by
+`tools/train_gtm_browser.py`; default settings until 27 Sep, then 200 epochs) from training-split recordings only. Each sample is
 the loudest one-second window of a recording after the app's preprocessing, the same rule
 the server uses. Import lineage: `gtm_model/upload_package/tm_imports/index.json`; the
 windows themselves: `audio_dataset/gtm_samples/` and `audio_dataset/manifests/gtm_segment_rows.csv`.
 
 TM's model is the speech-commands network with its layers frozen and one new softmax layer
-trained on top, on 0-5 kHz spectrograms of one second. In this browser it stops at
-"Preparing training data" above roughly 1,400 samples (a 2,100-sample run was still there
-after ten minutes), so 140 recordings per class is the practical maximum here.
+trained on top, on 0-5 kHz spectrograms of one second. It stops at "Preparing training data"
+above roughly 1,400 samples: on 27 Sep 2,100 samples stalled for 11 minutes on the Intel GPU
+and again on the NVIDIA GPU (confirmed from the WebGL renderer string), and 1,750 samples
+stalled too, with the browser idle each time (`screenshots/gtm/20260927_v4_*`, `_v5_*`).
+So 140 recordings per class is the practical maximum in this TM build.
 
 | Export | Samples | Selection of recordings | Scoring | Val accuracy | Test accuracy | Test macro-F1 | Test critical recall |
 |---|---|---|---|---|---|---|---|
 | 25 Sep | 320 | first 32 per class, first second | loudest window | — | 0.278 | — | — |
 | 26 Sep a (`candidates/tm140`) | 1,400 | first 140 per class by audio id | loudest window | 0.438 | 0.462 | 0.442 | 0.569 |
-| 26 Sep b (`candidates/tm_v3_140`, served) | 1,400 | 140 per class in hash order | energy-weighted windows | 0.504 | **0.493** | **0.473** | **0.591** |
+| 26 Sep b (`candidates/tm_v3_140`, `archive/v2_2026-09-26`) | 1,400 | 140 per class in hash order | energy-weighted windows | 0.504 | 0.493 | 0.473 | 0.591 |
+| 27 Sep, 100 epochs (`candidates/tm_v6_140_e100`) | 1,400 | same | energy-weighted windows | 0.522 | — | — | — |
+| 27 Sep, 200 epochs (`candidates/tm_v6_140_e200`, **served**) | 1,400 | same | energy-weighted windows | 0.536 | **0.511** | **0.492** | **0.600** |
 
 Taking recordings in audio-id order meant 764 of the 1,400 samples were FSD50K clips and only
 66 came from UrbanSound8K; hash order spreads them across sources. On the same new export,
@@ -171,13 +175,19 @@ loudest second (0.504 against 0.469 on validation), so the server now does that
 validation split; the test split was scored once, for the served configuration
 (`gtm_model/gtm_metrics.json`).
 
-Test recall per class: Person Asking for Help 0.98, Panic Scream 0.62, Background Noise,
-Machinery Fault and Vehicle Horn 0.58, Glass Breaking 0.51, Gunshot 0.49, Aggression 0.36,
-Alarm or Siren 0.13, Animal Sound 0.11.
+The 27 Sep exports changed only TM's epoch count (Advanced → Epochs; TM's default is 50).
+Chosen on validation by `0.5 × macro-F1 + 0.5 × critical recall` (0.552 → 0.585 → 0.595);
+test scored once, for the 200-epoch export. One run per setting, so part of the difference
+can be TM's run-to-run variation.
+
+Test recall per class (served, 200 epochs): Person Asking for Help 1.00, Gunshot 0.78,
+Machinery Fault 0.62, Vehicle Horn 0.58, Background Noise 0.53, Panic Scream 0.49,
+Aggression 0.38, Glass Breaking 0.36, Animal Sound 0.24, Alarm or Siren 0.13.
 
 The TM model is far below the SRS targets (85 % accuracy, 0.80 macro-F1, 85 % critical
 recall). With a frozen speech-command network, a single trained layer and a ~1,400-sample
-ceiling, we did not find a way to raise it further inside Teachable Machine. The app treats
+ceiling, more epochs were the last setting left to try inside Teachable Machine, and they
+moved test accuracy from 0.493 to 0.511. The app treats
 its opinion accordingly: a disagreement or a low TM confidence sends the clip to manual
 review rather than being averaged away.
 
