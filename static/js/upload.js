@@ -118,7 +118,7 @@
     if (facts.length) card.appendChild(SST.el("p", { "class": "result__facts" }, facts.join(" · ")));
     if (event.requires_manual_review) {
       card.appendChild(SST.el("p", { "class": "result__review" },
-        "Routed to manual review" + (event.review_reason ? ": " + reasonText(event.review_reason) : ".")));
+        "Manual Review Required" + (event.review_reason ? ": " + reasonText(event.review_reason) : ".")));
     }
     var eventId = event.id || event.event_id;
     var href = eventId ? SST.endpointFor("eventDetail", { eventId: eventId }) : SST.endpoint("events");

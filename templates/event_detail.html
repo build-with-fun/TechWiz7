@@ -102,7 +102,7 @@
     <p class="summary-label">Status</p>
     <div class="summary-value">{{ ui.status_chip(event.status) }}</div>
     {% if event.requires_manual_review %}
-    <p class="summary-note">{{ ui.icon('clipboard', 12) }} Routed to manual review</p>
+    <p class="summary-note">{{ ui.icon('clipboard', 12) }} Manual Review Required</p>
     {% endif %}
   </div>
 
@@ -122,7 +122,7 @@
 <div class="banner banner--warn">
   <span class="banner__icon" aria-hidden="true">{{ ui.icon('clipboard', 20) }}</span>
   <div class="banner__body">
-    <p class="banner__text"><strong>Queued for manual review.</strong> {{ event.review_reason | review_reason }}</p>
+    <p class="banner__text"><strong>Manual Review Required.</strong> {{ event.review_reason | review_reason }}</p>
   </div>
 </div>
 {% endif %}
