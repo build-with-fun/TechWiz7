@@ -5,6 +5,28 @@ model failures, code changes, tests performed. Newest first.
 
 ---
 
+## Day 5 — 2026-09-27
+
+### Selection rules, fixed before any new model was scored
+Written down before the runs below started, so that validation decides and test only reports.
+
+- **Python model.** Two candidates on the AST embeddings: the served configuration (fit on
+  the 2,100 training recordings) and the same grid fit on training recordings plus their
+  4,200 augmented copies (train split only; copies inherit their parent's split). Chosen on
+  the 450 validation recordings: among candidates whose lowest critical-class validation
+  recall is at least 0.85, the highest `0.5 × macro-F1 + 0.5 × critical recall`; if none
+  reaches 0.85, the highest score overall. A difference under 0.005 keeps the served model.
+  The chosen candidate is scored on test once and reported as it comes out. A combined
+  AST + CNN14 embedding was considered and dropped without being run: it would add a second
+  backbone to every request, and the 30-second upload already takes 7.15 s of the 8 s budget.
+- **Teachable Machine.** Every retrained export is saved under `gtm_model/candidates/` and
+  scored on validation with the served window aggregation. The same score
+  (`0.5 × macro-F1 + 0.5 × critical recall`) picks the winner; the served export is the
+  baseline (validation 0.504 accuracy, 0.490 macro-F1, 0.613 critical recall). Only the
+  winner is scored on test, once.
+
+---
+
 ## Day 4, evening — 2026-09-26
 
 ### Work completed
