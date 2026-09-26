@@ -98,7 +98,7 @@ def upload():
     if suffix not in _ACCEPTED_SUFFIXES:
         raise ApiError(
             "unsupported_media_type",
-            "This file type is not supported. Send WAV, FLAC, MP3, OGG or WebM audio.",
+            "This file type is not supported. Send WAV, MP3, FLAC, OGG or M4A audio.",
             details={"filename": filename, "accepted": sorted(_ACCEPTED_SUFFIXES)},
         )
 
