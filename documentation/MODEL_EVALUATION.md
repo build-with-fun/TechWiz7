@@ -113,7 +113,8 @@ scored once on test per family, exactly as the protocol above requires.
 
 Against the SRS targets: macro F1 0.840 ≥ 0.80 (**met**); accuracy 0.840 < 0.85 (missed by
 one point); critical recall ≥ 0.85 for Gunshot and Help (**met**), not for Aggression
-(0.84), Glass (0.82) or Panic Scream (0.76).
+(0.84), Glass (0.82) or Panic Scream (0.76). This is the *previous* served model; the AST
+model above replaced it precisely because of this miss.
 
 ## Where the Python model goes wrong
 
