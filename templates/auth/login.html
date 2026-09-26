@@ -9,36 +9,19 @@
 
 {% block content %}
 <div class="auth-shell">
-  <aside class="auth-hero" aria-label="About SonicSentinel">
-    <div class="auth-hero__eyebrow"><span class="auth-hero__beacon"></span> SOUND EVENT INTELLIGENCE</div>
-    <h2>Hear the signal.<br><em>Understand the moment.</em></h2>
-    <p>Classify site audio, compare two independent model predictions, and give operators the evidence behind each decision.</p>
-    <div class="auth-visual" aria-hidden="true">
-      <div class="auth-visual__ring auth-visual__ring--one"></div>
-      <div class="auth-visual__ring auth-visual__ring--two"></div>
-      <div class="auth-visual__ring auth-visual__ring--three"></div>
-      <div class="auth-visual__core"><img src="{{ url_for('static', filename='img/logo.svg') }}" alt=""></div>
-      <div class="auth-visual__wave">
-        {% for _ in range(22) %}
-        <span></span>
-        {% endfor %}
-      </div>
-    </div>
-    <p class="auth-hero__foot">Built for transparent review, with every prediction tied to its source recording.</p>
-  </aside>
   <div class="auth-card" data-testid="login-card">
     <div class="auth-card__brand">
       <img class="auth-card__logo" src="{{ url_for('static', filename='img/logo.svg') }}"
            alt="" width="36" height="36" aria-hidden="true">
       <div>
         <h1 class="auth-card__title">{{ app_name }}</h1>
-        <p class="auth-card__sub">Sign in to your monitoring workspace</p>
+        <p class="auth-card__sub">Sound-event classification and review</p>
       </div>
     </div>
 
     {% if switch %}
       <p class="callout">You are signed in. Sign in as someone else to see the console from
-        another role, or use the sign-out button in the header first.</p>
+        another role, or sign out using the header.</p>
     {% endif %}
 
     {% if error %}
@@ -75,7 +58,7 @@
           <span>Keep me signed in on this device</span>
         </label>
         <button class="btn btn--primary" type="submit" data-login-submit>
-          {{ ui.icon('logout', 16) }} <span>Sign in</span>
+          Sign in
         </button>
       </div>
     </form>

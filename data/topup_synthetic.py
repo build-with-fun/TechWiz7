@@ -1,18 +1,9 @@
 #!/usr/bin/env python3
-"""Deterministic top-up of the procedural corpus for shortfall classes.
+"""Fill the remaining shortfall in Aggression, Glass Breaking and Panic Scream with the
+procedural synthesiser once the real pools were exhausted. Only the shortfall is generated,
+and never in the real recordings' id range. (The synthetic glass clips were later dropped by
+audio_dataset/scripts/trim_to_300.py; 50 Aggression and 25 Panic Scream remain.)
 
-The real, openly-licensed pools on disk (FSD50K dev + eval-recovered, ESC-50,
-UrbanSound8K) are exhausted for Aggression / Glass Breaking / Panic Scream
-(`audio_dataset/scripts/acquire_corpus.py` reports "room left" 195/99/195 with
-every candidate pool drained).  This driver completes those three classes from
-the repository's own procedural synthesiser -- the SAME generators, seed
-discipline and provenance policy as `data/generate_corpus.py`, whose docstring
-explains why procedural synthesis is the honest fallback.  It only produces the
-SHORTFALL (never more than `required_originals`), only for classes that are
-short, and never touches the real recordings' id range.
-
-Usage:
-    python data/topup_synthetic.py                 # fills only the shortfall
     python data/topup_synthetic.py --check        # print the plan, write nothing
 """
 from __future__ import annotations
@@ -24,7 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from generate_corpus import (  # noqa: E402
-    CLASSES, CLASS_CODES, build, load_class_config, MANIFEST_FIELDS,
+    CLASS_CODES, build, load_class_config, MANIFEST_FIELDS,
 )
 import csv  # noqa: E402
 
@@ -34,8 +25,7 @@ AUDIO_DATASET = REPO_ROOT / "audio_dataset"
 #: band name -> the frozen manifest enum value (assemble_manifest.py DIST_ENUM)
 DIST_ENUM_MAP = {"near_0.5-2m": "near", "mid_3-15m": "medium", "far_20-60m": "far"}
 
-# id-offset: acquired (real) ids for these classes started at 0501; keep a clear
-# gap so no future real ingestion can collide with synthetic numbering.
+# Real ids start at 0501; synthetic ids sit well clear of them.
 SYNTH_ID_OFFSET = 699  # synthetic ids start at SS-<CODE>-0700
 
 
@@ -57,7 +47,6 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
 
     cfg = load_class_config()
-    classes = {c["name"]: c for c in cfg["classes"]}
 
     # what is on disk vs the frozen floor
     plan: dict[str, int] = {}
@@ -66,10 +55,7 @@ def main(argv=None) -> int:
         slug = label.lower().replace(" ", "_")
         have = len(list((AUDIO_DATASET / "originals" / slug).glob("*.wav"))) \
             if (AUDIO_DATASET / "originals" / slug).exists() else 0
-        # synthetic originals for this class already live in synthetic/<slug>/ and
-        # carry manifest rows (help_tts_rows.csv, an earlier synthetic_topup_rows.csv).
-        # They count toward the floor the same way the assembler/verifier counts:
-        # by manifest rows with original_or_augmented == original.
+        # Existing synthetic originals count toward the floor, as the verifier counts them.
         for rows_csv in (AUDIO_DATASET / "manifests" / "help_tts_rows.csv",
                          AUDIO_DATASET / "manifests" / "synthetic_topup_rows.csv"):
             if not rows_csv.exists():
@@ -92,10 +78,7 @@ def main(argv=None) -> int:
     if args.check:
         return 0
 
-    # ids must continue past whatever synthetic clips already exist on disk.
-    # The previous runs numbered their clips from id_offset+1 CONTIGUOUSLY, but the
-    # ids actually on disk may be non-contiguous after defect removal, so the safe
-    # continuation point is the highest existing numeric id per class, not a count.
+    # Continue past the highest existing id per class (defect removal left holes).
     existing_synth: dict[str, int] = {}
     top_existing: dict[str, int] = {}
     for label in plan:
@@ -109,17 +92,12 @@ def main(argv=None) -> int:
                   f"(ids up to SS-{CLASS_CODES[label]}-{max(nums):04d}); "
                   f"new ids continue above that")
 
-    # build() emits `per_class` for EVERY class and writes the WAV files before the
-    # rows are filtered -- generating straight into AUDIO_DATASET would leave orphan
-    # wavs for the unplanned classes (verified on disk but unlisted in any manifest,
-    # which verify_dataset.py correctly rejects). Build into a temp root and move
-    # only the kept clips.
+    # build() writes every class, so build in a temp root and move only the kept clips.
     import tempfile, shutil
     tmp_root = Path(tempfile.mkdtemp(prefix="ss_topup_"))
     rows = build(max(plan.values()), tmp_root, args.seed, None,
                  audio_subdir="synthetic", id_offset=args.id_offset)
-    # build() emits `per_class` for EVERY class; keep only the planned classes
-    # and only the first `want` ids per class (deterministic: id order).
+    # Keep only planned classes and the first `want` ids per class.
     keep: list[dict] = []
     used: dict[str, int] = {}
     for r in rows:
@@ -130,17 +108,13 @@ def main(argv=None) -> int:
         if k >= plan[label]:
             continue
         num = int(r["audio_id"].rsplit("-", 1)[-1])
-        # skip ids that already exist on disk for this class (ids numbered from
-        # id_offset+1 by an earlier run of this driver or generate_corpus)
+        # skip ids already on disk for this class
         if num <= top_existing.get(label, args.id_offset):
             continue
         used[label] = k + 1
         keep.append(r)
 
-    # If disk ids are non-contiguous (defect removal punched holes), the first
-    # build() window may yield fewer than plan[label] fresh ids; emit a second
-    # batch strictly ABOVE the highest existing id. Per-clip RNG is seeded from
-    # audio_id, so a new id is a new, deterministic clip.
+    # Holes can leave the first batch short; emit a second batch above the highest id.
     shortfall = {label: plan[label] - used.get(label, 0) for label in plan}
     shortfall = {label: n for label, n in shortfall.items() if n > 0}
     if shortfall:

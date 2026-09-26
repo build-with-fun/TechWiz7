@@ -1,6 +1,5 @@
 {
   "version": "1.0.0",
-  "owner": "sara",
   "srs_refs": ["Step 16", "FR lii", "FR liii (alert severity is administrator-configurable)"],
   "read_by": ["src/services/config.py", "src/services/alerting.py", "templates (via app.severity_scale)"],
 

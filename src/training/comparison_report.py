@@ -1,28 +1,9 @@
-"""
-Generate the SRS Deliverable-3 comparison report: both models on the same unseen
-recordings, per-class, with the consistency verdict for every clip.
+"""Comparison-report building blocks: run both predictors independently on the same
+held-out clips and tabulate agreement and correctness, refusing fewer than 100 clips or
+10 per class. classify_consistency is the only place the two results meet.
 
-Owner: fatima-2 (QA).  SRS Step 11, Step 14, FR xxiii-xxx, lii, Deliverable 3.
-
-WHAT THIS IS
-------------
-The SRS demands a comparison report covering >=100 unseen recordings with >=10 per
-class, where "unseen" means held-out test split -- never trained on, never validated
-on. Both models must be run on the SAME clips and their verdicts compared.
-
-INTEGRITY RULES ENFORCED HERE (disqualifiers if broken)
--------------------------------------------------------
-1. GTM never receives Python's prediction or confidence. Both predictors are called
-   on the raw preprocessed audio independently, in this file, with no cross wiring.
-   `classify_consistency` is the only place the two results meet, and it takes the
-   two results as separate arguments so no value can leak from one to the other.
-2. No hard-coded predictions. Every row comes from a real model call.
-3. No invented confidence. Both confidences come off the predictor contract.
-4. The report is evidence, so it records its own provenance: which split, how many
-   clips, which model artifacts, which threshold snapshot.
-
-The report is CSV (one row per clip) + a JSON summary. A human reads the summary;
-an evaluator diffs the CSV.
+The submitted report (every SRS column, through the full decision pipeline) is produced by
+tools/build_comparison_report.py.
 """
 
 from __future__ import annotations
@@ -33,8 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-# The columns of the per-clip CSV. Fixed on purpose: an evaluator comparing two runs
-# of this report needs the schema to be stable.
+# Fixed column order, so two runs of the report can be diffed.
 CSV_COLUMNS: tuple[str, ...] = (
     "audio_id",
     "true_class",
@@ -96,7 +76,7 @@ class ComparisonReport:
     threshold_snapshot: dict[str, Any] = field(default_factory=dict)
     classes: tuple[str, ...] = ()
 
-    # ---- gates the SRS sets on the report itself -----------------------------
+    # gates the SRS sets on the report itself
 
     MIN_TOTAL = 100
     MIN_PER_CLASS = 10
@@ -158,7 +138,6 @@ class ComparisonReport:
             )
         return (not problems), problems
 
-    # ---- serialisation ------------------------------------------------------
 
     def write(self, out_csv: Path, out_json: Path) -> None:
         """Write the CSV (one row per clip) and the JSON summary."""

@@ -1,30 +1,16 @@
 #!/usr/bin/env python3
-"""One-off repair for the audio_id collision between acquisition batches.
+"""One-off repair (already applied) for an audio_id collision between acquisition batches.
 
-What happened: `from_fsd_dev` ran with `next_id` seeded from `ID_START` instead
-of the highest id on disk (the same bug `main()` already avoids when it counts
-existing originals per class, but which the function could not see).  It
-therefore re-issued ids SS-<CODE>-0501.. that the earlier `fsd50k_eval_recovered`
-and `esc50` batches had already used, and `_ingest_blob` wrote the dev clips
-over the files those ids pointed at.  90 manifest rows ended up naming a file
-whose bytes belong to a different clip (the 40 esc50 glass rows: their clips
-were described as `breaking_glass` but ESC-50 category 39 is `car_horn`).
-
-Repair, per affected id:
-  1. recover the victim's bytes (HF dev mirror / eval-recovered / ESC-50 parquet)
-  2. atomically overwrite the file with the victim's content (os.replace)
-  3. keep the on-disk (dev) clip under a NEW id continuing past the class max
-  4. update both manifest rows' filename + duration/rate/channels from the bytes
-  5. mark every surviving row with a repair note in `notes`
-Nothing is deleted: both clips survive, under distinct ids.
+``from_fsd_dev`` seeded ids from ID_START instead of the highest id on disk, re-issued
+SS-<CODE>-0501.. and overwrote the files of earlier batches: 90 rows named a file whose bytes
+belonged to another clip. For each affected id this restores the original bytes from their
+source, moves the dev clip to a new id, updates both rows from the bytes and adds a note.
+Nothing is deleted.
 """
 from __future__ import annotations
 
 import csv
-import hashlib
-import json
 import os
-import shutil
 import tempfile
 import urllib.request
 from collections import defaultdict
@@ -111,8 +97,7 @@ def main() -> int:
     for audio_id, group in sorted(collided.items()):
         code = audio_id.split("-")[1]
         slug = slug_by_code[code]
-        # the disk holds the LAST dev write's bytes (each dev write overwrote the
-        # previous content) -- so the on-disk clip is the last dev row in the group
+        # Each dev write overwrote the last, so the file on disk is the last dev row in the group.
         on_disk = next((r for r in reversed(group)
                         if r["fetch_batch"] == "fsd50k_dev_topup_v1"), group[-1])
         victims = [r for r in group if r is not on_disk]
@@ -142,8 +127,7 @@ def main() -> int:
         if not ok:
             continue
 
-        # 2. rewrite the file with the first victim's content -- but keep the
-        # on-disk (dev) bytes safe first, they move to the new id in step 3
+        # 2. keep the on-disk dev bytes safe, then restore the first victim's content
         first_v, first_blob, first_meta = restored[0]
         dst = AD / first_v["filename"]
         dev_bytes = dst.read_bytes()

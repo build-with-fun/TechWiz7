@@ -1,22 +1,9 @@
-"""``/api/live`` -- the rolling live-session slice (FR xxxvi, FR lxxix).
+"""Live microphone sessions (FR vi, vii, lxxix).
 
-Owner: sara (contract §3.4, §6.1: rolling POST, not a WebSocket).
-
-One session per console page-load, addressed by its uuid key:
-
-* ``POST /sessions`` opens it -- **the consent gate is not bypassable**: without
-  ``consent_acknowledged`` the session is refused (FR lxxix), and the consent event is
-  audited because it is a privacy action, not a UI checkbox.
-* ``POST /sessions/<sid>/windows`` carries one 1-3 s window as base64 audio, runs it
-  through the same pipeline as an upload (independent models, comparison, severity), keeps
-  the repeated-detection state on the session row so the streak survives reloads and
-  restarts, and persists a ``LiveWindow`` row per window -- the live panel's data is a
-  resource, not scrollback.
-* ``POST /sessions/<sid>/stop`` closes and rolls up; ``GET /sessions/<sid>`` reads the
-  state. A session whose windows stop arriving is expired lazily.
-
-The endpoints that write are owner-only (a session is its opener's data); reads too --
-another user's session is a 404, per the contract's scoping rule.
+POST /sessions opens one, and is refused without consent_ack; consent is audited.
+POST /sessions/<sid>/windows analyses one 1-3 s window through the same pipeline as an
+upload, stores a LiveWindow row, and keeps the repeated-detection state on the session row.
+POST /sessions/<sid>/stop closes it. Sessions belong to their opener: anyone else gets 404.
 """
 
 from __future__ import annotations
@@ -34,22 +21,16 @@ from src.auth import capability_required, client_ip, current_user
 from src.db import record_audit, session_scope
 from src.errors import ApiError, current_request_id, not_found, validation_error
 from src.models import LiveSession, LiveWindow, utcnow
-from src.services.config import get_store
 from src.services.pipeline import get_pipeline
 
 bp = Blueprint("live_api", __name__)
 
 _LOGGER = logging.getLogger(__name__)
 
-#: How long a session may sit without a window before reads start reporting it expired.
-#: Shorter than the retention window on purpose: a silent microphone should stop counting
-#: as "live" long before its audio ages out.
+#: A session with no window for this long reads as expired (well before its audio ages out).
 _IDLE_TIMEOUT = _dt.timedelta(minutes=10)
 
 
-# ---------------------------------------------------------------------------------------
-# helpers
-# ---------------------------------------------------------------------------------------
 
 
 def _session_to_dict(session_row: LiveSession) -> dict:
@@ -103,9 +84,6 @@ def _audit(session, *, action: str, row: LiveSession, detail: str, after=None) -
     )
 
 
-# ---------------------------------------------------------------------------------------
-# session lifecycle
-# ---------------------------------------------------------------------------------------
 
 
 @bp.get("/sessions")
@@ -139,8 +117,7 @@ def start_session():
     now = utcnow()
     with session_scope(current_app.config["SST_SESSION_FACTORY"]) as session:
         row = LiveSession(
-            # The PK is a client-facing UUID4 (contract §3.4); it is assigned here,
-            # never auto-generated, so a session id leaks nothing about volume.
+            # The client-facing id is a random UUID4, so it reveals nothing about volume.
             id=str(uuid.uuid4()),
             user_id=user.id,
             device_label=(body.get("device_label") or "browser").strip()[:80],
@@ -234,20 +211,15 @@ def stop_session(session_id: str):
     return jsonify({"data": data})
 
 
-# ---------------------------------------------------------------------------------------
-# the rolling window
-# ---------------------------------------------------------------------------------------
 
 
 @bp.post("/sessions/<session_id>/windows")
 @capability_required("live_session")
 def push_window(session_id: str):
-    """Contract §3.4: one 1-3 s window in, one verdict out -- inside the 3 s budget.
+    """Analyse one live window (budget 3 s) and return its verdict.
 
-    The window runs through the *same* pipeline as an upload: independent models, the
-    comparison, severity and the repeated-detection tracker. The tracker's state is stored
-    on the session row after each window, so a streak survives a page reload or a server
-    restart -- the live panel's "2 of 3 confirming windows" is then always true.
+    The confirmation streak is saved on the session row after each window, so it survives a
+    page reload or a server restart.
     """
     body = request.get_json(silent=True)
     if not isinstance(body, dict):
@@ -323,9 +295,7 @@ def push_window(session_id: str):
             "request_id": current_request_id(),
         }
         if audio_bytes[:4] == b"RIFF":
-            # The contract's example ("UklGR…") is a WAV: hand the encoded container to
-            # the same decode path an upload takes, so a live window and an uploaded clip
-            # cannot disagree about decoding.
+            # The window is a WAV: decode it through the same path as an upload.
             record = pipeline.analyse_bytes(
                 audio_bytes, filename=f"window_{seq}.wav", origin="live",
                 persist=persist, **meta
@@ -365,7 +335,7 @@ def push_window(session_id: str):
             gtm_class=gtm_block.get("predicted_class"),
             gtm_confidence=gtm_block.get("confidence"),
             confidence_difference=comparison.get("confidence_difference"),
-            consistency_status=comparison.get("status"),
+            consistency_status=comparison.get("consistency_status"),
             quality_verdict=quality.get("verdict"),
             severity=severity_block.get("severity"),
             confirmed=bool(repeat.get("confirmed")),
@@ -397,7 +367,16 @@ def push_window(session_id: str):
             "gtm": {"class": gtm_block.get("predicted_class"),
                     "confidence": gtm_block.get("confidence")},
             "confidence_difference": comparison.get("confidence_difference"),
-            "consistency_status": comparison.get("status"),
+            "consistency_status": comparison.get("consistency_status"),
+            # FR xxxiv: top three per model, from the comparison record.
+            "top3": {
+                "python": (comparison.get("python") or {}).get("top3"),
+                "gtm": (comparison.get("gtm") or {}).get("top3"),
+            },
+            "top_two_margin": (comparison.get("python") or {}).get("top_two_margin"),
+            "review_required": bool((record.get("review") or {}).get("required")),
+            "final_decision": (record.get("decision") or {}).get("final_decision"),
+            "recommended_action": alert_block.get("recommended_action"),
             "quality": quality.get("verdict"),
             "severity": severity_block.get("severity"),
             "severity_display": severity_block.get("severity_display") or severity_block.get("severity"),

@@ -1,6 +1,6 @@
 # `alert_rules/` — the configurable rule files
 
-**Owner: `sara`.** SRS §1.10 deliverable 7 ("configurable rule files"), FR xxxv, FR xxxvi,
+SRS §1.10 deliverable 7 ("configurable rule files"), FR xxxv, FR xxxvi,
 FR liii, FR lxxx, and Step 15 / Step 16 / Step 17.
 
 These four files are what an administrator edits. **No threshold, severity, recommended
@@ -20,7 +20,7 @@ call. There is no restart step and no code change.
 
 ## How numbers are shared (do not duplicate them)
 
-`config/thresholds.json` (owner `lorena`) is the single source of truth for numerics.
+`config/thresholds.json` is the single source of truth for numerics.
 A rule file writes a **reference** instead of a copy:
 
 ```json

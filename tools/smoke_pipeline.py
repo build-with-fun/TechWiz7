@@ -1,29 +1,14 @@
 #!/usr/bin/env python3
-"""Orchestration smoke test for ``src/services/pipeline.py`` -- REAL audio, STUB models.
+"""Wiring check for src/services/pipeline.py: real audio, stub models.
 
-Owner: junaid.
+The two models are replaced by deterministic stubs, so preprocessing, quality, comparison,
+severity, confirmation, review conditions, budgets, rejection and duplicate handling can be
+exercised without trained bundles. It proves the pipes connect, not that results are right;
+tools/check_e2e_upload.py runs the real models.
 
-WHAT THIS IS, AND WHAT IT IS NOT
---------------------------------
-This is **not** the acceptance check. It deliberately substitutes the two trained models
-with deterministic stubs so that the *wiring* -- preprocessing, quality verdict, feature
-extraction, the frozen comparison, severity, the confirmation counter, the review
-conditions, budgets and rejection handling -- can be exercised today, on real audio files,
-before ``python_models/best`` and ``gtm_model/`` exist.
+    .venv/bin/python tools/smoke_pipeline.py [--clips /tmp/smoke_clips]
 
-The acceptance check is ``tools/check_e2e_upload.py``, and it loads the real bundles. A
-stub can prove the pipes connect; only the real model can prove the *result* is right, and
-the two claims are kept apart on purpose.
-
-Every clip it analyses is real decoded audio (from ``data/generate_corpus.py``); no
-synthetic waveform is invented here, so the DSP path is genuinely exercised.
-
-Usage
------
-    .venv/bin/python tools/smoke_pipeline.py
-    .venv/bin/python tools/smoke_pipeline.py --clips /tmp/junaid_smoke
-
-Exit status is 0 only when every structural assertion holds.
+Exit status is 0 only when every check holds.
 """
 
 from __future__ import annotations
@@ -52,18 +37,10 @@ from src.services.pipeline import (  # noqa: E402
     severity_block,
 )
 
-# --------------------------------------------------------------------------------------
-# Stub models.  Clearly labelled as stubs everywhere they surface, so a stub prediction can
-# never be mistaken for a real one in a screenshot or a report.
-# --------------------------------------------------------------------------------------
+# Stub models, labelled as stubs wherever they surface.
 
 class StubPredictor:
-    """Returns a fixed confidence distribution, keyed by a crude acoustic cue.
-
-    The class is chosen from a real measurement (spectral centroid), not at random, so
-    different clips genuinely produce different results and the comparison/severity/review
-    paths get exercised across their branches.
-    """
+    """Fixed confidence distribution chosen from the clip's spectral centroid, so branches vary by clip."""
 
     def __init__(self, name: str, class_names: list[str], *, bias: dict[str, float] | None = None):
         self.model_name = name
@@ -113,7 +90,6 @@ class StubPredictor:
         return {"model_name": self.model_name, "model_version": self.model_version, "stub": True}
 
 
-# --------------------------------------------------------------------------------------
 
 class Checking:
     def __init__(self) -> None:
@@ -155,9 +131,7 @@ def build_pipeline(clips: Path) -> AnalysisPipeline:
 
     classes = store.class_names()
     models = PipelineModels(
-        # The stubs are biased in opposite directions on purpose: the GTM stub agrees with
-        # the Python stub on a loud, bright clip and disagrees on a dark one, so both the
-        # "agree" and "disagree" branches of the comparison get hit.
+        # The stubs agree on bright clips and disagree on dark ones, so both comparison branches run.
         python=StubPredictor("Python (stub)", classes, bias={"Glass Breaking": 0.35}),
         gtm=StubPredictor("Google Teachable Machine (stub)", classes, bias={"Machinery Fault": 0.35}),
         preprocessor=AudioPipeline(),
@@ -168,7 +142,7 @@ def build_pipeline(clips: Path) -> AnalysisPipeline:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--clips", type=Path, default=Path("/tmp/junaid_smoke"),
+    parser.add_argument("--clips", type=Path, default=Path("/tmp/smoke_clips"),
                         help="root of generated clips (originals/<class>/*.wav)")
     args = parser.parse_args()
 
@@ -183,14 +157,14 @@ def main() -> int:
 
     print(f"smoke: {len(clip_paths)} real clips, {len(pipeline.store.class_names())} classes\n")
 
-    # -- 1. warm-up ---------------------------------------------------------------------
+    # 1. warm-up
     print("[1] start-up warm-up")
     warm = pipeline.warm()
     print(f"    warm-up: {warm.get('total_ms')} ms total  {warm}")
     c.ok(pipeline.warmed is not None, "warm-up recorded timings")
     c.ok("error" not in warm, "warm-up completed without error", str(warm.get("error", "")))
 
-    # -- 2. a full analysis on each clip ------------------------------------------------
+    # 2. a full analysis on each clip
     print("\n[2] analyse every clip end to end")
     results = []
     for path in clip_paths:
@@ -217,7 +191,7 @@ def main() -> int:
     print(f"      {record['elapsed_ms']} ms (budget {record['budget_sec']} s) "
           f"within_budget={record['within_budget']}")
 
-    # -- 3. the shape the UI and the report depend on -----------------------------------
+    # 3. the shape the UI and the report depend on
     print("\n[3] mandatory result shape (FR xxiv, lxix)")
     classes = pipeline.store.class_names()
     for _p, r in analysed:
@@ -238,9 +212,7 @@ def main() -> int:
         }, f"{tag}: consistency status in the SRS vocabulary")
         c.ok(isinstance(r["comparison"]["confidence_difference"], float),
              f"{tag}: confidence difference present")
-        # Both sides are independently rounded to 6 dp on the way out, so the comparison
-        # itself is made at 5 dp -- a tolerance of 1e-6 would fail on the rounding, not on
-        # the arithmetic.
+        # Both sides are rounded to 6 dp on output, so compare at 5 dp.
         expected_diff = abs(py["confidence"] - gtm["confidence"])
         c.ok(abs(r["comparison"]["confidence_difference"] - expected_diff) < 2e-6,
              f"{tag}: difference == |python - gtm|",
@@ -255,7 +227,7 @@ def main() -> int:
              f"{tag}: confirmation counter exposed")
         c.ok(bool(r["config_snapshot"]["content_hashes"]), f"{tag}: config snapshot recorded")
 
-    # -- 4. budgets ---------------------------------------------------------------------
+    # 4. budgets
     print("\n[4] performance budgets")
     worst = max(r["elapsed_ms"] for _p, r in analysed)
     print(f"    worst upload analysis: {worst:.0f} ms (budget {analysed[0][1]['budget_sec'] * 1000:.0f} ms)")
@@ -264,7 +236,7 @@ def main() -> int:
          f"worst {worst:.0f} ms")
     c.ok("warm" not in str(warm), "warm-up did not need to be repeated")
 
-    # -- 5. rejection is a result, not a crash -------------------------------------------
+    # 5. rejection is a result, not a crash
     print("\n[5] rejection states")
     import soundfile as sf
 
@@ -288,7 +260,7 @@ def main() -> int:
     c.ok(tiny_result["ok"] is False, "over-short clip is refused")
     c.ok("timings_ms" in tiny_result, "a refusal still reports timings")
 
-    # -- 6. repeated-detection confirmation ----------------------------------------------
+    # 6. repeated-detection confirmation
     print("\n[6] critical-event confirmation (FR xl / FR xlvi)")
     tracker = RepeatTracker(pipeline.store.thresholds(), store=pipeline.store)
 
@@ -335,7 +307,7 @@ def main() -> int:
     c.ok(not staggered[-1]["confirmed"],
          "detections spread beyond window_seconds are not 'consecutive'")
 
-    # -- 7. severity / alert gates -------------------------------------------------------
+    # 7. severity / alert gates
     print("\n[7] severity and the alert gate (FR lii-lv)")
     gun_rule = pipeline.store.rule_for_class("Gunshot")
     blocked = severity_block("Gunshot", store=pipeline.store, confidence=0.61,
@@ -360,7 +332,7 @@ def main() -> int:
           f"severity={bg['severity_display']} critical={bg['critical_class']}")
     c.ok(bg["critical_class"] is False, "Background Noise is not critical")
 
-    # -- 8. manual review conditions -----------------------------------------------------
+    # 8. manual review conditions
     print("\n[8] manual-review conditions (Step 17, FR lvii)")
     disagree = evaluate_review(
         store=pipeline.store, python_class="Gunshot", python_confidence=0.91,
@@ -402,20 +374,19 @@ def main() -> int:
     )
     c.ok("poor_audio_quality" in poor["matched"], "Poor quality is named as a review reason")
 
-    # -- 9. pipeline rejects unusable audio before it reaches a model --------------------
+    # 9. pipeline rejects unusable audio before it reaches a model
     print("\n[9] the model path is guarded")
     c.ok(silent_result.get("predictions") is None,
          "no prediction is produced for refused audio")
     c.ok(gun_rule.get("min_confidence") is not None,
          "the Gunshot rule still demands a minimum confidence")
 
-    # -- 10. duplicate audio: exact and near (FR lxxiii, FR lxxiv) ------------------------
+    # 10. duplicate audio: exact and near (FR lxxiii, FR lxxiv)
     print("\n[10] duplicate and near-duplicate audio (FR lxxiii, FR lxxiv)")
     from src.services.pipeline import (
         DEFAULT_NEAR_DUPLICATE_SIMILARITY,
         audio_fingerprint,
         duplicate_config,
-        find_near_duplicate,
         fingerprint_similarity,
     )
 
@@ -424,10 +395,7 @@ def main() -> int:
     if y.ndim > 1:
         y = y.mean(axis=1)
 
-    # Fingerprints are compared on the *preprocessed* signal, because that is what the
-    # pipeline stores and therefore what every stored fingerprint was computed from.
-    # Comparing a raw 22 050 Hz file against a stored 16 kHz fingerprint would compare two
-    # different representations and understate the match.
+    # Fingerprints are compared on the preprocessed signal, as the pipeline stores them.
     def fingerprint_of(samples, sample_rate):
         pre = pipeline.models.preprocessor.preprocess_samples(samples, sample_rate, origin="upload")
         return audio_fingerprint(pre.samples, pre.sample_rate)
@@ -446,14 +414,14 @@ def main() -> int:
     c.ok(exact["duplicate"]["near_duplicate_of"] is None,
          "a clip with nothing to compare against claims no duplicate")
 
-    # -- FR lxxiii: the same file, byte for byte, is the same file ----------------------
+    # FR lxxiii: the same file, byte for byte, is the same file
     copy_path = REPO_ROOT / "data" / "tmp" / f"copy_{source_clip.name}"
     copy_path.write_bytes(source_clip.read_bytes())
     copy = pipeline.analyse_file(copy_path, location="smoke")
     c.ok(copy["audio"]["sha256"] == exact["audio"]["sha256"],
          "a byte-identical copy has the same sha256, whatever it is called")
 
-    # -- FR lxxiv: re-encoded / trimmed / volume-adjusted copies ------------------------
+    # FR lxxiv: re-encoded / trimmed / volume-adjusted copies
     reencoded = {}
     for fmt, ext in (("MP3", "mp3"), ("OGG", "ogg"), ("FLAC", "flac")):
         target = REPO_ROOT / "data" / "tmp" / f"reencoded_{source_clip.stem}.{ext}"
@@ -493,8 +461,7 @@ def main() -> int:
              f"a different recording ({candidate.parent.name}) is not called a duplicate",
              f"similarity {similarity}")
 
-    # The caller supplies the comparison set; a match must surface as a review finding, not
-    # as a silent merge (FR lxxiv).
+    # A match must surface as a review finding, not a silent merge (FR lxxiv).
     flagged = pipeline.analyse_file(
         source_clip, location="smoke", audio_id="A-2",
         near_duplicate_candidates=[("A-1", fingerprint_of((y * 0.3).astype(np.float32), sr))],

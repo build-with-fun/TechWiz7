@@ -1,38 +1,14 @@
 #!/usr/bin/env python3
-"""
-SonicSentinel AI -- manifest assembler.
+"""Merge per-source row CSVs into audio_dataset/manifest.csv and write corpus_statistics.json.
 
-Owner: omar (data sourcing).  Authority: `audio_dataset/manifest_schema.md` (owner:
-lorena), SRS deliverable 3.
+Fails if any row carries a dataset_split (only build_split.py assigns splits), on a
+duplicate audio_id, an id whose code does not match its class, or a missing required column.
+Extra columns pass through.
 
-WHAT THIS DOES
---------------
-Merges every provenance-checked row from every source into the ONE frozen manifest
-at `audio_dataset/manifest.csv`:
-
-    audio_dataset/manifests/fsd50k_real_rows.csv   -- real FSD50K field recordings (omar)
-    audio_dataset/manifest_generated.csv           -- procedural synthesis (nadia)
-
-and writes `audio_dataset/manifests/corpus_statistics.json` (deliverable 3's
-"statistics").
-
-WHAT IT REFUSES TO DO (the point of the file)
----------------------------------------------
-* It does NOT assign a dataset split. `audio_dataset/build_split.py` is the only
-  thing allowed to do that. If any input row carries a non-empty `dataset_split`
-  this script FAILS, because two split definitions is how train data leaks into a
-  test metric and that would invalidate every number in the report.
-* It does NOT allow a duplicate `audio_id`. An id is a primary key.
-* It does NOT invent a missing required column. A source that cannot supply the
-  frozen required set is rejected with the offending columns named.
-
-Extra columns are preserved (build_split.py keeps them), so a source may carry as
-much detail as it likes alongside the frozen schema.
-
-Usage
------
-    .venv/bin/python audio_dataset/scripts/assemble_manifest.py
-    .venv/bin/python audio_dataset/scripts/assemble_manifest.py --check
+The built-in default sources are from an early stage (manifest_generated.csv no longer
+exists). The current 3,000 originals come from the four *_rows.csv files in
+audio_dataset/manifests/ (fsd50k_real, acquired, help_tts, synthetic_topup), each passed
+with --source.
 """
 
 from __future__ import annotations
@@ -42,7 +18,7 @@ import csv
 import json
 import re
 import sys
-from collections import Counter, defaultdict
+from collections import Counter
 from datetime import date
 from pathlib import Path
 
@@ -68,9 +44,8 @@ DEFAULT_SOURCES = [
 DEFAULT_OUT = AUDIO_DATASET / "manifest.csv"
 STATS_OUT = AUDIO_DATASET / "manifests" / "corpus_statistics.json"
 
-# 'unspecified' is permitted: FSD50K clips carry no recording-environment metadata at
-# the source, so 618 of the real rows are 'unspecified' truthfully. Guessing a value
-# would fabricate provenance, which is worse than admitting we do not know.
+# 'unspecified' is allowed: FSD50K has no environment metadata, and guessing would fabricate
+# provenance.
 ENV_ENUM = {"indoor", "outdoor", "vehicle", "studio", "synthetic", "unspecified"}
 DIST_ENUM = {"near", "medium", "far", "n/a"}
 
@@ -145,25 +120,20 @@ def assemble(source_paths: list[Path]) -> tuple[list[str], list[dict], dict]:
                 problems.append(f"{where}: class_label {label!r} is not one of the ten")
                 continue
 
-            # 3. normalise the optional-but-schema'd fields so downstream readers
-            #    can rely on their values (build_split.py only *requires* 8 columns)
+            # 3. normalise the optional schema fields so downstream readers can rely on them
             row = {c: (r.get(c) or "").strip() for c in FROZEN_COLUMNS}
             for c in extra_cols:
                 row[c] = (r.get(c) or "").strip()
             row["class_label"] = label
 
-            # 2a. audio_id is a primary key AND must name its own class: SS-<CODE>-<NNNN>.
-            #     A mismatch (e.g. SS-MAC-0001 labelled Gunshot) would make the id lie about
-            #     the class and quietly corrupt per-class counts. Codes are shared across models
-            #     (SRS Step 9), so they must agree from the start.
+            # 2a. the id must name its own class (SS-<CODE>-<NNNN>), or per-class counts go wrong
             aid = row["audio_id"]
             if not aid:
                 problems.append(f"{where}: empty audio_id")
                 continue
             parts = aid.split("-")
-            # A trailing S<n> segment marker (SS-AGG-0013S2) is the GTM-sample lineage
-            # id: same key as the parent, same class code, cut n-th from that parent.
-            # Strip the marker before shape-checking; the parent number is still verified.
+            # A trailing S<n> (SS-AGG-0013S2) marks a TM sample of that parent; strip it before
+            # checking.
             if len(parts) == 3 and re.search(r"S\d+$", parts[2]):
                 parts = parts[:-1] + [re.sub(r"S\d+$", "", parts[2])]
             if len(parts) != 3 or parts[0] != "SS" or not parts[2].isdigit():

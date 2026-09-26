@@ -1,0 +1,11 @@
+file,audio_id,class_label,dataset_split,source,licence,author,source_url
+aggression.wav,SS-AGG-0001,Aggression,test,FSD50K (Freesound clip 234034),CC-BY-3.0,11linda,https://freesound.org/s/234034/
+alarm_or_siren.wav,SS-ALM-0015,Alarm or Siren,test,FSD50K (Freesound clip 9853),CC-BY-3.0,Freed,https://freesound.org/s/9853/
+animal_sound.wav,SS-ANI-0005,Animal Sound,test,FSD50K (Freesound clip 345959),CC-BY-3.0,AlienXXX,https://freesound.org/s/345959/
+background_noise.wav,SS-BGN-0001,Background Noise,test,FSD50K (Freesound clip 420220),CC0-1.0,14FPanska_Nemec_Petr,https://freesound.org/s/420220/
+glass_breaking.wav,SS-GLA-0014,Glass Breaking,test,FSD50K (Freesound clip 174863),CC-BY-3.0,AshFox,https://freesound.org/s/174863/
+gunshot.wav,SS-GUN-0015,Gunshot,test,FSD50K (Freesound clip 255216),CC-BY-3.0,Carmelomike,https://freesound.org/s/255216/
+machinery_fault.wav,SS-MAC-0002,Machinery Fault,test,FSD50K (Freesound clip 379376),CC0-1.0,13FPanska_Sychra_Petr,https://freesound.org/s/379376/
+panic_scream.wav,SS-SCR-0009,Panic Scream,test,FSD50K (Freesound clip 345450),CC0-1.0,Artmasterrich,https://freesound.org/s/345450/
+person_asking_for_help.wav,SS-HAL-0502,Person Asking for Help,test,procedural_synthesis:audio_dataset/scripts/generate_help_clips.py,CC0-1.0,"sonicsentinel procedural synthesis (pyttsx3 TTS, generate_help_clips.py)",
+vehicle_horn.wav,SS-HOR-0001,Vehicle Horn,test,FSD50K (Freesound clip 377496),CC0-1.0,13FPanska_Mokrolusky_Tomas,https://freesound.org/s/377496/

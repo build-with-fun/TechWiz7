@@ -2,19 +2,33 @@
 {% block title %}Your profile · {{ app_name }}{% endblock %}
 {% block page_id %}profile{% endblock %}
 {% block content %}
-<section class="page-head"><div><p class="eyebrow">ACCOUNT</p><h1>Your profile</h1><p>Keep your contact details current. Your role is managed by an administrator.</p></div></section>
+<header class="page-head">
+  <div class="page-head__main">
+    <div class="breadcrumb"><span>Account</span></div>
+    <h1 class="page-title">Your profile</h1>
+    <p class="page-sub">Keep your contact details current. Your role is managed by an administrator.</p>
+  </div>
+</header>
 <div class="grid grid--2col">
   <section class="panel">
-    <h2>Account details</h2>
-    {% if error %}<div class="banner banner--error" role="alert">{{ error }}</div>{% endif %}
-    <form method="post" action="{{ url_for('auth.profile') }}" class="stack">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div class="field"><label class="field__label" for="profile-username">Username</label><input class="input" id="profile-username" value="{{ current_user.username }}" disabled><small>Account ID: {{ current_user.id }}</small></div>
-      <div class="field"><label class="field__label" for="profile-name">Display name</label><input class="input" id="profile-name" name="display_name" value="{{ current_user.row.display_name or current_user.username }}" maxlength="128" required></div>
-      <div class="field"><label class="field__label" for="profile-email">Email</label><input class="input" id="profile-email" name="email" type="email" value="{{ current_user.row.email or '' }}" required></div>
-      <button class="btn btn--primary" type="submit">Save profile</button>
-    </form>
+    <div class="panel__head"><h2 class="panel__title">Account details</h2></div>
+    <div class="panel__body">
+      {% if error %}<div class="banner banner--error" role="alert">{{ error }}</div>{% endif %}
+      <form method="post" action="{{ url_for('auth.profile') }}" class="stack">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field"><label class="field__label" for="profile-username">Username</label><input class="input" id="profile-username" value="{{ current_user.username }}" disabled><small>Account ID: {{ current_user.id }}</small></div>
+        <div class="field"><label class="field__label" for="profile-name">Display name</label><input class="input" id="profile-name" name="display_name" value="{{ current_user.row.display_name or current_user.username }}" maxlength="128" required></div>
+        <div class="field"><label class="field__label" for="profile-email">Email</label><input class="input" id="profile-email" name="email" type="email" value="{{ current_user.row.email or '' }}" required></div>
+        <div><button class="btn btn--primary" type="submit">Save profile</button></div>
+      </form>
+    </div>
   </section>
-  <section class="panel"><h2>Access</h2><p>Your current role is <strong>{{ current_user.role }}</strong>. Contact an administrator if you need review or operator access.</p><p>To change your password, use the account API with your current password or ask an administrator to reset it.</p></section>
+  <section class="panel">
+    <div class="panel__head"><h2 class="panel__title">Access</h2></div>
+    <div class="panel__body">
+      <p>Your current role is <strong>{{ current_user.role }}</strong>. Contact an administrator if you need review or operator access.</p>
+      <p>To change your password, use the account API with your current password or ask an administrator to reset it.</p>
+    </div>
+  </section>
 </div>
 {% endblock %}

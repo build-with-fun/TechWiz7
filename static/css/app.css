@@ -1,6 +1,6 @@
 /* ============================================================================
    SonicSentinel AI — application stylesheet
-   Owner: hina (front end). Tokens come from tokens.css; no literal colours or
+   Tokens come from tokens.css; no literal colours or
    spacing values are written in this file. Everything here is layout, state and
    component skin so that a threshold or a filter definition can change without
    a CSS edit (SRS surprise-modification rule).
@@ -479,7 +479,9 @@ table.data td.actions { white-space: nowrap; text-align: right; }
 .verdict__label { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-subtle); }
 .verdict__value { font-size: var(--fs-md); font-weight: var(--fw-semi); }
 .verdict__value--mono { font-family: var(--font-mono); }
-.verdict--divergent { border-color: var(--warning, var(--warn)); }
+/* `--warning` was never defined in any theme, so the fallback was doing all the
+   work; naming the token that actually exists keeps the two from drifting. */
+.verdict--divergent { border-color: var(--warn); }
 
 .gate-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-1); font-size: var(--fs-sm); }
 .gate { display: flex; align-items: center; gap: var(--sp-2); }
@@ -586,5 +588,5 @@ table.data td.actions { white-space: nowrap; text-align: right; }
 }
 
 /* Spectrogram legend swatches (kept out of inline styles for the CSP in config/auth.json) */
-.legend__swatch--quiet { background: #0b1220; }
-.legend__swatch--loud { background: #38bdf8; }
+.legend__swatch--quiet { background: #000004; }
+.legend__swatch--loud { background: #fcffa4; }

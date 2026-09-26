@@ -1,0 +1,105 @@
+{
+  "generated_at": "2026-09-26T19:32:15.199448+00:00",
+  "split": "test",
+  "clips_scored": 450,
+  "clips_failed": 0,
+  "failures": [],
+  "models": {
+    "python": {
+      "model_name": "ast_embedding+logreg",
+      "model_version": "2.0.0-ast_current"
+    },
+    "gtm": {
+      "model_name": "Google Teachable Machine",
+      "model_version": "tm-20260926T1246-ew"
+    }
+  },
+  "python_accuracy": 0.8911111111111111,
+  "gtm_accuracy": 0.49333333333333335,
+  "agreement_rate": 0.49333333333333335,
+  "accuracy_when_models_agree": 0.9459459459459459,
+  "sent_to_manual_review": 403,
+  "auto_decided": 47,
+  "accuracy_of_auto_decisions": 1.0,
+  "alerts_raised": 179,
+  "consistency_status_counts": {
+    "Uncertain Result": 321,
+    "Weak Match": 42,
+    "Model Disagreement": 39,
+    "Acceptable Match": 22,
+    "Strong Match": 26
+  },
+  "per_class": {
+    "Aggression": {
+      "n": 45,
+      "python": 38,
+      "gtm": 16,
+      "agree": 17,
+      "review": 45
+    },
+    "Alarm or Siren": {
+      "n": 45,
+      "python": 38,
+      "gtm": 6,
+      "agree": 8,
+      "review": 44
+    },
+    "Animal Sound": {
+      "n": 45,
+      "python": 39,
+      "gtm": 5,
+      "agree": 7,
+      "review": 45
+    },
+    "Background Noise": {
+      "n": 45,
+      "python": 40,
+      "gtm": 26,
+      "agree": 26,
+      "review": 42
+    },
+    "Glass Breaking": {
+      "n": 45,
+      "python": 41,
+      "gtm": 23,
+      "agree": 23,
+      "review": 44
+    },
+    "Gunshot": {
+      "n": 45,
+      "python": 43,
+      "gtm": 22,
+      "agree": 21,
+      "review": 45
+    },
+    "Machinery Fault": {
+      "n": 45,
+      "python": 41,
+      "gtm": 26,
+      "agree": 26,
+      "review": 45
+    },
+    "Panic Scream": {
+      "n": 45,
+      "python": 37,
+      "gtm": 28,
+      "agree": 27,
+      "review": 37
+    },
+    "Person Asking for Help": {
+      "n": 45,
+      "python": 45,
+      "gtm": 44,
+      "agree": 44,
+      "review": 22
+    },
+    "Vehicle Horn": {
+      "n": 45,
+      "python": 39,
+      "gtm": 26,
+      "agree": 23,
+      "review": 34
+    }
+  },
+  "median_total_ms": 1847.035
+}

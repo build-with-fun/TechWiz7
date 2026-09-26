@@ -6,7 +6,7 @@
 -- definitions can never drift apart.
 --
 -- Dialect: SQLite 3. Datetimes are UTC, stored naive (no offset). See database/README.md.
--- Owner: sara.  SRS FR lxxi-lxxii, FR lxxv, FR lxxvi, FR lxxx.
+-- SRS FR lxxi-lxxii, FR lxxv, FR lxxvi, FR lxxx.
 
 CREATE TABLE users (
 	id INTEGER NOT NULL, 
@@ -43,6 +43,7 @@ CREATE TABLE audio_files (
 	duration_sec FLOAT, 
 	sample_rate INTEGER, 
 	channels INTEGER, 
+	bit_depth INTEGER, 
 	container_format VARCHAR(16), 
 	original_format VARCHAR(16), 
 	source VARCHAR(16) NOT NULL, 

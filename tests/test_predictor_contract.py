@@ -1,28 +1,14 @@
-"""The saved-model contract: the two silent failures that ruin a classifier.
+"""The saved-model contract: no silent label drift and no silent feature drift.
 
-A model that is loaded wrong does not crash. It returns confident, well-formed, WRONG
-answers — a valid-looking confusion matrix built on shuffled labels is the single most
-expensive bug in a project like this, because nothing downstream can detect it.
-
-Two ways that happens here:
-
-  LABEL DRIFT   `predict_proba` returns columns in the ESTIMATOR's fitted order. If the
-                code maps those columns onto a class-name list stored in a different
-                order, every prediction is attached to the wrong class name. Accuracy
-                looks plausible; the whole report is fiction.
-
-  FEATURE DRIFT A saved model scores a fixed number of columns. If the feature extractor
-                is later changed, the model keeps scoring happily — on the wrong columns.
-                Nothing raises. The model simply becomes bad.
-
-`save_bundle`/`load` exist to make both of those impossible to do quietly, and these
-tests are what keeps those guards from being removed for convenience.
+predict_proba columns follow the estimator's fitted order, so mapping them onto a
+differently ordered class list attaches every score to the wrong name; a changed feature
+extractor would be scored without error. save_bundle/load refuse both, and these tests keep
+those guards in place.
 """
 
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -31,7 +17,6 @@ from src.inference.contract import (
     AudioSource,
     PreprocessedAudio,
     class_names,
-    normalise_confidences,
 )
 from src.inference.predictor import (
     ModelBundle,
@@ -44,9 +29,7 @@ CLASSES = class_names()          # the 10 canonical names, in config order
 N_FEATURES = 24
 
 
-# --------------------------------------------------------------------------------------
 # Fixtures — a real sklearn estimator, because a stub cannot have real drift bugs
-# --------------------------------------------------------------------------------------
 
 def _training_data(n_per_class: int = 12, seed: int = 7):
     """Linearly separable-ish data so a real estimator behaves like a real estimator."""
@@ -108,9 +91,7 @@ def build_bundle(estimator, *, class_names_override=None, n_features=N_FEATURES)
     )
 
 
-# --------------------------------------------------------------------------------------
 # Round trip
-# --------------------------------------------------------------------------------------
 
 def test_save_bundle_then_load_reproduces_the_same_predictions(tmp_path, fitted_estimator):
     """The round trip is the promise every training script relies on."""
@@ -159,12 +140,7 @@ def test_saved_label_order_is_the_estimators_fitted_order(tmp_path, fitted_estim
 
 
 def test_load_reorders_when_the_json_order_differs_from_the_fitted_order(tmp_path, fitted_estimator):
-    """Same set of names, different order in the sidecar: predictions must still be right.
-
-    This is the drift guard earning its keep. The estimator's argmax indexes its own
-    fitted order; whichever order the JSON happens to list, the names attached to the
-    scores must be the fitted ones.
-    """
+    """Same names in a different sidecar order: the scores must still carry the fitted names."""
     save_bundle(
         fitted_estimator,
         tmp_path,
@@ -190,9 +166,7 @@ def test_load_reorders_when_the_json_order_differs_from_the_fitted_order(tmp_pat
     assert reloaded.predict(source, PassthroughPreprocessor()).predicted_class == correct.predicted_class
 
 
-# --------------------------------------------------------------------------------------
 # Label drift — must raise, loudly, at load time
-# --------------------------------------------------------------------------------------
 
 def test_label_drift_raises_at_load(tmp_path, fitted_estimator):
     """A model fitted on one class set, a sidecar naming another: refuse to serve it."""
@@ -241,9 +215,7 @@ def test_the_error_message_names_both_class_lists(tmp_path, fitted_estimator):
     assert "A" in message and "Gunshot" in message
 
 
-# --------------------------------------------------------------------------------------
 # Missing artefacts — refused, never guessed
-# --------------------------------------------------------------------------------------
 
 def test_missing_model_file_raises(tmp_path):
     with pytest.raises(ModelLoadError, match="no saved model"):
@@ -269,9 +241,7 @@ def test_missing_feature_config_raises(tmp_path, fitted_estimator):
         PythonModelPredictor.load(tmp_path, feature_extractor_factory())
 
 
-# --------------------------------------------------------------------------------------
 # Feature drift — must raise at predict time
-# --------------------------------------------------------------------------------------
 
 def test_feature_drift_raises_at_predict(fitted_estimator):
     """A changed feature extractor must not silently score the wrong columns."""
@@ -323,9 +293,7 @@ def test_no_width_check_when_the_bundle_does_not_declare_one(fitted_estimator):
     assert set(result.confidences) == set(CLASSES)
 
 
-# --------------------------------------------------------------------------------------
 # Honest output — no fabricated confidences
-# --------------------------------------------------------------------------------------
 
 def test_a_model_without_predict_proba_reports_a_one_hot_not_a_fake_distribution():
     """If the model only says a class, report that — do not manufacture a softmax."""
@@ -384,9 +352,7 @@ def test_rejected_audio_is_never_scored(fitted_estimator):
         )
 
 
-# --------------------------------------------------------------------------------------
 # The fingerprint — duplicate detection (FR lxxiii)
-# --------------------------------------------------------------------------------------
 
 def test_same_audio_gives_the_same_fingerprint_and_different_audio_does_not(tmp_path):
     from src.inference.contract import audio_fingerprint
@@ -399,9 +365,7 @@ def test_same_audio_gives_the_same_fingerprint_and_different_audio_does_not(tmp_
     assert a != c
 
 
-# --------------------------------------------------------------------------------------
 # describe() — the audit trail
-# --------------------------------------------------------------------------------------
 
 def test_describe_reports_everything_the_audit_trail_needs(tmp_path, fitted_estimator):
     save_bundle(

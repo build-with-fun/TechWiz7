@@ -4,21 +4,10 @@
 {% block body_class %}page-auth{% endblock %}
 {% block content %}
 <div class="auth-shell">
-  <aside class="auth-hero" aria-label="About SonicSentinel">
-    <div class="auth-hero__eyebrow"><span class="auth-hero__beacon"></span> SOUND EVENT INTELLIGENCE</div>
-    <h2>Start with the sound.<br><em>Keep the evidence.</em></h2>
-    <p>Create a personal account to submit recordings and inspect your own results. Review and operator access is assigned by an administrator.</p>
-    <div class="auth-visual" aria-hidden="true">
-      <div class="auth-visual__ring auth-visual__ring--one"></div>
-      <div class="auth-visual__ring auth-visual__ring--two"></div>
-      <div class="auth-visual__ring auth-visual__ring--three"></div>
-      <div class="auth-visual__core"><img src="{{ url_for('static', filename='img/logo.svg') }}" alt=""></div>
-    </div>
-  </aside>
   <div class="auth-card">
     <div class="auth-card__brand">
       <img class="auth-card__logo" src="{{ url_for('static', filename='img/logo.svg') }}" alt="" width="36" height="36">
-      <div><h1 class="auth-card__title">Create account</h1><p class="auth-card__sub">Your own sound-event workspace</p></div>
+      <div><h1 class="auth-card__title">Create account</h1><p class="auth-card__sub">A personal account can upload recordings and see its own results.</p></div>
     </div>
     {% if error %}<div class="banner banner--error" role="alert"><p class="banner__text">{{ error }}</p></div>{% endif %}
     <form class="auth-form stack" method="post" action="{{ url_for('auth.register') }}">

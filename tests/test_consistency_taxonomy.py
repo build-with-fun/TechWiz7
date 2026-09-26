@@ -2,7 +2,7 @@
 The SRS consistency taxonomy must be exactly right — it is what the whole comparison view,
 the manual-review queue and the alert engine are built on.
 
-Owner: lorena.  SRS Step 11, Step 14, FR xxiii-xxx and lii.
+SRS Step 11, Step 14, FR xxiii-xxx and lii.
 
 Every test here injects thresholds rather than importing defaults, because one of the
 things under test is that the taxonomy RESPONDS to config — the SRS says an evaluator may
@@ -51,9 +51,7 @@ def make_result(model: str, predicted: str, confidence: float, runner_up: str | 
     )
 
 
-# --------------------------------------------------------------------------------------
 # Each status must be reachable
-# --------------------------------------------------------------------------------------
 
 def test_strong_match():
     """Agreement with a tiny confidence gap."""
@@ -122,9 +120,7 @@ def test_all_five_statuses_are_producible():
     assert produced == set(CONSISTENCY_STATUSES)
 
 
-# --------------------------------------------------------------------------------------
 # Boundary behaviour — the off-by-one a code reviewer will find
-# --------------------------------------------------------------------------------------
 
 @pytest.mark.parametrize("strong_max,acceptable_max,weak_max,difference,expected", [
     # threshold values and differences are all exact binary fractions, so this test
@@ -189,9 +185,7 @@ def test_just_below_min_confidence_is_uncertain():
     assert classify_consistency(py, gtm, THRESHOLDS).consistency_status == UNCERTAIN_RESULT
 
 
-# --------------------------------------------------------------------------------------
 # Configurability — the SRS surprise modification
-# --------------------------------------------------------------------------------------
 
 def test_taxonomy_responds_to_changed_thresholds():
     """Change the config and the verdict must change. This is what 'not hard-coded' means."""
@@ -231,9 +225,7 @@ def test_threshold_snapshot_is_recorded_with_every_result():
     assert all(isinstance(v, float) for v in snapshot.values())
 
 
-# --------------------------------------------------------------------------------------
 # Confidence difference — the SRS's headline number
-# --------------------------------------------------------------------------------------
 
 def test_confidence_difference_is_absolute():
     """Order must not matter: |python - gtm| == |gtm - python|."""
@@ -271,9 +263,7 @@ def test_no_overlap_flagged_when_models_disagree():
     assert classify_consistency(py, gtm, THRESHOLDS).overlapping is False
 
 
-# --------------------------------------------------------------------------------------
 # Manual-review routing
-# --------------------------------------------------------------------------------------
 
 def test_disagreement_goes_to_review():
     result = classify_consistency(
@@ -337,13 +327,8 @@ def test_disagreement_and_low_confidence_both_named():
 
 
 def test_strong_runner_up_implies_low_confidence_and_routes_to_review():
-    """With 10 classes, a strong runner-up mathematically caps the top confidence.
-
-    top + runner_up <= 1, so a runner-up at the 0.25 overlap threshold forces the top
-    class to at most 0.75 — which is exactly the low-confidence band. A genuine
-    overlapping detection is therefore always a low-confidence case, and routing it to a
-    human is correct rather than over-cautious: the recorded label may simply be
-    incomplete, and a machine should not silently choose between two real events.
+    """A runner-up at the 0.25 overlap threshold caps the top class at 0.75, the low-confidence
+    band, so every genuine overlap is routed to a human.
     """
     py = make_result("python", "Gunshot", 0.75, runner_up="Panic Scream", runner_up_confidence=0.25)
     gtm = make_result("gtm", "Gunshot", 0.85)

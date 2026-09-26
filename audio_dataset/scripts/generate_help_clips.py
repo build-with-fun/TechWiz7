@@ -1,38 +1,13 @@
 #!/usr/bin/env python3
-"""
-SonicSentinel AI -- "Person Asking for Help" original-clip generator (TTS).
+"""Generate the 300 "Person Asking for Help" originals with offline TTS (pyttsx3/espeak; no
+generative-AI API).
 
-Authority: SRS v1.0 Step 1 (self-created dataset, >=300 unique originals per
-class) and the frozen manifest contract audio_dataset/manifest_schema.md.
-Class phrase constraint: config/classes.json allowed_help_phrases -- the class
-is restricted to the phrases "Help me", "Somebody help", "Please help",
-"Call for help", "Emergency" (SRS 1.4 / Step 1).
+Only the five allowed phrases from config/classes.json are spoken, in wording and intensity
+variants. Voice, rate and pitch vary per clip, and a seeded post-chain adds telephone band,
+echo, reverb, a background bed at a seeded SNR, distance and mic colouring. Same seed, same
+bytes; dataset_split is left blank.
 
-WHAT THIS PRODUCES
-------------------
-300 *distinct* original clips of a human voice asking for help, synthesised
-with pyttsx3 (offline TTS on this machine, no external generative-AI API --
-integrity rule 1.10).  Distinctness is layered:
-
-  phrase       the 5 allowed phrases x punctuation/intensity wording variants
-               (>= 20 distinct spoken texts across the corpus)
-  voice        pyttsx3 system voice id (deterministically cycled)
-  rate/pitch   per-clip values drawn from a seeded RNG
-  rendering    pyttsx3 -> WAV via espeak backend, then a seeded post-chain
-               (telephone band-pass, slap-back echo, room reverb, background
-               bed mixed at a seeded SNR, distance attenuation, mic colouring)
-
-Every clip is written to audio_dataset/synthetic/person_asking_for_help/ with
-an SS-HAL-<nnnn> id continuing after the real recordings' numbering, and emits
-frozen-schema manifest rows with dataset_split LEFT EMPTY (build_split.py is
-the only writer of that column).
-
-Deterministic: same seed -> same bytes on every machine.  Re-running skips
-ids already on disk and on the manifest.
-
-Usage:
     python audio_dataset/scripts/generate_help_clips.py --check
-    python audio_dataset/scripts/generate_help_clips.py                # 300
     python audio_dataset/scripts/generate_help_clips.py --limit 5     # smoke
 """
 from __future__ import annotations
@@ -41,10 +16,7 @@ import argparse
 import csv
 import hashlib
 import math
-import subprocess
-import sys
 import tempfile
-import wave
 from collections import Counter
 from pathlib import Path
 
@@ -72,11 +44,7 @@ DATE_FETCHED = "2026-09-24"
 OUT_DIR = AUDIO_DATASET / "synthetic" / SLUG
 ROWS_CSV = AUDIO_DATASET / "manifests" / "help_tts_rows.csv"
 
-# ---------------------------------------------------------------------------
-# Phrase inventory: the 5 allowed phrases x intensity/punctuation variants.
-# The *spoken text* varies (>= 20 distinct texts) but every variant is one of
-# the five allowed phrases in wording, satisfying config/classes.json.
-# ---------------------------------------------------------------------------
+# The five allowed phrases, each in several wording/intensity variants.
 PHRASE_VARIANTS: list[tuple[str, str]] = [
     # (spoken text, intensity tag)
     ("Help me.", "calm"),
@@ -159,9 +127,7 @@ def seed_for(audio_id: str, master_seed: int = MASTER_SEED) -> int:
     return int(digest[:8], 16)
 
 
-# ---------------------------------------------------------------------------
 # DSP helpers (same primitives/policy as data/generate_corpus.py)
-# ---------------------------------------------------------------------------
 def _norm(x: np.ndarray) -> np.ndarray:
     peak = float(np.max(np.abs(x))) if x.size else 0.0
     return x / peak if peak > 1e-12 else x
@@ -203,7 +169,6 @@ def pink_noise(n: int, rng: np.random.Generator) -> np.ndarray:
 
 def reverb(x: np.ndarray, sr: int, rt60: float, wet: float, rng: np.random.Generator) -> np.ndarray:
     """Schroeder reverb (comb + allpass), RMS-preserving (see generate_corpus.py)."""
-    from scipy import signal as sps
     out = np.zeros_like(x)
     for ct in (0.0297, 0.0371, 0.0411, 0.0437):
         d = max(int(ct * sr * rng.uniform(0.7, 1.3)), 1)
@@ -258,9 +223,7 @@ def post_chain(y: np.ndarray, sr: int, rng: np.random.Generator, chain: str) -> 
     return y
 
 
-# ---------------------------------------------------------------------------
 # TTS rendering
-# ---------------------------------------------------------------------------
 def render_tts(text: str, voice_uri: str, rate: int, pitch_hz: int, out_path: Path,
                sr_target: int = 22050) -> float:
     """Render one clip with pyttsx3 -> WAV, resampled to sr_target. Returns duration."""
@@ -287,9 +250,7 @@ def render_tts(text: str, voice_uri: str, rate: int, pitch_hz: int, out_path: Pa
     return mono, sr_target
 
 
-# ---------------------------------------------------------------------------
 # Clip plan
-# ---------------------------------------------------------------------------
 def clip_plan(rng: np.random.Generator, n: int) -> list[dict]:
     """Deterministic per-clip plan: phrase, voice, rate, pitch, post chain."""
     import pyttsx3
@@ -364,12 +325,8 @@ def build_clip(plan: dict, rng: np.random.Generator, wav_out: Path) -> tuple[flo
     # mic self-noise then gain staging
     y = y + (10 ** (floor_db / 20.0)) * rng.standard_normal(len(y))
     y = y * float(rng.uniform(*RECORDER_GAIN))
-    # Level floor: the distance attenuation above can push far clips below the
-    # corpus silence gate (RMS -50 dBFS, audio_preprocessing/io.py), which would
-    # waste the clip.  Renormalise the *signal* to a floor that keeps every clip
-    # clearly audible while preserving the relative loudness spread between clips.
-    # Applied after the whole chain so the bed/noise stay proportional (SNR is
-    # preserved -- bed was mixed relative to sig_rms).
+    # Distance attenuation can push far clips under the -50 dBFS silence gate; lift the whole mix to
+    # a floor (SNR is unchanged).
     rms_after = _rms(y)
     target_floor = 0.02  # -34 dBFS, comfortably above the -50 dBFS gate
     if rms_after < target_floor:
@@ -400,9 +357,7 @@ def signal_resample(x: np.ndarray, sr_in: int, sr_out: int) -> np.ndarray:
     return sps.resample(x, n_out)
 
 
-# ---------------------------------------------------------------------------
 # Main
-# ---------------------------------------------------------------------------
 def existing_ids() -> set[int]:
     out: set[int] = set()
     if OUT_DIR.exists():
@@ -462,7 +417,6 @@ def main(argv=None) -> int:
             "segment_end_sec": "",
             "sha256": digest,
             "dataset_split": "",  # build_split.py is the only writer
-            # extras
             "seed": seed_for(audio_id, args.seed),
             "audio_provenance": "synthetic",
             "sim_environment": plan["env"],

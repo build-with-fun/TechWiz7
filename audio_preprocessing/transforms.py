@@ -1,12 +1,5 @@
-"""The signal transforms of SRS Step 4, each one small and separately testable.
-
-Owner: taha.  SRS Step 4, FR xi-xv, lxxii.
-
-Every function here is **deterministic** (no random seeds, no iteration-order dependence)
-and **length-explicit**: a transform that can change the sample count says so in its
-docstring, because the single most common silent bug in an audio pipeline is a rate or
-length mismatch that nothing downstream notices.  Each one has a unit test on a synthetic
-array in ``tests/test_audio_preprocessing.py``.
+"""Signal transforms for SRS Step 4. All deterministic; any that can change the sample count says
+so.
 """
 
 from __future__ import annotations
@@ -18,9 +11,7 @@ from .exceptions import AudioRejected, EMPTY_AUDIO
 EPS = 1e-12
 
 
-# --------------------------------------------------------------------------------------
 # Level measurement -- the units everything else is judged in
-# --------------------------------------------------------------------------------------
 
 def peak_dbfs(y: np.ndarray) -> float:
     """Peak level in dBFS.  ``0.0`` is full scale; digital silence returns ``-inf``."""
@@ -56,16 +47,10 @@ def amplitude_to_db(amplitude: float) -> float:
     return 20.0 * float(np.log10(amplitude))
 
 
-# --------------------------------------------------------------------------------------
 # Rate and channel layout
-# --------------------------------------------------------------------------------------
 
 def to_mono(y: np.ndarray) -> np.ndarray:
-    """Downmix to a contiguous 1-D float32 array by averaging channels (SRS Step 4).
-
-    Averaging rather than taking channel 0 because a stereo recording with the event in
-    one channel only would otherwise halve the captured energy.
-    """
+    """Downmix to mono float32 by averaging channels (an event in one channel keeps its energy)."""
     arr = np.asarray(y, dtype=np.float32)
     if arr.ndim == 2:
         arr = arr.mean(axis=1, dtype=np.float32)
@@ -73,11 +58,7 @@ def to_mono(y: np.ndarray) -> np.ndarray:
 
 
 def resample(y: np.ndarray, orig_sr: int, target_sr: int) -> np.ndarray:
-    """Resample, preserving duration to within one output sample.
-
-    Uses ``soxr`` through librosa (high quality, and the same resampler the training
-    pipeline uses, so train and inference cannot drift).
-    """
+    """Resample with soxr via librosa, the same resampler training used."""
     arr = to_mono(y)
     if int(orig_sr) <= 0 or int(target_sr) <= 0:
         raise AudioRejected(EMPTY_AUDIO, f"invalid sample rate pair {orig_sr} -> {target_sr}")
@@ -97,9 +78,7 @@ def ensure_min_amplitude(y: np.ndarray, floor: float = 1e-6) -> np.ndarray:
     return arr
 
 
-# --------------------------------------------------------------------------------------
 # Amplitude normalisation
-# --------------------------------------------------------------------------------------
 
 def normalize_amplitude(
     y: np.ndarray,
@@ -108,15 +87,11 @@ def normalize_amplitude(
     max_gain_db: float = 30.0,
     allow_boost: bool = True,
 ) -> np.ndarray:
-    """Peak-normalise to ``target_peak_dbfs`` (SRS Step 4, FR xi).
+    """Peak-normalise to ``target_peak_dbfs`` without ever clipping.
 
-    Deliberately **peak** normalisation, not RMS: peak normalisation preserves the crest
-    factor (the peak-to-RMS ratio), which is itself a discriminator between a gunshot and
-    a siren.  An RMS-normalising step would flatten exactly the information the model needs.
-
-    Boosting is capped by ``max_gain_db`` so that amplifying a near-silent recording does
-    not raise the noise floor into a false signal; pass ``allow_boost=False`` to attenuate
-    only.  Never clips: the output peak is ``<= target_peak_dbfs``.
+    Peak rather than RMS normalisation preserves the crest factor, which separates a gunshot
+    from a siren. Boost is capped by ``max_gain_db`` so a near-silent clip's noise floor is not
+    amplified into a false signal.
     """
     arr = to_mono(y)
     if arr.size == 0:
@@ -138,10 +113,8 @@ def normalize_amplitude(
 
 
 def apply_highpass(y: np.ndarray, sample_rate: int, cutoff_hz: float = 50.0, order: int = 4) -> np.ndarray:
-    """Remove DC offset and sub-audible rumble (a common artefact of microphone capture).
-
-    Below ~50 Hz there is no information in any of the ten classes, and the energy there
-    dominates the Mel bands and corrupts the spectral centroid.
+    """Remove DC offset and rumble below ~50 Hz, where no class carries information but the energy
+    skews the mel bands.
     """
     arr = to_mono(y)
     nyquist = 0.5 * float(sample_rate)
@@ -168,9 +141,7 @@ def preemphasis(y: np.ndarray, coef: float = 0.0) -> np.ndarray:
     return np.ascontiguousarray(out, dtype=np.float32)
 
 
-# --------------------------------------------------------------------------------------
 # Silence trimming
-# --------------------------------------------------------------------------------------
 
 def silence_mask(
     y: np.ndarray,
@@ -206,14 +177,9 @@ def trim_silence(
     hop_length: int | None = None,
     min_keep_sec: float = 0.1,
 ) -> tuple[np.ndarray, tuple[int, int]]:
-    """Trim leading and trailing near-silence (SRS Step 4).
+    """Trim leading and trailing near-silence; interior pauses are kept.
 
-    Only the *ends* are trimmed.  Interior silence is kept because a pause between two
-    events is itself a feature, and an interior gap removed here would move the onset
-    positions the event timeline is built from.
-
-    Returns ``(trimmed, (start_sample, end_sample))`` so the caller can map trimmed time
-    back to original time -- required for honest timestamps in the UI (FR xv).
+    Returns ``(trimmed, (start, end))`` so trimmed time maps back to original time for the UI.
     """
     arr = to_mono(y)
     if arr.size == 0:
@@ -224,19 +190,13 @@ def trim_silence(
         return arr, (0, arr.size)
 
     hop = hop_length or frame_length // 4
-    # ``librosa.feature.rms(center=True)`` pads the signal so frame ``i`` covers samples
-    # ``i*hop - frame//2`` .. ``i*hop + frame//2``.  Frame granularity is 2048 samples, so a
-    # span anchored to a frame edge is up to a whole frame (128 ms at 16 kHz) off the real
-    # onset -- and every UI timestamp derived from it would be off by the same amount.
+    # librosa's centred RMS frames are 2048 samples, so a frame-edge span can be up to 128 ms
+    # off the real onset; the edges are refined to the sample below.
     first, last = int(idx[0]), int(idx[-1])
     start = max(0, min(arr.size, first * hop - (frame_length // 2)))
     end = min(arr.size, max(start, last * hop + (frame_length // 2)))
-    # Refine both edges to the sample: the frame mask already decided *which* region carries
-    # signal, this only tightens the edges to the first and last sample that clear the same
-    # top_db margin in amplitude, so the span can never widen past what the mask allowed.
-    # An edge already flush with the array boundary is left alone -- nothing is padded there,
-    # so there is no slop to remove, and a tone that starts on a zero crossing must keep its
-    # first sample rather than be shaved back by one.
+    # Tighten each edge to the first/last sample that clears the same margin (never widening
+    # the span). Edges already at the array boundary are left alone.
     peak_sample = float(np.max(np.abs(arr))) if arr.size else 0.0
     if peak_sample > EPS and end > start:
         amp_threshold = peak_sample * db_to_amplitude(-abs(top_db))
@@ -257,9 +217,7 @@ def trim_silence(
     return np.ascontiguousarray(trimmed, dtype=np.float32), (start, end)
 
 
-# --------------------------------------------------------------------------------------
 # Noise reduction
-# --------------------------------------------------------------------------------------
 
 def reduce_noise(
     y: np.ndarray,
@@ -271,19 +229,11 @@ def reduce_noise(
     noise_percentile: float = 20.0,
     prop_decrease: float = 1.0,
 ) -> np.ndarray:
-    """Deterministic spectral-gating noise reduction (SRS Step 4).
+    """Deterministic spectral-gating noise reduction.
 
-    The noise floor is estimated from the quietest ``noise_percentile`` per cent of frames
-    by RMS -- a percentile, not a random sample, so the same input always gives the same
-    output and the result is reproducible in front of an evaluator.
-
-    ``strength`` in ``[0, 1]`` is how far the gate is pushed: 0 leaves the signal alone,
-    1 subtracts the estimated noise floor completely.  The residual is floored at a small
-    fraction of the original magnitude so the result is never pure digital silence (which
-    would turn a noisy-but-usable clip into a "silent" rejection).
-
-    Deliberately **not** a machine-learning denoiser: a learned denoiser trained on our own
-    corpus would be a second model we would have to declare, document and validate.
+    The noise floor comes from the quietest ``noise_percentile`` % of frames, so the same input
+    always gives the same output. ``strength`` 0 leaves the signal alone, 1 subtracts the whole
+    estimated floor; the residual is floored so a noisy clip never becomes digital silence.
     """
     arr = to_mono(y)
     strength = float(np.clip(strength, 0.0, 1.0))
@@ -325,9 +275,7 @@ def reduce_noise(
     return np.ascontiguousarray(out, dtype=np.float32)
 
 
-# --------------------------------------------------------------------------------------
 # Fixed-duration segmentation (FR xv: start and end timestamps must be stored)
-# --------------------------------------------------------------------------------------
 
 def segment_bounds(
     n_samples: int,
@@ -337,20 +285,11 @@ def segment_bounds(
     hop_seconds: float | None = None,
     mode: str = "cover",
 ) -> list[tuple[int, int]]:
-    """Sample-index bounds of every fixed-duration segment.
+    """Sample bounds of fixed-duration segments.
 
-    Two modes, and the difference matters:
-
-    ``"cover"`` (default, uploads)
-        Exactly ``ceil(n / segment)`` segments, evenly spaced from sample 0 to the end,
-        so every sample of the recording falls inside at least one segment and the final
-        segment ends exactly at the last sample.  This is the minimum number of segments
-        that guarantees no region is missed -- which is what the SRS event coverage
-        requirement needs -- and it keeps the 30 s clip analysis inside its 8 s budget.
-
-    ``"grid"`` (dataset building, live capture)
-        Fixed hop from sample 0.  Boundaries are stable as the buffer grows, which is what
-        live incremental processing requires, and what makes a dataset reproducible.
+    "cover" (uploads): ceil(n / segment) evenly spaced segments so every sample is covered and
+    the last one ends at the last sample. "grid" (datasets, live): a fixed hop from sample 0,
+    so boundaries stay put as a buffer grows.
     """
     if n_samples <= 0:
         return []
@@ -394,12 +333,7 @@ def segment_timestamps(
     hop_seconds: float | None = None,
     mode: str = "cover",
 ) -> list[tuple[float, float]]:
-    """The same segmentation as seconds -- the form FR xv requires to be persisted.
-
-    Seconds, not sample indices, because the timestamps are stored in the database,
-    shown in the event timeline and used to build the report; a sample index is only
-    meaningful to whoever knows the rate, and the rate is a config value that can change.
-    """
+    """The same segmentation in seconds, the form stored and shown (FR xv)."""
     return [
         (round(s / sample_rate, 6), round(e / sample_rate, 6))
         for s, e in segment_bounds(
@@ -419,9 +353,7 @@ def iter_segments(y: np.ndarray, sample_rate: int, segment_seconds: float, **kwa
         yield i, round(s / sample_rate, 6), round(e / sample_rate, 6), arr[s:e]
 
 
-# --------------------------------------------------------------------------------------
 # Padding / truncation
-# --------------------------------------------------------------------------------------
 
 def pad_or_truncate(
     y: np.ndarray,
@@ -429,16 +361,9 @@ def pad_or_truncate(
     *,
     mode: str = "center",
 ) -> np.ndarray:
-    """Force an exact length for a fixed-input model (SRS Step 4 padding/truncation).
+    """Force an exact length for a fixed-input model, padding symmetrically by default.
 
-    ``mode`` is how padding is placed, and it is a real decision, not cosmetics:
-
-    ``"center"``  pad symmetrically.  Default: an event near a segment edge keeps its
-                  time-relation to the window centre, which is what the model was trained
-                  with and what keeps onset timing meaningful.
-    ``"random"``  not implemented -- deliberately.  Random padding would make inference
-                  non-deterministic, and a re-run of the same clip would give a different
-                  answer, which is indefensible under evaluator scrutiny.
+    There is no random mode: random padding would give a different answer for the same clip.
     """
     arr = to_mono(y)
     if arr.size == target_length:

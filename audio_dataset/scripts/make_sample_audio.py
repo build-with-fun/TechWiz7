@@ -5,7 +5,7 @@ One test-split clip per class + failure-path clips (silence, quiet, clipped, inv
 Test-split provenance means no sample was ever seen in training.
 """
 from __future__ import annotations
-import csv, shutil, sys
+import shutil
 from collections import defaultdict
 from pathlib import Path
 
@@ -28,9 +28,20 @@ def main() -> int:
         raise SystemExit(f"expected 10 classes in the test split, got {len(by_class)}")
 
     OUT.mkdir(exist_ok=True)
+    provenance = []
     for cls, rs in sorted(by_class.items()):
         r = sorted(rs, key=lambda x: x["audio_id"])[0]
-        shutil.copy2(REPO / "audio_dataset" / r["filename"], OUT / (cls.replace(" ", "_").lower() + ".wav"))
+        name = cls.replace(" ", "_").lower() + ".wav"
+        shutil.copy2(REPO / "audio_dataset" / r["filename"], OUT / name)
+        provenance.append({"file": name, "audio_id": r["audio_id"], "class_label": cls,
+                           "dataset_split": r["dataset_split"], "source": r["source"],
+                           "licence": r["licence"], "author": r["author"],
+                           "source_url": r["source_url"]})
+    # Record each sample's source, so its licence and test-split origin can be checked.
+    with (OUT / "SOURCES.csv").open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=list(provenance[0]))
+        writer.writeheader()
+        writer.writerows(provenance)
 
     sr = 16000
     t = np.arange(3 * sr) / sr

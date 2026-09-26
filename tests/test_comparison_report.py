@@ -1,7 +1,7 @@
 """
 Tests for the comparison-report format and integrity rules.
 
-Owner: fatima-2 (QA).  SRS Deliverable 3, Step 11, Step 14.
+SRS Deliverable 3, Step 11, Step 14.
 
 These tests are written to fail loudly if any of the disqualifying integrity rules
 break: GTM seeing Python's confidence, invented confidences, a report that silently
@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import csv
 import json
-from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
@@ -186,7 +185,7 @@ def test_agreement_and_accuracy():
 def test_accuracy_rejects_unknown_model_name():
     rep = ComparisonReport(classes=CLASSES)
     with pytest.raises(ValueError):
-        rep.accuracy("claude")
+        rep.accuracy("unknown-model")
 
 
 # ---------------------------------------------------------------- round-trip

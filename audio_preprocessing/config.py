@@ -1,19 +1,7 @@
-"""Configuration access for the audio pipeline.
+"""Audio settings from config/thresholds.json and config/features.json, cached on modification time.
 
-Owner: taha.  SRS Step 4, Step 13, FR xi, xv, lxxii-xxxvii; integrity rule 5.
-
-WHY THIS FILE EXISTS
---------------------
-SRS 1.8 rule 5 says evaluators may demand a *changed segment duration* or a *new audio
-format* live, during the demonstration.  If the segment duration were the literal ``3.0``
-inside :mod:`audio_preprocessing.transforms`, satisfying that demand would mean editing
-code in front of them.  So every audio parameter the pipeline uses is read from
-``config/thresholds.json`` (lorena's file, already frozen) with the extractor-specific
-parameters living in ``config/features.json`` (this module's file).
-
-The cache is keyed on the file's *modification time*, not just its path, so a threshold
-edited by the admin UI during a session takes effect on the next call without restarting
-the application.  That is the behaviour the ``configurable threshold`` requirement needs.
+The SRS allows evaluators to ask for a different segment duration or format during the demo
+(SRS 1.8 rule 5), so no audio parameter is a literal in code and an edit applies on the next call.
 """
 
 from __future__ import annotations
@@ -31,12 +19,7 @@ THRESHOLDS_FILE = "thresholds.json"
 FEATURES_FILE = "features.json"
 CLASSES_FILE = "classes.json"
 
-# --------------------------------------------------------------------------------------
-# Fallbacks
-# --------------------------------------------------------------------------------------
-# These exist so the pipeline can still import and run if a config file is missing --
-# NOT so that they can be used silently.  A missing config file raises in `require_config_file`;
-# `audio_config()` merely degrades to these values and the caller can see `_source`.
+# Fallbacks, used only if a config file is missing; audio_config() reports its _source.
 
 AUDIO_DEFAULTS: dict[str, Any] = {
     "target_sample_rate": 16000,
@@ -66,8 +49,7 @@ QUALITY_DEFAULTS: dict[str, Any] = {
     "good_snr_db": 20.0,
     "acceptable_snr_db": 12.0,
     "poor_snr_db": 6.0,
-    # Not in config/thresholds.json today; the default is stated here so the value is
-    # visible and overridable rather than buried in the analyser.
+    # Not in thresholds.json yet; stated here so it is visible and overridable.
     "low_signal_peak_dbfs": -40.0,
 }
 
@@ -93,20 +75,13 @@ FEATURE_DEFAULTS: dict[str, Any] = {
     "onset_top_db": 30.0,
 }
 
-# --------------------------------------------------------------------------------------
 # mtime-keyed JSON cache
-# --------------------------------------------------------------------------------------
 
 _CACHE: dict[str, tuple[float, int, dict[str, Any]]] = {}
 
 
 def _load_json(path: Path) -> dict[str, Any] | None:
-    """Read a JSON config file, cached on (mtime_ns, size).
-
-    Returns ``None`` when the file does not exist so callers can distinguish "absent"
-    from "empty".  A malformed file raises -- a broken config is a real failure and
-    must not be silently replaced by defaults.
-    """
+    """Read a JSON config, cached on (mtime, size). None when absent; a malformed file raises."""
     if not path.exists():
         return None
     stat = path.stat()
@@ -129,10 +104,7 @@ def clear_cache() -> None:
 
 
 def require_config_file(name: str, config_dir: Path | None = None) -> dict[str, Any]:
-    """Read a config file that MUST exist.
-
-    The web app and the training scripts call this at startup so a missing config is a
-    loud error rather than a run with invented defaults.
+    """Read a config file that must exist; a missing file is a startup error, not invented defaults.
     """
     directory = Path(config_dir) if config_dir is not None else CONFIG_DIR
     data = _load_json(directory / name)
@@ -154,9 +126,7 @@ def _merge(defaults: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]
     return merged
 
 
-# --------------------------------------------------------------------------------------
 # Public accessors
-# --------------------------------------------------------------------------------------
 
 def thresholds(config_dir: Path | None = None) -> dict[str, Any]:
     """The full frozen thresholds document (config/thresholds.json)."""
@@ -207,8 +177,7 @@ def feature_config(config_dir: Path | None = None) -> dict[str, Any]:
     directory = Path(config_dir) if config_dir is not None else CONFIG_DIR
     data = _load_json(directory / FEATURES_FILE)
     if data is None:
-        # Absent file: fall back to the same numbers the thresholds file states, so the
-        # extractor and the segmenter can never disagree about segment length.
+        # Absent file: use the thresholds file's numbers so segmenter and extractor agree.
         audio = audio_config(config_dir)
         merged = copy.deepcopy(FEATURE_DEFAULTS)
         merged["sample_rate"] = audio["target_sample_rate"]
@@ -221,9 +190,7 @@ def feature_config(config_dir: Path | None = None) -> dict[str, Any]:
         return merged
     merged = _merge(FEATURE_DEFAULTS, data)
     merged["_source"] = str(directory / FEATURES_FILE)
-    # The audio block is the single source of truth for rate and segment length.  features.json
-    # also carries these two keys, so overwrite them here as well: a caller that reads the
-    # returned dict directly must not see a segment length that contradicts the audio block.
+    # The audio block wins for rate and segment length, even over features.json.
     audio = audio_config(config_dir)
     merged["_audio_block"] = {
         "target_sample_rate": audio["target_sample_rate"],
@@ -240,12 +207,7 @@ def ffmpeg_binary() -> str:
 
 
 def config_dir_report(config_dir: Path | None = None) -> dict[str, Any]:
-    """Which config files this process is actually reading, and their versions.
-
-    Printed by the diagnostics page and pasted into the report's appendix, so an evaluator
-    can see the running application is reading the file they just edited rather than a
-    bundled copy.
-    """
+    """Which config files this process is reading, and their versions."""
     directory = Path(config_dir) if config_dir is not None else CONFIG_DIR
     thresholds_doc = thresholds(config_dir) or {}
     features_doc = _load_json(directory / FEATURES_FILE) or {}

@@ -68,6 +68,8 @@
 <section class="live" data-live-root data-analysis-ready="{{ '1' if analysis_ready else '0' }}" aria-live="polite">
   <div class="live__controls">
     <div class="live__identity">
+      <span class="pip pip--muted mic-status" data-mic-status role="status"
+            aria-label="Microphone status">Checking microphone</span>
       <span class="live__state" data-live-state>Idle</span>
       <span class="live__session" data-live-session-id>no session</span>
     </div>
@@ -78,8 +80,8 @@
       <button class="btn btn--ghost" type="button" data-live-stop disabled>
         {{ ui.icon('x', 16) }} <span>Stop</span>
       </button>
-      <button class="btn btn--ghost" type="button" data-live-mute disabled aria-pressed="false">
-        {{ ui.icon('volume', 16) }} <span>Mute</span>
+      <button class="btn btn--ghost" type="button" data-live-pause disabled aria-pressed="false">
+        {{ ui.icon('volume', 16) }} <span>Pause</span>
       </button>
     </div>
   </div>
@@ -91,6 +93,10 @@
     </div>
     <div class="live__meter-cap" data-live-meter-peak>-&nbsp;dB</div>
   </div>
+
+  {# Filled by live.js only when a confirmed alert is raised; role=alert makes a
+     screen reader announce it immediately. #}
+  <div class="banner banner--critical live__alert" data-live-alert role="alert" hidden></div>
 
   {# ---- the verdict line: the first thing a person reads. ------------------- #}
   <div class="verdict" data-live-verdict data-testid="live-verdict">
@@ -114,6 +120,7 @@
       <div class="model-card__bar" aria-hidden="true">
         <div class="model-card__bar-fill" data-model-bar></div>
       </div>
+      <ol class="model-card__top3" data-model-top3 aria-label="Top three classes"></ol>
       <p class="model-card__note" data-model-note>Prediction appears after the first window.</p>
     </article>
 
@@ -132,6 +139,7 @@
       <div class="model-card__bar" aria-hidden="true">
         <div class="model-card__bar-fill" data-model-bar></div>
       </div>
+      <ol class="model-card__top3" data-model-top3 aria-label="Top three classes"></ol>
       <p class="model-card__note" data-model-note>Prediction appears after the first window.</p>
     </article>
   </div>
@@ -141,7 +149,8 @@
     <div class="panel__head">
       <h2 class="panel__title">This session so far</h2>
       <p class="panel__note">Windows classified: <span data-live-windows>0</span>
-        · Confirmed events: <span data-live-events>0</span></p>
+        · Alerts raised: <span data-live-events>0</span>
+        · Windows dropped while the server was busy: <span data-live-dropped>0</span></p>
     </div>
     <div class="panel__body panel__body--flush">
       <ul class="scale-list" data-live-scale>
@@ -176,8 +185,7 @@
 <section class="panel" data-live-sessions-panel>
   <div class="panel__head">
     <h2 class="panel__title">Past sessions</h2>
-    <p class="panel__note">Loaded from <code>/api/live/sessions</code> when the live slice is
-      installed.</p>
+    <p class="panel__note">Your most recent microphone sessions, newest first.</p>
   </div>
   <div class="panel__body panel__body--flush" data-live-sessions>
     <p class="prose">Loading your recent sessions…</p>

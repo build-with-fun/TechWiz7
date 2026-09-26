@@ -27,9 +27,7 @@ def _synthetic_matrix(seed: int = 0) -> tuple[np.ndarray, list[str]]:
     return X, y
 
 
-# --------------------------------------------------------------------------------------
 # Registry
-# --------------------------------------------------------------------------------------
 
 
 def test_registry_has_at_least_three_classical_candidates():
@@ -50,9 +48,7 @@ def test_get_candidate_rejects_unknown_names():
         classical.get_candidate("definitely_not_a_model")
 
 
-# --------------------------------------------------------------------------------------
 # Fit / predict contract, every candidate on the synthetic matrix
-# --------------------------------------------------------------------------------------
 
 
 @pytest.fixture(scope="module")
@@ -98,9 +94,7 @@ def test_predict_agrees_with_proba_argmax(name, fitted_models):
     assert (names[np.argmax(proba, axis=1)] == pred).all(), f"{name}: proba columns do not line up with predict()"
 
 
-# --------------------------------------------------------------------------------------
 # Critical-class weighting must actually be applied
-# --------------------------------------------------------------------------------------
 
 
 WEIGHTS = {"Alpha": 2.0, "Beta": 1.0, "Gamma": 1.0}
@@ -142,9 +136,7 @@ def test_hist_gradient_boosting_weight_travels_as_row_weights():
     assert "sample_weight" in inner.fit.__code__.co_varnames
 
 
-# --------------------------------------------------------------------------------------
 # Feature importances surface
-# --------------------------------------------------------------------------------------
 
 
 def test_feature_importances_empty_when_not_exposed(fitted_models):

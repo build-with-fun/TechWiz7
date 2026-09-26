@@ -1,19 +1,62 @@
-# Seven-minute live demo
+# Demo guide and video script
 
-Run `database/init_db.py` to seed the demo accounts, start the app with both models loaded, and check `/api/health/ready` before opening the room. Use the published evaluator demo account `evaluator` / `Eval#Sonic2026` from `database/seed_credentials.json`. Keep one permitted clip from `sample_audio/` ready and verify it is actually present on the demo machine; source clips are ignored by Git and may be missing from a clean clone. Do not claim an alert will fire for a particular clip until that clip has been run against the final models and configured thresholds. Keep the measured GTM accuracy (**0.2778 on all 450 held-out clips through the server**) and Python result visible in `PROJECT_REPORT.md`; describe this as a supervised review prototype.
+The SRS (§1.10 item 13) asks for an MP4 showing 29 specific things. This is the shot list
+that covers all of them in about nine minutes, plus the checks to do before recording.
+Record at 1080p. Narrate what is happening and say plainly when a result is wrong or
+uncertain; the jury will test with unseen audio anyway.
 
-| Time | Screen and action | Value to explain |
+## Before recording
+
+- [ ] `pytest -q` passes; `/api/health/ready` returns 200 (both models loaded).
+- [ ] `database/init_db.py` run on a fresh database; sign in once as each role.
+- [ ] Fresh browser profile, zoom 100 %, notifications off, microphone allowed for
+      `localhost`, a real microphone plugged in and a phone ready to play sounds.
+- [ ] Clips ready: the ten files in `sample_audio/` (test-split recordings; sources in
+      `sample_audio/SOURCES.csv`), `silence.wav`, `low_quality_quiet_tone.wav`,
+      `clipped_loud_tone.wav`, `invalid.notaudio`, and the prepared cases below.
+- [ ] Run every prepared clip once through `python tools/predict.py <clip>` with the final
+      models and note what it does. **Only show a clip as "the model disagreement case"
+      etc. if you observed that behaviour on the final models.**
+
+### Prepared cases (pick from real outputs)
+
+`reports/model_comparison.csv` has every test recording with both predictions. Filter it:
+
+| Case needed | Filter | Clip to use |
 |---|---|---|
-| 0:00–0:45 | Login and dashboard | What the console is for, who uses it, and honest model readiness/status |
-| 0:45–2:15 | Upload one prepared audio file | Validation, quality verdict, persisted event ID and immediate feedback |
-| 2:15–3:30 | Open event detail | Show independent Python/GTM top-three scores, agreement, waveform, spectrogram and source playback |
-| 3:30–4:20 | Alerts or review queue | Explain that critical/uncertain results are routed to a human; use a previously verified stored case if the new clip does not trigger one |
-| 4:20–5:10 | Live microphone page | Read the consent statement, start/stop only with permission, and show a persisted session window/history |
-| 5:10–6:00 | Search, period report and CSV/XLSX export | Traceability and role-restricted reporting; use evaluator/admin privileges |
-| 6:00–7:00 | Architecture and limitations | Explain two-model independence, SQLite/audio storage, actual test scores and next validation work |
+| Model disagreement | `class_match == mismatch` | |
+| Low-confidence result | `python_confidence < 0.6` | |
+| Overlapping sound | `overlap_flag == yes`, or mix two sample clips with `augmentation.transforms.overlay` | |
+| Noisy case | `tools/robustness_probe.py` writes nothing to disk, so mix a clip with noise: `add_noise(y, 16000, rng, snr_db=5)` and save it | |
+| High-severity / critical alert | a Gunshot or Glass clip both models agree on, uploaded 3 times in the live window, or played live 3 windows running | |
+| Every class | the ten `sample_audio/<class>.wav` files (batch upload) | |
 
-If the room has no microphone permission, show the consent UI and an already recorded session; do not simulate live results. If Teachable Machine artifacts are missing or the readiness endpoint is false, show the health reason and the train-only import/export flow, then demonstrate non-model pages and unit/integration evidence. Never present deterministic test predictors or static screenshots as a live inference result. For an alert/review demo, prepare a real stored event in advance and say when it was recorded.
+## Shot list
 
-With the current bundled models, `sample_audio/gunshot.wav` is a useful prepared case: the Python model predicts Gunshot, GTM predicts Aggression, and the pipeline requests manual review without raising an unconfirmed alert. This was observed with `tools/predict.py`; rehearse it again if either artifact changes. The sample file is local and ignored by Git, so make sure it is on the demo machine.
+| Time | Screen | Show | SRS items covered |
+|---|---|---|---|
+| 0:00–0:30 | Title slide | Project, team, "a prototype for supervised operators, not an emergency system" | |
+| 0:30–1:00 | `/login` → dashboard (evaluator) | Sign in; dashboard tiles, recent detections, critical timeline, anomalies panel | Login, Dashboard |
+| 1:00–1:40 | Upload | Upload `invalid.notaudio` (refused), `silence.wav` (refused: silent), then `clipped_loud_tone.wav` (clipping warning) | File validation, Audio quality |
+| 1:40–2:30 | Upload → batch | Select all ten `sample_audio/<class>.wav` at once; per-file results | Audio upload, Every sound class |
+| 2:30–3:40 | Event page for one clip | Metadata (format, rate, channels, bit depth, size), preprocessing steps, play/pause/replay/seek/volume, waveform, spectrogram | Metadata, Preprocessing, Waveform, Spectrogram |
+| 3:40–4:30 | Same event | Python class + confidence + top-3; TM class + confidence + top-3; consistency status; Δ = \|Python − TM\| | Python prediction/confidence, GTM prediction/confidence, Model comparison, Confidence difference |
+| 4:30–5:00 | Disagreement and low-confidence events | Both route to manual review; say why (status, reasons) | Model-disagreement case, Low-confidence case |
+| 5:00–5:30 | Noisy and overlap events | Quality verdict, overlap flag, review reason | Noisy case, Overlapping-sound case |
+| 5:30–6:45 | Live monitor | Tick consent, allow mic: pill shows Active. Pause (pill: Paused), resume. Play a gunshot/glass clip from the phone three windows running: consecutive counter, then the alert banner. Stop (device released) | Live microphone monitoring, Repeated detection, Real-time critical detection, Critical alert |
+| 6:45–7:20 | Alerts (operator) | Acknowledge the alert; escalate another; alert history | Alert acknowledgement |
+| 7:20–8:00 | Reviews (reviewer) | Listen, correct the class, comment; show the original model output is still recorded | Manual review, Reviewer override |
+| 8:00–8:30 | Events + Analytics | Filter by class/date/confidence/severity; analytics FP/FN and alert response | Event history |
+| 8:30–9:00 | Report | Download the event report (metadata, both models' scores, waveform, spectrogram, review) and a CSV export | Report generation |
+| 9:00–9:30 | Close | Results table from `README.md`, what misses the target, next steps | |
 
-Before presenting, run the tests listed in `TEST_PLAN.md`, sign in as each role once, check that the prepared recording plays, confirm that the database is writable and storage has space, and keep a local copy of this guide. Any team contribution slide must be filled from the actual contributors' work; this repository cannot establish that attribution on its own.
+## If something goes wrong on the day
+
+- **Models not ready** (`/api/health/ready` 503): show the reason, run `tools/fetch_pretrained.py`
+  or restore `gtm_model/gtm_model.h5`; do not demo analysis with a fallback.
+- **Microphone blocked**: the pill shows "Permission denied"; show that state, then use an
+  uploaded clip. Never replay an old session as if it were live.
+- **A clip behaves differently from rehearsal**: say so and open its event page; the
+  comparison and review routing are still worth explaining.
+- **Slow first request**: CNN14 loads on first use (~5 s); upload one warm-up clip before
+  recording.

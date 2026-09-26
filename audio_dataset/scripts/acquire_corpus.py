@@ -1,54 +1,15 @@
 #!/usr/bin/env python3
-"""
-SonicSentinel AI -- acquire new REAL recordings to close the dataset gap.
+"""Extract real, CC-BY recordings from ESC-50, UrbanSound8K and FSD50K into
+audio_dataset/originals/<class>/SS-<CODE>-0501.wav onwards, and write
+audio_dataset/manifests/acquired_rows.csv for assemble_manifest.py.
 
-Owner: omar (data sourcing).  Authority: audio_dataset/manifest_schema.md,
-audio_dataset/scripts/class_label_map.json.
+Labelling policy: a source category maps to one of our classes only if it is on the explicit
+allow-list below; "kind of similar" is skipped, never guessed. Fireworks is deliberately not
+Gunshot (class_label_map.json excludes it).
 
-WHAT THIS DOES
---------------
-Extracts REAL, openly-licensed recordings from the corpora already fetched on
-disk -- ESC-50 (2,000 clips, CC-BY-4.0) and UrbanSound8K (8,732 slices,
-CC-BY-4.0) -- into the shared audio tree:
+dataset_split is always blank (only build_split.py assigns splits), duplicates are dropped
+by sha256 of the file bytes, and every row carries its licence.
 
-    audio_dataset/originals/<class_slug>/SS-<CODE>-0501.wav ...
-
-and writes `audio_dataset/manifests/acquired_rows.csv` in the frozen
-25-column schema that `audio_dataset/scripts/assemble_manifest.py` consumes.
-
-WHY THE OUTPUT GOES INTO originals/
------------------------------------
-The QA gate tests/test_frozen_split.py::test_no_audio_file_on_disk_is_unlisted
-asserts that EVERY .wav under audio_dataset/ has a manifest row, and the frozen
-split must total exactly 2100/450/450, which means exactly 300 originals per
-class. So new real clips join the same tree as the 1,150 FSD50K recordings,
-with ids that cannot collide (FSD50K occupies 0001..0150; new sources start at
-0501).
-
-LABELLING POLICY (the point of the file)
-----------------------------------------
-A clip is mapped to one of our ten classes ONLY if the source corpus's own
-category is in an explicit allow-list below, and each mapping is justified by
-the class description in config/classes.json or the FSD50K vocabulary in
-class_label_map.json. Categories that are merely "kind of similar" are skipped,
-never guessed. A wrong label poisons a safety class silently.
-
-Notably `fireworks` is deliberately NOT mapped to Gunshot: class_label_map.json
-excludes it -- the crackling multi-pop tail is the only feature separating the
-two, and the class description restricts Gunshot to firearm discharge.
-
-INTEGRITY RULES
----------------
-* `dataset_split` is always blank. Only build_split.py assigns splits.
-* Duplicate detection is by sha256 over the raw file bytes, so a clip appearing
-  in two corpora is emitted exactly once.
-* Every row carries a licence (CC-BY-4.0 for both corpora) -- never blank,
-  never non-commercial.
-* Only `original` rows are emitted. Augmentation is a separate concern.
-
-Usage
------
-    .venv/bin/python audio_dataset/scripts/acquire_corpus.py
     .venv/bin/python audio_dataset/scripts/acquire_corpus.py --per-class 300
 """
 
@@ -58,7 +19,6 @@ import argparse
 import csv
 import hashlib
 import json
-import sys
 import tempfile
 from collections import Counter
 from datetime import date
@@ -89,10 +49,7 @@ ALL_COLUMNS = FROZEN_COLUMNS + EXTRA_COLUMNS
 
 ID_START = 501  # FSD50K real rows occupy 0001..0150; new sources start at 0501.
 
-# ---------------------------------------------------------------------------
-# Class allow-lists. A source category appears here only if it genuinely IS an
-# instance of our class.
-# ---------------------------------------------------------------------------
+# Class allow-lists: a source category appears only if it genuinely is an instance of our class.
 
 # ESC-50 categories (lowercase, underscores) -> our class name.
 ESC50_MAP = {
@@ -145,8 +102,7 @@ US8K_MAP = {
     "drilling":         "Machinery Fault",   # drill/drone = rotating machine fault timbre
 }
 
-# FSD50K.eval ontology terms -> our class name. Only unambiguous terms. This is
-# the last real source on disk, so it is what closes the residual classes.
+# FSD50K.eval ontology terms -> our class name, unambiguous terms only.
 FSD_EVAL_MAP = {
     "Siren":                     "Alarm or Siren",
     "Alarm":                     "Alarm or Siren",
@@ -178,9 +134,7 @@ FSD_EVAL_MAP = {
     "Environmental noise":       "Background Noise",
     "Wind":                      "Background Noise",
     "Rain":                      "Background Noise",
-    # Panic Scream: fear/distress screams only. Yell/Shout are aggressive and
-    # are mapped to Aggression below, not here -- a wrong label on a critical
-    # class is worse than a short class.
+    # Panic Scream is fear/distress only; yell/shout map to Aggression.
     "Screaming":                 "Panic Scream",
     "Scream":                    "Panic Scream",
     # Aggression: physical violence and hostile shouting.
@@ -192,9 +146,7 @@ FSD_EVAL_MAP = {
     "Quarrel":                   "Aggression",
 }
 
-# ---------------------------------------------------------------------------
 # Provenance blocks -- one per corpus.
-# ---------------------------------------------------------------------------
 
 ESC50_PROV = {
     "source": "ESC-50 (Environmental Sound Classification)",
@@ -230,9 +182,6 @@ FSD_EVAL_PROV = {
 }
 
 
-# ---------------------------------------------------------------------------
-# helpers
-# ---------------------------------------------------------------------------
 
 def _audio_meta(blob: bytes, tmp: Path) -> tuple[float, int, int] | None:
     """(duration_sec, sampling_rate, channels), or None if undecodable."""
@@ -247,12 +196,9 @@ def _audio_meta(blob: bytes, tmp: Path) -> tuple[float, int, int] | None:
 
 
 def _passes_quality(blob: bytes, tmp: Path) -> bool:
-    """Corpus quality gate (SRS self-created dataset): every original must clear
-    the 0.5 s preprocessing floor and contain an audible signal, so no clip is
-    ever refused by audio_preprocessing at training/inference time.
-
-    Same thresholds as audio_preprocessing/config.py QUALITY_DEFAULTS:
-    min_duration_sec 0.5, silence below -50 dBFS (RMS 0.00316)."""
+    """Every original must be at least 0.5 s and louder than -50 dBFS RMS, the same floors as
+    audio_preprocessing's QUALITY_DEFAULTS, so no clip is refused at training or inference.
+    """
     min_dur, silence_rms = 0.5, 10 ** (-50.0 / 20.0)
     try:
         tmp.write_bytes(blob)
@@ -314,8 +260,7 @@ def _ingest_blob(rows: list[dict], prov: dict, category: str, class_label: str,
     if not _passes_quality(blob, tmp):
         skipped["quality_too_short_or_silent"] += 1
         return False
-    # hash the raw bytes we ship, matching the existing FSD50K rows and the QA
-    # test that re-hashes the file on disk.
+    # Hash the bytes we ship, as the QA test re-hashes the file on disk.
     digest = hashlib.sha256(blob).hexdigest()
     if digest in have_sha:
         skipped["dupe_sha256"] += 1
@@ -332,9 +277,7 @@ def _ingest_blob(rows: list[dict], prov: dict, category: str, class_label: str,
     return True
 
 
-# ---------------------------------------------------------------------------
 # sources
-# ---------------------------------------------------------------------------
 
 def from_esc50(classes: dict, next_id: dict, have_sha: set, stats: Counter,
                skipped: Counter, room: dict[str, int], tmp: Path) -> list[dict]:
@@ -370,8 +313,7 @@ def from_us8k(classes: dict, next_id: dict, have_sha: set, stats: Counter,
         except Exception:
             skipped["unreadable_parquet:" + parquet.name] += 1
             continue
-        # `class` is a Python keyword; itertuples renames the column, so rename
-        # it to something addressable first.
+        # itertuples renames the reserved `class` column, so rename it first.
         if "class" in df.columns:
             df = df.rename(columns={"class": "us8k_class"})
         for rec in df.itertuples(index=False):
@@ -410,12 +352,9 @@ def _load_acquired(have_sha: set) -> list[dict]:
 
 
 def _wipe_acquired(classes: dict) -> None:
-    """Remove every clip this script has ever written, so a rebuild regenerates
-    the exact same set: the corpora are iterated in sorted order and dedup is
-    deterministic, so ids are stable across rebuilds.
-
-    Only files whose numeric id is >= ID_START are touched -- the 1,150 FSD50K
-    recordings occupy 0001..0150 and are never removed."""
+    """Remove every clip this script wrote (numeric id >= ID_START), so a rebuild regenerates the
+    same set; FSD50K clips 0001-0150 are never touched.
+    """
     removed = 0
     for name, c in classes.items():
         d = AUDIO_DATASET / "originals" / c["slug"]
@@ -449,8 +388,7 @@ def from_fsd_eval(classes: dict, next_id: dict, have_sha: set, stats: Counter,
     labels = {k[:-4] if k.endswith(".wav") else k: v for k, v in labels.items()}
     for wav in sorted(wav_dir.glob("*.wav")):
         raw = labels.get(wav.stem)
-        # at source the labels are a comma-joined string of Audioset-style
-        # terms with underscores, e.g. "Bird_vocalization_and_bird_call..."
+        # Labels arrive as a comma-joined string of AudioSet terms with underscores.
         terms = [] if not raw else [t.replace("_", " ").strip() for t in str(raw).split(",") if t.strip()]
         if not terms:
             skipped["fsd_eval:no_label"] += 1
@@ -488,16 +426,10 @@ FSD_DEV_PROV = {
 
 def from_fsd_dev(classes: dict, next_id: dict, have_sha: set, stats: Counter,
                  skipped: Counter, room: dict[str, int], tmp: Path) -> list[dict]:
-    """FSD50K.dev clips downloaded individually from the dataset mirror.
+    """FSD50K.dev clips downloaded one by one from the Hugging Face mirror (the Zenodo zip is ~8 GB).
 
-    The dev split's per-clip WAVs live at
-    https://huggingface.co/datasets/Fhrozen/FSD50k/resolve/main/clips/dev/<id>.wav
-    (the official Zenodo zip is ~8 GB and only ~1,150 of its clips were ever
-    extracted locally). Only clips whose ground-truth labels map to a class
-    that still needs originals are fetched, so this never pulls more than the
-    gap. Every clip's own licence is checked against the accept-list from the
-    clips_info metadata before download -- the same per-FILE licence rule the
-    rest of this script enforces; NC and unlicensed clips are never fetched.
+    Only clips whose labels map to a class still short of originals are fetched, and each
+    clip's own licence is checked first; NC and unlicensed clips are never downloaded.
     """
     rows: list[dict] = []
     import urllib.request
@@ -550,8 +482,7 @@ def from_fsd_dev(classes: dict, next_id: dict, have_sha: set, stats: Counter,
                        for n in classes if room[n] > 0):
                     break
 
-    # interleave the classes so a run interrupted mid-way leaves gains spread
-    # over all three labels instead of exhausting one pool first
+    # Interleave classes so an interrupted run spreads its gains.
     by_class: dict[str, list[tuple[str, str]]] = {}
     for fname, label in sorted(candidates.items()):
         by_class.setdefault(label, []).append(fname)
@@ -587,9 +518,6 @@ def from_fsd_dev(classes: dict, next_id: dict, have_sha: set, stats: Counter,
     return rows
 
 
-# ---------------------------------------------------------------------------
-# main
-# ---------------------------------------------------------------------------
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
@@ -614,9 +542,7 @@ def main(argv=None) -> int:
     if args.rebuild:
         _wipe_acquired(classes)
 
-    # existing originals per class, counted from the on-disk tree so re-runs are
-    # idempotent: a clip written by a previous run of this script is already in
-    # originals/ and must not be re-emitted.
+    # Count existing originals from disk so re-runs are idempotent.
     existing: Counter = Counter()
     for name, c in classes.items():
         d = AUDIO_DATASET / "originals" / c["slug"]
@@ -630,8 +556,7 @@ def main(argv=None) -> int:
 
     room = {name: max(0, args.per_class - existing[name]) for name in classes}
     next_id = {name: [ID_START] for name in classes}
-    # seed ids above any already-assigned id (restored CSVs hold ids up to 6xx),
-    # so a rerun never collides with clips emitted by earlier runs.
+    # Start above any id already assigned, so a re-run never collides.
     if OUT_MANIFEST.exists():
         with OUT_MANIFEST.open(newline="", encoding="utf-8") as fh:
             for r in csv.DictReader(fh):
@@ -644,8 +569,7 @@ def main(argv=None) -> int:
     stats: Counter = Counter()
     skipped: Counter = Counter()
 
-    # seed the known sha256 set from the existing manifest so a clip already in
-    # originals/ is never re-emitted
+    # Seed known hashes from the manifest so a clip already present is never re-emitted.
     for src_csv in (AUDIO_DATASET / "manifests" / "fsd50k_real_rows.csv", OUT_MANIFEST):
         if src_csv.exists():
             with src_csv.open(newline="", encoding="utf-8") as fh:
@@ -673,8 +597,7 @@ def main(argv=None) -> int:
         pass
 
     rows.sort(key=lambda r: (r["class_label"], r["audio_id"]))
-    # guard: rows may come from an older CSV with columns this version dropped
-    # (or carry strays); never let an hour-long run die at the final write.
+    # Rows may come from an older CSV with dropped or extra columns; keep only the schema.
     rows = [{k: r.get(k, "") for k in ALL_COLUMNS} for r in rows]
     OUT_MANIFEST.parent.mkdir(parents=True, exist_ok=True)
     with OUT_MANIFEST.open("w", newline="", encoding="utf-8") as fh:

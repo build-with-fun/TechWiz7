@@ -1,6 +1,5 @@
 """Tests for the persistence layer: pipeline record -> database rows.
 
-Owner: sara.
 
 These tests build synthetic pipeline records rather than running the pipeline, so a missing
 or untrained model never makes the audit trail untestable. The record shape here mirrors the
@@ -22,7 +21,6 @@ What this file insists on:
 
 from __future__ import annotations
 
-import datetime as dt
 from pathlib import Path
 
 import pytest
@@ -46,12 +44,10 @@ from src.models import (
     User,
     utcnow,
 )
-from src.services.persistence import EventStore, store_analysis
+from src.services.persistence import EventStore
 
 
-# --------------------------------------------------------------------------------------
 # Fixtures
-# --------------------------------------------------------------------------------------
 
 CLASSES = ["Gunshot", "Glass Breaking", "Panic Scream", "Background Noise"]
 
@@ -261,9 +257,7 @@ def _events(session, event_ids: list[int]) -> list[Event]:
     ).scalars().all())
 
 
-# --------------------------------------------------------------------------------------
 # The core mapping
-# --------------------------------------------------------------------------------------
 
 def test_analysed_record_stores_an_event_with_both_model_versions(factory, storage, actor):
     with factory() as session:
@@ -462,7 +456,7 @@ def test_live_origin_is_stored_as_microphone_source(factory, storage, actor):
 
 def test_config_snapshot_and_retention_are_recorded(factory, storage, actor):
     with factory() as session:
-        result = EventStore(session, storage=storage, actor=actor).store(_record())
+        EventStore(session, storage=storage, actor=actor).store(_record())
     with factory() as session:
         event = session.execute(select(Event)).scalar_one()
         audio = event.audio_file
@@ -471,9 +465,7 @@ def test_config_snapshot_and_retention_are_recorded(factory, storage, actor):
     assert audio.retention_expires_at > utcnow()
 
 
-# --------------------------------------------------------------------------------------
 # Integrity of the audit trail
-# --------------------------------------------------------------------------------------
 
 def test_every_store_writes_predict_and_upload_audit_rows(factory, storage, actor):
     with factory() as session:
@@ -524,9 +516,7 @@ def test_model_version_row_is_registered_once_and_reused(factory, storage, actor
     }
 
 
-# --------------------------------------------------------------------------------------
 # Robustness
-# --------------------------------------------------------------------------------------
 
 def test_storing_never_raises_at_the_caller(factory, storage, actor):
     """A persistence failure must be reported, not thrown: the pipeline relies on that."""

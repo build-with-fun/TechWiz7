@@ -1,33 +1,17 @@
-"""ORM models — the store of record for SonicSentinel AI.
+"""SQLAlchemy models (FR lxxi, lxxii, lxxv, lxxvi, lxxx).
 
-Owner: sara.  SRS FR lxxi (secure audio storage), FR lxxii (what the database stores),
-FR lxxv (model version tracking), FR lxxvi (audit trail), FR lxxx (retention).
-
-The schema is shaped by three requirements that are easy to get subtly wrong:
-
-1. **Every prediction records the version of the model that made it** (FR lxxv). The
-   version is a foreign key held *on the event*, not looked up from a "current version"
-   pointer at read time. Activating a new model version therefore cannot rewrite history,
-   because history never asks what is current.
-
-2. **A human override never erases the model output** (FR lxi). The original predictions
-   live in ``confidence_scores``, which is append-only and never updated, and are *also*
-   snapshotted onto the ``reviews`` row so a reviewer's decision stays readable even if the
-   scores table is ever compacted.
-
-3. **An audit record must outlive the user it names** (FR lxxvi). ``actor_username`` is
-   denormalised onto the audit row, so deleting a user does not turn their history into a
-   row of nulls.
-
-All datetimes are **UTC and timezone-naive** in the database; render local in the template.
-Use :func:`to_iso` to serialise, which appends ``Z``.
+Three rules shape the schema. Each event holds foreign keys to the model versions that
+produced it, so activating a new model never rewrites history. A reviewer's override never
+erases model output: confidence_scores is append-only and the originals are also copied onto
+the review row. Audit rows copy the actor's name and role, so deleting a user leaves the
+trail readable. Datetimes are naive UTC; to_iso() adds the Z.
 """
 
 from __future__ import annotations
 
 import datetime as _dt
 import hashlib
-import json
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import (
@@ -45,9 +29,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-# --------------------------------------------------------------------------------------
 # Vocabulary shared with the rest of the system
-# --------------------------------------------------------------------------------------
 
 #: FR ii. The five roles. Stored as these exact strings.
 ROLES = (
@@ -100,6 +82,22 @@ MODEL_LABELS = {"python": "Python Classification Model", "gtm": "Google Teachabl
 
 AUDIO_SOURCES = ("upload", "microphone")
 
+#: Extension -> MIME type for accepted formats; AudioFile.content_type uses it.
+AUDIO_MIME_TYPES = {
+    ".wav": "audio/wav",
+    ".wave": "audio/wav",
+    ".mp3": "audio/mpeg",
+    ".flac": "audio/flac",
+    ".ogg": "audio/ogg",
+    ".oga": "audio/ogg",
+    ".opus": "audio/opus",
+    ".m4a": "audio/mp4",
+    ".aac": "audio/aac",
+    ".aiff": "audio/aiff",
+    ".aif": "audio/aiff",
+    ".webm": "audio/webm",
+}
+
 
 def utcnow() -> _dt.datetime:
     """Naive UTC 'now'. Single definition so every writer agrees on the convention."""
@@ -141,9 +139,7 @@ def _stamp() -> Mapped[_dt.datetime]:
     return mapped_column(DateTime, default=utcnow, nullable=False)
 
 
-# --------------------------------------------------------------------------------------
 # Users and identity -- FR i, FR ii
-# --------------------------------------------------------------------------------------
 
 
 class User(Base):
@@ -188,9 +184,7 @@ class User(Base):
         return f"<User {self.username} ({self.role})>"
 
 
-# --------------------------------------------------------------------------------------
 # Audio -- FR lxxi, lxxiii, lxxiv
-# --------------------------------------------------------------------------------------
 
 
 class AudioFile(Base):
@@ -215,6 +209,8 @@ class AudioFile(Base):
     duration_sec: Mapped[float | None] = mapped_column(Float)
     sample_rate: Mapped[int | None] = mapped_column(Integer)
     channels: Mapped[int | None] = mapped_column(Integer)
+    # Bits per sample of the uploaded file (FR x); None for lossy formats such as MP3.
+    bit_depth: Mapped[int | None] = mapped_column(Integer)
     container_format: Mapped[str | None] = mapped_column(String(16))
     original_format: Mapped[str | None] = mapped_column(String(16))
 
@@ -242,10 +238,19 @@ class AudioFile(Base):
         Index("ix_audio_files_dedupe", "sha256", "perceptual_fingerprint"),
     )
 
+    @property
+    def content_type(self) -> str:
+        """MIME type for downloads, from the stored file's suffix (or the recorded format once the
+        bytes are purged).
+        """
+        suffix = Path(self.stored_path or "").suffix.lower()
+        if suffix not in AUDIO_MIME_TYPES:
+            recorded = (self.container_format or self.original_format or "").lower().lstrip(".")
+            suffix = f".{recorded}" if recorded else ""
+        return AUDIO_MIME_TYPES.get(suffix, "application/octet-stream")
 
-# --------------------------------------------------------------------------------------
+
 # Model versions -- FR lxxv
-# --------------------------------------------------------------------------------------
 
 
 class ModelVersion(Base):
@@ -280,9 +285,7 @@ class ModelVersion(Base):
         return MODEL_LABELS.get(self.model_name, self.model_name)
 
 
-# --------------------------------------------------------------------------------------
 # Events -- FR lxii (statuses), FR xxxi-xxxiii (comparison), FR lxxii
-# --------------------------------------------------------------------------------------
 
 
 class Event(Base):
@@ -295,7 +298,7 @@ class Event(Base):
     source: Mapped[str] = mapped_column(String(16), default="upload", nullable=False, index=True)
     status: Mapped[str] = mapped_column(String(24), default="Uploaded", nullable=False, index=True)
 
-    # -- what was decided ---------------------------------------------------------
+    # what was decided
     predicted_class: Mapped[str | None] = mapped_column(String(64), index=True)
     #: The final agreed class after any human override. Null until decided.
     final_class: Mapped[str | None] = mapped_column(String(64), index=True)
@@ -307,16 +310,16 @@ class Event(Base):
     #: The agreeing top-class confidence, used by every confidence-range filter.
     top_confidence: Mapped[float | None] = mapped_column(Float, index=True)
 
-    # -- FR xxxvii audio quality --------------------------------------------------
+    # FR xxxvii audio quality
     quality_verdict: Mapped[str | None] = mapped_column(String(16), index=True)
     quality_score: Mapped[float | None] = mapped_column(Float)
     quality_detail: Mapped[str | None] = mapped_column(Text)
 
-    # -- FR lxxv: the versions that produced THIS result --------------------------
+    # FR lxxv: the versions that produced THIS result
     python_model_version_id: Mapped[int | None] = mapped_column(ForeignKey("model_versions.id"), index=True)
     gtm_model_version_id: Mapped[int | None] = mapped_column(ForeignKey("model_versions.id"), index=True)
 
-    # -- rule and review routing --------------------------------------------------
+    # rule and review routing
     alert_rule_class: Mapped[str | None] = mapped_column(String(64))
     requires_manual_review: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
     review_reason: Mapped[str | None] = mapped_column(Text)
@@ -390,19 +393,11 @@ class Event(Base):
         }
 
 
-# --------------------------------------------------------------------------------------
 # Confidence scores -- FR lxxii (confidence scores), FR lxxv, FR lxi
-# --------------------------------------------------------------------------------------
 
 
 class ConfidenceScore(Base):
-    """Append-only. One row per model per candidate class per event.
-
-    ``is_top`` marks the model's own winning class, so a top-class confidence query needs
-    no ordering and no window function. The full distribution is kept because FR xxxiv
-    requires the top-N classes to be shown, and because an evaluator asking "why was it
-    not Panic Scream?" is answered by reading this table rather than re-running a model.
-    """
+    """Append-only; one row per model per class per event. ``is_top`` marks each model's winner."""
 
     __tablename__ = "confidence_scores"
 
@@ -427,9 +422,7 @@ class ConfidenceScore(Base):
     )
 
 
-# --------------------------------------------------------------------------------------
 # Alerts -- FR liii-lvi
-# --------------------------------------------------------------------------------------
 
 
 class Alert(Base):
@@ -440,8 +433,7 @@ class Alert(Base):
     severity: Mapped[str] = mapped_column(String(24), nullable=False, index=True)
     status: Mapped[str] = mapped_column(String(16), default="Open", nullable=False, index=True)
     rule_class: Mapped[str | None] = mapped_column(String(64))
-    #: The rule as it stood when the alert fired. FR liii wants rules editable, so a stored
-    #: copy is the only way "why did this alert?" still answers correctly after an edit.
+    #: The rule as it stood when the alert fired, because rules are editable (FR liii).
     rule_snapshot: Mapped[dict | None] = mapped_column(JSON)
     recommended_action: Mapped[str | None] = mapped_column(Text)
     message: Mapped[str | None] = mapped_column(Text)
@@ -475,17 +467,12 @@ class Alert(Base):
         return self.status in ("Open", "Escalated")
 
 
-# --------------------------------------------------------------------------------------
 # Reviews -- FR lvii-lxi
-# --------------------------------------------------------------------------------------
 
 
 class Review(Base):
-    """A manual-review queue entry *and* its outcome.
-
-    One row per queue entry rather than two tables: the queue and the decision are the same
-    thing at different points in time, and splitting them would let a decision exist without
-    the reason it was queued.
+    """A manual-review queue entry and its outcome, kept in one row so a decision cannot lose the
+    reason it was queued.
     """
 
     __tablename__ = "reviews"
@@ -501,7 +488,7 @@ class Review(Base):
     queued_at: Mapped[_dt.datetime] = _stamp()
     assigned_to_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
 
-    # -- the decision (FR lix-lxi) ------------------------------------------------
+    # the decision (FR lix-lxi)
     decision: Mapped[str] = mapped_column(String(16), default="pending", nullable=False, index=True)
     final_class: Mapped[str | None] = mapped_column(String(64))
     final_severity: Mapped[str | None] = mapped_column(String(24))
@@ -537,9 +524,7 @@ class Review(Base):
         return self.status == "Reviewed"
 
 
-# --------------------------------------------------------------------------------------
 # Live microphone sessions -- FR xxxvi, FR lxxix
-# --------------------------------------------------------------------------------------
 
 
 class LiveSession(Base):
@@ -572,8 +557,9 @@ class LiveSession(Base):
 
 
 class LiveWindow(Base):
-    """One analysed rolling window. Kept because FR xl confirmation counts windows, and an
-    evaluator asking "why did it not alert?" needs to see the consecutive count climb."""
+    """One analysed live window; kept so the consecutive-detection count behind an alert can be
+    inspected.
+    """
 
     __tablename__ = "live_windows"
 
@@ -608,25 +594,18 @@ class LiveWindow(Base):
     )
 
 
-# --------------------------------------------------------------------------------------
 # Audit trail -- FR lxxvi
-# --------------------------------------------------------------------------------------
 
 
 class AuditRecord(Base):
-    """Append-only. Never updated, never deleted by the application (FR lxxvi, FR lxxx).
-
-    ``actor_username`` and ``actor_role`` are denormalised so that removing a user leaves the
-    history intact and readable, which is the whole point of an audit trail.
+    """Append-only audit record; the actor's name and role are copied so the row survives the user.
     """
 
     __tablename__ = "audit_records"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     timestamp: Mapped[_dt.datetime] = _stamp()
-    #: SET NULL, not RESTRICT: FR lxxvi requires the trail to survive the removal of a user,
-    #: and FR lxxx's retention purge deletes expired accounts. The denormalised
-    #: ``actor_username``/``actor_role`` below are what keeps the row readable afterwards.
+    #: SET NULL so the trail survives a deleted user; actor_username/actor_role keep it readable.
     actor_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), index=True
     )
@@ -663,4 +642,5 @@ class AuditRecord(Base):
         "dashboard_view", "search", "export_csv", "export_xlsx", "report_download",
         "config_update", "config_update_rejected", "retention_purge_preview",
         "retention_purge", "anomaly_alert", "access_denied", "request_error",
+        "model_failure",
     )

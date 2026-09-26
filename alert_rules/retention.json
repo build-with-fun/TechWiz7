@@ -1,6 +1,5 @@
 {
   "version": "1.0.0",
-  "owner": "sara",
   "srs_refs": ["FR lxxx (Data Retention - administrators configure how long audio files and event records are retained)", "FR lxxi (secure audio storage)", "FR lxxix (privacy controls)"],
   "read_by": ["src/maintenance/retention.py", "src/services/config.py", "src/api/admin.py"],
 

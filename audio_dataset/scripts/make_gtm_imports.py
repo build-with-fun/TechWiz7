@@ -1,108 +1,210 @@
-"""Build Teachable Machine audio imports from train-only WAV segments.
+"""Build Teachable Machine audio imports from the training split only.
 
-Teachable Machine imports its own sample ZIP format (``samples.json`` plus WebM),
-not a ZIP of WAV files. Each exported entry keeps the original training-parent ID
-in the accompanying index so the frozen validation and test splits remain separate.
+Teachable Machine's audio uploader accepts the ZIP its own "Download Samples" button
+produces: ``samples.json`` with browser-FFT frequency frames plus one WebM per sample.
+TM trains on the frames and only uses the WebM for playback in its UI. A plain ZIP of
+WAV files is not accepted.
+
+Each training recording goes through the app's own preprocessing
+(``python_models/preprocess_cache.py``), is resampled to TM's 44.1 kHz, and gives its
+loudest one-second window (the rule the server applies at inference); ``--windows-per-clip``
+adds the next-loudest non-overlapping seconds. With ``--max-per-class`` the recordings are
+taken in a fixed hash order rather than by audio id, because low ids are all one source
+(FSD50K) and a capped run would otherwise learn that source's microphones.
+
+History: v1 (25 Sep) used 32 recordings per class and scored 0.28 on test. v2 (26 Sep
+morning) capped at 140 per class in id order and scored 0.46; 764 of its 1,400 samples
+were FSD50K clips. v3 (this file) spreads the cap across sources and writes evidence.
+
+Outputs:
+
+* ``gtm_model/upload_package/tm_imports/<class>.zip`` and ``index.json`` (lineage);
+* ``audio_dataset/gtm_samples/<class>/<parent>S<k>.wav``: the exact one-second windows
+  TM trains on (44.1 kHz), so anyone can listen to them;
+* ``audio_dataset/manifests/gtm_segment_rows.csv``: one row per window with its parent
+  recording, class and offset. Offsets are in the preprocessed (trimmed) signal.
+
+Validation and test recordings are never read: every parent is checked against the
+manifest split before any file is written.
 """
 
 from __future__ import annotations
 
+import argparse
 import csv
+import dataclasses
+import hashlib
 import io
 import json
 import subprocess
+import sys
 import zipfile
 from collections import defaultdict
+from datetime import date
 from pathlib import Path
 
 import numpy as np
 import soundfile as sf
-from scipy.signal import resample_poly
 
 ROOT = Path(__file__).resolve().parents[2]
-PACKAGE = ROOT / "gtm_model/upload_package"
+sys.path.insert(0, str(ROOT))
+
+from python_models.preprocess_cache import load_cached, read_index  # noqa: E402
+from src.inference.gtm_predictor import (  # noqa: E402
+    GtmFrontendConfig,
+    compute_spectrogram,
+    window_starts,
+)
+
+PACKAGE = ROOT / "gtm_model" / "upload_package"
 OUTPUT = PACKAGE / "tm_imports"
-SAMPLES_PER_CLASS = 32
-TARGET_RATE = 44100
-FRAMES = 43
-BINS = 232
-HOP = 1024
-FFT = 2048
+MANIFEST = ROOT / "audio_dataset" / "manifest_with_split.csv"
+SAMPLES = ROOT / "audio_dataset" / "gtm_samples"
+ROWS = ROOT / "audio_dataset" / "manifests" / "gtm_segment_rows.csv"
+ROW_FIELDS = [
+    "audio_id", "filename", "class_label", "source", "source_url", "licence", "author",
+    "date_fetched", "duration_sec", "sampling_rate", "channels", "recording_environment",
+    "recording_device", "approximate_distance", "original_or_augmented", "parent_audio_id",
+    "segment_start_sec", "segment_end_sec", "sha256", "dataset_split", "gtm_batch", "notes",
+]
+BATCH = "tm-v3"
+SLUG = {
+    "Machinery Fault": "machinery_fault", "Glass Breaking": "glass_breaking",
+    "Alarm or Siren": "alarm_or_siren", "Vehicle Horn": "vehicle_horn",
+    "Animal Sound": "animal_sound", "Gunshot": "gunshot", "Panic Scream": "panic_scream",
+    "Aggression": "aggression", "Person Asking for Help": "person_asking_for_help",
+    "Background Noise": "background_noise",
+}
 
 
-def spectrum(wav_bytes: bytes) -> tuple[list[list[float]], bytes]:
-    audio, rate = sf.read(io.BytesIO(wav_bytes), dtype="float32")
-    if audio.ndim == 2:
-        audio = audio.mean(axis=1)
-    from math import gcd
+def ranked_windows(samples: np.ndarray, rate: int, config: GtmFrontendConfig,
+                   count: int) -> list[tuple[float, np.ndarray]]:
+    """``(start_sec, window)`` for the loudest second, then the next-loudest non-overlapping ones."""
+    y = np.asarray(samples, dtype="float32")
+    if rate != config.sample_rate:
+        import librosa
 
-    divisor = gcd(rate, TARGET_RATE)
-    y = resample_poly(audio, TARGET_RATE // divisor, rate // divisor).astype(np.float32)
-    y = np.pad(y[: TARGET_RATE], (0, max(0, TARGET_RATE - len(y))))
-    # WebAudio's analyser uses a 2048-point Blackman window; each 1024-sample
-    # hop supplies one frequency column. Values are dB, as in Download Samples.
-    window = np.blackman(FFT).astype(np.float32)
-    padded = np.pad(y, (FFT - HOP, FFT))
-    starts = np.arange(FRAMES) * HOP
-    blocks = np.stack([padded[start:start + FFT] for start in starts])
-    amplitudes = np.abs(np.fft.rfft(blocks * window, axis=1)[:, :BINS]) / FFT
-    db = 20 * np.log10(np.maximum(amplitudes, 1e-16))
-    db = np.clip(db, -320, 0).astype(np.float32)
+        y = librosa.resample(y, orig_sr=rate, target_sr=config.sample_rate).astype("float32")
+    n = int(round(config.window_sec * config.sample_rate))
+    chosen: list[int] = []
+    for start in window_starts(y, n):
+        if len(chosen) == count:
+            break
+        if all(abs(start - c) >= n for c in chosen):
+            chosen.append(start)
+    return [(s / config.sample_rate, y[s:s + n]) for s in chosen]
 
+
+def to_webm(window: np.ndarray, rate: int) -> bytes:
     buffer = io.BytesIO()
-    sf.write(buffer, y, TARGET_RATE, format="WAV", subtype="PCM_16")
-    webm = subprocess.run(
+    sf.write(buffer, window, rate, format="WAV", subtype="PCM_16")
+    return subprocess.run(
         ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", "pipe:0",
-         "-c:a", "libopus", "-b:a", "64k", "-f", "webm", "pipe:1"],
+         "-c:a", "libopus", "-b:a", "48k", "-f", "webm", "pipe:1"],
         input=buffer.getvalue(), capture_output=True, check=True,
     ).stdout
-    return db.tolist(), webm
+
+
+def hash_order(audio_ids: list[str]) -> list[str]:
+    return sorted(audio_ids, key=lambda a: hashlib.sha256(f"tm-v3:{a}".encode()).hexdigest())
 
 
 def main() -> None:
-    with (ROOT / "audio_dataset/manifest.csv").open(newline="", encoding="utf-8") as handle:
-        train_ids = {row["audio_id"] for row in csv.DictReader(handle)
-                     if row["dataset_split"] == "train"}
-    with (ROOT / "audio_dataset/manifests/gtm_segment_rows.csv").open(
-        newline="", encoding="utf-8"
-    ) as handle:
-        rows = list(csv.DictReader(handle))
-    by_class: dict[str, dict[str, dict]] = defaultdict(dict)
-    for row in sorted(rows, key=lambda value: value["audio_id"]):
-        parent = row["parent_audio_id"]
-        if parent not in train_ids:
-            raise ValueError(f"GTM sample {row['audio_id']} comes from a non-training clip")
-        by_class[row["class_label"]].setdefault(parent, row)
+    parser = argparse.ArgumentParser(description="Build train-only Teachable Machine imports")
+    parser.add_argument("--windows-per-clip", type=int, default=1)
+    parser.add_argument("--max-per-class", type=int, default=0,
+                        help="cap samples per class (0 = no cap)")
+    args = parser.parse_args()
+
+    with MANIFEST.open(newline="", encoding="utf-8") as fh:
+        manifest = {r["audio_id"]: r for r in csv.DictReader(fh)}
+    cache = read_index()
+    frontend = GtmFrontendConfig.load(ROOT / "gtm_model" / "frontend_config.json")
+    # TM stores raw dB frames and normalises each example itself when it trains.
+    raw_frontend = dataclasses.replace(frontend, normalize_mode="none")
+
+    by_class: dict[str, list[str]] = defaultdict(list)
+    for audio_id, row in manifest.items():
+        if row["dataset_split"] == "train" and row["original_or_augmented"] == "original":
+            by_class[row["class_label"]].append(audio_id)
+    for label, parents in by_class.items():
+        by_class[label] = hash_order(parents)
+        bad = [p for p in parents if manifest[p]["dataset_split"] != "train"]
+        if bad:
+            raise ValueError(f"{label}: non-training parents {bad[:3]}")
 
     OUTPUT.mkdir(parents=True, exist_ok=True)
-    index = []
-    with (PACKAGE / "index.csv").open(newline="", encoding="utf-8") as handle:
-        packages = list(csv.DictReader(handle))
-    for package in packages:
-        label = package["class"]
-        chosen = list(by_class[label].values())[:SAMPLES_PER_CLASS]
-        if len(chosen) != SAMPLES_PER_CLASS:
-            raise ValueError(f"Only {len(chosen)} independent parents for {label}")
-        samples = []
-        source = ROOT / package["zip"]
-        target = OUTPUT / source.name
-        with zipfile.ZipFile(source) as original, zipfile.ZipFile(
-            target, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6
-        ) as result:
-            for number, row in enumerate(chosen, 1):
-                frames, webm = spectrum(original.read(Path(row["filename"]).name))
-                webm_name = f"sample-{number}.webm"
-                result.writestr(webm_name, webm)
-                samples.append({"frequencyFrames": frames, "blob": None,
-                                "startTime": 0, "endTime": 1.0,
-                                "recordingDuration": 1.0, "blobFilePath": webm_name})
-            result.writestr("samples.json", json.dumps(samples, separators=(",", ":")))
+    index, rows = [], []
+    today = date.today().isoformat()
+    for label, parents in sorted(by_class.items()):
+        samples, lineage = [], []
+        target = OUTPUT / f"{SLUG[label]}.zip"
+        wav_dir = SAMPLES / SLUG[label]
+        wav_dir.mkdir(parents=True, exist_ok=True)
+        for stale in wav_dir.glob("*.wav"):  # this folder only ever holds this script's output
+            stale.unlink()
+        with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED,
+                             compresslevel=6) as archive:
+            for parent in parents:
+                if args.max_per_class and len(samples) >= args.max_per_class:
+                    break
+                info = cache.get(parent)
+                if not info or info["rejected"] == "True":
+                    continue  # the app would reject it too, so GTM should not learn from it
+                wave = load_cached(parent)
+                windows = ranked_windows(wave, int(info["sample_rate"]), frontend, args.windows_per_clip)
+                for k, (start_sec, window) in enumerate(windows, 1):
+                    frames = compute_spectrogram(window, raw_frontend)
+                    name = f"sample-{len(samples) + 1}.webm"
+                    archive.writestr(name, to_webm(window, frontend.sample_rate))
+                    # One list of 232 dB values per frame (43 of them). A flat list of 9,976
+                    # numbers imports without error but hangs TM at "Preparing training data".
+                    samples.append({"frequencyFrames": frames.astype(float).tolist(),
+                                    "blob": None, "startTime": 0, "endTime": 1.0,
+                                    "recordingDuration": 1.0, "blobFilePath": name})
+                    segment_id = f"{parent}S{k}"
+                    wav_path = wav_dir / f"{segment_id}.wav"
+                    sf.write(wav_path, window, frontend.sample_rate, subtype="PCM_16")
+                    lineage.append({"sample": name, "segment_id": segment_id,
+                                    "parent_audio_id": parent, "window": k,
+                                    "start_sec_in_preprocessed": round(start_sec, 3)})
+                    src = manifest[parent]
+                    rows.append({
+                        "audio_id": segment_id,
+                        "filename": str(wav_path.relative_to(ROOT / "audio_dataset")),
+                        "class_label": label,
+                        "source": f"derived:TM window of {parent}",
+                        "source_url": src.get("source_url", ""), "licence": src.get("licence", ""),
+                        "author": src.get("author", ""), "date_fetched": today,
+                        "duration_sec": f"{len(window) / frontend.sample_rate:.3f}",
+                        "sampling_rate": str(frontend.sample_rate), "channels": "1",
+                        "recording_environment": src.get("recording_environment", ""),
+                        "recording_device": src.get("recording_device", ""),
+                        "approximate_distance": src.get("approximate_distance", ""),
+                        "original_or_augmented": "augmented", "parent_audio_id": parent,
+                        "segment_start_sec": f"{start_sec:.3f}",
+                        "segment_end_sec": f"{start_sec + frontend.window_sec:.3f}",
+                        "sha256": hashlib.sha256(wav_path.read_bytes()).hexdigest(),
+                        "dataset_split": "train", "gtm_batch": BATCH,
+                        "notes": "offsets are in the preprocessed (trimmed) signal; split inherited from the parent",
+                    })
+            archive.writestr("samples.json", json.dumps(samples, separators=(",", ":")))
         index.append({"class": label, "zip": str(target.relative_to(ROOT)),
-                      "sample_count": len(chosen),
-                      "segment_ids": [row["audio_id"] for row in chosen],
-                      "parent_ids": [row["parent_audio_id"] for row in chosen]})
-        print(f"{label}: {len(chosen)} samples -> {target.name}", flush=True)
+                      "sample_count": len(samples),
+                      "distinct_parents": len({x["parent_audio_id"] for x in lineage}),
+                      "windows_per_clip": args.windows_per_clip,
+                      "parent_order": "sha256('tm-v3:' + audio_id)",
+                      "samples": lineage})
+        print(f"{label}: {len(samples)} samples from "
+              f"{index[-1]['distinct_parents']} training recordings -> {target.name}",
+              flush=True)
+
     (OUTPUT / "index.json").write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
+    with ROWS.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=ROW_FIELDS)
+        writer.writeheader()
+        writer.writerows(rows)
+    print(f"{len(rows)} evidence rows -> {ROWS.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

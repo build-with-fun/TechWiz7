@@ -1,23 +1,9 @@
-"""
-Python model predictor — loads the saved best model and produces per-class confidences.
+"""Loads the saved Python model bundle and turns features into per-class confidences.
 
-Owner: lorena.  SRS Step 7, Step 11, FR xx, Deliverable 3.
-
-Contract consumed by the web app:
-    predictor = PythonModelPredictor.load("python_models/best")
-    result    = predictor.predict(source, preprocessor=pp)   # -> PredictionResult
-
-Two failure modes this module is built to prevent, because both produce a model that
-"works" and is wrong:
-
-  1. LABEL DRIFT. If the saved estimator was fitted with classes in one order and the
-     class list from config/classes.json is in another, argmax maps to the wrong name and
-     every prediction is silently mislabelled. So the class order is frozen INTO the
-     saved bundle and verified against the estimator's own `classes_` at load time.
-
-  2. FEATURE DRIFT. The same, for the feature columns. The feature version string and the
-     column order are stored beside the model and checked against the extractor's output
-     vector length before any prediction is made.
+The class order and the feature columns are saved inside the bundle and checked when it
+loads: a bundle whose estimator.classes_ disagree with label_encoder.json, or whose feature
+width differs from what the extractor produces, is refused rather than allowed to map
+predictions onto the wrong names or columns.
 """
 
 from __future__ import annotations
@@ -75,7 +61,6 @@ class PythonModelPredictor:
         self.bundle = bundle
         self._extract = feature_extractor
 
-    # -- loading ---------------------------------------------------------------------
 
     @classmethod
     def load(cls, model_dir: str | Path, feature_extractor: Callable[[PreprocessedAudio], Any]) -> "PythonModelPredictor":
@@ -100,8 +85,10 @@ class PythonModelPredictor:
         except ModelLoadError:
             meta = {}
 
-        saved_classes = list(labels_doc["class_names"])
-        fitted_classes = list(getattr(estimator, "classes_", []))
+        saved_classes = [str(c) for c in labels_doc["class_names"]]
+        # classes_ are numpy strings for most sklearn estimators; plain str keeps np.str_ out of
+        # JSON.
+        fitted_classes = [str(c) for c in getattr(estimator, "classes_", [])]
 
         # The check that stops silent mislabelling.
         if fitted_classes and len(fitted_classes) == len(saved_classes):
@@ -132,7 +119,6 @@ class PythonModelPredictor:
         )
         return cls(bundle, feature_extractor)
 
-    # -- prediction ------------------------------------------------------------------
 
     def predict(self, source: AudioSource, preprocessor: Any) -> PredictionResult:
         """Classify one audio input. `preprocessor` is the SAME object for upload and live."""
@@ -191,9 +177,8 @@ class PythonModelPredictor:
         if hasattr(self.bundle.estimator, "predict_proba"):
             raw = np.asarray(self.bundle.estimator.predict_proba(x))[0]
         else:
-            # No probabilities available: report the model's hard decision as a
-            # one-hot. That is honest (it is genuinely all the model says) rather than
-            # inventing a confidence distribution it never produced.
+            # No probabilities: report the hard decision as one-hot rather than invent a
+            # distribution.
             decision = self.bundle.estimator.predict(x)[0]
             raw = np.array([1.0 if c == decision else 0.0 for c in self.bundle.class_names])
         inference_sec = time.perf_counter() - started
@@ -213,7 +198,6 @@ class PythonModelPredictor:
             extra={"inference_sec": round(inference_sec, 5), **dict(extra or {})},
         )
 
-    # -- introspection ---------------------------------------------------------------
 
     @property
     def model_version(self) -> str:
@@ -248,11 +232,7 @@ def save_bundle(
     metrics: Mapping[str, Any] | None = None,
     metadata: Mapping[str, Any] | None = None,
 ) -> Path:
-    """Persist a model with the sidecars that stop label and feature drift.
-
-    Called by the training scripts (`bilal`, `nadia`) so every saved model is loadable
-    by the exact same code path. One writer, one format.
-    """
+    """Save a model with the sidecar files (labels, feature config, metadata) that load() checks."""
     import joblib
 
     out_dir = Path(out_dir)

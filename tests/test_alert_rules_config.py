@@ -1,6 +1,6 @@
 """The alert-rule files and the config loader are the contract the whole backend reads.
 
-Owner: sara.  SRS FR xxxv, xxxvi, liii, lxxx; SRS 1.10 deliverable 7; SRS 1.8 rule 5.
+SRS FR xxxv, xxxvi, liii, lxxx; SRS 1.10 deliverable 7; SRS 1.8 rule 5.
 
 Two things are under test, and they are the two things an evaluator will poke at:
 
@@ -40,9 +40,7 @@ def sandbox(tmp_path: Path) -> ConfigStore:
     return ConfigStore(tmp_path / "config", tmp_path / "alert_rules")
 
 
-# --------------------------------------------------------------------------------------
 # The shipped files
-# --------------------------------------------------------------------------------------
 
 def test_all_six_configuration_files_exist():
     for name in ("classes.json", "thresholds.json"):
@@ -149,12 +147,8 @@ def test_review_condition_reason_templates_name_their_variables(store: ConfigSto
 
 
 def test_repeat_detection_defaults_inherit_the_thresholds_file(store: ConfigStore):
-    """Numbers must be stated once. The rule file must not restate them.
-
-    The rule file is allowed to deviate per class, but every deviation must be a
-    *deliberate, documented* judgement -- not nine copies of the same number waiting to
-    drift out of step. This test pins the exact set of deviations, so adding a tenth
-    requires editing this list and saying why.
+    """Rule files state only deliberate per-class deviations from thresholds.json; this pins the
+    set.
     """
     thresholds = store.thresholds()
     expected_deviations = {
@@ -245,9 +239,7 @@ def test_retention_never_truncates_a_critical_event(store: ConfigStore):
     assert retention["overrides_by_severity"]["Critical"]["event_records_days"] >= base
 
 
-# --------------------------------------------------------------------------------------
 # Live editing -- the SRS "change a threshold in front of the evaluator" requirement
-# --------------------------------------------------------------------------------------
 
 def test_changing_min_confidence_on_disk_changes_what_the_loader_returns(sandbox: ConfigStore):
     before = sandbox.thresholds()["confidence"]["min_confidence"]
@@ -378,9 +370,7 @@ def test_a_typo_in_the_critical_override_is_refused(sandbox: ConfigStore):
         sandbox.critical_classes()
 
 
-# --------------------------------------------------------------------------------------
 # The snapshot the audit trail stores
-# --------------------------------------------------------------------------------------
 
 def test_snapshot_records_a_hash_per_file_and_survives_json(store: ConfigStore):
     snap = store.snapshot()

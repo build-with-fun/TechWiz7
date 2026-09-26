@@ -1,49 +1,16 @@
-"""The one tuning and comparison harness -- every model, classical and deep, is judged here.
+"""The tuning and comparison harness every candidate model goes through.
 
-Owner: bilal (tuning harness), joint with lorena (selection).
+Same rows, split, preprocessing, metric code and class list for every model, so a comparison
+compares models rather than protocols.
 
-WHY A SINGLE HARNESS
---------------------
-Two models can only be compared if everything except the model is held constant: the same
-rows, the same split, the same preprocessing, the same metric code, the same class list.
-If `nadia` tunes her CNN on one protocol and I tune my SVM on another, the resulting table
-is a comparison of two protocols that happen to have models attached. So selection lives
-here, once, and both of us call it.
+- Selection sees train and validation only (assert_no_test_peeking); ``finalize`` scores the
+  winner on test exactly once.
+- The winner maximises validation macro-F1 subject to the critical-recall floor.
+- Averaging uses the full class list (enforced in src.training.evaluation).
+- Every trial's parameters, seed, validation metrics and fit time go to a JSONL log.
 
-THE THREE WAYS TUNING LIES, AND WHAT THIS MODULE DOES ABOUT THEM
-----------------------------------------------------------------
-1. **Tuning against test.** The most expensive mistake in the project: it produces a
-   headline number that is optimistic by an unknown amount and can never be recovered. So
-   this module CANNOT see the test set during selection. :class:`TuningProtocol` is
-   constructed from a *validation* evaluator only; :meth:`TuningProtocol.select` scores
-   candidates on validation, and :func:`finalize` takes the winner to test exactly once.
-   ``assert_no_test_peeking`` is called by ``select`` and refuses a protocol whose
-   selection metric came from the test split -- including one assembled by accident by
-   evaluating on a superset of the splits.
-
-2. **Selecting on the metric you are judged on, then reporting it.** Selection uses
-   validation macro-F1 (and the critical-recall floor as a constraint); the test number is
-   reported once, as a held-out estimate. Both are stored, so the report can show
-   validation and test side by side and a gap that is large is visible rather than hidden.
-
-3. **Averaging over classes that never appear.** All averaging uses the full configured
-   class list, so a class the model stopped predicting scores zero and drags macro-F1 down
-   instead of vanishing. That is enforced in ``src.training.evaluation``; this module
-   simply must not bypass it.
-
-WHAT A TRIAL RECORDS
---------------------
-Every trial keeps its parameters, seed, validation metrics and wall-clock fit time, and is
-appended to a JSONL log. That log is the evidence for "we tuned it" and the input to the
-report's tuning table -- and it means a surprising result can be traced to the exact run
-that produced it rather than argued about.
-
-DEEP MODELS USE THE SAME HARNESS
---------------------------------
-``TuningProtocol`` accepts any callable ``fit(X, y) -> estimator`` and any callable
-``score(estimator, X, y) -> class predictions``. A CNN training loop wraps in two lambdas
-and gets the identical protocol, split guard and metric code as a Random Forest. That is
-the whole point.
+``fit`` and ``predict_proba_of`` are plain callables, so a torch model plugs in the same way
+as a Random Forest.
 """
 
 from __future__ import annotations
@@ -57,7 +24,6 @@ from typing import Any, Callable, Iterable, Mapping, Sequence
 import numpy as np
 
 from src.training.evaluation import (
-    EvaluationError,
     EvaluationResult,
     compute_metrics,
 )
@@ -67,9 +33,7 @@ class TuningError(RuntimeError):
     """Raised when a tuning run would produce an untrustworthy result."""
 
 
-# --------------------------------------------------------------------------------------
 # Data containers
-# --------------------------------------------------------------------------------------
 
 
 @dataclass
@@ -131,17 +95,11 @@ class Selection:
         }
 
 
-# --------------------------------------------------------------------------------------
 # The leakage guard for selection
-# --------------------------------------------------------------------------------------
 
 
 def assert_no_test_peeking(split_used_for_selection: str) -> None:
-    """Refuse to select a model on anything but train/validation.
-
-    Called at the top of :meth:`TuningProtocol.select`. The failure it prevents is silent
-    and fatal to the project's credibility, so it is an exception rather than a warning.
-    """
+    """Refuse to select a model on anything but train/validation."""
     normalised = str(split_used_for_selection).strip().lower()
     if normalised not in ("val", "validation", "train"):
         raise TuningError(
@@ -154,11 +112,7 @@ def assert_no_test_peeking(split_used_for_selection: str) -> None:
 def assert_disjoint_train_val(
     train_ids: Iterable[str], val_ids: Iterable[str], context: str = ""
 ) -> None:
-    """Assert the training and validation row sets do not overlap.
-
-    A row in both is memorised and then scored as if it were generalisation, inflating
-    validation and steering selection to the model that overfits hardest.
-    """
+    """Assert the training and validation row sets do not overlap."""
     train_set, val_set = set(train_ids), set(val_ids)
     overlap = train_set & val_set
     if overlap:
@@ -169,9 +123,7 @@ def assert_disjoint_train_val(
         )
 
 
-# --------------------------------------------------------------------------------------
 # Feature matrix assembly
-# --------------------------------------------------------------------------------------
 
 
 def build_feature_matrix(
@@ -184,23 +136,11 @@ def build_feature_matrix(
     unusable: list[dict[str, Any]] | None = None,
     on_unusable: str = "skip",
 ) -> tuple[np.ndarray, np.ndarray, list[str]]:
-    """Features + labels for a record set, with an on-disk cache keyed by audio_id.
+    """Features and labels for a record set, cached on disk by audio_id and feature version.
 
-    The cache is not an optimisation only: extraction is deterministic and the cache is
-    keyed by the frozen ``audio_id`` plus the extractor's ``feature_version``, so the
-    matrix a model was trained on and the matrix it is evaluated on are provably the same
-    columns in the same order. A stale cache is detected and refused rather than silently
-    reusing features from an older feature version.
-
-    Returns ``(X, y, audio_ids)`` with rows in ``records`` order, so the caller's labels
-    and the matrix cannot drift apart.
-
-    Recordings the quality gate rejects (silence, excessive noise) are **not** silently
-    dropped. Each one is appended to ``unusable`` as
-    ``{"audio_id", "class_label", "reason", "split"}`` so the run can report exactly which
-    frozen-split recordings did not make it into the matrix -- a number the report has to
-    be able to state. ``on_unusable="raise"`` turns the first rejection into an error
-    instead, for a caller that would rather fail loudly.
+    Returns ``(X, y, audio_ids)`` in ``records`` order. Recordings the quality gate rejects are
+    appended to ``unusable`` with their reason (or raise, with ``on_unusable="raise"``) so the run
+    can report exactly what was left out.
     """
     from python_models.dataset import resolve_audio_path
 
@@ -292,19 +232,15 @@ def build_feature_matrix(
     return np.vstack(rows), np.asarray(labels, dtype=object), ids
 
 
-# --------------------------------------------------------------------------------------
 # The protocol
-# --------------------------------------------------------------------------------------
 
 
 @dataclass
 class TuningProtocol:
-    """Fit-on-train / select-on-validation / report-on-test-once.
+    """Fit on train, select on validation, report on test once.
 
-    ``fit`` takes ``(X_train, y_train, params, seed, class_weights)`` and returns a fitted
-    estimator. ``predict_proba_of`` takes ``(estimator, X)`` and returns an
-    ``(n_rows, n_classes)`` array -- so a deep model that outputs logits or a torch tensor
-    is adapted in the caller's two lambdas and then gets the identical treatment.
+    ``fit(X, y, params, seed, class_weights)`` returns an estimator; ``predict_proba_of(est, X)``
+    returns an ``(n_rows, n_classes)`` array.
     """
 
     class_names: Sequence[str]
@@ -323,7 +259,6 @@ class TuningProtocol:
     log_path: str | Path | None = None
     trials: list[Trial] = field(default_factory=list)
 
-    # -- setup ------------------------------------------------------------------------
 
     def __post_init__(self) -> None:
         if self.X_train is not None and self.train_ids is not None and self.val_ids is not None:
@@ -353,15 +288,12 @@ class TuningProtocol:
             raise TuningError("label count does not match feature row count")
         return self
 
-    # -- scoring ----------------------------------------------------------------------
 
     def _predictions(self, estimator: Any, X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Class predictions and the full confidence matrix, in ``class_names`` order.
 
-        ``predict_proba`` columns follow the estimator's own ``classes_`` (alphabetical for
-        sklearn), *not* the config order of ``class_names``. Argmax positions must be
-        resolved against ``classes_`` -- indexing ``class_names`` directly scrambles every
-        label (a real bug that made whole candidate sweeps score at chance level).
+        ``predict_proba`` columns follow the estimator's ``classes_`` (alphabetical in sklearn), not the
+        config order; indexing ``class_names`` directly once made whole sweeps score at chance.
         """
         proba = np.asarray(self.predict_proba_of(estimator, X))
         if proba.ndim != 2 or proba.shape[1] != len(self.class_names):
@@ -374,8 +306,8 @@ class TuningProtocol:
             # Columns are in the estimator's order; canonicalise to class_names order.
             order = [learned.index(str(name)) for name in self.class_names]
             proba = proba[:, order]
-        # If classes_ is absent, predict_proba must already be in class_names order --
-        # the caller owns that contract (asserted by the shape check above).
+        # Without classes_, predict_proba must already be in class_names order (shape checked
+        # above).
         idx = np.argmax(proba, axis=1)
         names = np.asarray(self.class_names, dtype=object)
         return names[idx], proba
@@ -401,7 +333,6 @@ class TuningProtocol:
         trial.predictions = predicted
         return trial
 
-    # -- the loop ---------------------------------------------------------------------
 
     def select(
         self,
@@ -410,12 +341,8 @@ class TuningProtocol:
         class_weights: Mapping[str, float] | None = None,
         split_used_for_selection: str = "val",
     ) -> Selection:
-        """Evaluate every ``(name, params)`` candidate on validation and pick a winner.
-
-        The winner maximises the selection metric subject to the critical-recall floor: a
-        model that edges ahead on macro-F1 while missing a critical class is not a winner,
-        because the SRS's floor on critical recall is a safety requirement, not a
-        preference to be traded against an average.
+        """Score every ``(name, params)`` candidate on validation; the best macro-F1 that meets the
+        critical-recall floor wins.
         """
         assert_no_test_peeking(split_used_for_selection)
         if self.fit is None or self.predict_proba_of is None:
@@ -500,9 +427,7 @@ class TuningProtocol:
             fh.write(json.dumps(trial.to_dict()) + "\n")
 
 
-# --------------------------------------------------------------------------------------
 # Taking the winner to test -- once
-# --------------------------------------------------------------------------------------
 
 
 @dataclass
@@ -529,16 +454,9 @@ def finalize(
     model_version: str = "",
     fitted_on: str = "train",
 ) -> FinalModel:
-    """Score the selected model on the test split. The one and only time.
+    """Score the selected model on the test split, once.
 
-    ``fitted_on`` is recorded because two honest strategies exist and the report must say
-    which was used: fit on train only (test stays fully held out from every tuning
-    decision) or refit on train+val after selection (more data, at the cost of validation
-    no longer being an independent estimate). It is never allowed to be silent.
-
-    The row count here is also checked against ``len(y_test)`` before anything is scored --
-    a mismatch between the label vector and the matrix rows shifts every prediction by one
-    and produces a plausible-but-wrong confusion matrix.
+    ``fitted_on`` records whether the model saw train only or train+val, so the report can say which.
     """
     if fitted_on not in ("train", "train+val"):
         raise TuningError(f"unknown fitted_on {fitted_on!r}; expected 'train' or 'train+val'")
@@ -548,9 +466,7 @@ def finalize(
             f"{len(test_ids)} audio ids -- these must describe the same recordings"
         )
     if test_records is not None:
-        # Lorena's guard, applied on the test path specifically. It refuses any record not
-        # in the frozen test split and refuses augmented audio, so "unseen data" in the
-        # report means unseen data.
+        # Test-path split guard: only frozen test rows, never augmented audio.
         from src.training.evaluation import assert_reportable_split
 
         assert_reportable_split(test_records, "test", context=f"finalize({selection.winner})")
@@ -604,9 +520,7 @@ def finalize(
     )
 
 
-# --------------------------------------------------------------------------------------
 # Refit on train+val
-# --------------------------------------------------------------------------------------
 
 
 def refit_on_train_and_val(
@@ -614,12 +528,7 @@ def refit_on_train_and_val(
     selection: Selection,
     class_weights: Mapping[str, float] | None = None,
 ) -> Any:
-    """Refit the selected configuration on train+val after selection is already made.
-
-    Only legal *after* ``select`` has finished, because the validation split has then
-    served its purpose. Using train+val is strictly better for the deployed model, and the
-    report records that test is then no longer comparable to validation for this model.
-    """
+    """Refit the selected configuration on train+val; only after ``select`` has finished."""
     if protocol.X_train is None or protocol.X_val is None:
         raise TuningError("protocol has no data to refit on")
     X = np.vstack([protocol.X_train, protocol.X_val])
@@ -627,9 +536,7 @@ def refit_on_train_and_val(
     return protocol.fit(X, y, dict(selection.params), int(selection.seed), class_weights)
 
 
-# --------------------------------------------------------------------------------------
 # Cross-validation, for a variance estimate on the winner only
-# --------------------------------------------------------------------------------------
 
 
 def cross_validate_selected(
@@ -640,13 +547,8 @@ def cross_validate_selected(
     class_weights: Mapping[str, float] | None = None,
     seed: int = 0,
 ) -> dict[str, Any]:
-    """Stratified k-fold CV of the winning configuration over *training* rows only.
-
-    Purpose is a variance estimate -- "is this model's advantage over the runner-up bigger
-    than its fold-to-fold spread?" -- computed without touching validation or test. The
-    fold split is stratified so every fold contains every class; with 2,100 rows and 10
-    classes an unstratified fold can leave a class out entirely and produce a meaningless
-    zero.
+    """Stratified k-fold CV of the winner over training rows only, as a fold-to-fold variance
+    estimate.
     """
     from sklearn.model_selection import StratifiedKFold
 
@@ -693,9 +595,7 @@ def cross_validate_selected(
     }
 
 
-# --------------------------------------------------------------------------------------
 # Helpers
-# --------------------------------------------------------------------------------------
 
 
 def _jsonable(value: Any) -> Any:
@@ -712,12 +612,7 @@ def _jsonable(value: Any) -> Any:
 
 
 def comparable_table(results: Sequence[EvaluationResult]) -> list[dict[str, Any]]:
-    """One row per model, every mandated column, straight from the metric objects.
-
-    This is what the model-comparison report's main table is built from, and it is built
-    from ``EvaluationResult`` rather than re-parsed from text so the table cannot disagree
-    with the artefacts it summarises.
-    """
+    """One row per model with every reported column, built from the EvaluationResult objects."""
     table: list[dict[str, Any]] = []
     for result in results:
         table.append(
@@ -740,11 +635,7 @@ def comparable_table(results: Sequence[EvaluationResult]) -> list[dict[str, Any]
 
 
 def assert_comparable(results: Sequence[EvaluationResult], *, split: str = "test") -> None:
-    """Assert every result in a comparison table came from the same split and row count.
-
-    A table mixing a model scored on 450 test rows with one scored on 200 is not a
-    comparison, and the mixed table looks perfectly normal on the page.
-    """
+    """Assert every result in a comparison table came from the same split and row count."""
     if not results:
         raise TuningError("nothing to compare")
     splits = {r.split for r in results}

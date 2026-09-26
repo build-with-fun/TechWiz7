@@ -25,7 +25,7 @@
     {% set status_tabs = [('Open', 'Open'), ('Acknowledged', 'Acknowledged'), ('Escalated', 'Escalated'), ('Dismissed', 'Dismissed'), ('Closed', 'Closed'), ('all', 'All')] %}
     {% for value, label in status_tabs %}
     <li>
-      <a class="chip {{ 'chip--critical' if value == current_status else '' }}"
+      <a class="chip"
          href="{{ url_for('main.alerts', status=value) }}"
          {% if value == current_status %}aria-current="page"{% endif %}>
         <span class="chip__text">{{ label }}</span>
@@ -95,7 +95,7 @@
               <div>{{ alert.message }}</div>
               {% if alert.recommended_action %}<div class="summary-note">{{ ui.icon('info', 11) }} {{ alert.recommended_action }}</div>{% endif %}
             </td>
-            <td>{{ alert.created_at }}</td>
+            <td>{{ alert.created_at | when }}</td>
             <td>{{ ui.alert_chip(alert.status) }}</td>
             <td class="actions">
               {% if can_acknowledge and alert.status == 'Open' %}
@@ -103,7 +103,7 @@
                 <button type="submit" class="btn btn--sm btn--primary">{{ ui.icon('check', 12) }} Acknowledge</button>
               </form>
               {% elif alert.acknowledged_by_id %}
-              <span class="field__hint">ack'd {{ alert.acknowledged_at }}</span>
+              <span class="field__hint">ack'd {{ alert.acknowledged_at | when }}</span>
               {% endif %}
             </td>
           </tr>

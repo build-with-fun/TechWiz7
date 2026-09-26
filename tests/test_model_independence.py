@@ -1,35 +1,17 @@
-"""The dual-model independence guarantee, tested rather than asserted.
+"""The two models must stay independent (SRS integrity rules), tested three ways:
 
-SRS integrity requires two SEPARATELY trained models whose predictions are compared
-after the fact. The mandate is broken the moment the Teachable Machine model can see
-the Python model's answer — that is no longer two models, it is one model and a
-sycophant, and every "consistency" number derived from it is fiction.
+1. Structural: the TM module cannot import the Python predictor, and no TM entry point
+   accepts a prediction, a confidence mapping or **kwargs.
+2. Behavioural: changing the Python model's output must leave the TM output bit-identical.
+3. Symmetric: the Python model cannot read the TM model either.
 
-A comment claiming independence is worth nothing. These tests attack the property from
-three directions:
-
-  1. STRUCTURAL — what can reach the GTM code at all (imports, signatures):
-     the GTM module must not be able to name the Python predictor, and no parameter
-     of any GTM entry point may accept a prediction, a confidence mapping or **kwargs
-     to smuggle one through.
-
-  2. BEHAVIOURAL — the poisoned-input proof. Run the GTM model, then re-run it with the
-     Python model's output changed arbitrarily, and require the GTM output to be
-     bit-identical. If the GTM path reads Python state anywhere — argument, attribute,
-     module global, cache — this fails.
-
-  3. SYMMETRIC — the Python model must not read the GTM model either. Independence that
-     only runs one way is not independence; it is a hierarchy.
-
-Plus the input-mode test: an uploaded file and the same audio as an in-memory live
-window must reach the SAME preprocessor and produce the SAME confidences. Two code
-paths that "should" match drift apart; this one is held together by a test.
+Also: an uploaded file and the same audio as a live window reach the same preprocessor and
+produce the same scores.
 """
 
 from __future__ import annotations
 
 import ast
-import copy
 import inspect
 import sys
 import wave
@@ -43,8 +25,6 @@ from src.inference.contract import (
     PreprocessedAudio,
     PredictionResult,
     class_names,
-    load_thresholds,
-    normalise_confidences,
 )
 from src.inference.gtm_predictor import GtmFrontendConfig, GtmModelPredictor
 from src.inference.predictor import PythonModelPredictor
@@ -55,19 +35,12 @@ PREDICTOR_SOURCE = REPO_ROOT / "src" / "inference" / "predictor.py"
 CLASSES = class_names()
 
 
-# --------------------------------------------------------------------------------------
 # Test doubles — a GTM model that actually depends on its input, so "output unchanged"
 # means something. A constant stub would make the poisoned-input test pass trivially.
-# --------------------------------------------------------------------------------------
 
 class StubGtmModel:
-    """A deterministic, CONTINUOUS function of the spectrogram it is handed.
-
-    Continuous matters: a stub whose output is a discontinuous hash of its input (say
-    `int(sum*1000) % n_classes`) flips its answer on the 16-bit quantisation of a wav
-    round trip, and then a genuine same-preprocessing-path test fails for a reason that
-    has nothing to do with the pipeline. Real neural nets respond smoothly to tiny input
-    changes; the double has to as well, or it tests the wrong thing.
+    """A deterministic, continuous function of the spectrogram, so a wav round trip does not flip
+    its answer.
     """
 
     def __init__(self, n_classes: int) -> None:
@@ -169,9 +142,7 @@ def python_result_for(class_name: str, confidence: float) -> PredictionResult:
     )
 
 
-# --------------------------------------------------------------------------------------
 # 1. STRUCTURAL — what the GTM code is even able to name
-# --------------------------------------------------------------------------------------
 
 def _imported_module_names(path: Path) -> set[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -256,18 +227,10 @@ def test_gtm_predict_arguments_are_audio_only():
     assert [p.name for p in params] == ["self", "source", "preprocessor"]
 
 
-# --------------------------------------------------------------------------------------
 # 2. BEHAVIOURAL — the poisoned-input proof
-# --------------------------------------------------------------------------------------
 
 def test_gtm_output_is_immutable_to_the_python_models_opinion(monkeypatch):
-    """Change the Python model's answer completely; the GTM answer must not move.
-
-    This is the test that would fail if someone "helped" the second model by seeding it
-    with the first model's guess — through an argument, an attribute, a module global or
-    a cache. The audio is the only input that differs between the runs, so any change in
-    the GTM output is attributable to the Python opinion that was injected alongside it.
-    """
+    """Change the Python model's answer completely; the GTM answer must not move."""
     gtm = make_gtm_predictor()
     preprocessor = RecordingPreprocessor()
     source = AudioSource.from_samples(make_audio(seconds=1.0, freq=440.0), 16000)
@@ -372,9 +335,7 @@ def test_python_predictor_output_is_immutable_to_the_gtm_opinion(tmp_path):
     sys.modules["src.inference"].__dict__.pop("gtm_result", None)
 
 
-# --------------------------------------------------------------------------------------
 # 3. The shared preprocessing path — both input modes
-# --------------------------------------------------------------------------------------
 
 def test_upload_and_live_window_reach_the_same_preprocessor(tmp_path):
     """A file and the same audio in memory must go through one preprocessing path.
@@ -457,9 +418,7 @@ def test_both_input_modes_are_rejected_by_the_same_gate():
             gtm.predict(source, preprocessor)
 
 
-# --------------------------------------------------------------------------------------
 # 4. Import hygiene — the web app must boot without TensorFlow
-# --------------------------------------------------------------------------------------
 
 def test_inference_package_imports_without_tensorflow():
     """The app must start and REPORT a broken GTM model, not refuse to start.
@@ -486,3 +445,45 @@ def test_inference_package_imports_without_tensorflow():
         ), "importing the inference package pulled TensorFlow into the web app's start-up path"
     finally:
         sys.modules.update(saved)
+
+
+class BandModel:
+    """Batch-aware fake: class 0 when the lower mel half is louder, class 1 otherwise."""
+
+    def predict(self, x, verbose=0):
+        x = np.asarray(x)
+        half = x.shape[1] // 2
+        low = x[:, :half].mean(axis=(1, 2, 3))
+        high = x[:, half:].mean(axis=(1, 2, 3))
+        out = np.full((x.shape[0], len(CLASSES)), 0.01)
+        out[np.arange(x.shape[0]), np.where(low > high, 0, 1)] = 0.9
+        return out / out.sum(axis=1, keepdims=True)
+
+
+def _two_part_clip(sr: int = 16000) -> np.ndarray:
+    """One loud second at 440 Hz, then two slightly quieter seconds at 3 kHz."""
+    t = np.arange(sr) / sr
+    first = 0.5 * np.sin(2 * np.pi * 440 * t)
+    rest = 0.45 * np.sin(2 * np.pi * 3000 * np.arange(2 * sr) / sr)
+    return np.concatenate([first, rest]).astype("float32")
+
+
+def _predict_with(aggregation: str):
+    frontend = make_frontend()
+    frontend.window_aggregation = aggregation
+    gtm = GtmModelPredictor(model=BandModel(), frontend=frontend, class_names=CLASSES,
+                            model_version="gtm-test-0.0.1", backend="stub")
+    return gtm.predict(AudioSource.from_samples(_two_part_clip(), 16000), RecordingPreprocessor())
+
+
+def test_loudest_window_mode_scores_one_window():
+    result = _predict_with("loudest")
+    assert result.extra["windows_scored"] == 1
+    assert result.predicted_class == CLASSES[0]        # the loudest second is the 440 Hz part
+
+
+def test_energy_weighted_mode_scores_every_window():
+    result = _predict_with("energy_weighted")
+    assert result.extra["windows_scored"] == 5         # 3 s at half-second hops
+    assert result.predicted_class == CLASSES[1]        # two seconds of 3 kHz outweigh one of 440 Hz
+    assert abs(sum(result.confidences.values()) - 1.0) < 1e-6

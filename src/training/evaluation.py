@@ -1,25 +1,10 @@
-"""Evaluation core: every number in the report comes from here, or it does not go in.
+"""Metrics for the model reports: every number in them comes from here.
 
-Three rules this module exists to enforce.
-
-1. ONE SOURCE OF TRUTH FOR THE SPLIT. Metrics are computed only over records whose
-   `dataset_split` matches the split being reported. `assert_reportable_split` refuses
-   anything else, so "test accuracy" cannot be quietly computed over val, train, or a
-   mixture — the mistake that makes a project look finished and be worthless.
-
-2. PROBES ARE NOT RESULTS. A noise-robustness run scores DEGRADED audio. Those numbers
-   are real and worth having, and they are NOT test accuracy. Every result carries
-   `probe` / `probe_label`, and `meets_floors` refuses to certify a probe. The headline
-   figure is always clean, frozen, unseen data.
-
-3. NO HARD-CODED METRIC. Accuracy, macro-F1, critical recall and the floors they are
-   tested against all derive from the confusion matrix and from config. Nothing here
-   knows what a good model looks like.
-
-The confusion matrix is computed here rather than imported, with the label ordering made
-explicit, because "which axis was which class" is the single most common way a
-classification report ends up backwards. `test_evaluation_metrics.py` asserts this
-implementation agrees with scikit-learn's on identical inputs.
+Metrics are computed only over rows of the split being reported (assert_reportable_split),
+robustness probes are flagged and can never pass the SRS floors, and nothing here hard-codes
+what a good score is. The confusion matrix is computed here with an explicit label order,
+because swapped axes still sum correctly; test_evaluation_metrics.py checks it against
+scikit-learn.
 """
 
 from __future__ import annotations
@@ -36,9 +21,7 @@ class EvaluationError(RuntimeError):
     """Raised when an evaluation would produce a number that cannot be trusted."""
 
 
-# --------------------------------------------------------------------------------------
 # The leakage guard
-# --------------------------------------------------------------------------------------
 
 def assert_reportable_split(
     records: Iterable[Mapping[str, Any]],
@@ -47,11 +30,8 @@ def assert_reportable_split(
     allow_augmented: bool = False,
     context: str = "",
 ) -> int:
-    """Refuse to evaluate anything but the frozen split, clean.
-
-    Called before every evaluation. The failure it prevents is silent: training on the
-    test set, or reporting augmented clips as unseen performance, both produce a good
-    number and a worthless project.
+    """Refuse anything but clean rows of the frozen split; the failure it prevents looks like a good
+    number.
     """
     if split not in SPLIT_NAMES:
         raise EvaluationError(f"unknown split {split!r}; expected one of {SPLIT_NAMES}")
@@ -88,19 +68,13 @@ def assert_reportable_split(
     return n
 
 
-# --------------------------------------------------------------------------------------
 # Confusion matrix — written out so the axis order is not a convention we inherited
-# --------------------------------------------------------------------------------------
 
 def confusion_matrix(
     y_true: Sequence[str], y_pred: Sequence[str], labels: Sequence[str]
 ) -> np.ndarray:
-    """Rows = actual, columns = predicted, in exactly `labels` order.
-
-    `labels` is required and ordered by the caller. Nothing here guesses an ordering from
-    the data, because a matrix whose axes were sorted alphabetically by accident produces
-    per-class numbers attached to the wrong classes — and still sums correctly, so it
-    survives inspection.
+    """Rows = actual, columns = predicted, in exactly ``labels`` order (never inferred from the
+    data).
     """
     index = {name: i for i, name in enumerate(labels)}
     if len(index) != len(list(labels)):
@@ -121,11 +95,8 @@ def confusion_matrix(
 
 
 def per_class_scores(matrix: np.ndarray) -> dict[str, np.ndarray]:
-    """Precision / recall / F1 / support from the matrix, zero-safe.
-
-    A class with no predictions has undefined precision; it is reported as 0.0, not 1.0
-    and not skipped. Skipping it would hide a class the model has stopped predicting,
-    which is exactly the failure a 10-class mandate needs to catch.
+    """Precision, recall, F1 and support per class; a class that is never predicted gets precision
+    0.0, not skipped.
     """
     matrix = np.asarray(matrix, dtype=np.float64)
     true_positive = np.diag(matrix)
@@ -151,9 +122,7 @@ def per_class_scores(matrix: np.ndarray) -> dict[str, np.ndarray]:
     }
 
 
-# --------------------------------------------------------------------------------------
 # Results
-# --------------------------------------------------------------------------------------
 
 @dataclass
 class EvaluationResult:
@@ -178,14 +147,9 @@ class EvaluationResult:
     probe: bool = False
     probe_label: str = ""
 
-    # ---- floors -----------------------------------------------------------------------
 
     def meets_floors(self, floors: Mapping[str, float]) -> tuple[bool, list[str]]:
-        """Check the SRS floors. A probe can never be certified.
-
-        A robustness probe measures how gracefully the model degrades; it says nothing
-        about the accuracy floor, which is defined on unseen clean data.
-        """
+        """Check the SRS floors. A probe measures degradation, so it can never pass them."""
         if self.probe:
             return False, [
                 f"this is a probe ({self.probe_label}), not a test-set measurement; "
@@ -236,9 +200,7 @@ class EvaluationResult:
         }
 
 
-# --------------------------------------------------------------------------------------
 # The measurement
-# --------------------------------------------------------------------------------------
 
 def compute_metrics(
     y_true: Sequence[str],
@@ -255,12 +217,8 @@ def compute_metrics(
     probe: bool = False,
     probe_label: str = "",
 ) -> EvaluationResult:
-    """Turn two label sequences into every number the SRS asks a model to be judged by.
-
-    `class_names` is the full configured class list and is used for ALL averaging, so a
-    class the model never predicts still counts against macro-F1 with a recall of zero.
-    Averaging only over classes that happen to appear would let a model that ignores a
-    hard class report a flattering macro-F1.
+    """Every metric the SRS judges a model by, averaged over the full configured class list, so a
+    class the model never predicts still counts (with recall 0).
     """
     if len(y_true) != len(y_pred):
         raise EvaluationError(
@@ -298,8 +256,7 @@ def compute_metrics(
         for i, name in enumerate(labels)
     ]
 
-    # Critical-event recall: the one number that decides whether this system is worth
-    # deploying. A missed gunshot is not a slightly worse gunshot prediction.
+    # Critical-event recall: a missed gunshot is not just a slightly worse prediction.
     critical_recall_by_class: dict[str, float] = {}
     for entry in per_class:
         if entry["is_critical"]:
@@ -323,10 +280,8 @@ def compute_metrics(
         )
         top2_accuracy = float(hits / n)
 
-    # Severe errors: a critical event the system failed to flag as critical.
-    # These are ranked by consequence, not by count: a gunshot called "Vehicle Horn" is a
-    # false alarm, a gunshot called "Background Noise" is a missed emergency. The report
-    # must distinguish them, because only one of those is survivable in deployment.
+    # Severe errors, ranked by consequence: a gunshot called Vehicle Horn is a false alarm,
+    # a gunshot called Background Noise is a missed emergency.
     critical_set = set(critical_classes)
     severe_errors: list[dict[str, Any]] = []
     if critical_set:
@@ -388,14 +343,10 @@ def evaluate_predictions(
     probe: bool = False,
     probe_label: str = "",
 ) -> tuple[EvaluationResult, list[dict[str, Any]]]:
-    """Run `predict` over `records` and compute the metrics.
+    """Run ``predict`` over ``records`` and return the metrics plus per-record predictions.
 
-    `predict` returns either a class name, or a Mapping with `predicted_class` and
-    `confidences` — the shape of `PredictionResult.to_dict()`, so the same harness drives
-    the Python model, the GTM model, a baseline and a probe without special cases.
-
-    Returns the metrics and the per-record predictions, because the comparison report
-    needs both the summary and the row-level evidence behind it.
+    ``predict`` returns a class name or a PredictionResult-shaped mapping, so the same harness
+    serves the Python model, the TM model and baselines.
     """
     if require_frozen_split:
         assert_reportable_split(
@@ -483,11 +434,8 @@ def load_split_records(
     manifest_path: str,
     split: str,
 ) -> list[dict[str, str]]:
-    """Read the manifest and return only the rows of one split.
-
-    Prefers `manifest_with_split.csv` (the builder's output, which has the authoritative
-    assignment). Raises rather than filtering silently, so a wrong path is not mistaken
-    for an empty split.
+    """Rows of one split from the manifest; raises rather than returning an empty list for a wrong
+    path.
     """
     import csv
     from pathlib import Path

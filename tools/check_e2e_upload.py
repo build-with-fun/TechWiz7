@@ -1,18 +1,11 @@
 #!/usr/bin/env python3
-"""Smoke-check both saved bundles on the local sample audio and record elapsed time.
+"""Run both saved models on the sample clips through AnalysisPipeline and time them.
 
-Loads python_models/best (or --model-dir variant) plus gtm_model/, runs
-AnalysisPipeline.analyse over the locally available sample clips and checks:
+Checks that every usable clip gets a class and confidence from both models, that the
+consistency and quality verdicts are valid, that the silent clip is rejected, and the 8 s /
+3 s budgets. Process-level only (no HTTP, database or 30 s clip); tools/benchmark_latency.py
+measures the SRS latency targets. Writes reports/e2e_acceptance.json.
 
-  1. both models return a class + top confidence for every usable clip
-  2. the consistency verdict is within the frozen taxonomy
-  3. the quality verdict is one of the four allowed values
-  4. each tested clip <= 8 s; each live window <= 3 s
-  5. an unusable clip (silence) comes back ok=False with a rejection reason
-
-This is process-level analysis without HTTP, database writes or a 30-second clip.
-It cannot establish the SRS latency target on longer recordings. Writes
-reports/e2e_acceptance.json so this sample run is inspectable:
     .venv/bin/python tools/check_e2e_upload.py [--model-dir python_models/best]
 """
 from __future__ import annotations
@@ -60,7 +53,7 @@ def main(argv: list[str] | None = None) -> int:
     clip_lat, win_lat = [], []
 
     for clip in clips:
-        # ---- upload path ------------------------------------------------------------
+        # upload path
         src = AudioSource.from_path(clip)
         t0 = time.perf_counter()
         rec = pipeline.analyse(src, origin="upload", meta={"filename": clip.name})
@@ -89,8 +82,7 @@ def main(argv: list[str] | None = None) -> int:
                             f"{rec.get('rejection', {}).get('code')!r}")
         rows.append(row)
 
-        # ---- live-window path (2 s slice, origin=live budget) --------------------------
-        import numpy as np
+        # live-window path (2 s slice, origin=live budget)
         import soundfile as sf
         data, sr = sf.read(clip, dtype="float32", always_2d=True)
         mono = data.mean(axis=1) if data.ndim > 1 else data

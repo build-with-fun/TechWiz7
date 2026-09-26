@@ -1,7 +1,7 @@
 """
 The inference layer: the single contract both input modes and both models go through.
 
-Owner: lorena.  Public surface other agents build against:
+Public surface the rest of the app builds against:
 
     from src.inference import (
         AudioSource, PreprocessedAudio, PredictionResult,

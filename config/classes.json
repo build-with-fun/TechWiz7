@@ -1,6 +1,5 @@
 {
   "version": "1.0.0",
-  "owner": "lorena",
   "consistency_note": "The 10 class names below are the single source of truth. They MUST be identical in config/classes.json, the Python model's label encoder, the Google Teachable Machine project's class labels, the app's UI and the alert rules. Duplicating or paraphrasing a class name anywhere breaks the model comparison.",
   "critical_classes": [
     "Gunshot",

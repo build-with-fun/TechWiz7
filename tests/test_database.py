@@ -1,6 +1,6 @@
 """The database is the store of record: these tests are the contract on it.
 
-Owner: sara.  SRS FR lxxi-lxxii (storage and contents), lxxiii-lxxiv (duplicate detection),
+SRS FR lxxi-lxxii (storage and contents), lxxiii-lxxiv (duplicate detection),
 lxxv (model version tracking), lxxvi (audit trail), lxxx (retention), §1.10 item 11
 (mandated folder `database/`, shipped credentials).
 
@@ -38,7 +38,6 @@ from src.db import (
 )
 from src.models import (
     ALERT_STATUSES,
-    CONSISTENCY_STATUSES,
     EVENT_STATUSES,
     MODEL_NAMES,
     QUALITY_VERDICTS,
@@ -62,9 +61,7 @@ CREDENTIALS = REPO_ROOT / "database" / "seed_credentials.json"
 INIT_DB = REPO_ROOT / "database" / "init_db.py"
 
 
-# --------------------------------------------------------------------------------------
 # Fixtures
-# --------------------------------------------------------------------------------------
 
 
 @pytest.fixture()
@@ -171,9 +168,7 @@ def _event(session, audio, user, py_version, gtm_version, **kwargs) -> Event:
     return event
 
 
-# --------------------------------------------------------------------------------------
 # The mandated folder and the files in it
-# --------------------------------------------------------------------------------------
 
 
 def test_database_folder_contains_the_mandated_files():
@@ -215,9 +210,7 @@ def test_schema_sql_matches_the_orm_models():
         assert f"CREATE TABLE {table} " in generated, f"{table} missing from schema.sql"
 
 
-# --------------------------------------------------------------------------------------
 # Constraints -- the schema refuses nonsense even when the app has a bug
-# --------------------------------------------------------------------------------------
 
 
 def test_foreign_keys_are_actually_enforced(engine, factory):
@@ -336,9 +329,7 @@ def test_a_review_decision_outside_the_vocabulary_is_rejected(session):
         session.flush()
 
 
-# --------------------------------------------------------------------------------------
 # FR lxxiii / lxxiv -- duplicate and near-duplicate detection
-# --------------------------------------------------------------------------------------
 
 
 def test_the_same_bytes_can_only_be_stored_once(session):
@@ -390,9 +381,7 @@ def test_sha256_file_matches_a_known_digest(tmp_path: Path):
     assert sha256_file(sample) == hashlib.sha256(payload).hexdigest()
 
 
-# --------------------------------------------------------------------------------------
 # FR lxxv -- model version tracking. The integrity trap.
-# --------------------------------------------------------------------------------------
 
 
 def test_every_event_records_both_model_versions(session):
@@ -476,9 +465,7 @@ def test_an_unknown_model_name_is_rejected(session):
         session.flush()
 
 
-# --------------------------------------------------------------------------------------
 # FR lix-lxi -- review and override preserve the original prediction
-# --------------------------------------------------------------------------------------
 
 
 def test_an_override_preserves_the_original_model_output(session):
@@ -576,9 +563,7 @@ def test_a_review_may_be_decided_exactly_once_per_row(session):
     assert review.is_decided and review.decided_at is not None and review.decided_by_id
 
 
-# --------------------------------------------------------------------------------------
 # FR liv-lvi -- alerts
-# --------------------------------------------------------------------------------------
 
 def test_an_alert_records_the_rule_that_fired(session):
     """FR liii rules are editable, so the alert keeps its own copy: "why did this alert?"
@@ -644,9 +629,7 @@ def test_two_alerts_can_share_a_dedup_key_so_a_burst_collapses(session):
     assert session.execute(select(Alert)).scalars().all().__len__() == 3
 
 
-# --------------------------------------------------------------------------------------
 # FR xxxvi / lxxix -- live sessions and consent
-# --------------------------------------------------------------------------------------
 
 
 def test_a_live_session_records_consent_and_its_windows(session):
@@ -705,9 +688,7 @@ def test_a_deleted_session_takes_its_windows_with_it(session):
     assert session.execute(select(LiveWindow)).scalars().all() == []
 
 
-# --------------------------------------------------------------------------------------
 # FR lxxvi -- the audit trail
-# --------------------------------------------------------------------------------------
 
 
 def test_every_audit_action_in_the_vocabulary_is_known():
@@ -764,9 +745,7 @@ def test_a_failed_login_for_an_unknown_user_is_still_auditable(session):
     assert row.outcome == "failure"
 
 
-# --------------------------------------------------------------------------------------
 # FR lxxi / lxxx -- storage paths and retention
-# --------------------------------------------------------------------------------------
 
 
 def test_storage_layout_creates_its_directories(storage: StorageLayout):
@@ -818,9 +797,7 @@ def test_a_flagged_event_is_excluded_from_a_purge_candidate_query(session):
     assert purgeable[0].flagged_for_investigation is False
 
 
-# --------------------------------------------------------------------------------------
 # Audio identifiers
-# --------------------------------------------------------------------------------------
 
 
 def test_audio_id_is_sortable_and_round_trips():
@@ -868,9 +845,7 @@ def test_audio_id_has_a_unique_constraint(session):
         session.flush()
 
 
-# --------------------------------------------------------------------------------------
 # Scale -- NFR: at least 20,000 event records, and search must stay usable
-# --------------------------------------------------------------------------------------
 
 
 def test_twenty_thousand_events_insert_and_the_search_filter_stays_fast(factory, engine):
@@ -950,9 +925,7 @@ def test_twenty_thousand_events_insert_and_the_search_filter_stays_fast(factory,
     assert "SCAN events" not in plan_text, f"full table scan: {plan_text}"
 
 
-# --------------------------------------------------------------------------------------
 # database/init_db.py -- the script the evaluator runs
-# --------------------------------------------------------------------------------------
 
 
 def _load_init_module():
@@ -1148,9 +1121,7 @@ def test_init_db_emits_a_schema_file_covering_every_table(tmp_path: Path, monkey
         assert f"CREATE TABLE {table} " in text_out
 
 
-# --------------------------------------------------------------------------------------
 # Relationships between the pieces
-# --------------------------------------------------------------------------------------
 
 
 def test_deleting_an_event_takes_its_scores_alerts_and_reviews(session):

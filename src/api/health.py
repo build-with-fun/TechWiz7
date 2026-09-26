@@ -1,16 +1,8 @@
-"""Health, readiness and monitoring.  SRS FR lxxviii, and the >= 99% uptime NFR.
+"""Health endpoints.
 
-Owner: sara.
-
-Three endpoints, serving different consumers:
-
-* ``/api/health`` -- for the load balancer and for monitoring. Fast, no database, no model
-  inference. It must answer while the database is down, because that 503 *is* the signal.
-* ``/api/health/ready`` -- reports whether the database and both models can serve analysis.
-* ``/api/health/detail`` -- for signed-in dashboard users. It reports the state of
-  the pipeline, the database, the storage tree, the configuration, the model versions and
-  the anomaly counters. It is deliberately readable: an evaluator asking "how do you know
-  it is up?" gets a page, not a shrug.
+/api/health is liveness: fast, no database, no inference. /api/health/ready answers 200 only
+when the database and both models can serve analysis. /api/health/detail (signed in) reports
+the pipeline, database, storage, configuration, model versions and anomaly counters.
 """
 
 from __future__ import annotations
@@ -32,11 +24,7 @@ _STARTED_MONOTONIC = time.monotonic()
 
 
 def _folder_report() -> dict[str, dict]:
-    """The SRS §1.10 deliverable folders, and whether each is actually there.
-
-    Reported rather than assumed: "we built it" should be checkable by the person marking
-    it, on the running instance.
-    """
+    """The SRS 1.10 deliverable folders and whether each exists on this instance."""
     names = (
         "src", "templates", "static", "config", "alert_rules", "database", "data",
         "tests", "audio_dataset", "sample_audio", "documentation", "python_models",
@@ -48,8 +36,7 @@ def _folder_report() -> dict[str, dict]:
         path = REPO_ROOT / name
         entry: dict = {"present": path.exists()}
         if path.is_dir():
-            # A count, not a listing: enough to show it is populated, cheap enough for a
-            # health check, and it cannot leak a filename.
+            # A count only: cheap, and it leaks no filenames.
             try:
                 entry["entries"] = sum(1 for _ in os.scandir(path))
             except OSError:
@@ -60,10 +47,8 @@ def _folder_report() -> dict[str, dict]:
 
 @bp.get("/api/health")
 def health():
-    """Liveness plus a one-word answer about whether analysis can run.
-
-    Deliberately does **not** touch the database: a health check that fails because the
-    database is briefly busy would restart a working application.
+    """Liveness plus whether analysis can run. Does not touch the database, so a busy database
+    cannot restart a working app.
     """
     from src.services.pipeline import pipeline_status
 
@@ -79,10 +64,7 @@ def health():
             "models": "ready" if status.get("ready") else "unavailable",
         },
     }
-    # 200 while the console is usable. A missing model is reported in the body and by the
-    # detail endpoint rather than by a non-200 here, because the sign-in page, the
-    # dashboards, the review queue and the audit trail all still work -- and a load
-    # balancer taking the instance out of rotation for that would be wrong.
+    # 200 while the console is usable: sign-in, dashboards and review still work without a model.
     return jsonify(payload)
 
 
@@ -142,9 +124,8 @@ def health_detail():
                         "active": bool(v.is_active),
                         "labels": v.label,
                         "algorithm": v.algorithm,
-                        # ``metrics`` is one JSON column, not fixed columns, so an evaluator's
-                        # model_meta.json can carry whatever it measured without a migration.
-                        # Read defensively: a version registered without metrics is normal.
+                        # metrics is a JSON column, and a version registered without metrics is
+                        # normal.
                         "test_accuracy": (v.metrics or {}).get("accuracy"),
                         "macro_f1": (v.metrics or {}).get("macro_f1"),
                         "trained_at": v.trained_at.isoformat() if v.trained_at else None,

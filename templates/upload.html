@@ -46,7 +46,7 @@
             action="{{ url_for('audio_api.upload') }}"
             data-dropzone data-testid="upload-dropzone">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <span class="dropzone__icon" aria-hidden="true">{{ ui.icon('upload', 40) }}</span>
+        <span class="dropzone__icon" aria-hidden="true">{{ ui.icon('upload', 28) }}</span>
         <p class="dropzone__title">Drag a file here, or choose one</p>
         <p class="dropzone__hint" id="audio-format-hint">WAV, MP3, FLAC, OGG or M4A ·
           {{ max_mb|round(1) }} MB per file</p>

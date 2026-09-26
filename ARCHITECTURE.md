@@ -6,7 +6,7 @@ SonicSentinel is a single-node Flask application with server-rendered Jinja page
 flowchart LR
   B[Browser upload or consented microphone] --> A[Flask routes and session checks]
   A --> P[Decode, quality and segmentation]
-  P --> PY[Python feature extractor and saved model]
+  P --> PY[CNN14 embedding and saved Python classifier]
   P --> GTM[GTM browser-FFT frontend and exported model]
   PY --> C[Independent score comparison]
   GTM --> C

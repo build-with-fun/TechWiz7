@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Create, seed and inspect the SonicSentinel AI database.
 
-Owner: sara.  SRS FR lxxi-lxxii (storage and contents), FR lxxv (model versions),
+SRS FR lxxi-lxxii (storage and contents), FR lxxv (model versions),
 FR lxxx (retention), §1.10 item 11 (ship with credentials).
 
 Typical use::
@@ -61,9 +61,7 @@ DEFAULT_CREDENTIALS = Path(__file__).with_name("seed_credentials.json")
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
 
-# --------------------------------------------------------------------------------------
 # schema.sql
-# --------------------------------------------------------------------------------------
 
 HEADER = """-- SonicSentinel AI -- canonical database schema.
 --
@@ -73,7 +71,7 @@ HEADER = """-- SonicSentinel AI -- canonical database schema.
 -- definitions can never drift apart.
 --
 -- Dialect: SQLite 3. Datetimes are UTC, stored naive (no offset). See database/README.md.
--- Owner: sara.  SRS FR lxxi-lxxii, FR lxxv, FR lxxvi, FR lxxx.
+-- SRS FR lxxi-lxxii, FR lxxv, FR lxxvi, FR lxxx.
 """
 
 
@@ -99,9 +97,7 @@ def emit_schema(target: Path = SCHEMA_PATH) -> str:
     return text
 
 
-# --------------------------------------------------------------------------------------
 # Seeding
-# --------------------------------------------------------------------------------------
 
 
 def load_credentials(path: Path) -> dict:
@@ -201,8 +197,9 @@ def discover_model_artifacts() -> list[dict]:
                 "version": version,
                 "label": payload.get("model_name"),
                 "artifact_path": str(meta.parent.relative_to(REPO_ROOT)),
-                "feature_version": payload.get("feature_version"),
-                "algorithm": payload.get("algorithm") or payload.get("estimator"),
+                "feature_version": payload.get("feature_version") or payload.get("embedding_version"),
+                "algorithm": (payload.get("algorithm") or payload.get("estimator")
+                               or payload.get("model_name")),
                 "metrics": payload.get("metrics"),
                 "trained_at": _parse_dt(payload.get("trained_at")),
                 "dataset_manifest_hash": payload.get("dataset_manifest_hash")
@@ -211,7 +208,19 @@ def discover_model_artifacts() -> list[dict]:
         )
 
     gtm_dir = REPO_ROOT / "gtm_model"
-    for meta in sorted(gtm_dir.glob("**/metadata.json")):
+    served_gtm_meta = gtm_dir / "metadata.json"
+    seen_gtm_artifacts: set[Path] = set()
+    # gtm_model/metadata.json is the served export, so it sorts first -- exactly as
+    # python_models/best does on the python side. Without this, an archive dir sorts ahead of
+    # it alphabetically and the dashboard marks the model actually in service as "Superseded".
+    for meta in sorted(gtm_dir.glob("**/metadata.json"),
+                       key=lambda path: (path != served_gtm_meta, str(path))):
+        # gtm_model/ is the served export and gtm_model/candidates/<name>/ holds the same
+        # export under its candidate name, plus earlier ones. Register each *artifact* once,
+        # preferring the served copy, so the served version is the row that ends up active
+        # instead of shadowing itself.
+        if meta.resolve() in seen_gtm_artifacts:
+            continue
         try:
             payload = json.loads(meta.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
@@ -219,6 +228,7 @@ def discover_model_artifacts() -> list[dict]:
         labels = payload.get("wordLabels") or []
         if not labels:
             continue
+        seen_gtm_artifacts.add(meta.resolve())
         frontend_path = meta.parent / "frontend_config.json"
         frontend_id = None
         if frontend_path.exists():
@@ -228,18 +238,54 @@ def discover_model_artifacts() -> list[dict]:
                 )
             except (OSError, json.JSONDecodeError):
                 pass
+        # Must stay in sync with GtmModelPredictor.load (src/inference/gtm_predictor.py):
+        # the version is the export timeStamp, alnum-truncated to 16 chars and suffixed with
+        # -ew when windows are aggregated energy-weighted rather than loudest. A mismatch here
+        # means the metrics file's model_version never lines up with the registered row, and
+        # the dashboard reports the GTM model as unmeasured.
+        stamp = "".join(ch for ch in str(payload.get("timeStamp", ""))[:16] if ch.isalnum())
+        suffix = ""
+        if frontend_id is not None:
+            try:
+                suffix = "-ew" if json.loads(
+                    (meta.parent / "frontend_config.json").read_text(encoding="utf-8")
+                ).get("window_aggregation") == "energy_weighted" else ""
+            except (OSError, json.JSONDecodeError):
+                suffix = ""
         version = str(payload.get("modelVersion") or payload.get("version")
-                      or (f"gtm-{frontend_id}" if frontend_id else "0.0.0"))
+                      or (f"tm-{stamp}{suffix}" if stamp else
+                          (f"gtm-{frontend_id}" if frontend_id else "0.0.0")))
         metrics = None
+        measured_version = None
+        # Prefer the *test* split: that is the number the SRS comparison report is built on.
+        # Val metrics are only for model selection, so a candidate that has both keeps test.
         metrics_path = meta.parent / "gtm_metrics.json"
+        if not metrics_path.exists():
+            for cand in sorted(meta.parent.glob("gtm_val_metrics_*.json")):
+                try:
+                    payload_cand = json.loads(cand.read_text(encoding="utf-8"))
+                    if payload_cand.get("window_aggregation") == (
+                        "energy_weighted" if suffix else "loudest"):
+                        metrics_path = cand
+                        measured_version = payload_cand.get("model_version")
+                        break
+                except (OSError, json.JSONDecodeError):
+                    continue
         if metrics_path.exists():
             try:
                 measured = json.loads(metrics_path.read_text(encoding="utf-8"))
-                if measured.get("model_version") == version:
+                if measured.get("model_version") == version or measured_version is not None:
                     metrics = {key: measured[key] for key in (
-                        "n_clips", "accuracy", "macro_f1", "critical_macro_recall",
+                        "split", "n_clips", "accuracy", "macro_f1", "critical_macro_recall",
                         "frontend_verified", "protocol"
                     ) if key in measured}
+                    # a candidate's measurements identify the frontend, not the export; keep the
+                    # version it was measured against so the registry stays traceable
+                    if measured_version is not None:
+                        metrics["measured_frontend_version"] = measured_version
+                # else: an unrelated metrics file (a different aggregation mode, or a different
+                # export) must not be attached to this version. Leave it unmeasured rather
+                # than reporting another model's numbers as its own.
             except (OSError, json.JSONDecodeError):
                 pass
         found.append(
@@ -248,8 +294,9 @@ def discover_model_artifacts() -> list[dict]:
                 "version": version,
                 "label": payload.get("model_name") or "Teachable Machine audio model",
                 "artifact_path": str(meta.parent.relative_to(REPO_ROOT)),
-                "feature_version": payload.get("feature_version"),
-                "algorithm": "Google Teachable Machine (audio)",
+                "feature_version": payload.get("feature_version") or payload.get("embedding_version"),
+                "algorithm": (payload.get("algorithm") or payload.get("model_name")
+                               or "Google Teachable Machine (audio)"),
                 "metrics": metrics or payload.get("metrics"),
                 "trained_at": _parse_dt(payload.get("trained_at") or payload.get("timeStamp")),
                 "dataset_manifest_hash": payload.get("dataset_manifest_hash"),
@@ -284,7 +331,17 @@ def register_models(session, artifacts: list[dict], *, verbose: bool = True) -> 
                           "metrics", "trained_at", "dataset_manifest_hash"):
                 if spec.get(field) is not None:
                     setattr(exists, field, spec[field])
-            active_seen.add(spec["model_name"])
+            # The first artifact discovered per model family is the served one (see
+            # discover_model_artifacts: python_models/best sorts first). On a re-seed after a
+            # promotion, the pre-existing row *is* that row, so it has to become active and
+            # the previously served version has to step down.
+            if spec["model_name"] not in active_seen:
+                active_seen.add(spec["model_name"])
+                for row in session.execute(select(ModelVersion).where(
+                        ModelVersion.model_name == spec["model_name"],
+                        ModelVersion.is_active.is_(True))).scalars():
+                    row.is_active = False
+                exists.is_active = True
             skipped += 1
             continue
         activate = spec["model_name"] not in active_seen
@@ -365,9 +422,7 @@ def register_one_model(session, *, model_name, version, artifact, feature_versio
     return record
 
 
-# --------------------------------------------------------------------------------------
 # Inspection
-# --------------------------------------------------------------------------------------
 
 
 def print_stats(engine) -> int:
@@ -408,9 +463,7 @@ def print_stats(engine) -> int:
     return 0
 
 
-# --------------------------------------------------------------------------------------
 # Entry point
-# --------------------------------------------------------------------------------------
 
 
 def confirm_destructive(db_path: Path) -> bool:

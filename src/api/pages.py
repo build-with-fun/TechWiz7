@@ -1,33 +1,12 @@
-"""The server-rendered pages, and the one JSON endpoint the pages need.
+"""Server-rendered pages (and the visuals JSON the event page loads).
 
-Owner: sara.  SRS FR iv-ix (upload), FR lxiii-lxvii (dashboards, search), FR xxi-xxii
-(the evidence visuals the detail page draws), plus the page-level half of the FR ii matrix.
+Blueprints: auth (sign-in, register, profile), main (upload, events, live, alerts,
+reviews, dashboard, analytics), admin (config, users), models (read-only list) and
+event_visuals. Endpoint names are what the templates' url_for calls use.
 
-Four blueprints live here, because the endpoint names are a contract the frontend builds its
-``url_for`` calls on and a blueprint name is part of the endpoint:
-
-======================  =====================  =====================================
-Blueprint               Endpoints              Gate
-======================  =====================  =====================================
-``auth``                ``login``, ``logout``   public / signed in
-``main``                ``index``, ``upload``, ``events``, ``event_detail``,
-                        ``event_audio``, ``live``, ``alerts``, ``reviews``,
-                        ``dashboard``, ``analytics``
-``admin``               ``config``, ``users``   ``edit_config`` / ``manage_users``
-``models``              ``list``                any signed-in user (read-only)
-``event_visuals``       ``visuals``             owner, or ``download_any_audio``
-======================  =====================  =====================================
-
-Two rules hold throughout:
-
-* **Every route is gated on a capability, never on a role string.** ``main.reviews`` asks for
-  ``review_queue``; moving that capability is then a one-line change in ``src/auth.py``. A
-  template that hides a link is presentation, not access control -- a reviewer typing the URL
-  gets the same refusal as a reviewer clicking it.
-* **A page that names a row the caller may not see answers 404, not 403.** FR lxvii: a normal
-  user sees only their own events, and a 403 would confirm that someone else's event exists.
-  A *capability* the caller's role can never hold is 403. That distinction is the whole of
-  contract §1.4 and it is decided here, in ``_visible_event``.
+Every route is gated on a capability from src/auth.py, never on a role name; hiding a
+link in a template is presentation, not access control. An event the caller may not see
+answers 404 rather than 403, so ids cannot be probed (_visible_event).
 """
 
 from __future__ import annotations
@@ -37,19 +16,18 @@ import logging
 
 from flask import (
     Blueprint,
-    abort,
     current_app,
     flash,
     jsonify,
     redirect,
     render_template,
     request,
-    send_file,
     url_for,
 )
-from flask_login import current_user, login_required, login_user
+from flask_login import current_user, login_required
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import joinedload
 from jinja2 import TemplateNotFound
 
 from src.auth import (
@@ -70,8 +48,7 @@ from src.services.search import (
 
 logger = logging.getLogger("sonicsentinel.api.pages")
 
-#: FR lxii's statuses and the review decisions, for the list columns. Kept here rather than
-#: in a template so the same words appear on the page and in the CSV export.
+#: FR lxii statuses and review decisions, shared by the list pages and the CSV export.
 SEVERITY_TONE = {
     "Critical": "critical", "High": "high", "Medium": "medium",
     "Low": "low", "Informational": "info",
@@ -83,15 +60,11 @@ admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 models_bp = Blueprint("models", __name__, url_prefix="/models")
 visuals_bp = Blueprint("event_visuals", __name__, url_prefix="/api")
 
-#: Every blueprint this module contributes, in registration order. ``src.app`` registers them
-#: all; ``bp`` below is kept as the module's headline blueprint for anything that imports it.
+#: Every blueprint in this module, in registration order (src.app registers them).
 BLUEPRINTS = (auth_bp, main_bp, admin_bp, models_bp, visuals_bp)
 bp = main_bp
 
 
-# ---------------------------------------------------------------------------------------
-# Shared helpers
-# ---------------------------------------------------------------------------------------
 
 
 def _store():
@@ -103,12 +76,8 @@ def _factory():
 
 
 def _render(template: str, **context):
-    """Render a page, turning a missing template into an honest, quiet failure.
-
-    The templates are another engineer's deliverable and are landing in parallel, so this is
-    a real state of the tree rather than a hypothetical. The user gets a page-shaped sentence
-    and a request id; the log gets the template name, which is where it belongs -- a rendered
-    error must never name a file on disk (FR lxxvii).
+    """Render a template; a missing template becomes a generic error page, and only the log names
+    the file.
     """
     try:
         return render_template(template, **context)
@@ -124,13 +93,7 @@ def _render(template: str, **context):
 
 
 def _visible_event(session, event_id: int, *, for_download: bool = False) -> Event:
-    """Fetch one event, or refuse in the way contract §1.4 requires.
-
-    Missing, or belonging to someone else with no fleet-wide capability: **404**, so the
-    request cannot be used to discover which ids exist. A caller who simply cannot perform
-    this kind of action at all would be 403, and that is decided by the decorator before this
-    function runs.
-    """
+    """Fetch one event, or 404 if it is missing or belongs to someone the caller may not see."""
     event = session.get(Event, event_id)
     if event is None:
         raise ApiError("not_found", "That event does not exist.")
@@ -141,7 +104,7 @@ def _visible_event(session, event_id: int, *, for_download: bool = False) -> Eve
 
 
 def _pagination(args, store) -> tuple[int, int]:
-    """Page and size, from ``config/auth.json`` rather than literals."""
+    """Page and page size, bounded by config/auth.json."""
     default = int(store.auth_setting("pagination.default_page_size", 25)
                   or store.auth_setting("pagination.default", 25) or 25)
     maximum = int(store.auth_setting("pagination.max_page_size", 200)
@@ -150,11 +113,7 @@ def _pagination(args, store) -> tuple[int, int]:
 
 
 def _event_id_int(value: str) -> int:
-    """Only real numeric ids reach the view logic.
-
-    ``__EVENT_ID__`` (the base.html placeholder for browser-side substitution) and any
-    other junk is refused as ``bad_request`` rather than blowing up mid-query.
-    """
+    """Only numeric ids reach the query (base.html uses an __EVENT_ID__ placeholder in URLs)."""
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -182,19 +141,11 @@ def _search_context(viewer, *, default_statuses=None) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------------------
-# auth -- the HTML sign-in page.  The JSON endpoints are in src/api/auth_api.py
-# ---------------------------------------------------------------------------------------
 
 
 @auth_bp.get("/login")
 def login():
-    """The sign-in page.
-
-    A signed-in user who lands here is sent on rather than shown a second sign-in form --
-    except when they asked to switch account, which is how the demo shows two roles in one
-    session without clearing cookies by hand.
-    """
+    """The sign-in page. A signed-in user is sent on, unless they asked to switch account."""
     if current_user.is_authenticated and request.args.get("switch") != "1":
         return redirect(_home_for(current_user))
     return _render(
@@ -277,16 +228,10 @@ def profile():
 
 @auth_bp.post("/session")
 def session_login():
-    """HTML form sign-in target (``auth_api.session`` in the template).
+    """Form sign-in (the JSON endpoint is POST /api/auth/login).
 
-    The JSON endpoint ``POST /api/auth/login`` serves JavaScript clients; a browser with
-    JavaScript off posts the form here and follows a redirect. Credentials are verified by
-    the same :func:`src.auth.authenticate` (lockout, rate limit and audit apply through the
-    shared limiter extensions), so there is exactly one authentication path.
-
-    Failure re-renders the sign-in page with the banner; success redirects to ``next`` --
-    which is only followed when it is a relative path, so the form cannot be used as an
-    open redirect.
+    Both go through src.auth.authenticate, so lockout, rate limits and auditing are shared.
+    ``next`` is followed only when it is a relative path, so this cannot be an open redirect.
     """
     from src.auth import authenticate, client_ip, sign_in
     from flask import g
@@ -351,7 +296,7 @@ def session_login():
 @auth_bp.post("/logout")
 @login_required
 def logout():
-    """Sign out from a page. A form posts here; the JSON client uses ``POST /api/auth/logout``."""
+    """Sign out from a page form (the JSON client uses POST /api/auth/logout)."""
     from src.auth import audit_login, sign_out
     from flask import g
 
@@ -365,45 +310,31 @@ def logout():
 
 
 def _home_for(user) -> str:
-    """Where a user lands after signing in: the most useful page their role can open.
-
-    Deliberately capability-driven. If the navigation is ever re-cut, this keeps working
-    rather than sending a security operator to a dashboard they cannot see.
-    """
+    """The most useful page this user's capabilities allow, used after sign-in."""
     for capability, endpoint in (
         ("view_dashboards", "main.dashboard"),
         ("view_alerts", "main.alerts"),
         ("review_queue", "main.reviews"),
     ):
-        # ``user`` may be the raw User row (fresh from authenticate) or the Flask-Login
-        # AuthUser wrapper; the role is the one thing both expose, so ask the matrix
-        # directly rather than depending on which shape arrived.
+        # ``user`` may be the User row or the Flask-Login wrapper; both expose ``role``.
         if has_capability(getattr(user, "role", None), capability):
             return url_for(endpoint)
     return url_for("main.events")
 
 
-# ---------------------------------------------------------------------------------------
-# main -- the pages every signed-in user shares
-# ---------------------------------------------------------------------------------------
 
 
 @main_bp.get("/")
 @login_required
 def index():
-    """The landing page: a way in, chosen by what the role can actually do."""
+    """The landing page, chosen by what the role can do."""
     return redirect(_home_for(current_user))
 
 
 @main_bp.get("/upload")
 @capability_required("upload_audio")
 def upload():
-    """FR iv-ix: the upload page.
-
-    The accepted formats and the size limit come from ``config/auth.json`` and the app config,
-    so the page states the same limit the server enforces. A page that promises a format the
-    server refuses is worse than no page.
-    """
+    """FR iv-ix: the upload page, stating the same formats and size limit the server enforces."""
     store = _store()
     return _render(
         "upload.html",
@@ -419,7 +350,7 @@ def upload():
 @main_bp.get("/events")
 @capability_required("view_own_events")
 def events():
-    """FR lxvii: browse and search. A normal user's search is scoped inside the query."""
+    """FR lxvii: browse and search; a normal user's search is scoped inside the query."""
     context = _search_context(current_user)
     context["page_title"] = "Events"
     return _render("events.html", **context)
@@ -428,14 +359,11 @@ def events():
 @main_bp.get("/events/<event_id>")
 @capability_required("view_own_events")
 def event_detail(event_id: str):
-    """One event, in full: both models' classes and confidences, the comparison, the quality
-    verdict, the severity and the rule that fired -- FR xxxi-xxxvi, FR xl, FR lxii.
+    """One event in full: both models' scores, the comparison, quality, severity and the rule that fired.
 
-    A ``<event_id>`` (not ``<int:...>``) converter: base.html builds a
-    ``__EVENT_ID__`` placeholder URL for the browser-side code, and the int
-    converter would 500 on it before the JS ever had a chance to substitute.
+    Uses a string converter because base.html builds an __EVENT_ID__ placeholder URL that the
+    int converter would reject.
     """
-    store = _store()
     event_id = _event_id_int(event_id)
     with session_scope(_factory()) as session:
         event = _visible_event(session, event_id)
@@ -473,12 +401,7 @@ def event_detail(event_id: str):
 @main_bp.get("/events/<event_id>/audio")
 @owner_or_capability("download_any_audio")
 def event_audio(event_id: str):
-    """Stream the stored recording (FR lxxi: audio is stored on disk, not in the database).
-
-    ``as_attachment`` is off by default so the detail page can play it inline; the download
-    button asks for ``?download=1``. Same non-int converter as ``event_detail``: the
-    base.html placeholder URL must be buildable.
-    """
+    """Stream the stored recording; ``?download=1`` makes it an attachment."""
     event_id = _event_id_int(event_id)
     from flask import send_from_directory
 
@@ -496,8 +419,7 @@ def event_audio(event_id: str):
         logger.error("stored path for event %s escapes the storage root", event_id)
         raise ApiError("storage_error", "That recording could not be located.")
     if not stored_path or not target.is_file():
-        # The recording is gone -- expired by the FR lxxx retention policy, or moved. The
-        # event's analysis is still intact and still auditable, and saying so is the point.
+        # The recording has gone (retention or moved); the analysis is still intact and auditable.
         raise ApiError(
             "no_audio",
             "That recording is no longer on disk. Its analysis and history are unaffected.",
@@ -512,7 +434,7 @@ def event_audio(event_id: str):
 @main_bp.get("/live")
 @capability_required("live_session")
 def live():
-    """FR xxxvi: the live microphone monitor."""
+    """The live microphone monitor."""
     store = _store()
     return _render(
         "live.html",
@@ -531,7 +453,14 @@ def alerts():
     status = request.args.get("status") or "Open"
     severity = request.args.getlist("severity")
     with session_scope(_factory()) as session:
-        statement = select(Alert).order_by(Alert.created_at.desc(), Alert.id.desc()).limit(200)
+        # joinedload: the rows are expunged and the template reads alert.event, which would
+        # otherwise raise DetachedInstanceError (tests/test_alert_review_pages.py).
+        statement = (
+            select(Alert)
+            .options(joinedload(Alert.event))
+            .order_by(Alert.created_at.desc(), Alert.id.desc())
+            .limit(200)
+        )
         if status and status != "all":
             statement = statement.where(Alert.status == status)
         if severity:
@@ -563,8 +492,10 @@ def reviews():
     store = _store()
     status = request.args.get("status") or "Pending Review"
     with session_scope(_factory()) as session:
+        # joinedload for the same reason as the alert console.
         statement = (
             select(Review)
+            .options(joinedload(Review.event))
             .order_by(Review.priority.asc().nullslast(), Review.queued_at.asc())
             .limit(200)
         )
@@ -590,49 +521,135 @@ def reviews():
 
 
 @main_bp.get("/dashboard")
-@capability_required("view_dashboards")
+@capability_required("view_own_events")
 def dashboard():
-    """FR lxiii-lxv: the operational dashboards."""
+    """FR lxiii user dashboard, plus the FR lxv administrator block.
+
+    A normal user sees only their own events; roles that can see all events see everyone's.
+    Roles with analytics access also get average confidence, disagreements, poor-quality
+    counts, a 14-day trend and (administrators) the FR lxxviii anomaly list.
+    """
+    from src.models import AudioFile
+    from src.services.monitoring import compute_anomalies
+
     store = _store()
     now = utcnow()
     day_ago = now - dt.timedelta(hours=24)
     week_ago = now - dt.timedelta(days=7)
+    fortnight_ago = (now - dt.timedelta(days=13)).replace(hour=0, minute=0, second=0, microsecond=0)
+    see_all = current_user.can("view_all_events")
+
+    def scoped(query):
+        return query if see_all else query.where(Event.created_by_id == current_user.id)
+
+    def count(*where):
+        return session.execute(scoped(select(func.count(Event.id)).where(*where))).scalar() or 0
+
     with session_scope(_factory()) as session:
-        by_class = session.execute(
+        by_class = session.execute(scoped(
             select(Event.predicted_class, func.count(Event.id))
-            .where(Event.created_at >= week_ago)
-            .group_by(Event.predicted_class)
-        ).all()
-        by_severity = session.execute(
+            .where(Event.created_at >= week_ago).group_by(Event.predicted_class))).all()
+        by_severity = session.execute(scoped(
             select(Event.severity, func.count(Event.id))
-            .where(Event.created_at >= week_ago)
-            .group_by(Event.severity)
-        ).all()
-        by_status = session.execute(
-            select(Event.status, func.count(Event.id)).group_by(Event.status)
-        ).all()
+            .where(Event.created_at >= week_ago).group_by(Event.severity))).all()
+        by_status = session.execute(scoped(
+            select(Event.status, func.count(Event.id)).group_by(Event.status))).all()
         totals = {
-            "events_24h": session.execute(
-                select(func.count(Event.id)).where(Event.created_at >= day_ago)
-            ).scalar() or 0,
-            "events_7d": session.execute(
-                select(func.count(Event.id)).where(Event.created_at >= week_ago)
-            ).scalar() or 0,
-            "events_total": session.execute(select(func.count(Event.id))).scalar() or 0,
-            "open_alerts": session.execute(
-                select(func.count(Alert.id)).where(Alert.status == "Open")
-            ).scalar() or 0,
-            "awaiting_review": session.execute(
-                select(func.count(Event.id)).where(Event.requires_manual_review.is_(True))
-            ).scalar() or 0,
-            "critical_7d": session.execute(
-                select(func.count(Event.id))
-                .where(Event.created_at >= week_ago, Event.severity == "Critical")
-            ).scalar() or 0,
+            "events_24h": count(Event.created_at >= day_ago),
+            "events_7d": count(Event.created_at >= week_ago),
+            "events_total": count(),
+            "open_alerts": session.execute(scoped(
+                select(func.count(Alert.id)).join(Event, Alert.event_id == Event.id)
+                .where(Alert.status == "Open"))).scalar() or 0,
+            "awaiting_review": count(Event.requires_manual_review.is_(True),
+                                     Event.status != "Reviewed", Event.status != "Closed"),
+            "critical_7d": count(Event.created_at >= week_ago, Event.severity == "Critical"),
+            "quality_warnings_7d": count(Event.created_at >= week_ago,
+                                         Event.quality_verdict.in_(("Poor", "Unusable"))),
         }
+        recent_rows = session.execute(scoped(
+            select(Event, AudioFile.filename).join(AudioFile, Event.audio_file_id == AudioFile.id)
+            .order_by(Event.created_at.desc()).limit(8))).all()
+        recent = [{"id": e.id, "filename": name, "created_at": e.created_at,
+                   "predicted_class": e.predicted_class, "confidence": e.top_confidence,
+                   "quality": e.quality_verdict, "severity": e.severity, "status": e.status,
+                   "consistency": e.consistency_status, "review": e.requires_manual_review}
+                  for e, name in recent_rows]
+        critical_recent = [r for r in recent if r["severity"] == "Critical"]
+        # SRS Step 18: the current detection with both models side by side.
+        latest = None
+        if recent_rows:
+            event, name = recent_rows[0]
+            top3: dict[str, list] = {"python": [], "gtm": []}
+            for score in sorted(event.confidence_scores, key=lambda sc: sc.rank if sc.rank is not None else 99):
+                if score.model_name in top3 and len(top3[score.model_name]) < 3:
+                    top3[score.model_name].append({"class": score.class_name, "confidence": score.confidence})
+            last_alert = max(event.alerts, key=lambda a: a.created_at or utcnow(), default=None)
+            latest = {"id": event.id, "filename": name, "created_at": event.created_at,
+                      "source": event.source, "final_class": event.final_class or event.predicted_class,
+                      "confidence": event.top_confidence, "difference": event.confidence_difference,
+                      "quality": event.quality_verdict, "severity": event.severity, "status": event.status,
+                      "consistency": event.consistency_status, "review": event.requires_manual_review,
+                      "python": top3["python"], "gtm": top3["gtm"],
+                      "alert_status": last_alert.status if last_alert else None,
+                      "has_audio": bool(event.audio_file and event.audio_file.stored_path)}
+        review_rows = session.execute(scoped(
+            select(Event).where(Event.requires_manual_review.is_(True),
+                                Event.status.notin_(("Reviewed", "Closed")))
+            .order_by(Event.created_at.desc()).limit(5))).scalars().all()
+        review_items = [{"id": e.id, "class": e.final_class or e.predicted_class, "at": e.created_at,
+                         "reason": e.review_reason, "severity": e.severity} for e in review_rows]
+        # SRS Step 18 / FR lxvi: high and critical events in time order, newest first.
+        timeline_rows = session.execute(scoped(
+            select(Event).where(Event.created_at >= week_ago,
+                                Event.severity.in_(("High", "Critical")))
+            .order_by(Event.created_at.desc()).limit(12))).scalars().all()
+        timeline = [{"id": e.id, "at": e.created_at, "class": e.predicted_class,
+                     "severity": e.severity, "status": e.status,
+                     "review": e.requires_manual_review} for e in timeline_rows]
+        in_service = []
+        for row in session.execute(select(ModelVersion).where(ModelVersion.is_active.is_(True))
+                                   .order_by(ModelVersion.model_name)).scalars():
+            metrics = row.metrics or {}
+            test = metrics.get("accuracy") if metrics.get("split") == "test" else None
+            in_service.append({"name": "Python model" if row.model_name == "python" else "Teachable Machine",
+                               "version": row.version, "algorithm": row.algorithm or row.label or "",
+                               "test_accuracy": test})
+        admin = None
+        if current_user.can("view_analytics"):
+            avg_conf = session.execute(select(func.avg(Event.top_confidence))
+                                       .where(Event.created_at >= week_ago)).scalar()
+            day = func.date(Event.created_at)
+            trend_rows = dict(session.execute(select(day, func.count(Event.id))
+                                              .where(Event.created_at >= fortnight_ago)
+                                              .group_by(day)).all())
+            trend = []
+            for offset in range(14):
+                d = (fortnight_ago + dt.timedelta(days=offset)).date().isoformat()
+                trend.append({"day": d, "count": int(trend_rows.get(d, 0))})
+            admin = {
+                "average_confidence": avg_conf,
+                "disagreements_7d": count(Event.created_at >= week_ago,
+                                          Event.consistency_status == "Model Disagreement"),
+                "poor_quality_7d": totals["quality_warnings_7d"],
+                "critical_alerts_7d": session.execute(select(func.count(Alert.id)).where(
+                    Alert.created_at >= week_ago, Alert.severity == "Critical")).scalar() or 0,
+                "trend": trend,
+                "trend_max": max([t["count"] for t in trend] + [1]),
+                "anomalies": (compute_anomalies(session, store.thresholds())["anomalies"]
+                              if current_user.can("read_audit") else None),
+            }
     return _render(
         "dashboard.html",
         totals=totals,
+        in_service=in_service,
+        latest=latest,
+        review_items=review_items,
+        recent=recent,
+        critical_recent=critical_recent,
+        timeline=timeline,
+        admin=admin,
+        scope_all=see_all,
         by_class=[{"class": c, "count": n} for c, n in by_class],
         by_severity=[{"severity": s, "count": n} for s, n in by_severity],
         by_status=[{"status": s, "count": n} for s, n in by_status],
@@ -646,11 +663,7 @@ def dashboard():
 @main_bp.get("/analytics")
 @capability_required("view_analytics")
 def analytics():
-    """FR lxviii: the aggregate queries, with the window the caller asked for.
-
-    The window is a query parameter rather than a fixed "last 7 days", because an evaluator
-    will ask "and the last hour?" during the demo.
-    """
+    """FR lxviii analytics over a window chosen with ``?hours=`` (default one week)."""
     store = _store()
     hours = request.args.get("hours", type=int) or 24 * 7
     hours = max(1, min(hours, 24 * 365))
@@ -676,8 +689,24 @@ def analytics():
             .where(Event.created_at >= since)
             .group_by(Event.quality_verdict)
         ).all()
+        confidences = [c for (c,) in session.execute(
+            select(Event.top_confidence).where(Event.created_at >= since,
+                                               Event.top_confidence.is_not(None))).all()]
+        decided = session.execute(
+            select(Review.original_python_class, Review.final_class, Review.false_alarm)
+            .where(Review.decided_at >= since, Review.decision != "pending")).all()
+        alert_rows = session.execute(
+            select(Alert.status, Alert.severity, Alert.created_at, Alert.acknowledged_at,
+                   Alert.resolved_at, Alert.is_false_alarm)
+            .where(Alert.created_at >= since)).all()
+    critical = set(store.critical_classes())
+    errors = _review_errors(decided, critical)
     return _render(
         "analytics.html",
+        confidence_histogram=_histogram(confidences),
+        review_errors=errors,
+        alert_response=_alert_response(alert_rows),
+        critical_frequency=sum(r[1] for r in rows if r[0] in critical),
         hours=hours,
         since=since,
         by_class=[
@@ -698,18 +727,65 @@ def analytics():
     )
 
 
-# ---------------------------------------------------------------------------------------
-# admin -- configuration and users
-# ---------------------------------------------------------------------------------------
+def _histogram(values, bins: int = 10) -> list[dict]:
+    """Confidence distribution in 0.1-wide buckets (FR lxviii)."""
+    counts = [0] * bins
+    for v in values:
+        counts[min(bins - 1, max(0, int(float(v) * bins)))] += 1
+    peak = max(counts + [1])
+    return [{"label": f"{i / bins:.1f}-{(i + 1) / bins:.1f}", "count": n,
+             "width": round(n / peak * 100, 1)} for i, n in enumerate(counts)]
+
+
+def _review_errors(decided, critical: set[str]) -> dict:
+    """False positives and negatives, judged by reviewers.
+
+    Only reviewed events have a ground truth. A false positive is a critical class the model
+    named that the reviewer rejected or marked a false alarm; a false negative is a critical
+    class the reviewer found that the model did not name.
+    """
+    per_class: dict[str, dict[str, int]] = {}
+    fp = fn = agreed = 0
+    for original, final, false_alarm in decided:
+        final = final or original
+        if original == final and not false_alarm:
+            agreed += 1
+        if original in critical and (final != original or false_alarm):
+            fp += 1
+            per_class.setdefault(original, {"fp": 0, "fn": 0})["fp"] += 1
+        if final in critical and original != final:
+            fn += 1
+            per_class.setdefault(final, {"fp": 0, "fn": 0})["fn"] += 1
+    return {"reviewed": len(decided), "confirmed": agreed, "false_positives": fp,
+            "false_negatives": fn,
+            "per_class": [{"class": k, **v} for k, v in sorted(per_class.items())]}
+
+
+def _alert_response(rows) -> dict:
+    """How quickly alerts were acknowledged and resolved, and how many were false alarms."""
+    import statistics
+
+    ack = [(a - c).total_seconds() for _, _, c, a, _, _ in rows if a and c]
+    res = [(r - c).total_seconds() for _, _, c, _, r, _ in rows if r and c]
+    by_status: dict[str, int] = {}
+    for status, *_ in rows:
+        by_status[status] = by_status.get(status, 0) + 1
+    return {
+        "total": len(rows), "by_status": by_status,
+        "false_alarms": sum(1 for *_, fa in rows if fa),
+        "median_ack_sec": round(statistics.median(ack), 1) if ack else None,
+        "median_resolve_sec": round(statistics.median(res), 1) if res else None,
+        "unacknowledged": sum(1 for _, _, _, a, _, _ in rows if a is None),
+    }
+
+
 
 
 @admin_bp.get("/config")
 @capability_required("edit_config")
 def config():
-    """FR liii / FR lxxx: the live-editable configuration.
-
-    Read-only to look at; the write path is ``PUT /api/admin/config/<file>`` in the admin API
-    slice, which runs the same validator as boot before anything touches the disk.
+    """FR liii / lxxx: view the live configuration. Edits go through PUT /api/admin/config/<file>,
+    which validates first.
     """
     store = _store()
     snapshot = store.snapshot()
@@ -718,7 +794,7 @@ def config():
         config_dir=str(store.config_dir),
         alert_rules_dir=str(store.alert_rules_dir),
         snapshot=snapshot,
-        hashes=snapshot.to_dict().get("hashes") if hasattr(snapshot, "to_dict") else None,
+        hashes=snapshot.to_dict().get("content_hashes") if hasattr(snapshot, "to_dict") else None,
         thresholds=store.thresholds(),
         classes=store.classes_config(),
         severity_scale=list(store.severity_scale()),
@@ -756,15 +832,9 @@ def users():
 @models_bp.get("/", endpoint="list")
 @login_required
 def model_list():
-    """FR lxxv: which models are in service, and which is active.
+    """FR lxxv: which model versions are in service. Readable by anyone signed in; changing them needs manage_models.
 
-    Open to any signed-in user on purpose: a person reading an event's result is entitled to
-    know which model version produced it. Registering and activating is what needs
-    ``manage_models``, and those are write endpoints in the admin API slice.
-
-    Named ``model_list`` rather than ``list``: a function called ``list`` shadows the
-    builtin for the whole module, which turned every later ``list(...)``
-    (severity scale, status tuples) into "list() takes 0 positional arguments".
+    Named model_list, not list, so it does not shadow the builtin for the whole module.
     """
     with session_scope(_factory()) as session:
         rows = session.execute(
@@ -780,19 +850,15 @@ def model_list():
     )
 
 
-# ---------------------------------------------------------------------------------------
-# event_visuals -- the waveform and spectrogram the detail page draws (FR xxi-xxii)
-# ---------------------------------------------------------------------------------------
 
 
 @visuals_bp.get("/events/<int:event_id>/visuals")
 @owner_or_capability("download_any_audio")
 def visuals(event_id: int):
-    """Peaks and a spectrogram for one stored recording, downsampled to stay small.
+    """Waveform peaks and a spectrogram for one stored recording, computed server-side and cached.
 
-    Computed server-side and cached, so the browser receives a bounded payload instead of
-    decoding an audio file itself -- and so what the page draws is the same signal the models
-    were given, not a second, independent decoding of it.
+    They are drawn from the stored original file, so the picture shows what was uploaded,
+    not the preprocessed signal the models saw.
     """
     from src.services.visuals import build_visuals
 
@@ -810,8 +876,7 @@ def visuals(event_id: int):
     except ValueError:
         raise ApiError("storage_error", "That recording could not be located.")
     if not stored_path or not target.is_file():
-        # Same policy as event_audio (FR lxxx): an expired/moved recording leaves the
-        # event's analysis intact, and the page says so instead of failing.
+        # As in event_audio: a recording removed by retention leaves the analysis intact.
         raise ApiError(
             "no_audio",
             "That recording is no longer on disk. Its analysis and history are unaffected.",

@@ -1,18 +1,7 @@
-"""Dataset access for model training -- the only place that resolves a manifest row to a file.
+"""Dataset access for training: the only place that resolves a manifest row to a file.
 
-Owner: bilal.
-
-WHY THIS EXISTS SEPARATELY FROM ``audio_dataset/``
---------------------------------------------------
-``audio_dataset/`` owns the corpus, its schema and its split. Training owns *reading* it.
-Keeping the reader here means a change to the corpus layout breaks exactly one module with
-an explicit error, instead of every training script discovering the problem as a
-``FileNotFoundError`` halfway through a 40-minute feature extraction run.
-
-It also means there is one answer to "where is this file", which matters because the
-manifest stores a relative path and several plausible roots exist in this repository
-(``audio_dataset/``, ``audio_dataset/originals/``, the raw download cache). Guessing wrong
-produces a silently empty class, which is the kind of failure that reaches the report.
+The manifest stores relative paths and several roots are plausible, so one resolver with an
+explicit error beats every script guessing.
 """
 
 from __future__ import annotations
@@ -39,18 +28,11 @@ class DatasetError(RuntimeError):
     """Raised when the corpus cannot be read the way training requires."""
 
 
-# --------------------------------------------------------------------------------------
 # Path resolution
-# --------------------------------------------------------------------------------------
 
 
 def resolve_audio_path(record: Mapping[str, Any]) -> Path:
-    """Absolute path to a manifest row's audio file.
-
-    Accepts an absolute path in ``filename`` as-is, otherwise tries each known root. Raises
-    with the list of locations it tried, because "file not found" without the candidates is
-    a twenty-minute debugging session.
-    """
+    """Absolute path to a manifest row's audio; the error lists every location tried."""
     raw = str(record.get("filename") or record.get("filepath") or "").strip()
     if not raw:
         raise DatasetError(f"record {record.get('audio_id')!r} has no filename field")
@@ -73,9 +55,7 @@ def resolve_audio_path(record: Mapping[str, Any]) -> Path:
     )
 
 
-# --------------------------------------------------------------------------------------
 # Manifest loading
-# --------------------------------------------------------------------------------------
 
 
 @dataclass
@@ -124,12 +104,8 @@ def read_manifest(path: str | Path) -> list[dict[str, str]]:
 
 
 def load_all_splits(manifest_path: str | Path) -> dict[str, SplitData]:
-    """Every split, keyed ``train``/``val``/``test``.
-
-    Refuses a manifest with no ``dataset_split`` column rather than inventing a split: the
-    split is frozen by ``audio_dataset/build_split.py`` and re-deriving it here would give
-    the Python model and the GTM model different test sets, which quietly invalidates the
-    comparison.
+    """Every split, keyed train/val/test; refuses a manifest without ``dataset_split`` rather than
+    re-deriving one.
     """
     rows = read_manifest(manifest_path)
     if not rows:
@@ -161,9 +137,7 @@ def load_records_for_split(manifest_path: str | Path, split: str) -> SplitData:
     return splits[split]
 
 
-# --------------------------------------------------------------------------------------
 # Training-only rows
-# --------------------------------------------------------------------------------------
 
 
 def training_records(
@@ -174,16 +148,8 @@ def training_records(
 ) -> list[dict[str, str]]:
     """Rows of a split that are legal to train on.
 
-    ``require_originals`` does not filter anything out of training -- originals and their
-    augmented copies both legitimately train the model, which is the point of augmentation.
-    It exists to record in the metrics artefact how much of the training set was augmented,
-    because "trained on 2,100 clips" is a different claim depending on whether 300 of them
-    are generated variants of the other 1,800, and the report must be able to say which.
-
-    ``exclude_augmented`` is for the evaluation path, where augmented audio must never be
-    scored: a model that memorised an augmented copy of a training clip would score it as
-    generalisation. (``src/training/evaluation.py`` enforces this independently; this
-    provides the same filter at the training boundary.)
+    ``require_originals`` only records how much of the training set is augmented;
+    ``exclude_augmented`` is for evaluation, where augmented audio must never be scored.
     """
     records = list(split.records)
     if exclude_augmented:
@@ -223,12 +189,7 @@ def describe_split(split: SplitData) -> dict[str, Any]:
 
 
 def class_imbalance_report(split: SplitData, class_names: Sequence[str]) -> dict[str, Any]:
-    """The class-imbalance numbers, stated the way a reviewer would check them.
-
-    Returns the counts per class, the ratio of the largest class to the smallest, and the
-    count for any configured class that is entirely absent -- an absent class is the failure
-    that makes a macro-F1 meaningless while still printing a plausible number, so it is
-    called out by name.
+    """Counts per class, largest/smallest ratio, and any configured class that is missing entirely.
     """
     counts = Counter(split.labels)
     present = {name: int(counts.get(name, 0)) for name in class_names}
@@ -242,9 +203,7 @@ def class_imbalance_report(split: SplitData, class_names: Sequence[str]) -> dict
     }
 
 
-# --------------------------------------------------------------------------------------
 # Integrity helpers used by tests
-# --------------------------------------------------------------------------------------
 
 
 def file_sha256(path: str | Path, chunk: int = 1 << 20) -> str:
@@ -257,12 +216,7 @@ def file_sha256(path: str | Path, chunk: int = 1 << 20) -> str:
 
 
 def find_duplicate_content(paths: Iterable[str | Path]) -> dict[str, list[str]]:
-    """Audio files sharing byte-identical content, keyed by hash.
-
-    Byte-identical files are the cheapest form of near-duplicate leakage: the same
-    recording entered twice lands in train and test, and the test score stops being a
-    measurement. Reporting the groups is enough for the split auditor to act on.
-    """
+    """Audio files with byte-identical content, keyed by hash."""
     groups: dict[str, list[str]] = {}
     for path in paths:
         groups.setdefault(file_sha256(path), []).append(str(path))

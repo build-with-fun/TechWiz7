@@ -1,20 +1,8 @@
-"""Deep model zoo contract tests -- SRS Step 7.
+"""Contract tests for the deep candidates (SRS Step 7), not accuracy tests.
 
-Owner: nadia.
-
-These are CONTRACT tests, not accuracy tests.  Their job is to guarantee that whatever the
-training script picks as the winner, the app can actually load it and predict with it:
-
-    * every registered candidate builds, fits and predicts over the locked feature vector;
-    * ``predict_proba`` returns ``(n, n_classes)`` with rows summing to 1 in the config class
-      order, so the comparison table and the consistency verdict are never silently misaligned;
-    * the saved bundle reloads through ``PythonModelPredictor`` with no label or feature
-      drift -- the exact path the web app's pipeline takes at load time;
-    * the spatial slice reads the melband columns the extractor actually produces.
-
-Accuracy on real audio is asserted by the training script against the untouched test split,
-not here: a smoke corpus is too small to say anything about generalisation, and asserting a
-floor against generated noise would be a test that cannot fail honestly.
+Each candidate builds, fits and predicts on the locked feature vector, returns probabilities
+in config class order, and reloads through PythonModelPredictor without label or feature
+drift. Accuracy is measured by the training scripts on the untouched test split.
 """
 
 from __future__ import annotations
@@ -38,9 +26,7 @@ from python_models import deep  # noqa: E402
 from src.inference.predictor import PythonModelPredictor, save_bundle  # noqa: E402
 
 
-# --------------------------------------------------------------------------------------
 # Fixtures
-# --------------------------------------------------------------------------------------
 
 N_CLASSES = 10
 N_ROWS = 72
@@ -98,9 +84,7 @@ def fitted_models(synthetic) -> dict[str, Any]:
     return fitted
 
 
-# --------------------------------------------------------------------------------------
 # Registry
-# --------------------------------------------------------------------------------------
 
 
 def test_registry_has_at_least_three_deep_candidates():
@@ -126,9 +110,7 @@ def test_get_candidate_rejects_unknown_names():
         deep.get_candidate("definitely_not_a_model")
 
 
-# --------------------------------------------------------------------------------------
 # Feature-vector contract
-# --------------------------------------------------------------------------------------
 
 
 def test_feature_vector_is_locked_width():
@@ -150,9 +132,7 @@ def test_melband_columns_raises_on_missing_block():
         deep.melband_columns(["mfcc_00_mean", "zcr_mean"])
 
 
-# --------------------------------------------------------------------------------------
 # Fit / predict contract
-# --------------------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize("name", sorted(deep.DEEP_CANDIDATES))
@@ -226,19 +206,13 @@ def test_feature_drift_is_rejected(fitted_models, name):
         estimator.predict_proba(truncated)
 
 
-# --------------------------------------------------------------------------------------
 # The save/load round-trip the web app performs at startup
-# --------------------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize("name", sorted(deep.DEEP_CANDIDATES))
 def test_save_and_reload_through_the_app_predictor(tmp_path, fitted_models, name):
-    """The bundle must reload through ``PythonModelPredictor`` -- the app's only load path.
-
-    This is the test that catches the failure mode nothing else does: a model that trains and
-    scores fine but whose saved bundle the app cannot serve.  Both backends go through
-    ``save_bundle`` joblib-dump, and the Keras wrapper carries its weights as bytes and
-    rebuilds the architecture on load, so this also proves that path end to end.
+    """The bundle reloads through ``PythonModelPredictor``, the app's only load path (Keras weights
+    included).
     """
     X, y = _synthetic_matrix(4)
     estimator = fitted_models[name]

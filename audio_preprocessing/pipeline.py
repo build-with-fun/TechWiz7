@@ -1,23 +1,9 @@
-"""The pipeline: one AudioSource in, one PreprocessedAudio out.
+"""AudioPipeline: one AudioSource in, one PreprocessedAudio out (SRS Steps 3, 4, 13).
 
-Owner: taha.  Implements lorena's ``Preprocessor`` protocol from ``src/inference/contract.py``.
-SRS Step 3, Step 4, Step 13; FR viii-xv, lxxii-lxxvii.
-
-Order of operations, and why it is this order:
-
-1. **Decode.**                            Nothing can happen before we have samples.
-2. **Validate + measure quality on the raw signal.**  The quality verdict describes the
-   *recording the user handed us*, so it is measured before we touch the signal. Measuring
-   it afterwards would be flattering: noise reduction raises the measured SNR and amplitude
-   normalisation fixes the level, so a bad recording would score Good. That would defeat
-   the point of the gate on repeat-detection alerts.
-3. **Reject if unusable.**  A silent/clipped/undecodable clip stops here with a reason code.
-4. **Condition for the model.**  high-pass -> noise reduction -> trim ends -> peak-normalise
-   -> resample to the configured target rate.
-5. **Segment.**  Fixed duration from config, with start/end timestamps retained (FR xv).
-
-Every parameter comes from config.  The pipeline object holds the config it was built with,
-so the admin UI can rebuild it with a different segment length and the whole app follows.
+Order: decode; measure quality on the raw signal (measured after noise reduction and
+normalisation, a bad recording would score Good); reject if unusable; high-pass, noise gate,
+trim ends, peak-normalise, resample; segment with timestamps. Parameters come from config and
+are captured when the pipeline is built.
 """
 
 from __future__ import annotations
@@ -33,7 +19,6 @@ from . import config as cfg_mod
 from .exceptions import (
     AudioRejected,
     TOO_SHORT,
-    UNREADABLE_FORMAT,
 )
 from .io import load_audio
 from .quality import UNUSABLE, analyze_quality, meets_min_quality, quality_summary
@@ -49,7 +34,7 @@ def preprocessing_version() -> str:
 
 
 def _import_contract():
-    """Import lorena's contract lazily so the audio modules stay importable standalone."""
+    """Import the inference contract lazily so the audio modules stay importable standalone."""
     try:
         from src.inference.contract import AudioSource, PreprocessedAudio
 
@@ -59,12 +44,7 @@ def _import_contract():
 
 
 class AudioPipeline:
-    """Configurable preprocessing pipeline; satisfies ``Preprocessor`` structurally.
-
-    ``AudioPipeline()(source)`` returns a :class:`PreprocessedAudio`.  Because the config is
-    captured at construction, two pipelines can coexist with different segment lengths --
-    which is exactly what the "change the segment duration live" requirement needs.
-    """
+    """Configurable preprocessing; ``AudioPipeline()(source)`` returns a PreprocessedAudio."""
 
     def __init__(
         self,
@@ -80,12 +60,11 @@ class AudioPipeline:
         self.quality_cfg = quality_cfg if quality_cfg is not None else cfg_mod.quality_config(directory)
         self.target_sample_rate = int(self.audio["target_sample_rate"])
         self.segment_seconds = float(self.audio["segment_duration_sec"])
-        # A live window may legitimately be shorter than a training segment; default to the
-        # configured live window length so the live path and the upload path agree.
+        # A live window may be shorter than a training segment; use the configured live window
+        # length.
         self.window_seconds = float(window_seconds if window_seconds is not None else self.audio.get("live_window_sec", self.segment_seconds))
         self.max_seconds = float(self.audio.get("max_duration_sec", 300.0))
 
-    # -- introspection -----------------------------------------------------------------
     def describe(self) -> dict[str, Any]:
         """What this pipeline will do, for the config page and the report appendix."""
         return {
@@ -106,7 +85,6 @@ class AudioPipeline:
             "config_source": self.audio.get("_source"),
         }
 
-    # -- main entry point --------------------------------------------------------------
     def __call__(self, source: Any) -> Any:
         return self.preprocess(source)
 
@@ -131,7 +109,6 @@ class AudioPipeline:
             PreprocessedAudio,
         )
 
-    # -- implementation ----------------------------------------------------------------
     def _run(self, source: Any, PreprocessedAudio) -> Any:
         started = time.perf_counter()
         origin = getattr(source, "origin", "upload")
@@ -142,7 +119,7 @@ class AudioPipeline:
         def mark(name: str, t0: float) -> None:
             timings[name] = round((time.perf_counter() - t0) * 1000.0, 3)
 
-        # --- 1. decode ------------------------------------------------------------------
+        # 1. decode
         t0 = time.perf_counter()
         decode_notes: dict[str, Any] = {}
         try:
@@ -170,8 +147,13 @@ class AudioPipeline:
         decode_notes["source_sample_rate"] = int(raw_sr)
         decode_notes["source_channels"] = raw_channels
         decode_notes["source_samples"] = int(raw.shape[0])
+        source_bits = None
+        if getattr(source, "path", None) is not None:
+            from .io import source_bit_depth
 
-        # --- 2. raw-level validation and quality ----------------------------------------
+            source_bits = source_bit_depth(source.path)
+
+        # 2. raw-level validation and quality
         t_q = time.perf_counter()
         mono_raw = raw if raw.ndim == 1 else raw.mean(axis=1)
         mono_raw = np.ascontiguousarray(mono_raw, dtype=np.float32)
@@ -190,9 +172,10 @@ class AudioPipeline:
             )
 
         steps.append({"step": "decode", "applied": True, "source_sample_rate": int(raw_sr),
-                      "source_channels": raw_channels, "duration_sec": round(raw_duration, 6)})
+                      "source_channels": raw_channels, "source_bit_depth": source_bits,
+                      "duration_sec": round(raw_duration, 6)})
 
-        # --- 3. unusable gate ------------------------------------------------------------
+        # 3. unusable gate
         if quality["verdict"] == UNUSABLE:
             reason = (quality["urgent"] or ["unusable_audio"])[0]
             return self._reject(
@@ -200,7 +183,7 @@ class AudioPipeline:
                 steps, timings, quality=quality, started=started,
             )
 
-        # --- 4. condition for the model --------------------------------------------------
+        # 4. condition for the model
         from .transforms import (
             apply_highpass,
             normalize_amplitude,
@@ -269,7 +252,7 @@ class AudioPipeline:
         # Peak re-check: resampling can overshoot slightly (interpolation ringing).
         y = np.clip(y, -1.0, 1.0).astype(np.float32)
 
-        # --- 5. segmentation with timestamps (FR xv) ---------------------------------------
+        # 5. segmentation with timestamps (FR xv)
         t0 = time.perf_counter()
         from .transforms import segment_timestamps
 
@@ -286,6 +269,7 @@ class AudioPipeline:
             "source_origin": origin,
             "source_sample_rate": int(raw_sr),
             "source_channels": raw_channels,
+            "source_bit_depth": source_bits,
             "target_sample_rate": self.target_sample_rate,
             "target_channels": 1,
             "segment_duration_sec": self.segment_seconds,
@@ -310,7 +294,6 @@ class AudioPipeline:
             rejection_reason=None,
         )
 
-    # -- rejection ---------------------------------------------------------------------
     def _reject(
         self,
         PreprocessedAudio,
@@ -325,11 +308,7 @@ class AudioPipeline:
         metrics: dict[str, Any] | None = None,
         started: float,
     ) -> Any:
-        """Return a rejected PreprocessedAudio.
-
-        It carries whatever was measured before the rejection so the UI can say *why* and
-        the record can be kept (SRS: rejections are auditable, not dropped).
-        """
+        """A rejected result that keeps whatever was measured, so the UI can say why."""
         timings["total"] = round((time.perf_counter() - started) * 1000.0, 3)
         from .exceptions import message_for
 
@@ -362,9 +341,7 @@ class AudioPipeline:
         )
 
 
-# --------------------------------------------------------------------------------------
 # Module-level convenience
-# --------------------------------------------------------------------------------------
 
 def preprocess(source: Any, **kwargs: Any) -> Any:
     """Preprocess with a default pipeline.  Equivalent to ``AudioPipeline(**kwargs)(source)``."""
@@ -385,24 +362,11 @@ def quality_meets(quality: dict[str, Any], minimum: str) -> bool:
 
 
 def warm_up(sample_rate: int | None = None) -> dict[str, float]:
-    """Run every transform once on a throwaway signal and return how long it took.
+    """Run every transform once on a generated tone and return the timings.
 
-    WHY THIS IS NOT OPTIONAL
-    ------------------------
-    The first call into librosa/scipy in a fresh process costs seconds: numba JIT-compiles
-    the resampler and the DSP kernels, and the STFT filters are built from scratch.  Measured
-    on this box, a 3 s clip took **5.5 s** cold, of which 1.2 s was the high-pass and 4.3 s
-    the spectral noise gate -- and both of those are ones I wrote, so the cost is numba's
-    compilation of their internals, not a problem in the algorithm.  Once warm the same
-    pipeline finishes in **under 100 ms** for a 30 s clip.
-
-    That matters because the SRS budget is per request: 30 s clip in <= 8 s, live window in
-    <= 3 s.  A cold process would blow the budget on its very first upload -- the first one
-    an evaluator clicks.  The web application therefore calls ``warm_up()`` at startup, and
-    ``tests/test_audio_perf.py`` asserts the warm path meets the budget so the claim cannot
-    quietly rot.
-
-    Idempotent and side-effect free: it processes a generated tone and discards the result.
+    The first call in a fresh process spends seconds in numba compilation (resampler, filters,
+    noise gate); the app calls this at startup so the first real upload is not the slow one.
+    Warm, preprocessing averaged 0.06 s per clip over the 3,000-clip corpus (26 Sep).
     """
     import time
 

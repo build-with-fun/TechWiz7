@@ -1,27 +1,12 @@
 #!/usr/bin/env python3
-"""
-Capture GTM's audio frontend parameters and verify the server-side reproduction.
+"""Check the server-side Teachable Machine frontend against the browser's own predictions.
 
-Two subcommands:
-
-  verify   Run the exported GTM model server-side on every clip listed in a recording
-           file, alongside the class/confidences Teachable Machine's own browser UI
-           reported for the same clips, and require agreement:
-             - predicted class matches on >= 95% of clips
-             - per-class confidence within --tolerance (default 0.05) on every clip
-           Writes gtm_model/frontend_verification.json ({"passed": bool, ...rows}).
-
-The frontend parameters themselves live in gtm_model/frontend_config.json — captured by
-hand from the export (see the README in gtm_model/upload_package). This script does not
-guess them; it measures OUR reproduction against the browser's numbers.
-
-Usage
------
     .venv/bin/python tools/capture_gtm_frontend.py verify \
         --recordings gtm_model/browser_recordings.json [--tolerance 0.05]
 
-`browser_recordings.json` is produced while testing the model in TM's web UI: for each
-clip, {"path": ..., "gtm_predicted_class": ..., "gtm_confidences": {...}}.
+``browser_recordings.json`` lists clips with the class and confidences TM's web UI showed for
+them. The check passes when the classes match on at least 95% of clips and every confidence is
+within the tolerance; it writes gtm_model/frontend_verification.json.
 """
 from __future__ import annotations
 

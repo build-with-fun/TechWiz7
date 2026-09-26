@@ -40,3 +40,13 @@ data/storage/
 
 # Not-audio junk
 sample_audio/invalid.notaudio
+
+# Preprocessed-waveform and embedding caches (rebuilt by python_models/preprocess_cache.py)
+data/cache/
+audio_dataset/augmented/
+
+# Local secrets
+.env
+
+# Sample clips are CC0/CC-BY test recordings listed in sample_audio/SOURCES.csv (SRS: permitted sample audio)
+!sample_audio/*.wav

@@ -1,20 +1,9 @@
-"""``/api/reports`` + ``/api/export`` -- downloadable reports and exports (FR lxix-lxxi).
+"""Reports and exports (FR lix, lxx).
 
-Owner: sara.
-
-Three resources, one rule each:
-
-* **The single-event report** renders the stored event row -- never recomputes a
-  prediction -- so what the download shows is byte-for-byte the evidence the console showed.
-* **The period report** aggregates the same columns the dashboard endpoints aggregate,
-  bounded by ``from``/``to``.
-* **The CSV export** reuses the search service's ``parse_filters`` + ``run_search``, so the
-  exact filter set a user narrowed the console to is what the CSV contains (FR lxxi) --
-  the export can never quietly disagree with the page. Rows are streamed with
-  ``Content-Disposition: attachment``; the export action itself is audited.
-
-The Excel path writes a real XLSX (a zip of XML, stdlib only) rather than renaming a CSV,
-because Excel opens the renamed file with a format warning and an evaluator notices.
+The event report renders the stored event (it never re-runs a model), the period report
+aggregates stored columns, and the CSV/XLSX export reuses the search filters so it contains
+exactly what the page showed. Exports are administrator-only and audited. XLSX is written
+with the standard library, not a renamed CSV.
 """
 
 from __future__ import annotations
@@ -22,7 +11,6 @@ from __future__ import annotations
 import csv
 import datetime as _dt
 import io
-import json
 import logging
 import zipfile
 from dataclasses import replace
@@ -34,7 +22,7 @@ from sqlalchemy import func as _sa_func, select
 from src.auth import capability_required, client_ip, current_user
 from src.db import record_audit, session_scope
 from src.errors import ApiError, current_request_id, not_found, validation_error
-from src.models import Alert, Event, Review, utcnow
+from src.models import Alert, Event, Review
 from src.services.config import get_store
 from src.services.search import parse_filters, run_search
 
@@ -61,16 +49,16 @@ _CSV_COLUMNS = [
 ]
 
 
-# ---------------------------------------------------------------------------------------
-# single-event report
-# ---------------------------------------------------------------------------------------
 
 
 @bp.get("/reports/event/<int:event_id>")
 @capability_required("view_analytics")
 def event_report(event_id: int):
-    """A downloadable single-event report: the stored analysis, formatted for reading."""
-    from src.models import Event
+    """FR lxix: one event's full analysis as a standalone, printable HTML file.
+
+    ``?format=json`` returns the same data without the pictures.
+    """
+    from src.models import User
 
     fmt = (request.args.get("format") or "json").lower()
     with session_scope(current_app.config["SST_SESSION_FACTORY"]) as session:
@@ -80,10 +68,31 @@ def event_report(event_id: int):
         from src.api.events_api import _event_row_to_dict
 
         data = _event_row_to_dict(event, get_store())
+        data["reviews"] = [
+            {"status": r.status, "decision": r.decision, "final_class": r.final_class,
+             "final_severity": r.final_severity, "comments": r.comments,
+             "false_alarm": r.false_alarm, "recommended_action": r.recommended_action,
+             "decided_at": r.decided_at.isoformat() + "Z" if r.decided_at else None,
+             "decided_by": (session.get(User, r.decided_by_id).username
+                            if r.decided_by_id and session.get(User, r.decided_by_id) else None),
+             "reason": r.reason_text}
+            for r in session.execute(select(Review).where(Review.event_id == event_id)
+                                     .order_by(Review.queued_at)).scalars()
+        ]
+        stored_path = event.audio_file.stored_path if event.audio_file else None
     if fmt == "json":
         return jsonify({"data": data})
 
-    html = _event_report_html(data)
+    figures: dict[str, str] = {}
+    if stored_path:
+        try:
+            from src.services.visuals import report_figures
+
+            figures = report_figures(current_app.config["SST_STORAGE"].resolve(stored_path))
+        except Exception:  # noqa: BLE001 - a missing picture must not lose the report
+            current_app.logger.warning("report figures failed for event %s", event_id,
+                                       exc_info=True)
+    html = _event_report_html(data, figures)
     _audit_export("event_report", target=str(event_id), rows=1)
     return Response(
         html, mimetype="text/html",
@@ -91,40 +100,79 @@ def event_report(event_id: int):
     )
 
 
-def _event_report_html(event: dict) -> str:
-    """A small standalone HTML document -- printable to PDF by the browser, no deps."""
-    rows = "".join(
-        f"<tr><th>{_xml_escape(label)}</th><td>{_xml_escape(str(event.get(key, '') or ''))}</td></tr>"
-        for label, key in [
-            ("Event", "id"), ("Audio ID", "audio_id"), ("Filename", "filename"),
-            ("Recorded at", "created_at"), ("Source", "source"), ("Location", "location"),
-            ("Predicted class", "predicted_class"), ("Severity", "severity"),
-            ("Consistency", "consistency_status"),
-            ("Confidence difference", "confidence_difference"),
-            ("Quality", "quality.verdict"), ("Status", "status"),
-        ]
-    )
+def _event_report_html(event: dict, figures: dict[str, str] | None = None) -> str:
+    """A standalone HTML document with every item FR lxix lists. Printable to PDF."""
+    esc = lambda v: _xml_escape("" if v is None else str(v))  # noqa: E731
+    fmt = lambda v, n=3: "" if v is None else f"{float(v):.{n}f}"  # noqa: E731
+    quality = event.get("quality") or {}
+    alert = event.get("alert") or {}
     models = event.get("models") or {}
-    model_rows = "".join(
-        f"<tr><th>{_xml_escape(name.title())}</th>"
-        f"<td>{_xml_escape(str((block or {}).get('predicted_class') or ''))} "
-        f"({_xml_escape(str((block or {}).get('confidence') or ''))}) "
-        f"v{_xml_escape(str((block or {}).get('version') or ''))}</td></tr>"
-        for name, block in models.items()
-    )
+    py, gtm = models.get("python") or {}, models.get("gtm") or {}
+
+    def table(rows: list[tuple[str, object]]) -> str:
+        return "<table>" + "".join(f"<tr><th>{esc(k)}</th><td>{esc(v)}</td></tr>"
+                                   for k, v in rows) + "</table>"
+
+    metadata = table([
+        ("Audio ID", event.get("audio_id")), ("Filename", event.get("filename")),
+        ("Format", event.get("format")), ("Duration (s)", fmt(event.get("duration_sec"), 2)),
+        ("Sample rate (Hz)", event.get("sample_rate")), ("Channels", event.get("channels")),
+        ("Bit depth", event.get("bit_depth") or "n/a (compressed format)"),
+        ("File size (bytes)", event.get("size_bytes")), ("Uploaded at", event.get("created_at")),
+        ("Source", event.get("source")), ("Location", event.get("location")),
+        ("SHA-256", event.get("sha256")),
+    ])
+    classes = sorted(set(py.get("confidences") or {}) | set(gtm.get("confidences") or {}),
+                     key=lambda c: -float((py.get("confidences") or {}).get(c, 0)))
+    score_rows = "".join(
+        f"<tr><td>{esc(c)}</td><td class='n'>{fmt((py.get('confidences') or {}).get(c))}</td>"
+        f"<td class='n'>{fmt((gtm.get('confidences') or {}).get(c))}</td></tr>" for c in classes)
+    scores = ("<table><tr><th>Class</th><th>Python</th><th>Teachable Machine</th></tr>"
+              f"{score_rows}</table>")
+    decision = table([
+        ("Python prediction", f"{py.get('predicted_class')} ({fmt(py.get('confidence'))}), "
+                              f"model v{py.get('version')}"),
+        ("Teachable Machine prediction", f"{gtm.get('predicted_class')} "
+                                         f"({fmt(gtm.get('confidence'))}), model v{gtm.get('version')}"),
+        ("Model consistency", event.get("consistency_status")),
+        ("Top-class confidence difference", fmt(event.get("confidence_difference"))),
+        ("Audio quality", f"{quality.get('verdict') or ''} {quality.get('detail') or ''}".strip()),
+        ("Severity", event.get("severity")),
+        ("Alert status", f"{alert.get('status')} ({alert.get('severity')})" if alert else "No alert"),
+        ("Manual review", "Required: " + str(event.get("review_reason") or "")
+         if event.get("requires_manual_review") else "Not required"),
+        ("Event status", event.get("status")),
+    ])
+    reviews = event.get("reviews") or []
+    review_html = "".join(
+        table([("Decision", r.get("decision")), ("Final class", r.get("final_class")),
+               ("Final severity", r.get("final_severity")), ("False alarm", r.get("false_alarm")),
+               ("Comments", r.get("comments")), ("Recommended action", r.get("recommended_action")),
+               ("Decided by", r.get("decided_by")), ("Decided at", r.get("decided_at"))])
+        for r in reviews) or "<p>No reviewer decision recorded.</p>"
+    pictures = "".join(
+        f"<figure><img alt='{esc(name)} of the recording' "
+        f"src='data:image/png;base64,{b64}'></figure>"
+        for name, b64 in (figures or {}).items()) or "<p>Audio no longer stored (retention).</p>"
     return (
-        "<!doctype html><html><head><meta charset='utf-8'>"
-        f"<title>Event {event.get('id')} report</title>"
-        "<style>body{font-family:system-ui,sans-serif;margin:2rem;color:#111}"
-        "table{border-collapse:collapse;width:100%;max-width:40rem}"
-        "th,td{border:1px solid #ccc;padding:.4rem .6rem;text-align:left}"
-        "th{background:#f5f5f5;width:12rem}</style></head><body>"
-        f"<h1>SonicSentinel AI &mdash; event report #{event.get('id')}</h1>"
-        f"<p>Generated {_xml_escape(_now_iso())} &middot; configuration snapshot "
-        f"{_xml_escape(str((event.get('config_snapshot') or {}).get('thresholds_version', '')))}</p>"
-        f"<table>{rows}{model_rows}</table>"
-        "<p class='note'>Values are the stored analysis of this event; the models' original "
-        "predictions are preserved verbatim (FR lxi).</p>"
+        "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
+        f"<title>Event {esc(event.get('id'))} report</title>"
+        "<style>body{font-family:system-ui,sans-serif;margin:2rem;color:#111;max-width:52rem}"
+        "table{border-collapse:collapse;width:100%;margin:.5rem 0 1.2rem}"
+        "th,td{border:1px solid #ccc;padding:.35rem .6rem;text-align:left;vertical-align:top}"
+        "th{background:#f3f4f6;width:15rem}td.n{text-align:right;font-variant-numeric:tabular-nums}"
+        "img{max-width:100%}h2{margin-top:1.6rem;border-bottom:2px solid #111}"
+        ".note{color:#555;font-size:.9rem}</style></head><body>"
+        f"<h1>SonicSentinel AI: event report #{esc(event.get('id'))}</h1>"
+        f"<p class='note'>Generated {esc(_now_iso())}. Model outputs are the stored originals; "
+        "a reviewer decision never overwrites them (FR lxi). Confidence is a model estimate, "
+        "not proof of correctness. This is a competition prototype, not a certified "
+        "emergency or law-enforcement system.</p>"
+        f"<h2>Audio metadata</h2>{metadata}"
+        f"<h2>Decision</h2>{decision}"
+        f"<h2>Confidence scores, every class</h2>{scores}"
+        f"<h2>Waveform and spectrogram</h2>{pictures}"
+        f"<h2>Review</h2>{review_html}"
         "</body></html>"
     )
 
@@ -134,9 +182,6 @@ def _now_iso() -> str:
     return _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-# ---------------------------------------------------------------------------------------
-# period report
-# ---------------------------------------------------------------------------------------
 
 
 @bp.get("/reports/period")
@@ -244,9 +289,6 @@ def _period_report_html(data: dict) -> str:
     )
 
 
-# ---------------------------------------------------------------------------------------
-# exports
-# ---------------------------------------------------------------------------------------
 
 
 @bp.get("/export/events.csv")

@@ -1,25 +1,11 @@
-"""The application factory.  One place where the app is assembled.
+"""The application factory.
 
-Owner: sara.  SRS FR i (authentication), FR ii (roles), FR lxxvii (error handling),
-FR lxxviii (monitoring), plus the non-functional requirements the web layer is on the hook
-for: >= 99% uptime behaviour, no internals in an error message, and a boot that is honest
-about what is and is not available.
-
-Design rules this file holds to:
-
-* **Everything configurable comes from a file.** Session lifetime, lockout, rate limits and
-  the security headers are read from ``config/auth.json``; thresholds and class names come
-  from ``config/``; alert rules from ``alert_rules/``. Nothing is a literal, so an
-  evaluator editing a file mid-demo sees the change on the next request (SRS §1.8 rule 5).
-* **The app boots with the models absent.** A missing model is a reported condition
-  (``/api/health`` says so, ``model_unavailable`` is returned), never a crash at import or
-  a hard failure to start. An evaluator restarting the box during a demo must get a
-  sign-in page and a clear health badge, not a stack trace.
-* **Predictors, the pipeline, the database and the clock are injected.** ``create_app``
-  takes them, so the test suite runs the whole HTTP surface with no trained model, no
-  microphone, and an in-memory database -- and the same code path is what serves the demo.
-* **Every response carries ``X-Request-Id``**, success included, and every failure is the
-  envelope from ``documentation/api_contract.md`` §1.1.
+Settings come from files (config/auth.json for sessions, lockout, rate limits and headers;
+config/ and alert_rules/ for thresholds and rules), so an edit takes effect without code
+changes (SRS 1.8 rule 5). The app starts even when a model is missing: /api/health says
+why, and analysis requests get a 503 with a readable message. The pipeline, database and
+predictors can be injected, which is how the tests run the whole HTTP surface. Every
+response carries X-Request-Id.
 """
 
 from __future__ import annotations
@@ -31,7 +17,6 @@ import hmac
 import secrets
 import time
 import uuid
-from pathlib import Path
 from typing import Any, Mapping
 
 from flask import Flask, g, request, session
@@ -52,8 +37,7 @@ logger = logging.getLogger("sonicsentinel.app")
 APP_NAME = "SonicSentinel AI"
 APP_VERSION = "1.0.0"
 
-#: The SRS §1.10 folder list, minus the code folders. Checked at startup and reported by
-#: ``/api/health`` so a missing deliverable is visible in the demo rather than at hand-in.
+#: The SRS 1.10 folder list, checked at startup and reported by /api/health.
 REQUIRED_DATA_FOLDERS: tuple[str, ...] = (
     "config",
     "alert_rules",
@@ -72,11 +56,7 @@ DEFAULT_ALERT_RULES_DIR = "alert_rules"
 
 
 def _configure_logging(app: Flask) -> None:
-    """One log format, with the request id in it, so a line can be tied to a request.
-
-    FR lxxviii wants failures findable. A log line that cannot be matched to the
-    ``request_id`` the user was shown is not findable.
-    """
+    """One log format including the request id, so a failure can be matched to what the user saw."""
     level = app.config.get("SST_LOG_LEVEL", "INFO")
     logging.getLogger("sonicsentinel").setLevel(level)
     if not logging.getLogger("sonicsentinel").handlers:
@@ -88,11 +68,9 @@ def _configure_logging(app: Flask) -> None:
 
 
 def _apply_security_headers(app: Flask, store) -> None:
-    """The header set from ``config/auth.json``.
+    """Security headers from config/auth.json, applied to every response including errors.
 
-    Applied to every response, including errors -- a 403 page without a CSP is still a
-    page. ``Permissions-Policy`` deliberately allows the microphone for this origin and
-    nothing else, because the live monitoring page needs it and nothing else does.
+    Permissions-Policy allows the microphone for this origin only; the live page needs it.
     """
     settings = store.auth_config().get("security_headers", {})
 
@@ -121,8 +99,7 @@ def _apply_request_context(app: Flask) -> None:
 
     @app.before_request
     def _start_request():
-        # An inbound id is only trusted if it looks like one of ours: a client-supplied
-        # string is echoed into logs, so it must not be able to inject anything.
+        # Only an id that looks like ours is reused: it is echoed into logs.
         inbound = request.headers.get("X-Request-Id", "")
         g.request_id = inbound if (inbound and inbound.isalnum() and len(inbound) <= 32) \
             else new_request_id()
@@ -144,7 +121,7 @@ def _apply_request_context(app: Flask) -> None:
 
 
 def _register_session_hooks(app: Flask) -> None:
-    """Session cookie and lifetime, from ``config/auth.json`` rather than Flask defaults."""
+    """Session cookie settings and lifetime from config/auth.json."""
 
     @app.before_request
     def _refresh_session_lifetime():
@@ -188,18 +165,14 @@ def _register_blueprints(app: Flask) -> None:
     # auth_api.py owns /api/auth/*; pages.py's auth_bp owns the HTML /login, /logout.
     app.register_blueprint(auth_api_bp)
     app.register_blueprint(pages_bp)
-    # pages.py contributes five blueprints (its BLUEPRINTS tuple): auth, main, admin,
-    # models, event_visuals. Registering only `bp` (main) left /login, /logout, /admin/*,
-    # /models and the evidence-visuals endpoint dead while their templates and guards
-    # referenced them -- every render that built those url_for calls 500'd.
+    # pages.py contributes five blueprints (auth, main, admin, models, event_visuals); all must
+    # be registered or url_for calls in the templates fail.
     for extra in pages_module.BLUEPRINTS:
         if extra is not pages_bp:
             app.register_blueprint(extra)
 
-    # Optional API slices. Each is registered only when its module is importable, so this
-    # file does not have to change every time another engineer lands an endpoint group --
-    # and a slice that is not there yet is reported by /api/health rather than crashing
-    # the whole console.
+    # Optional API slices are registered only when importable, and /api/health reports
+    # any that are missing.
     optional = (
         ("src.api.audio_api", "/api/audio"),
         ("src.api.events_api", "/api"),
@@ -233,8 +206,7 @@ def _build_store(app: Flask):
         config_dir=app.config["SST_CONFIG_DIR"],
         alert_rules_dir=app.config["SST_ALERT_RULES_DIR"],
     )
-    # Fail loudly at startup if the shipped configuration is broken: booting on a broken
-    # threshold file and discovering it mid-demo is worse than refusing to start now.
+    # Refuse to start on broken configuration rather than discover it mid-demo.
     problems = store.validate()
     if problems:
         joined = "; ".join(problems)
@@ -245,12 +217,10 @@ def _build_store(app: Flask):
 
 
 def _load_models(app: Flask, pipeline: Any | None) -> Any | None:
-    """Resolve the analysis pipeline, without ever failing the boot.
+    """Resolve the analysis pipeline without ever failing the boot.
 
-    Order: an explicitly injected pipeline (tests), then a real one loaded from disk, then
-    nothing. The third case is a legitimate running state -- the server is up, the health
-    endpoint reports why analysis is unavailable, and an analyse request gets a 503 with a
-    sentence a user can read.
+    Injected pipeline (tests), else one loaded from disk, else none: the server still runs and
+    /api/health reports why analysis is unavailable.
     """
     from src.services.pipeline import AnalysisPipeline, set_pipeline
 
@@ -295,11 +265,8 @@ def _load_models(app: Flask, pipeline: Any | None) -> Any | None:
 
 
 def create_app(config: Mapping[str, Any] | None = None, **overrides: Any) -> Flask:
-    """Build the application.
-
-    ``config`` (and keyword ``overrides``) are applied on top of the defaults, so a test
-    writes ``create_app(TESTING=True, SST_DB_PATH=":memory:")`` and gets a whole app with
-    no model, no real database file and no microphone.
+    """Build the application. ``config``/``overrides`` go over the defaults, e.g.
+    create_app(TESTING=True, SST_DB_PATH=":memory:") for a test app with no models.
     """
     app = Flask(
         __name__,
@@ -307,8 +274,7 @@ def create_app(config: Mapping[str, Any] | None = None, **overrides: Any) -> Fla
         static_folder=str(REPO_ROOT / "static"),
     )
 
-    # Merge both ways of configuring the instance, so the bootstrap below sees an
-    # overridden config directory no matter which argument carried it.
+    # Merge both ways of configuring the instance before the bootstrap reads them.
     supplied: dict[str, Any] = dict(config or {})
     supplied.update(overrides)
 
@@ -325,13 +291,14 @@ def create_app(config: Mapping[str, Any] | None = None, **overrides: Any) -> Fla
         "JSON_SORT_KEYS": False,
         "MAX_CONTENT_LENGTH": 64 * 1024 * 1024,
         "SST_CSRF_ENABLED": not supplied.get("TESTING", False),
+        # Reverse proxies in front of the app (1 on Render or behind nginx). With 0,
+        # X-Forwarded-For is ignored, because any client can send that header.
+        "SST_TRUSTED_PROXY_HOPS": int(os.environ.get("SST_TRUSTED_PROXY_HOPS", "0")),
     }
     app.config.update(defaults)
     app.config.update(supplied)
 
-    # config/auth.json decides the cookie settings that go into app.config, so the store
-    # has to be readable before the app config is complete. Built once, against the final
-    # directories, and reused for the rest of the boot.
+    # The config store must exist before the cookie settings (from auth.json) are known.
     store = _build_store(app)
 
     app.secret_key = app.config.get("SECRET_KEY") or _secret_key(app.config)
@@ -357,10 +324,7 @@ def create_app(config: Mapping[str, Any] | None = None, **overrides: Any) -> Fla
         days=float(app.config["SST_REMEMBER_DAYS"])
     )
 
-    # -- login rate limiters (FR i, FR lxxviii) ----------------------------------------
-    # The web layer looks these up as app extensions so every login path (page form and
-    # JSON API) shares the same counters. Limits come from config/auth.json, never a
-    # literal, so an administrator can change them mid-demo.
+    # Login rate limiters, shared by the form and the JSON API (limits from config/auth.json).
     from src.services.ratelimit import RateLimiter
 
     app.extensions["sst_limiter_login_ip"] = RateLimiter(
@@ -376,7 +340,6 @@ def create_app(config: Mapping[str, Any] | None = None, **overrides: Any) -> Fla
 
     _configure_logging(app)
 
-    # -- storage and database ---------------------------------------------------------
     engine = app.config.get("SST_ENGINE")
     if engine is None:
         db_path = app.config["SST_DB_PATH"]
@@ -392,15 +355,20 @@ def create_app(config: Mapping[str, Any] | None = None, **overrides: Any) -> Fla
         layout.ensure()
     app.config["SST_STORAGE"] = layout
 
-    # -- authentication -----------------------------------------------------------------
     from src.auth import _register_login_manager
 
     _register_login_manager(app)
 
-    # -- models (never fatal) ------------------------------------------------------------
-    _load_models(app, app.config.get("SST_PIPELINE_INJECT"))
+    loaded = _load_models(app, app.config.get("SST_PIPELINE_INJECT"))
 
-    # -- HTTP behaviour -------------------------------------------------------------------
+    # Pay librosa/numba and first-model-call costs now, not in the first request. AST's
+    # first forward pass in particular is far slower than every later one.
+    if app.config.get("SST_WARM_MODELS", True) and loaded is not None:
+        try:
+            loaded.warm()
+        except Exception as exc:  # a warm-up failure must not stop the app from starting
+            logger.warning("model warm-up failed at start-up: %s", exc)
+
     _apply_request_context(app)
     _register_csrf(app)
     _apply_security_headers(app, store)
@@ -423,14 +391,8 @@ def create_app(config: Mapping[str, Any] | None = None, **overrides: Any) -> Fla
 
 
 def _configure_jinja(app: Flask, store) -> None:
-    """The template plumbing the console pages assume but no code provided.
-
-    Since the first commit every base-template render needed two things that were
-    never registered: the ``fromjson`` filter used by the ``<script
-    type="application/json">`` blocks (parsing the JSON text that ``_macros.html``
-    and ``_presentation.html`` emit), and a context processor supplying the
-    config-derived vocabulary (severity scale, class list, model labels...).
-    Without them no page in this application has ever rendered; see the dev log.
+    """Register the fromjson filter and the template globals (severity scale, classes, model labels)
+    every page needs.
     """
     import json as _json
 
@@ -443,6 +405,24 @@ def _configure_jinja(app: Flask, store) -> None:
         return _json.loads(value)
 
     app.jinja_env.filters["fromjson"] = _fromjson
+
+    def _review_reason(value):
+        """'low_confidence,model_disagreement' -> the SRS phrases from manual_review_conditions.json."""
+        if not value:
+            return ""
+        phrases = {c["id"]: c.get("srs_phrase", c["id"]) for c in store.review_conditions()}
+        parts = [part.strip() for part in str(value).split(",") if part.strip()]
+        if not all(part in phrases or part.replace("_", "").isalnum() for part in parts):
+            return value  # free text, not a list of condition ids
+        return ", ".join(phrases.get(part, part.replace("_", " ")) for part in parts)
+
+    app.jinja_env.filters["review_reason"] = _review_reason
+
+    def _when(value):
+        """Naive-UTC datetime -> '26 Sep 2026, 12:36:44 UTC'; anything else unchanged."""
+        return value.strftime("%d %b %Y, %H:%M:%S UTC") if hasattr(value, "strftime") else (value or "")
+
+    app.jinja_env.filters["when"] = _when
 
     from src.models import (
         ALERT_STATUSES,
@@ -476,11 +456,10 @@ def _configure_jinja(app: Flask, store) -> None:
 
 
 def _secret_key(config: Mapping[str, Any]) -> str:
-    """A stable secret key, or a loud temporary one.
+    """A stable secret key.
 
-    Stability matters: rotating it signs every user out. In development it is derived from
-    the repository path so a restart does not drop the session; in a real deployment
-    ``SST_SECRET_KEY`` (or ``SECRET_KEY``) must be set, and the health endpoint says so.
+    In development it is derived from the repository path so restarts keep sessions (that key is
+    predictable, so never use it in a deployment); with SST_PRODUCTION=1, SST_SECRET_KEY must be set.
     """
     configured = os.environ.get("SST_SECRET_KEY") or os.environ.get("SECRET_KEY")
     if configured:

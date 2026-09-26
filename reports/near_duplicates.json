@@ -1,0 +1,2999 @@
+{
+  "generated_at": "2026-09-26T01:16:18.917114+00:00",
+  "recordings": 60,
+  "positives": 240,
+  "hard_negatives": 180,
+  "stage1_only_false_positive_rate": 0.18888888888888888,
+  "stage1_recall": {
+    "mp3_64k": 0.8666666666666667,
+    "minus_12dB": 0.9056603773584906,
+    "trim_middle_70pct": 0.14545454545454545,
+    "pink_noise_20dB": 0.6166666666666667
+  },
+  "stage1_missing_by_variant": {
+    "mp3_64k": 1,
+    "minus_12dB": 1,
+    "trim_middle_70pct": 0,
+    "pink_noise_20dB": 1
+  },
+  "stage2_median_by_variant": {
+    "mp3_64k": 0.9955444766924257,
+    "minus_12dB": 0.9988464785199113,
+    "trim_middle_70pct": 0.985924277928549,
+    "pink_noise_20dB": 0.9502402322422554
+  },
+  "stage2_hard_negative_max": 0.9381615109462966,
+  "stage2_hard_negative_p95": 0.7661259067501707,
+  "thresholds": [
+    {
+      "stage2_threshold": 0.75,
+      "recall": 0.6008771929824561,
+      "hard_negative_false_positives": 7,
+      "hard_negatives": 180
+    },
+    {
+      "stage2_threshold": 0.8,
+      "recall": 0.6008771929824561,
+      "hard_negative_false_positives": 4,
+      "hard_negatives": 180
+    },
+    {
+      "stage2_threshold": 0.85,
+      "recall": 0.6008771929824561,
+      "hard_negative_false_positives": 4,
+      "hard_negatives": 180
+    },
+    {
+      "stage2_threshold": 0.9,
+      "recall": 0.6008771929824561,
+      "hard_negative_false_positives": 1,
+      "hard_negatives": 180
+    },
+    {
+      "stage2_threshold": 0.95,
+      "recall": 0.5394736842105263,
+      "hard_negative_false_positives": 0,
+      "hard_negatives": 180
+    }
+  ],
+  "shortlist_policy": [
+    {
+      "top_k": 3,
+      "stage2_threshold": 0.9,
+      "recall": 0.706140350877193,
+      "hard_negative_false_positives": 1
+    },
+    {
+      "top_k": 5,
+      "stage2_threshold": 0.9,
+      "recall": 0.7368421052631579,
+      "hard_negative_false_positives": 1
+    },
+    {
+      "top_k": 10,
+      "stage2_threshold": 0.9,
+      "recall": 0.7456140350877193,
+      "hard_negative_false_positives": 1
+    }
+  ],
+  "positives_detail": [
+    {
+      "audio_id": "SS-AGG-0001",
+      "variant": "mp3_64k",
+      "stage1": 0.95703125,
+      "rank": 1,
+      "stage2": 0.992536388045833
+    },
+    {
+      "audio_id": "SS-AGG-0001",
+      "variant": "minus_12dB",
+      "stage1": 0.962890625,
+      "rank": 1,
+      "stage2": 0.993293396261885
+    },
+    {
+      "audio_id": "SS-AGG-0001",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.76171875,
+      "rank": 805,
+      "stage2": 0.9959826833094572
+    },
+    {
+      "audio_id": "SS-AGG-0001",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.9296875,
+      "rank": 1,
+      "stage2": 0.908007723490573
+    },
+    {
+      "audio_id": "SS-AGG-0004",
+      "variant": "mp3_64k",
+      "stage1": 1.0,
+      "rank": 1,
+      "stage2": 0.0
+    },
+    {
+      "audio_id": "SS-AGG-0004",
+      "variant": "minus_12dB",
+      "stage1": 1.0,
+      "rank": 1,
+      "stage2": 0.0
+    },
+    {
+      "audio_id": "SS-AGG-0004",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.927734375,
+      "rank": 122,
+      "stage2": 0.0
+    },
+    {
+      "audio_id": "SS-AGG-0004",
+      "variant": "pink_noise_20dB",
+      "stage1": 1.0,
+      "rank": 1,
+      "stage2": 0.0
+    },
+    {
+      "audio_id": "SS-AGG-0009",
+      "variant": "mp3_64k",
+      "stage1": 0.9765625,
+      "rank": 1,
+      "stage2": 0.9620731202964997
+    },
+    {
+      "audio_id": "SS-AGG-0009",
+      "variant": "minus_12dB",
+      "stage1": 0.974609375,
+      "rank": 1,
+      "stage2": 0.9996753424996524
+    },
+    {
+      "audio_id": "SS-AGG-0009",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.86328125,
+      "rank": 399,
+      "stage2": 0.9376226945764566
+    },
+    {
+      "audio_id": "SS-AGG-0009",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.935546875,
+      "rank": 1,
+      "stage2": 0.9401850653732082
+    },
+    {
+      "audio_id": "SS-AGG-0038",
+      "variant": "mp3_64k",
+      "stage1": 0.98046875,
+      "rank": 4,
+      "stage2": 0.9889226260099016
+    },
+    {
+      "audio_id": "SS-AGG-0038",
+      "variant": "minus_12dB",
+      "stage1": 0.982421875,
+      "rank": 4,
+      "stage2": 0.9923564594620835
+    },
+    {
+      "audio_id": "SS-AGG-0038",
+      "variant": "trim_middle_70pct",
+      "rejected": true
+    },
+    {
+      "audio_id": "SS-AGG-0038",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.982421875,
+      "rank": 4,
+      "stage2": 0.9786552709358519
+    },
+    {
+      "audio_id": "SS-AGG-0041",
+      "variant": "mp3_64k",
+      "stage1": 0.99609375,
+      "rank": 1,
+      "stage2": 0.9991976606738912
+    },
+    {
+      "audio_id": "SS-AGG-0041",
+      "variant": "minus_12dB",
+      "stage1": 1.0,
+      "rank": 1,
+      "stage2": 0.9999272595295969
+    },
+    {
+      "audio_id": "SS-AGG-0041",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.890625,
+      "rank": 9,
+      "stage2": 0.9900834810753464
+    },
+    {
+      "audio_id": "SS-AGG-0041",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.990234375,
+      "rank": 1,
+      "stage2": 0.9909105043978752
+    },
+    {
+      "audio_id": "SS-AGG-0049",
+      "variant": "mp3_64k",
+      "stage1": 0.98828125,
+      "rank": 1,
+      "stage2": 0.9987382857338819
+    },
+    {
+      "audio_id": "SS-AGG-0049",
+      "variant": "minus_12dB",
+      "stage1": 1.0,
+      "rank": 1,
+      "stage2": 0.9999236571817255
+    },
+    {
+      "audio_id": "SS-AGG-0049",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.84375,
+      "rank": 2,
+      "stage2": 0.9931295919731064
+    },
+    {
+      "audio_id": "SS-AGG-0049",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.994140625,
+      "rank": 1,
+      "stage2": 0.9890804552715325
+    },
+    {
+      "audio_id": "SS-ALM-0015",
+      "variant": "mp3_64k",
+      "stage1": 0.982421875,
+      "rank": 1,
+      "stage2": 0.9954332593073191
+    },
+    {
+      "audio_id": "SS-ALM-0015",
+      "variant": "minus_12dB",
+      "stage1": 0.98828125,
+      "rank": 1,
+      "stage2": 0.9971339636629538
+    },
+    {
+      "audio_id": "SS-ALM-0015",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.798828125,
+      "rank": 382,
+      "stage2": 0.9688974414715157
+    },
+    {
+      "audio_id": "SS-ALM-0015",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.953125,
+      "rank": 1,
+      "stage2": 0.9432991292000166
+    },
+    {
+      "audio_id": "SS-ALM-0028",
+      "variant": "mp3_64k",
+      "stage1": 0.939453125,
+      "rank": 1,
+      "stage2": 0.9607152852916593
+    },
+    {
+      "audio_id": "SS-ALM-0028",
+      "variant": "minus_12dB",
+      "stage1": 0.951171875,
+      "rank": 1,
+      "stage2": 0.9607225143528856
+    },
+    {
+      "audio_id": "SS-ALM-0028",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.732421875,
+      "rank": 2619,
+      "stage2": 0.9453791380122044
+    },
+    {
+      "audio_id": "SS-ALM-0028",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.80859375,
+      "rank": 1,
+      "stage2": 0.775102032714745
+    },
+    {
+      "audio_id": "SS-ALM-0037",
+      "variant": "mp3_64k",
+      "stage1": 0.994140625,
+      "rank": 1,
+      "stage2": 0.9992829095972019
+    },
+    {
+      "audio_id": "SS-ALM-0037",
+      "variant": "minus_12dB",
+      "stage1": 1.0,
+      "rank": 1,
+      "stage2": 0.9999998838168289
+    },
+    {
+      "audio_id": "SS-ALM-0037",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.748046875,
+      "rank": 1274,
+      "stage2": 0.9857190725741414
+    },
+    {
+      "audio_id": "SS-ALM-0037",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.806640625,
+      "rank": 1,
+      "stage2": 0.7053024444005564
+    },
+    {
+      "audio_id": "SS-ALM-0038",
+      "variant": "mp3_64k",
+      "stage1": 0.98828125,
+      "rank": 1,
+      "stage2": 0.9994177041358835
+    },
+    {
+      "audio_id": "SS-ALM-0038",
+      "variant": "minus_12dB",
+      "stage1": 0.990234375,
+      "rank": 1,
+      "stage2": 0.999610062235578
+    },
+    {
+      "audio_id": "SS-ALM-0038",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.9375,
+      "rank": 148,
+      "stage2": 0.9702320375643841
+    },
+    {
+      "audio_id": "SS-ALM-0038",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.94140625,
+      "rank": 1,
+      "stage2": 0.9741228553833706
+    },
+    {
+      "audio_id": "SS-ALM-0045",
+      "variant": "mp3_64k",
+      "stage1": 0.873046875,
+      "rank": 1,
+      "stage2": 0.9606413352223074
+    },
+    {
+      "audio_id": "SS-ALM-0045",
+      "variant": "minus_12dB",
+      "stage1": 0.880859375,
+      "rank": 1,
+      "stage2": 0.9628016052227406
+    },
+    {
+      "audio_id": "SS-ALM-0045",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.78515625,
+      "rank": 115,
+      "stage2": 0.9370942955860565
+    },
+    {
+      "audio_id": "SS-ALM-0045",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.845703125,
+      "rank": 1,
+      "stage2": 0.9105823568486925
+    },
+    {
+      "audio_id": "SS-ALM-0047",
+      "variant": "mp3_64k",
+      "stage1": null,
+      "rank": 2994,
+      "stage2": 0.0
+    },
+    {
+      "audio_id": "SS-ALM-0047",
+      "variant": "minus_12dB",
+      "stage1": null,
+      "rank": 2994,
+      "stage2": 0.0
+    },
+    {
+      "audio_id": "SS-ALM-0047",
+      "variant": "trim_middle_70pct",
+      "rejected": true
+    },
+    {
+      "audio_id": "SS-ALM-0047",
+      "variant": "pink_noise_20dB",
+      "stage1": null,
+      "rank": 2994,
+      "stage2": 0.0
+    },
+    {
+      "audio_id": "SS-ANI-0005",
+      "variant": "mp3_64k",
+      "stage1": 0.94921875,
+      "rank": 1,
+      "stage2": 0.9908818587124539
+    },
+    {
+      "audio_id": "SS-ANI-0005",
+      "variant": "minus_12dB",
+      "rejected": true
+    },
+    {
+      "audio_id": "SS-ANI-0005",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.857421875,
+      "rank": 98,
+      "stage2": 0.991038053631447
+    },
+    {
+      "audio_id": "SS-ANI-0005",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.943359375,
+      "rank": 1,
+      "stage2": 0.9837099561417159
+    },
+    {
+      "audio_id": "SS-ANI-0008",
+      "variant": "mp3_64k",
+      "stage1": 0.904296875,
+      "rank": 1,
+      "stage2": 0.9944348891994498
+    },
+    {
+      "audio_id": "SS-ANI-0008",
+      "variant": "minus_12dB",
+      "rejected": true
+    },
+    {
+      "audio_id": "SS-ANI-0008",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.724609375,
+      "rank": 2703,
+      "stage2": 0.9902281823689089
+    },
+    {
+      "audio_id": "SS-ANI-0008",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.900390625,
+      "rank": 1,
+      "stage2": 0.9860140151938052
+    },
+    {
+      "audio_id": "SS-ANI-0017",
+      "variant": "mp3_64k",
+      "stage1": 0.994140625,
+      "rank": 1,
+      "stage2": 0.9982287313050747
+    },
+    {
+      "audio_id": "SS-ANI-0017",
+      "variant": "minus_12dB",
+      "stage1": 1.0,
+      "rank": 1,
+      "stage2": 0.9998866979881184
+    },
+    {
+      "audio_id": "SS-ANI-0017",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.90234375,
+      "rank": 15,
+      "stage2": 0.9972913984148695
+    },
+    {
+      "audio_id": "SS-ANI-0017",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.9140625,
+      "rank": 7,
+      "stage2": 0.9238742377035903
+    },
+    {
+      "audio_id": "SS-ANI-0019",
+      "variant": "mp3_64k",
+      "stage1": 0.833984375,
+      "rank": 1,
+      "stage2": 0.9908850431534714
+    },
+    {
+      "audio_id": "SS-ANI-0019",
+      "variant": "minus_12dB",
+      "stage1": 0.83984375,
+      "rank": 1,
+      "stage2": 0.994272858459096
+    },
+    {
+      "audio_id": "SS-ANI-0019",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.765625,
+      "rank": 330,
+      "stage2": 0.9872670444551078
+    },
+    {
+      "audio_id": "SS-ANI-0019",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.828125,
+      "rank": 1,
+      "stage2": 0.9501199591107653
+    },
+    {
+      "audio_id": "SS-ANI-0020",
+      "variant": "mp3_64k",
+      "stage1": 0.86328125,
+      "rank": 1,
+      "stage2": 0.984970738257605
+    },
+    {
+      "audio_id": "SS-ANI-0020",
+      "variant": "minus_12dB",
+      "rejected": true
+    },
+    {
+      "audio_id": "SS-ANI-0020",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.76171875,
+      "rank": 879,
+      "stage2": 0.0
+    },
+    {
+      "audio_id": "SS-ANI-0020",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.828125,
+      "rank": 1,
+      "stage2": 0.7377679587055961
+    },
+    {
+      "audio_id": "SS-ANI-0021",
+      "variant": "mp3_64k",
+      "stage1": 0.96484375,
+      "rank": 1,
+      "stage2": 0.9994403381762762
+    },
+    {
+      "audio_id": "SS-ANI-0021",
+      "variant": "minus_12dB",
+      "stage1": 0.974609375,
+      "rank": 1,
+      "stage2": 0.9996350394583742
+    },
+    {
+      "audio_id": "SS-ANI-0021",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.810546875,
+      "rank": 107,
+      "stage2": 0.8484508906796914
+    },
+    {
+      "audio_id": "SS-ANI-0021",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.876953125,
+      "rank": 1,
+      "stage2": 0.9289141588626941
+    },
+    {
+      "audio_id": "SS-BGN-0001",
+      "variant": "mp3_64k",
+      "stage1": 0.814453125,
+      "rank": 840,
+      "stage2": 0.995618614903175
+    },
+    {
+      "audio_id": "SS-BGN-0001",
+      "variant": "minus_12dB",
+      "rejected": true
+    },
+    {
+      "audio_id": "SS-BGN-0001",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.75,
+      "rank": 1622,
+      "stage2": 0.8932858716998594
+    },
+    {
+      "audio_id": "SS-BGN-0001",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.833984375,
+      "rank": 1,
+      "stage2": 0.8767425848632417
+    },
+    {
+      "audio_id": "SS-BGN-0004",
+      "variant": "mp3_64k",
+      "stage1": 0.982421875,
+      "rank": 1,
+      "stage2": 0.9972305130113821
+    },
+    {
+      "audio_id": "SS-BGN-0004",
+      "variant": "minus_12dB",
+      "rejected": true
+    },
+    {
+      "audio_id": "SS-BGN-0004",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.865234375,
+      "rank": 99,
+      "stage2": 0.9989947192678124
+    },
+    {
+      "audio_id": "SS-BGN-0004",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.931640625,
+      "rank": 1,
+      "stage2": 0.939983764622776
+    },
+    {
+      "audio_id": "SS-BGN-0015",
+      "variant": "mp3_64k",
+      "stage1": 0.97265625,
+      "rank": 1,
+      "stage2": 0.9957640547390059
+    },
+    {
+      "audio_id": "SS-BGN-0015",
+      "variant": "minus_12dB",
+      "stage1": 0.9765625,
+      "rank": 1,
+      "stage2": 0.9970703067859904
+    },
+    {
+      "audio_id": "SS-BGN-0015",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.79296875,
+      "rank": 116,
+      "stage2": 0.9879864625847962
+    },
+    {
+      "audio_id": "SS-BGN-0015",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.896484375,
+      "rank": 1,
+      "stage2": 0.9640784124589742
+    },
+    {
+      "audio_id": "SS-BGN-0027",
+      "variant": "mp3_64k",
+      "stage1": 0.970703125,
+      "rank": 1,
+      "stage2": 0.9890983318855968
+    },
+    {
+      "audio_id": "SS-BGN-0027",
+      "variant": "minus_12dB",
+      "stage1": 0.966796875,
+      "rank": 1,
+      "stage2": 0.9924509563736876
+    },
+    {
+      "audio_id": "SS-BGN-0027",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.755859375,
+      "rank": 1514,
+      "stage2": 0.9847314350671754
+    },
+    {
+      "audio_id": "SS-BGN-0027",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.908203125,
+      "rank": 1,
+      "stage2": 0.9904973347539805
+    },
+    {
+      "audio_id": "SS-BGN-0034",
+      "variant": "mp3_64k",
+      "stage1": 0.95703125,
+      "rank": 1,
+      "stage2": 0.9966017554617707
+    },
+    {
+      "audio_id": "SS-BGN-0034",
+      "variant": "minus_12dB",
+      "stage1": 0.962890625,
+      "rank": 1,
+      "stage2": 0.9970408933372019
+    },
+    {
+      "audio_id": "SS-BGN-0034",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.732421875,
+      "rank": 2487,
+      "stage2": 0.9945850726150683
+    },
+    {
+      "audio_id": "SS-BGN-0034",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.826171875,
+      "rank": 1,
+      "stage2": 0.9503605053737456
+    },
+    {
+      "audio_id": "SS-BGN-0036",
+      "variant": "mp3_64k",
+      "stage1": 0.98046875,
+      "rank": 1,
+      "stage2": 0.9954692372434216
+    },
+    {
+      "audio_id": "SS-BGN-0036",
+      "variant": "minus_12dB",
+      "stage1": 0.98828125,
+      "rank": 1,
+      "stage2": 0.9962478932347705
+    },
+    {
+      "audio_id": "SS-BGN-0036",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.80859375,
+      "rank": 730,
+      "stage2": 0.9931594476726846
+    },
+    {
+      "audio_id": "SS-BGN-0036",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.9609375,
+      "rank": 1,
+      "stage2": 0.985945755502734
+    },
+    {
+      "audio_id": "SS-GLA-0014",
+      "variant": "mp3_64k",
+      "stage1": 0.986328125,
+      "rank": 1,
+      "stage2": 0.9954095472053291
+    },
+    {
+      "audio_id": "SS-GLA-0014",
+      "variant": "minus_12dB",
+      "stage1": 0.984375,
+      "rank": 1,
+      "stage2": 0.996735576213899
+    },
+    {
+      "audio_id": "SS-GLA-0014",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.984375,
+      "rank": 1,
+      "stage2": 0.9961917298221531
+    },
+    {
+      "audio_id": "SS-GLA-0014",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.9765625,
+      "rank": 1,
+      "stage2": 0.9517826132408733
+    },
+    {
+      "audio_id": "SS-GLA-0015",
+      "variant": "mp3_64k",
+      "stage1": 0.970703125,
+      "rank": 1,
+      "stage2": 0.9716155136445365
+    },
+    {
+      "audio_id": "SS-GLA-0015",
+      "variant": "minus_12dB",
+      "stage1": 0.966796875,
+      "rank": 1,
+      "stage2": 0.9727713514402524
+    },
+    {
+      "audio_id": "SS-GLA-0015",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.751953125,
+      "rank": 1340,
+      "stage2": 0.9879313737229962
+    },
+    {
+      "audio_id": "SS-GLA-0015",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.95703125,
+      "rank": 1,
+      "stage2": 0.9780931464853485
+    },
+    {
+      "audio_id": "SS-GLA-0018",
+      "variant": "mp3_64k",
+      "stage1": 0.982421875,
+      "rank": 1,
+      "stage2": 0.9986870141279749
+    },
+    {
+      "audio_id": "SS-GLA-0018",
+      "variant": "minus_12dB",
+      "stage1": 0.984375,
+      "rank": 1,
+      "stage2": 0.9996102244518141
+    },
+    {
+      "audio_id": "SS-GLA-0018",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.79296875,
+      "rank": 488,
+      "stage2": 0.9992057262860529
+    },
+    {
+      "audio_id": "SS-GLA-0018",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.888671875,
+      "rank": 1,
+      "stage2": 0.9269659933808034
+    },
+    {
+      "audio_id": "SS-GLA-0019",
+      "variant": "mp3_64k",
+      "stage1": 0.994140625,
+      "rank": 1,
+      "stage2": 0.9996868012469295
+    },
+    {
+      "audio_id": "SS-GLA-0019",
+      "variant": "minus_12dB",
+      "stage1": 0.99609375,
+      "rank": 1,
+      "stage2": 0.9999083333436246
+    },
+    {
+      "audio_id": "SS-GLA-0019",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.80859375,
+      "rank": 46,
+      "stage2": 0.9892498741790113
+    },
+    {
+      "audio_id": "SS-GLA-0019",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.9375,
+      "rank": 1,
+      "stage2": 0.9542133982115821
+    },
+    {
+      "audio_id": "SS-GLA-0022",
+      "variant": "mp3_64k",
+      "stage1": 0.994140625,
+      "rank": 1,
+      "stage2": 0.9969891155644748
+    },
+    {
+      "audio_id": "SS-GLA-0022",
+      "variant": "minus_12dB",
+      "stage1": 1.0,
+      "rank": 1,
+      "stage2": 0.9999952080686687
+    },
+    {
+      "audio_id": "SS-GLA-0022",
+      "variant": "trim_middle_70pct",
+      "rejected": true
+    },
+    {
+      "audio_id": "SS-GLA-0022",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.99609375,
+      "rank": 1,
+      "stage2": 0.9806335884129085
+    },
+    {
+      "audio_id": "SS-GLA-0024",
+      "variant": "mp3_64k",
+      "stage1": 0.98046875,
+      "rank": 1,
+      "stage2": 0.997197514100447
+    },
+    {
+      "audio_id": "SS-GLA-0024",
+      "variant": "minus_12dB",
+      "stage1": 0.984375,
+      "rank": 1,
+      "stage2": 0.9988464785199113
+    },
+    {
+      "audio_id": "SS-GLA-0024",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.73828125,
+      "rank": 1551,
+      "stage2": 0.9490028250405
+    },
+    {
+      "audio_id": "SS-GLA-0024",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.92578125,
+      "rank": 1,
+      "stage2": 0.9563802553797631
+    },
+    {
+      "audio_id": "SS-GUN-0015",
+      "variant": "mp3_64k",
+      "stage1": 0.99609375,
+      "rank": 1,
+      "stage2": 0.9857914729205105
+    },
+    {
+      "audio_id": "SS-GUN-0015",
+      "variant": "minus_12dB",
+      "stage1": 0.99609375,
+      "rank": 1,
+      "stage2": 0.9859144408945825
+    },
+    {
+      "audio_id": "SS-GUN-0015",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.783203125,
+      "rank": 607,
+      "stage2": 0.9967816894026541
+    },
+    {
+      "audio_id": "SS-GUN-0015",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.9375,
+      "rank": 1,
+      "stage2": 0.9195853914618135
+    },
+    {
+      "audio_id": "SS-GUN-0016",
+      "variant": "mp3_64k",
+      "stage1": 0.998046875,
+      "rank": 1,
+      "stage2": 0.9991690942526648
+    },
+    {
+      "audio_id": "SS-GUN-0016",
+      "variant": "minus_12dB",
+      "stage1": 0.998046875,
+      "rank": 1,
+      "stage2": 0.9999277350211395
+    },
+    {
+      "audio_id": "SS-GUN-0016",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.939453125,
+      "rank": 90,
+      "stage2": 0.9455732506624076
+    },
+    {
+      "audio_id": "SS-GUN-0016",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.990234375,
+      "rank": 1,
+      "stage2": 0.9968353353459074
+    },
+    {
+      "audio_id": "SS-GUN-0019",
+      "variant": "mp3_64k",
+      "stage1": 0.99609375,
+      "rank": 1,
+      "stage2": 0.9985764869403689
+    },
+    {
+      "audio_id": "SS-GUN-0019",
+      "variant": "minus_12dB",
+      "stage1": 1.0,
+      "rank": 1,
+      "stage2": 0.9997895788832614
+    },
+    {
+      "audio_id": "SS-GUN-0019",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.869140625,
+      "rank": 145,
+      "stage2": 0.9884108063533255
+    },
+    {
+      "audio_id": "SS-GUN-0019",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.994140625,
+      "rank": 1,
+      "stage2": 0.9788448001494363
+    },
+    {
+      "audio_id": "SS-GUN-0033",
+      "variant": "mp3_64k",
+      "stage1": 0.990234375,
+      "rank": 1,
+      "stage2": 0.9990699115261542
+    },
+    {
+      "audio_id": "SS-GUN-0033",
+      "variant": "minus_12dB",
+      "stage1": 0.990234375,
+      "rank": 1,
+      "stage2": 0.999798433582567
+    },
+    {
+      "audio_id": "SS-GUN-0033",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.751953125,
+      "rank": 1022,
+      "stage2": 0.993125466705402
+    },
+    {
+      "audio_id": "SS-GUN-0033",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.935546875,
+      "rank": 1,
+      "stage2": 0.9222414157538136
+    },
+    {
+      "audio_id": "SS-GUN-0046",
+      "variant": "mp3_64k",
+      "stage1": 0.998046875,
+      "rank": 1,
+      "stage2": 0.9973109276169791
+    },
+    {
+      "audio_id": "SS-GUN-0046",
+      "variant": "minus_12dB",
+      "stage1": 1.0,
+      "rank": 1,
+      "stage2": 0.9999848694610325
+    },
+    {
+      "audio_id": "SS-GUN-0046",
+      "variant": "trim_middle_70pct",
+      "rejected": true
+    },
+    {
+      "audio_id": "SS-GUN-0046",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.994140625,
+      "rank": 1,
+      "stage2": 0.9960409907832637
+    },
+    {
+      "audio_id": "SS-GUN-0047",
+      "variant": "mp3_64k",
+      "stage1": 0.99609375,
+      "rank": 1,
+      "stage2": 0.9989365065233164
+    },
+    {
+      "audio_id": "SS-GUN-0047",
+      "variant": "minus_12dB",
+      "stage1": 0.998046875,
+      "rank": 1,
+      "stage2": 0.9997728005172236
+    },
+    {
+      "audio_id": "SS-GUN-0047",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.775390625,
+      "rank": 972,
+      "stage2": 0.9829654691570852
+    },
+    {
+      "audio_id": "SS-GUN-0047",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.984375,
+      "rank": 1,
+      "stage2": 0.9531523083826836
+    },
+    {
+      "audio_id": "SS-HAL-0502",
+      "variant": "mp3_64k",
+      "stage1": 0.982421875,
+      "rank": 1,
+      "stage2": 0.9973294865749478
+    },
+    {
+      "audio_id": "SS-HAL-0502",
+      "variant": "minus_12dB",
+      "stage1": 1.0,
+      "rank": 1,
+      "stage2": 1.0000000028830567
+    },
+    {
+      "audio_id": "SS-HAL-0502",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.90625,
+      "rank": 1,
+      "stage2": 0.9876719817614756
+    },
+    {
+      "audio_id": "SS-HAL-0502",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.951171875,
+      "rank": 1,
+      "stage2": 0.9542776296816338
+    },
+    {
+      "audio_id": "SS-HAL-0507",
+      "variant": "mp3_64k",
+      "stage1": 0.982421875,
+      "rank": 1,
+      "stage2": 0.9970474462847465
+    },
+    {
+      "audio_id": "SS-HAL-0507",
+      "variant": "minus_12dB",
+      "stage1": 1.0,
+      "rank": 1,
+      "stage2": 0.9999999785319371
+    },
+    {
+      "audio_id": "SS-HAL-0507",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.908203125,
+      "rank": 1,
+      "stage2": 0.9883311158820719
+    },
+    {
+      "audio_id": "SS-HAL-0507",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.953125,
+      "rank": 1,
+      "stage2": 0.9423601860041498
+    },
+    {
+      "audio_id": "SS-HAL-0508",
+      "variant": "mp3_64k",
+      "stage1": 0.984375,
+      "rank": 1,
+      "stage2": 0.9972608835085964
+    },
+    {
+      "audio_id": "SS-HAL-0508",
+      "variant": "minus_12dB",
+      "stage1": 1.0,
+      "rank": 1,
+      "stage2": 1.0000000166335024
+    },
+    {
+      "audio_id": "SS-HAL-0508",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.908203125,
+      "rank": 1,
+      "stage2": 0.985924277928549
+    },
+    {
+      "audio_id": "SS-HAL-0508",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.947265625,
+      "rank": 1,
+      "stage2": 0.9374011848349132
+    },
+    {
+      "audio_id": "SS-HAL-0513",
+      "variant": "mp3_64k",
+      "stage1": 0.9921875,
+      "rank": 1,
+      "stage2": 0.9986100591711162
+    },
+    {
+      "audio_id": "SS-HAL-0513",
+      "variant": "minus_12dB",
+      "stage1": 1.0,
+      "rank": 1,
+      "stage2": 1.0000000097945871
+    },
+    {
+      "audio_id": "SS-HAL-0513",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.80078125,
+      "rank": 160,
+      "stage2": 0.9618573380921711
+    },
+    {
+      "audio_id": "SS-HAL-0513",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.974609375,
+      "rank": 1,
+      "stage2": 0.9940446992392397
+    },
+    {
+      "audio_id": "SS-HAL-0514",
+      "variant": "mp3_64k",
+      "stage1": 0.98046875,
+      "rank": 1,
+      "stage2": 0.9939330735102052
+    },
+    {
+      "audio_id": "SS-HAL-0514",
+      "variant": "minus_12dB",
+      "rejected": true
+    },
+    {
+      "audio_id": "SS-HAL-0514",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.77734375,
+      "rank": 165,
+      "stage2": 0.9927494768681576
+    },
+    {
+      "audio_id": "SS-HAL-0514",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.962890625,
+      "rank": 1,
+      "stage2": 0.9863460670758044
+    },
+    {
+      "audio_id": "SS-HAL-0523",
+      "variant": "mp3_64k",
+      "stage1": 0.94921875,
+      "rank": 1,
+      "stage2": 0.9980245087092222
+    },
+    {
+      "audio_id": "SS-HAL-0523",
+      "variant": "minus_12dB",
+      "stage1": 1.0,
+      "rank": 1,
+      "stage2": 1.0000000364673316
+    },
+    {
+      "audio_id": "SS-HAL-0523",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.8125,
+      "rank": 5,
+      "stage2": 0.9848306917403385
+    },
+    {
+      "audio_id": "SS-HAL-0523",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.892578125,
+      "rank": 1,
+      "stage2": 0.9506900700436844
+    },
+    {
+      "audio_id": "SS-HOR-0001",
+      "variant": "mp3_64k",
+      "stage1": 0.98046875,
+      "rank": 1,
+      "stage2": 0.9986007607982117
+    },
+    {
+      "audio_id": "SS-HOR-0001",
+      "variant": "minus_12dB",
+      "stage1": 0.98046875,
+      "rank": 1,
+      "stage2": 0.999955037624684
+    },
+    {
+      "audio_id": "SS-HOR-0001",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.890625,
+      "rank": 4,
+      "stage2": 0.995942279592508
+    },
+    {
+      "audio_id": "SS-HOR-0001",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.94921875,
+      "rank": 1,
+      "stage2": 0.9363830324988455
+    },
+    {
+      "audio_id": "SS-HOR-0008",
+      "variant": "mp3_64k",
+      "stage1": 0.96875,
+      "rank": 1,
+      "stage2": 0.0
+    },
+    {
+      "audio_id": "SS-HOR-0008",
+      "variant": "minus_12dB",
+      "stage1": 0.96875,
+      "rank": 1,
+      "stage2": 0.0
+    },
+    {
+      "audio_id": "SS-HOR-0008",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.96875,
+      "rank": 1,
+      "stage2": 0.0
+    },
+    {
+      "audio_id": "SS-HOR-0008",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.90625,
+      "rank": 1,
+      "stage2": 0.0
+    },
+    {
+      "audio_id": "SS-HOR-0011",
+      "variant": "mp3_64k",
+      "stage1": 0.978515625,
+      "rank": 1,
+      "stage2": 0.9973338984951157
+    },
+    {
+      "audio_id": "SS-HOR-0011",
+      "variant": "minus_12dB",
+      "stage1": 0.974609375,
+      "rank": 1,
+      "stage2": 0.9945878737821512
+    },
+    {
+      "audio_id": "SS-HOR-0011",
+      "variant": "trim_middle_70pct",
+      "rejected": true
+    },
+    {
+      "audio_id": "SS-HOR-0011",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.923828125,
+      "rank": 3,
+      "stage2": 0.926657469573939
+    },
+    {
+      "audio_id": "SS-HOR-0022",
+      "variant": "mp3_64k",
+      "stage1": 0.935546875,
+      "rank": 1,
+      "stage2": 0.9923426932532647
+    },
+    {
+      "audio_id": "SS-HOR-0022",
+      "variant": "minus_12dB",
+      "stage1": 0.939453125,
+      "rank": 1,
+      "stage2": 0.9958535294605358
+    },
+    {
+      "audio_id": "SS-HOR-0022",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.978515625,
+      "rank": 1,
+      "stage2": 0.9783257700639675
+    },
+    {
+      "audio_id": "SS-HOR-0022",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.939453125,
+      "rank": 1,
+      "stage2": 0.9575793753689649
+    },
+    {
+      "audio_id": "SS-HOR-0027",
+      "variant": "mp3_64k",
+      "stage1": 0.9765625,
+      "rank": 1,
+      "stage2": 0.9880749414429552
+    },
+    {
+      "audio_id": "SS-HOR-0027",
+      "variant": "minus_12dB",
+      "rejected": true
+    },
+    {
+      "audio_id": "SS-HOR-0027",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.873046875,
+      "rank": 182,
+      "stage2": 0.9694077068095478
+    },
+    {
+      "audio_id": "SS-HOR-0027",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.98046875,
+      "rank": 1,
+      "stage2": 0.9883092242723828
+    },
+    {
+      "audio_id": "SS-HOR-0055",
+      "variant": "mp3_64k",
+      "stage1": 0.9765625,
+      "rank": 1,
+      "stage2": 0.9982963398292773
+    },
+    {
+      "audio_id": "SS-HOR-0055",
+      "variant": "minus_12dB",
+      "stage1": 0.982421875,
+      "rank": 1,
+      "stage2": 0.9989037021752121
+    },
+    {
+      "audio_id": "SS-HOR-0055",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.98046875,
+      "rank": 1,
+      "stage2": 0.9988571117241678
+    },
+    {
+      "audio_id": "SS-HOR-0055",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.923828125,
+      "rank": 1,
+      "stage2": 0.690514846460821
+    },
+    {
+      "audio_id": "SS-MAC-0002",
+      "variant": "mp3_64k",
+      "stage1": 0.943359375,
+      "rank": 1,
+      "stage2": 0.993494293726742
+    },
+    {
+      "audio_id": "SS-MAC-0002",
+      "variant": "minus_12dB",
+      "stage1": 0.94921875,
+      "rank": 1,
+      "stage2": 0.9961113983637448
+    },
+    {
+      "audio_id": "SS-MAC-0002",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.748046875,
+      "rank": 1597,
+      "stage2": 0.9592638522495871
+    },
+    {
+      "audio_id": "SS-MAC-0002",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.88671875,
+      "rank": 1,
+      "stage2": 0.9664773559764614
+    },
+    {
+      "audio_id": "SS-MAC-0004",
+      "variant": "mp3_64k",
+      "stage1": 0.951171875,
+      "rank": 1,
+      "stage2": 0.9873343256975718
+    },
+    {
+      "audio_id": "SS-MAC-0004",
+      "variant": "minus_12dB",
+      "stage1": 0.95703125,
+      "rank": 1,
+      "stage2": 0.9923418625931244
+    },
+    {
+      "audio_id": "SS-MAC-0004",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.76953125,
+      "rank": 1238,
+      "stage2": 0.9851995761001852
+    },
+    {
+      "audio_id": "SS-MAC-0004",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.8984375,
+      "rank": 1,
+      "stage2": 0.990661354595872
+    },
+    {
+      "audio_id": "SS-MAC-0005",
+      "variant": "mp3_64k",
+      "stage1": 0.984375,
+      "rank": 1,
+      "stage2": 0.9990959049362969
+    },
+    {
+      "audio_id": "SS-MAC-0005",
+      "variant": "minus_12dB",
+      "stage1": 0.998046875,
+      "rank": 1,
+      "stage2": 0.9996901310697475
+    },
+    {
+      "audio_id": "SS-MAC-0005",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.76171875,
+      "rank": 743,
+      "stage2": 0.9729331110772638
+    },
+    {
+      "audio_id": "SS-MAC-0005",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.9453125,
+      "rank": 1,
+      "stage2": 0.9125761649431472
+    },
+    {
+      "audio_id": "SS-MAC-0007",
+      "variant": "mp3_64k",
+      "stage1": 0.94140625,
+      "rank": 1,
+      "stage2": 0.983619112288315
+    },
+    {
+      "audio_id": "SS-MAC-0007",
+      "variant": "minus_12dB",
+      "stage1": 0.95703125,
+      "rank": 1,
+      "stage2": 0.9885816264964303
+    },
+    {
+      "audio_id": "SS-MAC-0007",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.767578125,
+      "rank": 280,
+      "stage2": 0.7722084299565064
+    },
+    {
+      "audio_id": "SS-MAC-0007",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.951171875,
+      "rank": 1,
+      "stage2": 0.9871368934676902
+    },
+    {
+      "audio_id": "SS-MAC-0019",
+      "variant": "mp3_64k",
+      "stage1": 0.939453125,
+      "rank": 1,
+      "stage2": 0.9971649698661584
+    },
+    {
+      "audio_id": "SS-MAC-0019",
+      "variant": "minus_12dB",
+      "stage1": 0.939453125,
+      "rank": 1,
+      "stage2": 0.9993962027545094
+    },
+    {
+      "audio_id": "SS-MAC-0019",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.861328125,
+      "rank": 42,
+      "stage2": 0.9887765411582828
+    },
+    {
+      "audio_id": "SS-MAC-0019",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.958984375,
+      "rank": 1,
+      "stage2": 0.9792825177662283
+    },
+    {
+      "audio_id": "SS-MAC-0021",
+      "variant": "mp3_64k",
+      "stage1": 0.923828125,
+      "rank": 1,
+      "stage2": 0.9873290255784903
+    },
+    {
+      "audio_id": "SS-MAC-0021",
+      "variant": "minus_12dB",
+      "stage1": 0.93359375,
+      "rank": 1,
+      "stage2": 0.9902727216065291
+    },
+    {
+      "audio_id": "SS-MAC-0021",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.759765625,
+      "rank": 779,
+      "stage2": 0.9879843801332887
+    },
+    {
+      "audio_id": "SS-MAC-0021",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.84765625,
+      "rank": 1,
+      "stage2": 0.9535693015372138
+    },
+    {
+      "audio_id": "SS-SCR-0009",
+      "variant": "mp3_64k",
+      "stage1": 0.935546875,
+      "rank": 1,
+      "stage2": 0.9891424001463397
+    },
+    {
+      "audio_id": "SS-SCR-0009",
+      "variant": "minus_12dB",
+      "stage1": 0.93359375,
+      "rank": 1,
+      "stage2": 0.9930312655694395
+    },
+    {
+      "audio_id": "SS-SCR-0009",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.880859375,
+      "rank": 259,
+      "stage2": 0.9806769377709761
+    },
+    {
+      "audio_id": "SS-SCR-0009",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.919921875,
+      "rank": 1,
+      "stage2": 0.9316788207068477
+    },
+    {
+      "audio_id": "SS-SCR-0024",
+      "variant": "mp3_64k",
+      "stage1": 0.89453125,
+      "rank": 1,
+      "stage2": 0.9925111211501566
+    },
+    {
+      "audio_id": "SS-SCR-0024",
+      "variant": "minus_12dB",
+      "stage1": 0.896484375,
+      "rank": 1,
+      "stage2": 0.9953527546364818
+    },
+    {
+      "audio_id": "SS-SCR-0024",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.822265625,
+      "rank": 42,
+      "stage2": 0.9615479678854221
+    },
+    {
+      "audio_id": "SS-SCR-0024",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.859375,
+      "rank": 5,
+      "stage2": 0.9302845411977343
+    },
+    {
+      "audio_id": "SS-SCR-0029",
+      "variant": "mp3_64k",
+      "stage1": 0.986328125,
+      "rank": 1,
+      "stage2": 0.9954703384816763
+    },
+    {
+      "audio_id": "SS-SCR-0029",
+      "variant": "minus_12dB",
+      "stage1": 0.994140625,
+      "rank": 1,
+      "stage2": 0.9996744958782768
+    },
+    {
+      "audio_id": "SS-SCR-0029",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.97265625,
+      "rank": 1,
+      "stage2": 0.9692896394074164
+    },
+    {
+      "audio_id": "SS-SCR-0029",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.96875,
+      "rank": 1,
+      "stage2": 0.9447525157388909
+    },
+    {
+      "audio_id": "SS-SCR-0038",
+      "variant": "mp3_64k",
+      "stage1": 0.986328125,
+      "rank": 1,
+      "stage2": 0.9986335298148327
+    },
+    {
+      "audio_id": "SS-SCR-0038",
+      "variant": "minus_12dB",
+      "stage1": 0.9921875,
+      "rank": 1,
+      "stage2": 0.9998246336696209
+    },
+    {
+      "audio_id": "SS-SCR-0038",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.80859375,
+      "rank": 62,
+      "stage2": 0.9963038963752767
+    },
+    {
+      "audio_id": "SS-SCR-0038",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.966796875,
+      "rank": 1,
+      "stage2": 0.9021511560126686
+    },
+    {
+      "audio_id": "SS-SCR-0041",
+      "variant": "mp3_64k",
+      "stage1": 0.931640625,
+      "rank": 1,
+      "stage2": 0.9650774389756647
+    },
+    {
+      "audio_id": "SS-SCR-0041",
+      "variant": "minus_12dB",
+      "stage1": 0.927734375,
+      "rank": 1,
+      "stage2": 0.9662535462149429
+    },
+    {
+      "audio_id": "SS-SCR-0041",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.7578125,
+      "rank": 707,
+      "stage2": 0.9885560570492787
+    },
+    {
+      "audio_id": "SS-SCR-0041",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.8984375,
+      "rank": 1,
+      "stage2": 0.9450986573275447
+    },
+    {
+      "audio_id": "SS-SCR-0043",
+      "variant": "mp3_64k",
+      "stage1": 0.904296875,
+      "rank": 1,
+      "stage2": 0.9854316217704401
+    },
+    {
+      "audio_id": "SS-SCR-0043",
+      "variant": "minus_12dB",
+      "stage1": 0.90625,
+      "rank": 1,
+      "stage2": 0.9918384270449224
+    },
+    {
+      "audio_id": "SS-SCR-0043",
+      "variant": "trim_middle_70pct",
+      "stage1": 0.830078125,
+      "rank": 5,
+      "stage2": 0.9201143150285764
+    },
+    {
+      "audio_id": "SS-SCR-0043",
+      "variant": "pink_noise_20dB",
+      "stage1": 0.87109375,
+      "rank": 1,
+      "stage2": 0.9371562738761862
+    }
+  ],
+  "negatives_detail": [
+    {
+      "audio_id": "SS-AGG-0001",
+      "other": "SS-AGG-0088",
+      "stage1": 0.853515625,
+      "same_class": true,
+      "stage2": 0.1977844437158816
+    },
+    {
+      "audio_id": "SS-AGG-0001",
+      "other": "SS-ANI-0623",
+      "stage1": 0.830078125,
+      "same_class": false,
+      "stage2": 0.3257960857593888
+    },
+    {
+      "audio_id": "SS-AGG-0001",
+      "other": "SS-ANI-0594",
+      "stage1": 0.830078125,
+      "same_class": false,
+      "stage2": 0.27486700569664296
+    },
+    {
+      "audio_id": "SS-AGG-0004",
+      "other": "SS-BGN-0035",
+      "stage1": 1.0,
+      "same_class": false,
+      "stage2": 0.0
+    },
+    {
+      "audio_id": "SS-AGG-0004",
+      "other": "SS-AGG-0095",
+      "stage1": 1.0,
+      "same_class": true,
+      "stage2": 0.0
+    },
+    {
+      "audio_id": "SS-AGG-0004",
+      "other": "SS-GUN-0134",
+      "stage1": 0.984375,
+      "same_class": false,
+      "stage2": 0.0
+    },
+    {
+      "audio_id": "SS-AGG-0009",
+      "other": "SS-GLA-0029",
+      "stage1": 0.9296875,
+      "same_class": false,
+      "stage2": 0.44228001251832194
+    },
+    {
+      "audio_id": "SS-AGG-0009",
+      "other": "SS-GUN-0094",
+      "stage1": 0.916015625,
+      "same_class": false,
+      "stage2": 0.49538001873461746
+    },
+    {
+      "audio_id": "SS-AGG-0009",
+      "other": "SS-GUN-0631",
+      "stage1": 0.912109375,
+      "same_class": false,
+      "stage2": 0.6211588734893128
+    },
+    {
+      "audio_id": "SS-AGG-0038",
+      "other": "SS-SCR-0511",
+      "stage1": 1.0,
+      "same_class": false,
+      "stage2": 0.0
+    },
+    {
+      "audio_id": "SS-AGG-0038",
+      "other": "SS-GUN-0628",
+      "stage1": 1.0,
+      "same_class": false,
+      "stage2": 0.7286690770635356
+    },
+    {
+      "audio_id": "SS-AGG-0038",
+      "other": "SS-GUN-0143",
+      "stage1": 1.0,
+      "same_class": false,
+      "stage2": 0.762797135894896
+    },
+    {
+      "audio_id": "SS-AGG-0041",
+      "other": "SS-AGG-0080",
+      "stage1": 0.900390625,
+      "same_class": true,
+      "stage2": 0.8876004015182959
+    },
+    {
+      "audio_id": "SS-AGG-0041",
+      "other": "SS-AGG-0031",
+      "stage1": 0.900390625,
+      "same_class": true,
+      "stage2": 0.7642718057532523
+    },
+    {
+      "audio_id": "SS-AGG-0041",
+      "other": "SS-GUN-0117",
+      "stage1": 0.896484375,
+      "same_class": false,
+      "stage2": 0.6191219780587132
+    },
+    {
+      "audio_id": "SS-AGG-0049",
+      "other": "SS-ALM-0023",
+      "stage1": 0.873046875,
+      "same_class": false,
+      "stage2": 0.5891466189719796
+    },
+    {
+      "audio_id": "SS-AGG-0049",
+      "other": "SS-ANI-0504",
+      "stage1": 0.869140625,
+      "same_class": false,
+      "stage2": 0.6574159318467412
+    },
+    {
+      "audio_id": "SS-AGG-0049",
+      "other": "SS-BGN-0567",
+      "stage1": 0.8671875,
+      "same_class": false,
+      "stage2": 0.7328415011997733
+    },
+    {
+      "audio_id": "SS-ALM-0015",
+      "other": "SS-AGG-0501",
+      "stage1": 0.84375,
+      "same_class": false,
+      "stage2": 0.5190961967098785
+    },
+    {
+      "audio_id": "SS-ALM-0015",
+      "other": "SS-MAC-0091",
+      "stage1": 0.837890625,
+      "same_class": false,
+      "stage2": 0.290314871134555
+    },
+    {
+      "audio_id": "SS-ALM-0015",
+      "other": "SS-HOR-0027",
+      "stage1": 0.837890625,
+      "same_class": false,
+      "stage2": 0.3333981273084571
+    },
+    {
+      "audio_id": "SS-ALM-0028",
+      "other": "SS-MAC-0528",
+      "stage1": 0.82421875,
+      "same_class": false,
+      "stage2": 0.14864996390395008
+    },
+    {
+      "audio_id": "SS-ALM-0028",
+      "other": "SS-MAC-0679",
+      "stage1": 0.8203125,
+      "same_class": false,
+      "stage2": 0.2950117358782992
+    },
+    {
+      "audio_id": "SS-ALM-0028",
+      "other": "SS-MAC-0647",
+      "stage1": 0.81640625,
+      "same_class": false,
+      "stage2": 0.17337769860227117
+    },
+    {
+      "audio_id": "SS-ALM-0037",
+      "other": "SS-GUN-0053",
+      "stage1": 0.91796875,
+      "same_class": false,
+      "stage2": 0.07919656186996184
+    },
+    {
+      "audio_id": "SS-ALM-0037",
+      "other": "SS-GLA-0638",
+      "stage1": 0.892578125,
+      "same_class": false,
+      "stage2": 0.128550774990905
+    },
+    {
+      "audio_id": "SS-ALM-0037",
+      "other": "SS-ANI-0632",
+      "stage1": 0.87890625,
+      "same_class": false,
+      "stage2": 0.17539495954470485
+    },
+    {
+      "audio_id": "SS-ALM-0038",
+      "other": "SS-BGN-0053",
+      "stage1": 0.958984375,
+      "same_class": false,
+      "stage2": 0.39755757022961025
+    },
+    {
+      "audio_id": "SS-ALM-0038",
+      "other": "SS-GUN-0118",
+      "stage1": 0.95703125,
+      "same_class": false,
+      "stage2": 0.6969160565697675
+    },
+    {
+      "audio_id": "SS-ALM-0038",
+      "other": "SS-GUN-0114",
+      "stage1": 0.95703125,
+      "same_class": false,
+      "stage2": 0.7199437596510118
+    },
+    {
+      "audio_id": "SS-ALM-0045",
+      "other": "SS-AGG-0088",
+      "stage1": 0.828125,
+      "same_class": false,
+      "stage2": 0.676746339862586
+    },
+    {
+      "audio_id": "SS-ALM-0045",
+      "other": "SS-MAC-0545",
+      "stage1": 0.818359375,
+      "same_class": false,
+      "stage2": 0.6068796450313327
+    },
+    {
+      "audio_id": "SS-ALM-0045",
+      "other": "SS-ANI-0078",
+      "stage1": 0.80859375,
+      "same_class": false,
+      "stage2": 0.41512019370380165
+    },
+    {
+      "audio_id": "SS-ALM-0047",
+      "other": "SS-SCR-0741",
+      "stage1": 0.0,
+      "same_class": false,
+      "stage2": 0.0
+    },
+    {
+      "audio_id": "SS-ALM-0047",
+      "other": "SS-SCR-0740",
+      "stage1": 0.0,
+      "same_class": false,
+      "stage2": 0.0
+    },
+    {
+      "audio_id": "SS-ALM-0047",
+      "other": "SS-SCR-0723",
+      "stage1": 0.0,
+      "same_class": false,
+      "stage2": 0.0
+    },
+    {
+      "audio_id": "SS-ANI-0005",
+      "other": "SS-GUN-0502",
+      "stage1": 0.87109375,
+      "same_class": false,
+      "stage2": 0.306253007692625
+    },
+    {
+      "audio_id": "SS-ANI-0005",
+      "other": "SS-SCR-0039",
+      "stage1": 0.8671875,
+      "same_class": false,
+      "stage2": 0.020835419025501317
+    },
+    {
+      "audio_id": "SS-ANI-0005",
+      "other": "SS-MAC-0016",
+      "stage1": 0.8671875,
+      "same_class": false,
+      "stage2": 0.7659834426159372
+    },
+    {
+      "audio_id": "SS-ANI-0008",
+      "other": "SS-BGN-0066",
+      "stage1": 0.833984375,
+      "same_class": false,
+      "stage2": 0.23052215533741507
+    },
+    {
+      "audio_id": "SS-ANI-0008",
+      "other": "SS-GLA-0564",
+      "stage1": 0.83203125,
+      "same_class": false,
+      "stage2": 0.21868845097119213
+    },
+    {
+      "audio_id": "SS-ANI-0008",
+      "other": "SS-GUN-0033",
+      "stage1": 0.82421875,
+      "same_class": false,
+      "stage2": 0.2169186148217462
+    },
+    {
+      "audio_id": "SS-ANI-0017",
+      "other": "SS-ANI-0010",
+      "stage1": 0.9296875,
+      "same_class": true,
+      "stage2": 0.4166631439575493
+    },
+    {
+      "audio_id": "SS-ANI-0017",
+      "other": "SS-GUN-0085",
+      "stage1": 0.91796875,
+      "same_class": false,
+      "stage2": 0.39246634416198084
+    },
+    {
+      "audio_id": "SS-ANI-0017",
+      "other": "SS-ANI-0076",
+      "stage1": 0.91015625,
+      "same_class": true,
+      "stage2": 0.3870749012582818
+    },
+    {
+      "audio_id": "SS-ANI-0019",
+      "other": "SS-MAC-0012",
+      "stage1": 0.822265625,
+      "same_class": false,
+      "stage2": 0.7092320239726932
+    },
+    {
+      "audio_id": "SS-ANI-0019",
+      "other": "SS-GLA-0534",
+      "stage1": 0.81640625,
+      "same_class": false,
+      "stage2": 0.044161080150564205
+    },
+    {
+      "audio_id": "SS-ANI-0019",
+      "other": "SS-MAC-0096",
+      "stage1": 0.8125,
+      "same_class": false,
+      "stage2": 0.6894953664083019
+    },
+    {
+      "audio_id": "SS-ANI-0020",
+      "other": "SS-ANI-0528",
+      "stage1": 0.83203125,
+      "same_class": true,
+      "stage2": -0.17231281061253367
+    },
+    {
+      "audio_id": "SS-ANI-0020",
+      "other": "SS-GLA-0059",
+      "stage1": 0.828125,
+      "same_class": false,
+      "stage2": 0.2625557824477511
+    },
+    {
+      "audio_id": "SS-ANI-0020",
+      "other": "SS-GUN-0653",
+      "stage1": 0.818359375,
+      "same_class": false,
+      "stage2": -0.1234481436259471
+    },
+    {
+      "audio_id": "SS-ANI-0021",
+      "other": "SS-GUN-0045",
+      "stage1": 0.8515625,
+      "same_class": false,
+      "stage2": 0.5987859046908727
+    },
+    {
+      "audio_id": "SS-ANI-0021",
+      "other": "SS-HOR-0630",
+      "stage1": 0.849609375,
+      "same_class": false,
+      "stage2": 0.3658207032171282
+    },
+    {
+      "audio_id": "SS-ANI-0021",
+      "other": "SS-HOR-0033",
+      "stage1": 0.84765625,
+      "same_class": false,
+      "stage2": 0.37446998623701006
+    },
+    {
+      "audio_id": "SS-BGN-0001",
+      "other": "SS-AGG-0083",
+      "stage1": 0.89453125,
+      "same_class": false,
+      "stage2": 0.21105204803753255
+    },
+    {
+      "audio_id": "SS-BGN-0001",
+      "other": "SS-GUN-0085",
+      "stage1": 0.892578125,
+      "same_class": false,
+      "stage2": 0.4683385657675469
+    },
+    {
+      "audio_id": "SS-BGN-0001",
+      "other": "SS-SCR-0618",
+      "stage1": 0.88671875,
+      "same_class": false,
+      "stage2": 0.4066280086275121
+    },
+    {
+      "audio_id": "SS-BGN-0004",
+      "other": "SS-GUN-0138",
+      "stage1": 0.92578125,
+      "same_class": false,
+      "stage2": 0.20364305389672754
+    },
+    {
+      "audio_id": "SS-BGN-0004",
+      "other": "SS-SCR-0511",
+      "stage1": 0.923828125,
+      "same_class": false,
+      "stage2": 0.0
+    },
+    {
+      "audio_id": "SS-BGN-0004",
+      "other": "SS-GUN-0628",
+      "stage1": 0.923828125,
+      "same_class": false,
+      "stage2": 0.32353356329894395
+    },
+    {
+      "audio_id": "SS-BGN-0015",
+      "other": "SS-MAC-0052",
+      "stage1": 0.841796875,
+      "same_class": false,
+      "stage2": 0.6513488012307149
+    },
+    {
+      "audio_id": "SS-BGN-0015",
+      "other": "SS-BGN-0609",
+      "stage1": 0.841796875,
+      "same_class": true,
+      "stage2": 0.8321439439911089
+    },
+    {
+      "audio_id": "SS-BGN-0015",
+      "other": "SS-GLA-0091",
+      "stage1": 0.83984375,
+      "same_class": false,
+      "stage2": 0.6551661505335904
+    },
+    {
+      "audio_id": "SS-BGN-0027",
+      "other": "SS-MAC-0117",
+      "stage1": 0.83203125,
+      "same_class": false,
+      "stage2": 0.4975522786525943
+    },
+    {
+      "audio_id": "SS-BGN-0027",
+      "other": "SS-MAC-0119",
+      "stage1": 0.8203125,
+      "same_class": false,
+      "stage2": 0.4478119549171985
+    },
+    {
+      "audio_id": "SS-BGN-0027",
+      "other": "SS-GUN-0525",
+      "stage1": 0.818359375,
+      "same_class": false,
+      "stage2": 0.6748295012457596
+    },
+    {
+      "audio_id": "SS-BGN-0034",
+      "other": "SS-BGN-0534",
+      "stage1": 0.80859375,
+      "same_class": true,
+      "stage2": 0.7962636501727257
+    },
+    {
+      "audio_id": "SS-BGN-0034",
+      "other": "SS-MAC-0566",
+      "stage1": 0.8046875,
+      "same_class": false,
+      "stage2": 0.5284153571278488
+    },
+    {
+      "audio_id": "SS-BGN-0034",
+      "other": "SS-HOR-0068",
+      "stage1": 0.80078125,
+      "same_class": false,
+      "stage2": 0.6341883612470984
+    },
+    {
+      "audio_id": "SS-BGN-0036",
+      "other": "SS-HOR-0076",
+      "stage1": 0.896484375,
+      "same_class": false,
+      "stage2": 0.742445369872102
+    },
+    {
+      "audio_id": "SS-BGN-0036",
+      "other": "SS-BGN-0632",
+      "stage1": 0.890625,
+      "same_class": true,
+      "stage2": 0.7121332299931428
+    },
+    {
+      "audio_id": "SS-BGN-0036",
+      "other": "SS-AGG-0060",
+      "stage1": 0.890625,
+      "same_class": false,
+      "stage2": 0.6584156559625425
+    },
+    {
+      "audio_id": "SS-GLA-0014",
+      "other": "SS-MAC-0076",
+      "stage1": 0.87109375,
+      "same_class": false,
+      "stage2": 0.5110033504104579
+    },
+    {
+      "audio_id": "SS-GLA-0014",
+      "other": "SS-GLA-0529",
+      "stage1": 0.859375,
+      "same_class": true,
+      "stage2": 0.06686081047662516
+    },
+    {
+      "audio_id": "SS-GLA-0014",
+      "other": "SS-GLA-0015",
+      "stage1": 0.83984375,
+      "same_class": true,
+      "stage2": 0.42586673260304486
+    },
+    {
+      "audio_id": "SS-GLA-0015",
+      "other": "SS-GLA-0568",
+      "stage1": 0.849609375,
+      "same_class": true,
+      "stage2": 0.3112083723517465
+    },
+    {
+      "audio_id": "SS-GLA-0015",
+      "other": "SS-GUN-0038",
+      "stage1": 0.83984375,
+      "same_class": false,
+      "stage2": 0.2914879296240838
+    },
+    {
+      "audio_id": "SS-GLA-0015",
+      "other": "SS-GLA-0014",
+      "stage1": 0.83984375,
+      "same_class": true,
+      "stage2": 0.42586673260304486
+    },
+    {
+      "audio_id": "SS-GLA-0018",
+      "other": "SS-GUN-0038",
+      "stage1": 0.87890625,
+      "same_class": false,
+      "stage2": 0.5222584665070423
+    },
+    {
+      "audio_id": "SS-GLA-0018",
+      "other": "SS-SCR-0529",
+      "stage1": 0.865234375,
+      "same_class": false,
+      "stage2": 0.3590450790957246
+    },
+    {
+      "audio_id": "SS-GLA-0018",
+      "other": "SS-GLA-0568",
+      "stage1": 0.849609375,
+      "same_class": true,
+      "stage2": 0.28988949999144425
+    },
+    {
+      "audio_id": "SS-GLA-0019",
+      "other": "SS-GUN-0146",
+      "stage1": 0.83203125,
+      "same_class": false,
+      "stage2": 0.17370012127269757
+    },
+    {
+      "audio_id": "SS-GLA-0019",
+      "other": "SS-GLA-0021",
+      "stage1": 0.828125,
+      "same_class": true,
+      "stage2": 0.2212913891856891
+    },
+    {
+      "audio_id": "SS-GLA-0019",
+      "other": "SS-ALM-0099",
+      "stage1": 0.8203125,
+      "same_class": false,
+      "stage2": 0.2730537443996602
+    },
+    {
+      "audio_id": "SS-GLA-0022",
+      "other": "SS-GLA-0659",
+      "stage1": 0.97265625,
+      "same_class": true,
+      "stage2": 0.20303287863318936
+    },
+    {
+      "audio_id": "SS-GLA-0022",
+      "other": "SS-GLA-0524",
+      "stage1": 0.970703125,
+      "same_class": true,
+      "stage2": 0.5729890764054051
+    },
+    {
+      "audio_id": "SS-GLA-0022",
+      "other": "SS-GUN-0599",
+      "stage1": 0.96875,
+      "same_class": false,
+      "stage2": 0.731964781647451
+    },
+    {
+      "audio_id": "SS-GLA-0024",
+      "other": "SS-AGG-0740",
+      "stage1": 0.845703125,
+      "same_class": false,
+      "stage2": 0.5985316194795374
+    },
+    {
+      "audio_id": "SS-GLA-0024",
+      "other": "SS-GLA-0662",
+      "stage1": 0.84375,
+      "same_class": true,
+      "stage2": 0.23360854189350397
+    },
+    {
+      "audio_id": "SS-GLA-0024",
+      "other": "SS-ANI-0586",
+      "stage1": 0.841796875,
+      "same_class": false,
+      "stage2": 0.4723724818155792
+    },
+    {
+      "audio_id": "SS-GUN-0015",
+      "other": "SS-AGG-0554",
+      "stage1": 0.93359375,
+      "same_class": false,
+      "stage2": 0.254985755474598
+    },
+    {
+      "audio_id": "SS-GUN-0015",
+      "other": "SS-AGG-0098",
+      "stage1": 0.92578125,
+      "same_class": false,
+      "stage2": 0.2730293543287275
+    },
+    {
+      "audio_id": "SS-GUN-0015",
+      "other": "SS-HOR-0025",
+      "stage1": 0.91015625,
+      "same_class": false,
+      "stage2": 0.5164178231234753
+    },
+    {
+      "audio_id": "SS-GUN-0016",
+      "other": "SS-GUN-0148",
+      "stage1": 0.978515625,
+      "same_class": true,
+      "stage2": 0.6968150108322384
+    },
+    {
+      "audio_id": "SS-GUN-0016",
+      "other": "SS-GUN-0138",
+      "stage1": 0.974609375,
+      "same_class": true,
+      "stage2": 0.9381615109462966
+    },
+    {
+      "audio_id": "SS-GUN-0016",
+      "other": "SS-SCR-0511",
+      "stage1": 0.97265625,
+      "same_class": false,
+      "stage2": 0.0
+    },
+    {
+      "audio_id": "SS-GUN-0019",
+      "other": "SS-GLA-0022",
+      "stage1": 0.9453125,
+      "same_class": false,
+      "stage2": 0.4850231984772155
+    },
+    {
+      "audio_id": "SS-GUN-0019",
+      "other": "SS-AGG-0002",
+      "stage1": 0.943359375,
+      "same_class": false,
+      "stage2": 0.8762296476560685
+    },
+    {
+      "audio_id": "SS-GUN-0019",
+      "other": "SS-GLA-0609",
+      "stage1": 0.94140625,
+      "same_class": false,
+      "stage2": 0.8509112544339952
+    },
+    {
+      "audio_id": "SS-GUN-0033",
+      "other": "SS-HOR-0109",
+      "stage1": 0.830078125,
+      "same_class": false,
+      "stage2": 0.31387877413188353
+    },
+    {
+      "audio_id": "SS-GUN-0033",
+      "other": "SS-ANI-0008",
+      "stage1": 0.82421875,
+      "same_class": false,
+      "stage2": 0.2169186148217462
+    },
+    {
+      "audio_id": "SS-GUN-0033",
+      "other": "SS-MAC-0645",
+      "stage1": 0.822265625,
+      "same_class": false,
+      "stage2": 0.1734724082638567
+    },
+    {
+      "audio_id": "SS-GUN-0046",
+      "other": "SS-GUN-0012",
+      "stage1": 0.974609375,
+      "same_class": true,
+      "stage2": 0.7827650758111422
+    },
+    {
+      "audio_id": "SS-GUN-0046",
+      "other": "SS-AGG-0072",
+      "stage1": 0.974609375,
+      "same_class": false,
+      "stage2": 0.8740427538797079
+    },
+    {
+      "audio_id": "SS-GUN-0046",
+      "other": "SS-HOR-0505",
+      "stage1": 0.96875,
+      "same_class": false,
+      "stage2": 0.6850786679359154
+    },
+    {
+      "audio_id": "SS-GUN-0047",
+      "other": "SS-ALM-0108",
+      "stage1": 0.8671875,
+      "same_class": false,
+      "stage2": 0.1847729066890681
+    },
+    {
+      "audio_id": "SS-GUN-0047",
+      "other": "SS-SCR-0058",
+      "stage1": 0.865234375,
+      "same_class": false,
+      "stage2": 0.35680103019021825
+    },
+    {
+      "audio_id": "SS-GUN-0047",
+      "other": "SS-ALM-0578",
+      "stage1": 0.865234375,
+      "same_class": false,
+      "stage2": 0.20465127880622422
+    },
+    {
+      "audio_id": "SS-HAL-0502",
+      "other": "SS-HAL-0531",
+      "stage1": 0.90625,
+      "same_class": true,
+      "stage2": 0.6755442884028641
+    },
+    {
+      "audio_id": "SS-HAL-0502",
+      "other": "SS-HAL-0555",
+      "stage1": 0.89453125,
+      "same_class": true,
+      "stage2": 0.5491464931044014
+    },
+    {
+      "audio_id": "SS-HAL-0502",
+      "other": "SS-HAL-0702",
+      "stage1": 0.890625,
+      "same_class": true,
+      "stage2": 0.6732474175324046
+    },
+    {
+      "audio_id": "SS-HAL-0507",
+      "other": "SS-HAL-0531",
+      "stage1": 0.904296875,
+      "same_class": true,
+      "stage2": 0.6779016526668785
+    },
+    {
+      "audio_id": "SS-HAL-0507",
+      "other": "SS-HAL-0702",
+      "stage1": 0.890625,
+      "same_class": true,
+      "stage2": 0.6811388000765716
+    },
+    {
+      "audio_id": "SS-HAL-0507",
+      "other": "SS-HAL-0630",
+      "stage1": 0.8828125,
+      "same_class": true,
+      "stage2": 0.5928682404167603
+    },
+    {
+      "audio_id": "SS-HAL-0508",
+      "other": "SS-HAL-0531",
+      "stage1": 0.9140625,
+      "same_class": true,
+      "stage2": 0.6939817956940989
+    },
+    {
+      "audio_id": "SS-HAL-0508",
+      "other": "SS-HAL-0702",
+      "stage1": 0.890625,
+      "same_class": true,
+      "stage2": 0.6778514384610564
+    },
+    {
+      "audio_id": "SS-HAL-0508",
+      "other": "SS-HAL-0630",
+      "stage1": 0.888671875,
+      "same_class": true,
+      "stage2": 0.6169841088242332
+    },
+    {
+      "audio_id": "SS-HAL-0513",
+      "other": "SS-HAL-0537",
+      "stage1": 0.88671875,
+      "same_class": true,
+      "stage2": 0.6893640630228273
+    },
+    {
+      "audio_id": "SS-HAL-0513",
+      "other": "SS-HAL-0753",
+      "stage1": 0.880859375,
+      "same_class": true,
+      "stage2": 0.686503029507182
+    },
+    {
+      "audio_id": "SS-HAL-0513",
+      "other": "SS-HAL-0609",
+      "stage1": 0.875,
+      "same_class": true,
+      "stage2": 0.6891195488620687
+    },
+    {
+      "audio_id": "SS-HAL-0514",
+      "other": "SS-HAL-0586",
+      "stage1": 0.859375,
+      "same_class": true,
+      "stage2": 0.41810822894154204
+    },
+    {
+      "audio_id": "SS-HAL-0514",
+      "other": "SS-HAL-0706",
+      "stage1": 0.84765625,
+      "same_class": true,
+      "stage2": 0.45524531814656566
+    },
+    {
+      "audio_id": "SS-HAL-0514",
+      "other": "SS-HAL-0658",
+      "stage1": 0.84765625,
+      "same_class": true,
+      "stage2": 0.4849525980577482
+    },
+    {
+      "audio_id": "SS-HAL-0523",
+      "other": "SS-HAL-0739",
+      "stage1": 0.873046875,
+      "same_class": true,
+      "stage2": 0.6385602403711744
+    },
+    {
+      "audio_id": "SS-HAL-0523",
+      "other": "SS-HAL-0763",
+      "stage1": 0.86328125,
+      "same_class": true,
+      "stage2": 0.7303941272603061
+    },
+    {
+      "audio_id": "SS-HAL-0523",
+      "other": "SS-HAL-0619",
+      "stage1": 0.8515625,
+      "same_class": true,
+      "stage2": 0.7505040152661344
+    },
+    {
+      "audio_id": "SS-HOR-0001",
+      "other": "SS-MAC-0051",
+      "stage1": 0.91015625,
+      "same_class": false,
+      "stage2": 0.2566789427795758
+    },
+    {
+      "audio_id": "SS-HOR-0001",
+      "other": "SS-ANI-0635",
+      "stage1": 0.908203125,
+      "same_class": false,
+      "stage2": 0.37329301053579234
+    },
+    {
+      "audio_id": "SS-HOR-0001",
+      "other": "SS-SCR-0097",
+      "stage1": 0.90234375,
+      "same_class": false,
+      "stage2": 0.3038772704933621
+    },
+    {
+      "audio_id": "SS-HOR-0008",
+      "other": "SS-SCR-0577",
+      "stage1": 0.8125,
+      "same_class": false,
+      "stage2": 0.0
+    },
+    {
+      "audio_id": "SS-HOR-0008",
+      "other": "SS-GUN-0113",
+      "stage1": 0.8125,
+      "same_class": false,
+      "stage2": 0.0
+    },
+    {
+      "audio_id": "SS-HOR-0008",
+      "other": "SS-BGN-0035",
+      "stage1": 0.8125,
+      "same_class": false,
+      "stage2": 0.0
+    },
+    {
+      "audio_id": "SS-HOR-0011",
+      "other": "SS-GUN-0011",
+      "stage1": 0.94140625,
+      "same_class": false,
+      "stage2": 0.35477746443813496
+    },
+    {
+      "audio_id": "SS-HOR-0011",
+      "other": "SS-ALM-0016",
+      "stage1": 0.939453125,
+      "same_class": false,
+      "stage2": 0.21944985413983314
+    },
+    {
+      "audio_id": "SS-HOR-0011",
+      "other": "SS-GUN-0100",
+      "stage1": 0.93359375,
+      "same_class": false,
+      "stage2": 0.2537820656583946
+    },
+    {
+      "audio_id": "SS-HOR-0022",
+      "other": "SS-GLA-0028",
+      "stage1": 0.958984375,
+      "same_class": false,
+      "stage2": 0.3882336317591376
+    },
+    {
+      "audio_id": "SS-HOR-0022",
+      "other": "SS-GLA-0126",
+      "stage1": 0.955078125,
+      "same_class": false,
+      "stage2": 0.1545783248349119
+    },
+    {
+      "audio_id": "SS-HOR-0022",
+      "other": "SS-GUN-0629",
+      "stage1": 0.953125,
+      "same_class": false,
+      "stage2": 0.7688327253006069
+    },
+    {
+      "audio_id": "SS-HOR-0027",
+      "other": "SS-ANI-0501",
+      "stage1": 0.908203125,
+      "same_class": false,
+      "stage2": 0.283957319718155
+    },
+    {
+      "audio_id": "SS-HOR-0027",
+      "other": "SS-ANI-0035",
+      "stage1": 0.908203125,
+      "same_class": false,
+      "stage2": 0.7391700706258801
+    },
+    {
+      "audio_id": "SS-HOR-0027",
+      "other": "SS-BGN-0683",
+      "stage1": 0.900390625,
+      "same_class": false,
+      "stage2": 0.6631897124394966
+    },
+    {
+      "audio_id": "SS-HOR-0055",
+      "other": "SS-HOR-0118",
+      "stage1": 0.875,
+      "same_class": true,
+      "stage2": 0.3464136792526664
+    },
+    {
+      "audio_id": "SS-HOR-0055",
+      "other": "SS-ALM-0044",
+      "stage1": 0.875,
+      "same_class": false,
+      "stage2": 0.21977588081555338
+    },
+    {
+      "audio_id": "SS-HOR-0055",
+      "other": "SS-HOR-0062",
+      "stage1": 0.873046875,
+      "same_class": true,
+      "stage2": 0.02304920357990153
+    },
+    {
+      "audio_id": "SS-MAC-0002",
+      "other": "SS-GLA-0134",
+      "stage1": 0.8125,
+      "same_class": false,
+      "stage2": 0.4163873474802821
+    },
+    {
+      "audio_id": "SS-MAC-0002",
+      "other": "SS-MAC-0080",
+      "stage1": 0.8046875,
+      "same_class": true,
+      "stage2": 0.25114620945371047
+    },
+    {
+      "audio_id": "SS-MAC-0002",
+      "other": "SS-GUN-0507",
+      "stage1": 0.802734375,
+      "same_class": false,
+      "stage2": 0.7533308375063498
+    },
+    {
+      "audio_id": "SS-MAC-0004",
+      "other": "SS-GLA-0142",
+      "stage1": 0.833984375,
+      "same_class": false,
+      "stage2": -0.09643087969491383
+    },
+    {
+      "audio_id": "SS-MAC-0004",
+      "other": "SS-MAC-0016",
+      "stage1": 0.826171875,
+      "same_class": true,
+      "stage2": 0.6694342487340301
+    },
+    {
+      "audio_id": "SS-MAC-0004",
+      "other": "SS-GUN-0017",
+      "stage1": 0.82421875,
+      "same_class": false,
+      "stage2": 0.6896943677939428
+    },
+    {
+      "audio_id": "SS-MAC-0005",
+      "other": "SS-ALM-0556",
+      "stage1": 0.8828125,
+      "same_class": false,
+      "stage2": 0.20689869698359728
+    },
+    {
+      "audio_id": "SS-MAC-0005",
+      "other": "SS-ALM-0025",
+      "stage1": 0.869140625,
+      "same_class": false,
+      "stage2": 0.30038725974555847
+    },
+    {
+      "audio_id": "SS-MAC-0005",
+      "other": "SS-GUN-0072",
+      "stage1": 0.861328125,
+      "same_class": false,
+      "stage2": 0.3864304862132622
+    },
+    {
+      "audio_id": "SS-MAC-0007",
+      "other": "SS-GUN-0618",
+      "stage1": 0.802734375,
+      "same_class": false,
+      "stage2": 0.5328219053554136
+    },
+    {
+      "audio_id": "SS-MAC-0007",
+      "other": "SS-GUN-0579",
+      "stage1": 0.802734375,
+      "same_class": false,
+      "stage2": 0.49132028193982524
+    },
+    {
+      "audio_id": "SS-MAC-0007",
+      "other": "SS-MAC-0068",
+      "stage1": 0.80078125,
+      "same_class": true,
+      "stage2": 0.5943861302111122
+    },
+    {
+      "audio_id": "SS-MAC-0019",
+      "other": "SS-GLA-0534",
+      "stage1": 0.912109375,
+      "same_class": false,
+      "stage2": 0.2288052978445651
+    },
+    {
+      "audio_id": "SS-MAC-0019",
+      "other": "SS-MAC-0059",
+      "stage1": 0.908203125,
+      "same_class": true,
+      "stage2": 0.7127172010476613
+    },
+    {
+      "audio_id": "SS-MAC-0019",
+      "other": "SS-HOR-0058",
+      "stage1": 0.908203125,
+      "same_class": false,
+      "stage2": 0.41900315159006074
+    },
+    {
+      "audio_id": "SS-MAC-0021",
+      "other": "SS-GLA-0511",
+      "stage1": 0.798828125,
+      "same_class": false,
+      "stage2": -0.12553835143893685
+    },
+    {
+      "audio_id": "SS-MAC-0021",
+      "other": "SS-HAL-0731",
+      "stage1": 0.794921875,
+      "same_class": false,
+      "stage2": 0.43777926113880844
+    },
+    {
+      "audio_id": "SS-MAC-0021",
+      "other": "SS-ALM-0533",
+      "stage1": 0.794921875,
+      "same_class": false,
+      "stage2": -0.010941257723585571
+    },
+    {
+      "audio_id": "SS-SCR-0009",
+      "other": "SS-ANI-0501",
+      "stage1": 0.90625,
+      "same_class": false,
+      "stage2": 0.6111658520880386
+    },
+    {
+      "audio_id": "SS-SCR-0009",
+      "other": "SS-GUN-0566",
+      "stage1": 0.904296875,
+      "same_class": false,
+      "stage2": 0.32471127055697546
+    },
+    {
+      "audio_id": "SS-SCR-0009",
+      "other": "SS-GUN-0502",
+      "stage1": 0.8984375,
+      "same_class": false,
+      "stage2": 0.31196738670994834
+    },
+    {
+      "audio_id": "SS-SCR-0024",
+      "other": "SS-MAC-0623",
+      "stage1": 0.87109375,
+      "same_class": false,
+      "stage2": 0.33435700214870034
+    },
+    {
+      "audio_id": "SS-SCR-0024",
+      "other": "SS-ALM-0023",
+      "stage1": 0.8671875,
+      "same_class": false,
+      "stage2": 0.5905568641935989
+    },
+    {
+      "audio_id": "SS-SCR-0024",
+      "other": "SS-GLA-0534",
+      "stage1": 0.859375,
+      "same_class": false,
+      "stage2": 0.26453129133917025
+    },
+    {
+      "audio_id": "SS-SCR-0029",
+      "other": "SS-GUN-0018",
+      "stage1": 0.798828125,
+      "same_class": false,
+      "stage2": 0.28544539391686446
+    },
+    {
+      "audio_id": "SS-SCR-0029",
+      "other": "SS-ALM-0043",
+      "stage1": 0.798828125,
+      "same_class": false,
+      "stage2": 0.177625497414995
+    },
+    {
+      "audio_id": "SS-SCR-0029",
+      "other": "SS-HOR-0560",
+      "stage1": 0.794921875,
+      "same_class": false,
+      "stage2": 0.0489260446122111
+    },
+    {
+      "audio_id": "SS-SCR-0038",
+      "other": "SS-GUN-0085",
+      "stage1": 0.85546875,
+      "same_class": false,
+      "stage2": 0.5822202316037279
+    },
+    {
+      "audio_id": "SS-SCR-0038",
+      "other": "SS-ANI-0010",
+      "stage1": 0.8515625,
+      "same_class": false,
+      "stage2": 0.6736707684421392
+    },
+    {
+      "audio_id": "SS-SCR-0038",
+      "other": "SS-ANI-0050",
+      "stage1": 0.84375,
+      "same_class": false,
+      "stage2": 0.5891623959036917
+    },
+    {
+      "audio_id": "SS-SCR-0041",
+      "other": "SS-MAC-0654",
+      "stage1": 0.822265625,
+      "same_class": false,
+      "stage2": 0.6147536091833434
+    },
+    {
+      "audio_id": "SS-SCR-0041",
+      "other": "SS-MAC-0108",
+      "stage1": 0.822265625,
+      "same_class": false,
+      "stage2": 0.3127407844585404
+    },
+    {
+      "audio_id": "SS-SCR-0041",
+      "other": "SS-ANI-0517",
+      "stage1": 0.8203125,
+      "same_class": false,
+      "stage2": 0.45476480343951
+    },
+    {
+      "audio_id": "SS-SCR-0043",
+      "other": "SS-GUN-0539",
+      "stage1": 0.830078125,
+      "same_class": false,
+      "stage2": 0.4089363033530393
+    },
+    {
+      "audio_id": "SS-SCR-0043",
+      "other": "SS-GLA-0501",
+      "stage1": 0.826171875,
+      "same_class": false,
+      "stage2": 0.2272217379267037
+    },
+    {
+      "audio_id": "SS-SCR-0043",
+      "other": "SS-ALM-0122",
+      "stage1": 0.82421875,
+      "same_class": false,
+      "stage2": 0.41131741386006393
+    }
+  ]
+}

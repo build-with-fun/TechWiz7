@@ -1,43 +1,15 @@
-"""Train and compare the classical models -- SRS Step 7, FR xxiii-xxvi, NFR floor.
+"""Train and compare the classical models on the 254-column feature matrix (SRS Step 7).
 
-Owner: bilal.
+Reads the frozen split, tunes every candidate (plus a critical-class-weighted variant) on
+validation, cross-validates the winner on train, refits on train+val, scores test once, and
+saves the bundle plus metrics and confusion matrices under python_models/metrics/.
 
-WHAT IT DOES, IN ORDER
-----------------------
-1. Reads the frozen split (``audio_dataset/manifest_with_split.csv``). Never re-splits.
-2. Extracts the locked 254-column feature matrix for train / val / test, cached on disk.
-3. Tunes every classical candidate plus its critical-class-weighted variant on VALIDATION.
-4. Runs 5-fold stratified CV on the winner over training rows only, for a variance estimate.
-5. Refits the winner on train+val, then scores the untouched test split exactly once.
-6. Saves the winner through ``src.inference.predictor.save_bundle`` so the web app loads it
-   by the same code path as any other model, plus a metrics artefact and a confusion matrix
-   PNG per candidate under ``python_models/metrics/``.
-
-USAGE
------
-    # full run (needs the real dataset on disk)
-    .venv/bin/python python_models/train_classical.py
-
-    # fast smoke run on a tiny generated corpus -- proves the whole path in ~2 minutes
-    .venv/bin/python python_models/train_classical.py --smoke
-
-    # one candidate only, for a quick iteration while developing
+    .venv/bin/python python_models/train_classical.py                  # full run
+    .venv/bin/python python_models/train_classical.py --smoke          # tiny generated corpus
     .venv/bin/python python_models/train_classical.py --candidates xgboost
 
-THE RULE THIS SCRIPT WILL NOT BREAK
------------------------------------
-The test split is read once, at the end, after selection is final. ``select`` asserts this
-itself (``assert_no_test_peeking``), and ``finalize`` re-checks the test rows against the
-frozen split through lorena's ``assert_reportable_split``. There is no flag to relax either:
-an honest number that took longer beats a better-looking number that an evaluator can
-disprove with two questions.
-
-A CHEAP MODEL THAT MEETS THE FLOOR IS A LEGITIMATE WINNER
----------------------------------------------------------
-The selection criterion is validation macro-F1 subject to the critical-recall floor, but the
-report records fit time and inference latency next to every score. If the SVM matches
-XGBoost's F1 at a tenth of the inference cost, that is the model the app should serve, and
-the comparison table will show why.
+The served model is the CNN14 transfer model (train_transfer.py); these are the comparison
+candidates.
 """
 
 from __future__ import annotations
@@ -65,18 +37,11 @@ FEATURE_CACHE = "python_models/.cache/features_{version}.json"
 MODEL_VERSION = "1.0.0"
 
 
-# --------------------------------------------------------------------------------------
 # Config
-# --------------------------------------------------------------------------------------
 
 
 def load_classes_config() -> tuple[list[str], list[str]]:
-    """``(class_names, critical_classes)`` from config/classes.json -- never hard-coded.
-
-    The SRS says evaluators may demand a changed category live, so the class list is read
-    from the same file the app reads. Duplicating it here would mean a new class added to
-    the config silently trains a model that cannot predict it.
-    """
+    """``(class_names, critical_classes)`` from config/classes.json, the same file the app reads."""
     path = REPO_ROOT / "config" / "classes.json"
     if not path.exists():
         raise SystemExit(f"config/classes.json not found at {path}")
@@ -101,9 +66,7 @@ def load_floors() -> dict[str, float]:
     return floors
 
 
-# --------------------------------------------------------------------------------------
 # Money path: candidates -> selection -> test
-# --------------------------------------------------------------------------------------
 
 
 def build_candidate_grid(
@@ -114,11 +77,8 @@ def build_candidate_grid(
     weight_boost: float = 2.0,
     with_weighted: bool = True,
 ) -> tuple[list[tuple[str, dict[str, Any]]], dict[str, dict[str, float]]]:
-    """Every ``(candidate_name, params)`` to try, and the class weights each one uses.
-
-    Each model appears twice: unweighted, and with the critical classes boosted. That makes
-    "did weighting help?" a measured question with both answers in the comparison table,
-    rather than an assumption baked into every model.
+    """Every ``(candidate_name, params)`` to try, each once unweighted and once with critical
+    classes boosted.
     """
     weights = classical.critical_class_weights(class_names, critical, boost=weight_boost)
     grid: list[tuple[str, dict[str, Any]]] = []
@@ -132,9 +92,8 @@ def build_candidate_grid(
             grid.append((tag, base))
             if with_weighted:
                 wtag = f"{tag}+cw"
-                # The weights travel separately from the params (class_weight for some
-                # estimators, sample_weight for others), so they are looked up per candidate
-                # at fit time rather than smuggled through the search space.
+                # Weights travel separately from params (class_weight or sample_weight, per
+                # estimator).
                 grid.append((wtag, {**base, "_weighted": True}))
                 weight_map[wtag] = weights
     return grid, weight_map
@@ -191,7 +150,7 @@ def run_training(
     print(f"  weighting   : {'on' if with_weighted else 'off'} (boost x{weight_boost})")
     print(f"  floors      : {floors}")
 
-    # -- 1. data ---------------------------------------------------------------------
+    # 1. data
     splits = dataset.load_all_splits(manifest_path)
     for name in ("train", "val", "test"):
         if name not in splits:
@@ -215,11 +174,10 @@ def run_training(
 
     train = dataset.training_records(splits["train"])
     val = dataset.training_records(splits["val"])
-    # Test rows go through the same builder as train/val, but augmented copies are dropped:
-    # scoring a model on an augmented variant of its own training clip is not a test.
+    # Test rows drop augmented copies: a variant of a training clip is not a test.
     test = dataset.training_records(splits["test"], exclude_augmented=True)
 
-    # -- 2. features -----------------------------------------------------------------
+    # 2. features
     from feature_extraction.features import FeatureExtractor
 
     extractor = FeatureExtractor()
@@ -255,7 +213,7 @@ def run_training(
             f"reasons: {sorted({r['reason'][:60] for r in unusable})[:3]}"
         )
 
-    # -- 3. protocol -----------------------------------------------------------------
+    # 3. protocol
     protocol = tuning.TuningProtocol(
         class_names=class_names,
         critical_classes=critical,
@@ -274,7 +232,7 @@ def run_training(
         val_ids=val_ids,
     )
 
-    # -- 4. selection on validation --------------------------------------------------
+    # 4. selection on validation
     grid, weight_map = build_candidate_grid(
         names, class_names, critical, weight_boost=weight_boost, with_weighted=with_weighted
     )
@@ -286,7 +244,7 @@ def run_training(
     print(f"\n[tune] WINNER: {selection.winner}")
     print(f"       {selection.rationale}")
 
-    # -- 5. CV on the winner ---------------------------------------------------------
+    # 5. CV on the winner
     winner_weights = weight_map.get(selection.winner)
     cv = {}
     if cv_folds > 1:
@@ -299,11 +257,10 @@ def run_training(
             f"across {cv['folds']} folds"
         )
 
-    # -- 6. refit on train+val, score test ONCE --------------------------------------
+    # 6. refit on train+val, score test ONCE
     print("\n[final] refitting winner on train+val")
     winner_spec = _resolve_spec(selection.winner)
-    # ``_candidate`` must survive into the refit -- it is how the zoo knows which family to
-    # rebuild. Only the other underscore keys (internal bookkeeping) are dropped.
+    # Keep ``_candidate`` for the refit; drop the other underscore keys.
     refit_params = {
         k: v for k, v in selection.params.items() if k == "_candidate" or not k.startswith("_")
     }
@@ -328,12 +285,11 @@ def run_training(
     print("\n[final] TEST SPLIT (scored once, never used for selection)")
     print_result(final.result, floors)
 
-    # -- 7. save ---------------------------------------------------------------------
+    # 7. save
     metrics_dir = REPO_ROOT / METRICS_DIR
     metrics_dir.mkdir(parents=True, exist_ok=True)
     suffix = f"_{tag}" if tag else ""
 
-    all_results = {selection.winner: final.result}
     best_dir = REPO_ROOT / BEST_DIR if not tag else REPO_ROOT / BEST_DIR / tag
     classical.feature_importances(final_estimator, columns)
 
@@ -388,8 +344,7 @@ def run_training(
             "train_test_overlap": len(set(train_ids) & set(test_ids)),
             "val_test_overlap": len(set(val_ids) & set(test_ids)),
         },
-        # Recordings present in the frozen split but rejected by the audio-quality gate.
-        # Reported, never hidden: the comparison table's denominators come from here.
+        # Recordings the quality gate rejected; reported so the denominators are visible.
         "unusable_recordings": {
             "n": len(unusable),
             "by_split": _count_by(unusable, "split"),
@@ -422,7 +377,7 @@ def run_training(
         f"{selection.winner} (test split, n={artifact['test']['n_records']})",
     )
 
-    # -- 8. verdict ------------------------------------------------------------------
+    # 8. verdict
     ok, failures = final.result.meets_floors(floors)
     print("\n" + "=" * 78)
     if ok:
@@ -435,17 +390,12 @@ def run_training(
     return artifact
 
 
-# --------------------------------------------------------------------------------------
 # Fit / score callables handed to the harness
-# --------------------------------------------------------------------------------------
 
 
 def _fit_callable(X, y, params, seed, class_weights):
-    """Wrap the zoo so the harness can treat a sklearn pipeline and a CNN identically.
-
-    The candidate's family name travels inside ``params`` as ``_candidate`` (underscore
-    keys never reach the estimator's constructor), so one callable serves every model in
-    the grid and the harness sees a plain ``fit(X, y) -> estimator``.
+    """Adapt the zoo to the harness's ``fit(X, y) -> estimator``; the family name travels as
+    ``params['_candidate']``.
     """
     resolved = {k: v for k, v in params.items() if not k.startswith("_")}
     name = str(params.get("_candidate") or "")
@@ -468,9 +418,7 @@ def _predict_proba_callable(estimator, X) -> np.ndarray:
     return np.asarray(proba)
 
 
-# --------------------------------------------------------------------------------------
 # Saving and reporting helpers
-# --------------------------------------------------------------------------------------
 
 
 def classical_save(estimator, out_dir, **kwargs):
@@ -629,24 +577,14 @@ def _rel(path: Path) -> str:
         return str(path)
 
 
-# --------------------------------------------------------------------------------------
 # Smoke mode
-# --------------------------------------------------------------------------------------
 
 
 def make_smoke_manifest(out_root: Path, per_class: int, seed: int) -> Path:
-    """Generate a tiny corpus and freeze its split, using the SAME two steps as the real run.
+    """Generate a tiny corpus and freeze its split through the same generate_corpus.py and
+    build_split.py path as the real run. The metrics mean nothing; it proves the code path.
 
-    Smoke mode is not a substitute for the real run and says so: it uses a dozen originals
-    per class, so the metrics carry no meaning whatsoever. Its only job is to prove that
-    extraction, tuning, saving, loading and reporting all work before anyone spends forty
-    minutes on the real dataset -- and it deliberately goes through the same
-    ``generate_corpus.py`` then ``build_split.py`` path the real corpus uses, so a
-    difference between smoke and real is a data problem, not a code path only smoke takes.
-
-    The corpus is generated *inside* ``audio_dataset/smoke/`` with every manifest filename
-    prefixed ``smoke/``, so the ordinary path resolver finds the files with no special case
-    in the reader. It is removed again once the smoke run finishes.
+    Files go under audio_dataset/smoke/ and are removed when the run finishes.
     """
     import csv
     import shutil
@@ -690,10 +628,8 @@ def make_smoke_manifest(out_root: Path, per_class: int, seed: int) -> Path:
         writer.writeheader()
         writer.writerows(rows)
 
-    # Freeze the split with the team's own builder -- the same one the real run uses.
-    # It always writes the merged CSV to the canonical repo path, so the real manifest is
-    # moved aside for the duration and restored afterwards: a smoke run must never be able
-    # to leave a 120-clip manifest where the 3,000-clip one belongs.
+    # build_split.py always writes the canonical manifest, so the real one is moved aside and
+    # restored.
     canonical = REPO_ROOT / "audio_dataset" / "manifest_with_split.csv"
     split_manifest = out_root / "manifest_with_split.csv"
     saved_canonical: bytes | None = canonical.read_bytes() if canonical.exists() else None
@@ -731,9 +667,7 @@ def make_smoke_manifest(out_root: Path, per_class: int, seed: int) -> Path:
     return split_manifest
 
 
-# --------------------------------------------------------------------------------------
 # CLI
-# --------------------------------------------------------------------------------------
 
 
 def main(argv: list[str] | None = None) -> int:

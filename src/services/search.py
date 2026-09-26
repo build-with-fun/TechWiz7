@@ -1,20 +1,8 @@
-"""The event search.  SRS FR lxvii, and the scope rule from FR lxiii/lxvii.
+"""Event search and filtering (FR lxvii).
 
-Owner: sara.
-
-The filter vocabulary lives in one place because two consumers share it and must not drift:
-
-* the HTML search page, which renders its form from :func:`filter_fields`, and
-* the JSON endpoints, whose query parameters are the same names.
-
-Whoever parses ``request.args`` should call :func:`parse_filters`, which both validates and
-*names* every problem, and :func:`build_query`, which applies the scope rule:
-
-    a normal user sees only their own events; the fleet-wide roles see everything, and may
-    narrow to one user.
-
-The scope rule is applied in the query, never by filtering a page of results afterwards --
-otherwise the counts and the pagination would describe a set the user cannot see.
+The filter vocabulary is defined once (filter_fields) and shared by the HTML form and the
+JSON endpoints. The scope rule (a normal user sees only their own events) is applied inside
+the query, never by filtering a page afterwards, so counts and pagination stay truthful.
 """
 
 from __future__ import annotations
@@ -30,16 +18,13 @@ from src.errors import ApiError
 from src.models import (
     CONSISTENCY_STATUSES,
     EVENT_STATUSES,
-    QUALITY_VERDICTS,
     AudioFile,
     Event,
     Review,
     User,
-    utcnow,
 )
 
-#: The order options appear in the UI, with the label the page shows. Kept beside the field
-#: definitions so a new sort order is one entry, not three edits.
+#: Sort options in UI order, with their labels.
 SORT_OPTIONS: tuple[tuple[str, str], ...] = (
     ("newest", "Newest first"),
     ("oldest", "Oldest first"),
@@ -50,8 +35,7 @@ SORT_OPTIONS: tuple[tuple[str, str], ...] = (
     ("class_asc", "Sound category (A-Z)"),
 )
 
-#: Severity order for sorting, taken from the configured scale at query time -- see
-#: ``build_query``. This fallback only matters if a caller asks for a bad sort key.
+#: Fallback severity order, used only when a caller passes a bad sort key.
 _SEVERITY_ORDER_FALLBACK = ("Informational", "Low", "Medium", "High", "Critical")
 
 
@@ -127,10 +111,8 @@ class Filters:
 
 
 def filter_fields(store) -> list[dict[str, Any]]:
-    """The filter form, as data. The template renders this; nobody hardcodes a field.
-
-    Every option list comes from the configuration files, so when an evaluator adds a class
-    to ``config/classes.json`` the dropdown grows without a template edit.
+    """The filter form as data; option lists come from config, so a new class appears in the
+    dropdown automatically.
     """
     return [
         {"name": "audio_id", "label": "Audio ID", "type": "text",
@@ -179,9 +161,7 @@ def filter_fields(store) -> list[dict[str, Any]]:
     ]
 
 
-# ---------------------------------------------------------------------------------------
 # Parsing
-# ---------------------------------------------------------------------------------------
 
 _MULTI_FIELDS = {"severity", "quality", "status", "consistency_status"}
 
@@ -231,11 +211,7 @@ def _has(args: Mapping[str, Any], key: str) -> bool:
 
 def _multi(args: Mapping[str, Any], key: str, allowed: Iterable[str],
            problems: list[str]) -> tuple[str, ...]:
-    """Read a repeatable parameter (``?severity=High&severity=Critical``) or a comma list.
-
-    Both spellings are accepted because the HTML form sends repeated values and a JSON client
-    naturally sends one comma-separated string.
-    """
+    """A repeatable parameter (?severity=High&severity=Critical) or a comma-separated list."""
     raw: list[str] = []
     if hasattr(args, "getlist"):
         raw = [str(v) for v in args.getlist(key)]  # type: ignore[attr-defined]
@@ -261,11 +237,9 @@ def _truthy(value: Any) -> bool:
 
 def parse_filters(args: Mapping[str, Any], store, *, viewer=None,
                   default_page_size: int = 25, max_page_size: int = 200) -> Filters:
-    """Turn query parameters into a validated :class:`Filters`.
+    """Turn query parameters into validated Filters, collecting every problem instead of raising.
 
-    Never raises on a bad value: it collects the problem and carries on, so the search page
-    can show "confidence_min must be between 0 and 1" next to the form while still rendering
-    the results it *can* produce. A bad *page* is the exception -- see below.
+    A bad page number is the exception: it changes which rows come back, so it is fatal.
     """
     problems: list[str] = []
     filters = Filters(problems=problems)
@@ -317,9 +291,7 @@ def parse_filters(args: Mapping[str, Any], store, *, viewer=None,
         sort = "newest"
     filters.sort = sort
 
-    # Pagination. A bad page is fatal rather than forgiving: unlike a filter, it decides
-    # *which rows are returned*, and quietly returning page 1 when page 99 was asked for
-    # would make a client believe it had seen everything.
+    # A bad page is fatal: silently returning page 1 for page 99 would mislead the client.
     page_raw = args.get("page")
     if _has(args, "page"):
         try:
@@ -330,9 +302,7 @@ def parse_filters(args: Mapping[str, Any], store, *, viewer=None,
         if filters.page < 1:
             raise ApiError("validation_error", "page must be 1 or greater.",
                            details={"page": "must be >= 1"})
-    # `per_page` is the contract's name for the size (documentation/api_contract.md 3.2);
-    # `page_size` is what the HTML form uses. Accept both -- an ignored size silently
-    # changes which rows the client sees, which reads as a bug in the search.
+    # Accept both per_page (JSON API) and page_size (HTML form).
     size_raw = args.get("per_page", args.get("page_size"))
     if _has(args, "per_page") or _has(args, "page_size"):
         try:
@@ -344,8 +314,7 @@ def parse_filters(args: Mapping[str, Any], store, *, viewer=None,
             raise ApiError("validation_error", "page_size must be 1 or greater.",
                            details={"page_size": "must be >= 1"})
         if filters.page_size > max_page_size:
-            # Clamped, not refused: a client asking for too much gets the maximum, which is
-            # what it wanted anyway, and the response's meta says what was actually used.
+            # Clamped rather than refused; meta reports the size actually used.
             filters.page_size = max_page_size
     else:
         filters.page_size = default_page_size
@@ -357,8 +326,7 @@ def parse_filters(args: Mapping[str, Any], store, *, viewer=None,
             hasattr(viewer, "can") and viewer.can("search_all_events")
         )
         if filters.user and not filters.viewer_sees_all:
-            # Asking for another user's events is not a filter the viewer may apply. Drop it
-            # and say so, rather than returning nothing for a reason the user cannot see.
+            # Another user's events are not a filter this viewer may apply: drop it and say so.
             problems.append(
                 "the 'user' filter needs the fleet-wide search permission; it was ignored"
             )
@@ -366,9 +334,7 @@ def parse_filters(args: Mapping[str, Any], store, *, viewer=None,
     return filters
 
 
-# ---------------------------------------------------------------------------------------
 # Query construction
-# ---------------------------------------------------------------------------------------
 
 
 def build_query(filters: Filters, store):
@@ -379,9 +345,7 @@ def build_query(filters: Filters, store):
 
     if not filters.viewer_sees_all:
         if filters.viewer_id is None:
-            # A viewer who is neither signed in nor fleet-wide must match nothing. Failing
-            # closed here means a future caller that forgets to pass a viewer gets an empty
-            # result rather than everyone's events.
+            # Fail closed: no viewer and no fleet-wide capability matches nothing.
             return statement.where(Event.id < 0)
         conditions.append(Event.created_by_id == filters.viewer_id)
 
@@ -423,7 +387,7 @@ def build_query(filters: Filters, store):
         conditions.append(Event.severity != "Critical")
 
     if filters.user:
-        # Either the uploader or the reviewer who touched it -- "show me everything omar
+        # Either the uploader or the reviewer who touched it -- "show me everything this person
         # was involved in" is the question an investigator actually asks.
         conditions.append(
             or_(
@@ -468,10 +432,8 @@ def build_query(filters: Filters, store):
 
 
 def _order_by(sort: str, store) -> Sequence[Any]:
-    """Sort keys, each with a deterministic tiebreak on ``id``.
-
-    Without the tiebreak, two events created in the same second can swap places between
-    pages and a user paging through the results sees one twice and misses another.
+    """Sort keys with an ``id`` tiebreak, so rows created in the same second cannot swap between
+    pages.
     """
     tiebreak = Event.id.desc()
     if sort == "newest":
@@ -485,10 +447,7 @@ def _order_by(sort: str, store) -> Sequence[Any]:
     if sort == "difference_desc":
         return (Event.confidence_difference.desc().nullslast(), tiebreak)
     if sort == "severity_desc":
-        # Ranked by the configured severity scale, so adding a level to
-        # alert_rules/severity_levels.json changes the sort without a code change.
-        # A CASE is used rather than alphabetical order because "Critical" must outrank
-        # "Low" -- alphabetically it would not.
+        # Ranked by the configured severity scale; alphabetical order would put Low above Critical.
         scale = list(store.severity_scale()) or list(_SEVERITY_ORDER_FALLBACK)
         ranking = case(
             {name: index for index, name in enumerate(scale)},
@@ -502,12 +461,7 @@ def _order_by(sort: str, store) -> Sequence[Any]:
 
 
 def run_search(session: Session, filters: Filters, store) -> tuple[list[Event], dict[str, Any]]:
-    """Run the search and return the page of events plus the metadata the page needs.
-
-    ``meta`` carries the totals, the page bounds and a "what you are looking at" sentence,
-    so the page never has to recompute a count and never shows a number that disagrees with
-    the rows beneath it.
-    """
+    """Run the search and return one page of events plus totals and a description of the filters."""
     statement = build_query(filters, store)
 
     count_statement = select(func.count()).select_from(statement.order_by(None).subquery())
@@ -543,11 +497,7 @@ def run_search(session: Session, filters: Filters, store) -> tuple[list[Event], 
 
 
 def describe_filters(filters: Filters) -> str:
-    """A plain sentence naming what is being filtered, shown above the results.
-
-    It matters more than it looks: a user who is puzzled by an empty list needs to see that
-    a filter they set an hour ago is still applied.
-    """
+    """A sentence naming the active filters, so an unexpectedly empty list explains itself."""
     parts: list[str] = []
     if filters.audio_id:
         parts.append(f"audio ID contains {filters.audio_id!r}")

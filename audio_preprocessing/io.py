@@ -1,17 +1,8 @@
-"""Reading audio in, and the file-level validation SRS Step 3 demands.
+"""Decoding and file-level validation (SRS Step 3; FR iv, viii, x).
 
-Owner: taha.  SRS Step 3, Step 4 (format conversion), FR iv, viii, ix, x, lxxvii.
-
-Decoding strategy, in order:
-
-1. ``soundfile`` -- fast, sample-exact, and the normal path for WAV/FLAC/OGG/MP3.
-2. ``ffmpeg`` -- the fallback for M4A/AAC and for anything soundfile declines, decoded to
-   a temporary WAV so the arrays are handled by exactly one code path.
-
-Everything returns ``float32`` mono-ready arrays.  Nothing here guesses: if a file cannot
-be decoded, :class:`~audio_preprocessing.exceptions.AudioRejected` is raised with a reason
-code, and :func:`validate_file` reports the reason without raising so a batch upload can
-list every bad file at once.
+soundfile first (WAV, FLAC, OGG, MP3), FFmpeg for M4A/AAC and anything soundfile declines.
+Undecodable input raises AudioRejected with a reason code; validate_file reports the reason
+without raising, so a batch upload can list every bad file.
 """
 
 from __future__ import annotations
@@ -66,11 +57,8 @@ EXTENSION_ALIASES = {
     "mpga": "mp3",
 }
 
-# Extensions we are willing to hand to a decoder.  This is *not* the configured supported
-# list (that gate runs later, so an .aiff can be reported as "unsupported by configuration"
-# rather than as damaged); it is the line between "an audio file we can attempt" and
-# "not an audio file at all".  Without it a renamed text file becomes a decode failure and
-# the user is told their file is corrupt when the real problem is that it is not audio.
+# Extensions worth handing to a decoder. A renamed text file is then reported as not audio,
+# not as a corrupt audio file. The configured supported-format check comes later.
 DECODABLE_EXTENSIONS = frozenset({
     "wav", "wave", "mp3", "mpeg", "mpga", "flac", "ogg", "oga", "opus",
     "m4a", "mp4", "aac", "aiff", "aif", "wma", "amr", "au", "w64", "caf",
@@ -97,10 +85,7 @@ def _sniff_format(path: Path) -> str | None:
 
 
 def detect_format(path: str | Path) -> str | None:
-    """File format by content first, extension second.
-
-    Content wins so that a ``.wav`` file which is really an MP3 is handled correctly
-    instead of being reported as damaged.
+    """File format by content first, extension second (a .wav that is really an MP3 still decodes).
     """
     p = Path(path)
     sniffed = _sniff_format(p)
@@ -123,10 +108,8 @@ def sha256_file(path: str | Path, chunk: int = 1 << 20) -> str:
 
 
 def ffprobe_metadata(path: str | Path) -> dict[str, Any]:
-    """Metadata for a file via ffprobe.  Returns ``{}`` when ffprobe is unavailable.
-
-    Used for the things soundfile cannot tell us: the declared duration of a truncated
-    file, the codec, and whether a container holds an audio stream at all.
+    """ffprobe metadata (duration of a truncated file, codec, whether there is an audio stream), or
+    {} without ffprobe.
     """
     binary = shutil.which(ffprobe_binary()) or ffprobe_binary()
     cmd = [
@@ -168,9 +151,32 @@ def _wave_metadata(path: Path) -> dict[str, Any]:
         return {}
 
 
-# --------------------------------------------------------------------------------------
+_SUBTYPE_BITS = {"PCM_S8": 8, "PCM_U8": 8, "PCM_16": 16, "PCM_24": 24, "PCM_32": 32,
+                 "FLOAT": 32, "DOUBLE": 64, "ALAC_16": 16, "ALAC_20": 20, "ALAC_24": 24}
+
+
+def source_bit_depth(path: str | Path) -> int | None:
+    """Bits per sample as uploaded (FR x); None for lossy formats, which have no per-sample depth.
+    """
+    try:
+        import soundfile
+
+        subtype = soundfile.info(str(path)).subtype
+        if subtype in _SUBTYPE_BITS:
+            return _SUBTYPE_BITS[subtype]
+    except Exception:  # noqa: BLE001 - not a soundfile format; ask ffprobe instead
+        pass
+    for stream in _audio_streams(ffprobe_metadata(path)):
+        bits = stream.get("bits_per_raw_sample") or stream.get("bits_per_sample")
+        try:
+            if bits and int(bits) > 0:
+                return int(bits)
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
 # Decoding
-# --------------------------------------------------------------------------------------
 
 def _decode_with_soundfile(path: Path, *, offset: float, duration: float | None) -> tuple[np.ndarray, int]:
     import soundfile as sf
@@ -219,30 +225,11 @@ def load_audio(
     duration: float | None = None,
     max_seconds: float | None = None,
 ) -> tuple[np.ndarray, int]:
-    """Load an audio file as a float32 array.
+    """Load an audio file as float32 (1-D unless mono=False and the file has several channels).
 
-    Parameters
-    ----------
-    sample_rate:
-        Target rate; ``None`` keeps the file's own rate (useful for metadata reporting).
-    mono:
-        Downmix multi-channel input by averaging channels (SRS Step 4).
-    offset, duration:
-        Decode only a slice -- this is how a live rolling buffer is read back.
-    max_seconds:
-        Refuse anything longer.  Applied as a hard read limit as well, so a 3-hour
-        mislabelled upload cannot exhaust memory before the duration check runs.
-
-    Returns
-    -------
-    (samples, sample_rate)
-        ``samples`` is 2-D only when ``mono=False`` and the source is multi-channel.
-        Otherwise it is a 1-D float32 array.
-
-    Raises
-    ------
-    AudioRejected
-        With a stable reason code, never a bare exception and never a silent empty array.
+    ``sample_rate=None`` keeps the file's rate. ``offset``/``duration`` decode a slice.
+    ``max_seconds`` is also a hard read limit, so a mislabelled 3-hour file cannot exhaust
+    memory before the duration check. Raises AudioRejected, never returns an empty array.
     """
     p = Path(path)
     if not p.exists():
@@ -301,8 +288,7 @@ def load_audio(
 
     finite = np.isfinite(y)
     if not finite.all():
-        # A decoder producing NaN/Inf means damaged data.  Replace with zeros rather than
-        # propagating NaN into every downstream feature, and record that we did.
+        # NaN/Inf from the decoder means damaged data: zero it and record that we did.
         y = np.where(finite, y, np.float32(0.0))
 
     return np.ascontiguousarray(y, dtype=np.float32), int(sr)
@@ -322,9 +308,7 @@ def load_audio_bytes(
         return load_audio(tmp_path, **kwargs)
 
 
-# --------------------------------------------------------------------------------------
 # Validation (SRS Step 3, FR viii)
-# --------------------------------------------------------------------------------------
 
 def validate_file(
     path: str | Path,
@@ -332,15 +316,8 @@ def validate_file(
     cfg: dict[str, Any] | None = None,
     probe: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Validate a candidate upload.  Never raises; always explains itself.
-
-    Returns a dict with:
-
-    ``ok``        -- True only when the file is usable.
-    ``reason``    -- a reason code from :mod:`audio_preprocessing.exceptions`, or ``None``.
-    ``detail``    -- human-readable message.
-    ``format``, ``duration_sec``, ``sample_rate``, ``channels``, ``bit_depth``,
-    ``size_bytes``, ``codec``, ``n_frames`` -- the metadata FR x requires, where available.
+    """Validate an upload without raising: ok, reason, detail, and the FR x metadata where
+    available.
     """
     settings = cfg or audio_config()
     supported = [str(s).lower() for s in settings.get("supported_formats", [])]
@@ -379,9 +356,7 @@ def validate_file(
         info.update(reason=TOO_LARGE, detail=f"{size / 1048576:.1f} MB exceeds the {max_mb:.0f} MB limit")
         return info
 
-    # "Is this audio at all?" comes before "is the header readable?" -- magic bytes win over
-    # the extension, so a WAV renamed to .txt is still validated as audio, while a text file
-    # is reported as an unsupported format instead of as a damaged container.
+    # Magic bytes before extension: a WAV renamed to .txt is still audio.
     if _sniff_format(p) is None:
         fmt_ext = (info["format"] or "").lower()
         if fmt_ext not in DECODABLE_EXTENSIONS:
@@ -442,8 +417,7 @@ def validate_file(
             except (TypeError, ValueError):
                 pass
 
-    # Format gate: only after we know the file is otherwise real, so that a damaged file
-    # is reported as damaged rather than as unsupported.
+    # Format gate last, so a damaged file is reported as damaged, not as unsupported.
     fmt = (info["format"] or "").lower()
     if supported and fmt not in supported:
         info.update(
@@ -497,9 +471,7 @@ def validate_file(
     info["peak"] = peak
     info["rms"] = rms
 
-    # Presence of audio signal (FR viii, FR xii).  A silent recording is a valid container
-    # holding no event, so it must be refused here and not discovered later as an
-    # all-zeros prediction.
+    # FR viii/xii: a silent recording is a valid container with no event, so refuse it here.
     silence_max = float(quality_settings().get("silence_rms_dbfs_max", -50.0))
     rms_db = amplitude_to_db(rms) if rms > 0 else -np.inf
     info["rms_dbfs"] = None if not np.isfinite(rms_db) else float(rms_db)
@@ -519,11 +491,7 @@ def validate_file(
 
 
 def validate_samples(y: np.ndarray, sample_rate: int, *, cfg: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Validation for live capture, where there is no file to inspect.
-
-    Live windows are checked for presence of signal and for a sane duration, but not for
-    format or container problems -- there is no container.
-    """
+    """Validation for a live window: signal presence and duration only (there is no container)."""
     settings = cfg or audio_config()
     silence_max = float(quality_settings().get("silence_rms_dbfs_max", -50.0))
     arr = np.asarray(y, dtype=np.float32).reshape(-1)
@@ -579,17 +547,13 @@ def convert_format(
     mono: bool = True,
     bit_depth: int = 16,
 ) -> Path:
-    """Convert a file to another container/codec with ffmpeg (SRS Step 4 format conversion).
-
-    Used by the dataset builder to normalise mixed-format source audio and by the tests to
-    prove a round trip.  Raises :class:`AudioRejected` if ffmpeg cannot perform it.
+    """Convert a file with FFmpeg (SRS Step 4 format conversion); raises AudioRejected on failure.
     """
     src_path = Path(src)
     if not src_path.exists():
         raise AudioRejected(NO_SUCH_FILE, f"no file at {src_path}")
     fmt = str(target_format).lower().lstrip(".")
-    # ``target_format`` may arrive as a filename (``Path("ok.flac")``) rather than a bare
-    # extension; a stem must never be mistaken for the codec.
+    # target_format may be a filename; use its suffix, never the stem.
     if "." in Path(fmt).name:
         fmt = Path(fmt).suffix.lstrip(".")
     if fmt not in {"wav", "mp3", "flac", "ogg", "m4a", "aiff"}:

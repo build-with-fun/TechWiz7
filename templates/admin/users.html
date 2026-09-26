@@ -76,7 +76,7 @@
               <span class="chip chip--quality-good"><span class="chip__glyph" aria-hidden="true">●</span><span class="chip__text">Active</span></span>
               {% endif %}
             </td>
-            <td>{{ user.created_at }}</td>
+            <td>{{ user.created_at | when }}</td>
             <td>{{ user.last_login_at or 'never' }}</td>
             <td class="num">{{ user.failed_login_count }}</td>
           </tr>

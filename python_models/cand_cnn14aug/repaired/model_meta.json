@@ -1,0 +1,1332 @@
+{
+  "model_name": "classical_gradient_boosting[learning_rate=0.1,max_depth=5,n_estimators=200]",
+  "model_version": "1.0.0",
+  "metrics": {
+    "model_name": "gradient_boosting[learning_rate=0.1,max_depth=5,n_estimators=200]",
+    "model_version": "1.0.0",
+    "split": "test",
+    "n_records": 450,
+    "probe": false,
+    "probe_label": "",
+    "accuracy": 0.6977777777777778,
+    "macro_precision": 0.7234644284773728,
+    "macro_recall": 0.6977777777777778,
+    "macro_f1": 0.7036903039087837,
+    "weighted_f1": 0.7036903039087836,
+    "critical_classes": [
+      "Gunshot",
+      "Glass Breaking",
+      "Panic Scream",
+      "Aggression",
+      "Person Asking for Help"
+    ],
+    "critical_recall": 0.7866666666666666,
+    "critical_recall_by_class": {
+      "Glass Breaking": 0.7777777777777778,
+      "Gunshot": 0.9111111111111111,
+      "Panic Scream": 0.7333333333333333,
+      "Aggression": 0.5333333333333333,
+      "Person Asking for Help": 0.9777777777777777
+    },
+    "top2_accuracy": 0.8222222222222222,
+    "per_class": [
+      {
+        "class_name": "Machinery Fault",
+        "index": 0,
+        "support": 45,
+        "predicted": 52,
+        "true_positive": 29,
+        "precision": 0.5576923076923077,
+        "recall": 0.6444444444444445,
+        "f1": 0.5979381443298969,
+        "is_critical": false
+      },
+      {
+        "class_name": "Glass Breaking",
+        "index": 1,
+        "support": 45,
+        "predicted": 50,
+        "true_positive": 35,
+        "precision": 0.7,
+        "recall": 0.7777777777777778,
+        "f1": 0.7368421052631577,
+        "is_critical": true
+      },
+      {
+        "class_name": "Alarm or Siren",
+        "index": 2,
+        "support": 45,
+        "predicted": 41,
+        "true_positive": 28,
+        "precision": 0.6829268292682927,
+        "recall": 0.6222222222222222,
+        "f1": 0.6511627906976744,
+        "is_critical": false
+      },
+      {
+        "class_name": "Vehicle Horn",
+        "index": 3,
+        "support": 45,
+        "predicted": 31,
+        "true_positive": 28,
+        "precision": 0.9032258064516129,
+        "recall": 0.6222222222222222,
+        "f1": 0.7368421052631579,
+        "is_critical": false
+      },
+      {
+        "class_name": "Animal Sound",
+        "index": 4,
+        "support": 45,
+        "predicted": 63,
+        "true_positive": 24,
+        "precision": 0.38095238095238093,
+        "recall": 0.5333333333333333,
+        "f1": 0.4444444444444444,
+        "is_critical": false
+      },
+      {
+        "class_name": "Gunshot",
+        "index": 5,
+        "support": 45,
+        "predicted": 43,
+        "true_positive": 41,
+        "precision": 0.9534883720930233,
+        "recall": 0.9111111111111111,
+        "f1": 0.9318181818181819,
+        "is_critical": true
+      },
+      {
+        "class_name": "Panic Scream",
+        "index": 6,
+        "support": 45,
+        "predicted": 49,
+        "true_positive": 33,
+        "precision": 0.673469387755102,
+        "recall": 0.7333333333333333,
+        "f1": 0.702127659574468,
+        "is_critical": true
+      },
+      {
+        "class_name": "Aggression",
+        "index": 7,
+        "support": 45,
+        "predicted": 31,
+        "true_positive": 24,
+        "precision": 0.7741935483870968,
+        "recall": 0.5333333333333333,
+        "f1": 0.631578947368421,
+        "is_critical": true
+      },
+      {
+        "class_name": "Person Asking for Help",
+        "index": 8,
+        "support": 45,
+        "predicted": 44,
+        "true_positive": 44,
+        "precision": 1.0,
+        "recall": 0.9777777777777777,
+        "f1": 0.9887640449438202,
+        "is_critical": true
+      },
+      {
+        "class_name": "Background Noise",
+        "index": 9,
+        "support": 45,
+        "predicted": 46,
+        "true_positive": 28,
+        "precision": 0.6086956521739131,
+        "recall": 0.6222222222222222,
+        "f1": 0.6153846153846154,
+        "is_critical": false
+      }
+    ],
+    "confusion_matrix": [
+      [
+        29,
+        0,
+        0,
+        1,
+        8,
+        0,
+        0,
+        1,
+        0,
+        6
+      ],
+      [
+        3,
+        35,
+        3,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3
+      ],
+      [
+        4,
+        6,
+        28,
+        1,
+        2,
+        0,
+        2,
+        2,
+        0,
+        0
+      ],
+      [
+        4,
+        1,
+        4,
+        28,
+        4,
+        0,
+        1,
+        0,
+        0,
+        3
+      ],
+      [
+        5,
+        2,
+        3,
+        0,
+        24,
+        0,
+        8,
+        0,
+        0,
+        3
+      ],
+      [
+        1,
+        0,
+        0,
+        1,
+        0,
+        41,
+        0,
+        1,
+        0,
+        1
+      ],
+      [
+        0,
+        1,
+        3,
+        0,
+        6,
+        0,
+        33,
+        2,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0,
+        0,
+        12,
+        2,
+        5,
+        24,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        44,
+        1
+      ],
+      [
+        6,
+        4,
+        0,
+        0,
+        7,
+        0,
+        0,
+        0,
+        0,
+        28
+      ]
+    ],
+    "class_names": [
+      "Machinery Fault",
+      "Glass Breaking",
+      "Alarm or Siren",
+      "Vehicle Horn",
+      "Animal Sound",
+      "Gunshot",
+      "Panic Scream",
+      "Aggression",
+      "Person Asking for Help",
+      "Background Noise"
+    ],
+    "severe_errors": [
+      {
+        "audio_id": "SS-AGG-0057",
+        "actual": "Aggression",
+        "predicted": "Background Noise",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-AGG-0058",
+        "actual": "Aggression",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-AGG-0070",
+        "actual": "Aggression",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-AGG-0093",
+        "actual": "Aggression",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-AGG-0097",
+        "actual": "Aggression",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-AGG-0503",
+        "actual": "Aggression",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-AGG-0521",
+        "actual": "Aggression",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-AGG-0523",
+        "actual": "Aggression",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-AGG-0527",
+        "actual": "Aggression",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-AGG-0561",
+        "actual": "Aggression",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-AGG-0628",
+        "actual": "Aggression",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-AGG-0629",
+        "actual": "Aggression",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-AGG-0654",
+        "actual": "Aggression",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-GLA-0036",
+        "actual": "Glass Breaking",
+        "predicted": "Alarm or Siren",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-GLA-0056",
+        "actual": "Glass Breaking",
+        "predicted": "Alarm or Siren",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-GLA-0108",
+        "actual": "Glass Breaking",
+        "predicted": "Machinery Fault",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-GLA-0115",
+        "actual": "Glass Breaking",
+        "predicted": "Background Noise",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-GLA-0119",
+        "actual": "Glass Breaking",
+        "predicted": "Machinery Fault",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-GLA-0127",
+        "actual": "Glass Breaking",
+        "predicted": "Background Noise",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-GLA-0139",
+        "actual": "Glass Breaking",
+        "predicted": "Background Noise",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-GLA-0545",
+        "actual": "Glass Breaking",
+        "predicted": "Machinery Fault",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-GLA-0654",
+        "actual": "Glass Breaking",
+        "predicted": "Alarm or Siren",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-GUN-0030",
+        "actual": "Gunshot",
+        "predicted": "Machinery Fault",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-GUN-0142",
+        "actual": "Gunshot",
+        "predicted": "Background Noise",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-GUN-0501",
+        "actual": "Gunshot",
+        "predicted": "Vehicle Horn",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-SCR-0008",
+        "actual": "Panic Scream",
+        "predicted": "Alarm or Siren",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-SCR-0047",
+        "actual": "Panic Scream",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-SCR-0062",
+        "actual": "Panic Scream",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-SCR-0081",
+        "actual": "Panic Scream",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-SCR-0502",
+        "actual": "Panic Scream",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-SCR-0512",
+        "actual": "Panic Scream",
+        "predicted": "Alarm or Siren",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-SCR-0550",
+        "actual": "Panic Scream",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-SCR-0639",
+        "actual": "Panic Scream",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-SCR-0741",
+        "actual": "Panic Scream",
+        "predicted": "Alarm or Siren",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-HAL-0560",
+        "actual": "Person Asking for Help",
+        "predicted": "Background Noise",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-AGG-0019",
+        "actual": "Aggression",
+        "predicted": "Gunshot",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-AGG-0064",
+        "actual": "Aggression",
+        "predicted": "Gunshot",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-AGG-0066",
+        "actual": "Aggression",
+        "predicted": "Glass Breaking",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-AGG-0528",
+        "actual": "Aggression",
+        "predicted": "Panic Scream",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-AGG-0551",
+        "actual": "Aggression",
+        "predicted": "Panic Scream",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-AGG-0588",
+        "actual": "Aggression",
+        "predicted": "Panic Scream",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-AGG-0589",
+        "actual": "Aggression",
+        "predicted": "Panic Scream",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-AGG-0592",
+        "actual": "Aggression",
+        "predicted": "Panic Scream",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-GLA-0137",
+        "actual": "Glass Breaking",
+        "predicted": "Aggression",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-GUN-0106",
+        "actual": "Gunshot",
+        "predicted": "Aggression",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-SCR-0035",
+        "actual": "Panic Scream",
+        "predicted": "Glass Breaking",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-SCR-0075",
+        "actual": "Panic Scream",
+        "predicted": "Aggression",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-SCR-0650",
+        "actual": "Panic Scream",
+        "predicted": "Aggression",
+        "silent_miss": false,
+        "misattributed_alert": true
+      }
+    ],
+    "config_snapshot": {
+      "selection": {
+        "winner": "gradient_boosting[learning_rate=0.1,max_depth=5,n_estimators=200]",
+        "params": {
+          "_candidate": "gradient_boosting",
+          "n_estimators": 200,
+          "learning_rate": 0.1,
+          "max_depth": 5
+        },
+        "seed": 0,
+        "criterion": "macro_f1",
+        "rationale": "selected gradient_boosting[learning_rate=0.1,max_depth=5,n_estimators=200] on validation macro_f1=0.7217 (val accuracy 0.7200, critical recall 0.7422) out of 26 trials; test split not used for selection. no candidate met the critical-recall floor of 0.85; selecting the best available on macro-F1 and flagging this in the report",
+        "n_trials": 26,
+        "trials": [
+          {
+            "candidate": "svm_rbf[C=1.0,gamma=scale]",
+            "params": {
+              "_candidate": "svm_rbf",
+              "C": 1.0,
+              "gamma": "scale"
+            },
+            "seed": 0,
+            "val_macro_f1": 0.6179122751739026,
+            "val_accuracy": 0.6444444444444445,
+            "val_critical_recall": 0.72,
+            "fit_seconds": 1.635,
+            "score_seconds": 0.194,
+            "note": ""
+          },
+          {
+            "candidate": "svm_rbf[C=1.0,gamma=scale]+cw",
+            "params": {
+              "_candidate": "svm_rbf",
+              "C": 1.0,
+              "gamma": "scale",
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.6179122751739026,
+            "val_accuracy": 0.6444444444444445,
+            "val_critical_recall": 0.72,
+            "fit_seconds": 1.517,
+            "score_seconds": 0.215,
+            "note": ""
+          },
+          {
+            "candidate": "svm_rbf[C=10.0,gamma=scale]",
+            "params": {
+              "_candidate": "svm_rbf",
+              "C": 10.0,
+              "gamma": "scale"
+            },
+            "seed": 0,
+            "val_macro_f1": 0.6281884143700762,
+            "val_accuracy": 0.6555555555555556,
+            "val_critical_recall": 0.6933333333333334,
+            "fit_seconds": 1.599,
+            "score_seconds": 0.174,
+            "note": ""
+          },
+          {
+            "candidate": "svm_rbf[C=10.0,gamma=scale]+cw",
+            "params": {
+              "_candidate": "svm_rbf",
+              "C": 10.0,
+              "gamma": "scale",
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.6281884143700762,
+            "val_accuracy": 0.6555555555555556,
+            "val_critical_recall": 0.6933333333333334,
+            "fit_seconds": 1.469,
+            "score_seconds": 0.195,
+            "note": ""
+          },
+          {
+            "candidate": "svm_rbf[C=100.0,gamma=scale]",
+            "params": {
+              "_candidate": "svm_rbf",
+              "C": 100.0,
+              "gamma": "scale"
+            },
+            "seed": 0,
+            "val_macro_f1": 0.6334804232320844,
+            "val_accuracy": 0.6622222222222223,
+            "val_critical_recall": 0.6977777777777778,
+            "fit_seconds": 1.547,
+            "score_seconds": 0.184,
+            "note": ""
+          },
+          {
+            "candidate": "svm_rbf[C=100.0,gamma=scale]+cw",
+            "params": {
+              "_candidate": "svm_rbf",
+              "C": 100.0,
+              "gamma": "scale",
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.6334804232320844,
+            "val_accuracy": 0.6622222222222223,
+            "val_critical_recall": 0.6977777777777778,
+            "fit_seconds": 1.747,
+            "score_seconds": 0.183,
+            "note": ""
+          },
+          {
+            "candidate": "random_forest[min_samples_leaf=1,n_estimators=500]",
+            "params": {
+              "_candidate": "random_forest",
+              "n_estimators": 500,
+              "max_depth": null,
+              "min_samples_leaf": 1
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7050540762816341,
+            "val_accuracy": 0.7066666666666667,
+            "val_critical_recall": 0.7955555555555556,
+            "fit_seconds": 2.3,
+            "score_seconds": 0.129,
+            "note": ""
+          },
+          {
+            "candidate": "random_forest[min_samples_leaf=1,n_estimators=500]+cw",
+            "params": {
+              "_candidate": "random_forest",
+              "n_estimators": 500,
+              "max_depth": null,
+              "min_samples_leaf": 1,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7050540762816341,
+            "val_accuracy": 0.7066666666666667,
+            "val_critical_recall": 0.7955555555555556,
+            "fit_seconds": 2.135,
+            "score_seconds": 0.137,
+            "note": ""
+          },
+          {
+            "candidate": "random_forest[min_samples_leaf=2,n_estimators=500]",
+            "params": {
+              "_candidate": "random_forest",
+              "n_estimators": 500,
+              "max_depth": null,
+              "min_samples_leaf": 2
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7012710736282848,
+            "val_accuracy": 0.7044444444444444,
+            "val_critical_recall": 0.7733333333333333,
+            "fit_seconds": 2.161,
+            "score_seconds": 0.139,
+            "note": ""
+          },
+          {
+            "candidate": "random_forest[min_samples_leaf=2,n_estimators=500]+cw",
+            "params": {
+              "_candidate": "random_forest",
+              "n_estimators": 500,
+              "max_depth": null,
+              "min_samples_leaf": 2,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7012710736282848,
+            "val_accuracy": 0.7044444444444444,
+            "val_critical_recall": 0.7733333333333333,
+            "fit_seconds": 2.588,
+            "score_seconds": 0.141,
+            "note": ""
+          },
+          {
+            "candidate": "random_forest[max_depth=20,min_samples_leaf=1,n_estimators=500]",
+            "params": {
+              "_candidate": "random_forest",
+              "n_estimators": 500,
+              "max_depth": 20,
+              "min_samples_leaf": 1
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7094098934694648,
+            "val_accuracy": 0.7111111111111111,
+            "val_critical_recall": 0.7955555555555556,
+            "fit_seconds": 2.48,
+            "score_seconds": 0.14,
+            "note": ""
+          },
+          {
+            "candidate": "random_forest[max_depth=20,min_samples_leaf=1,n_estimators=500]+cw",
+            "params": {
+              "_candidate": "random_forest",
+              "n_estimators": 500,
+              "max_depth": 20,
+              "min_samples_leaf": 1,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7094098934694648,
+            "val_accuracy": 0.7111111111111111,
+            "val_critical_recall": 0.7955555555555556,
+            "fit_seconds": 2.185,
+            "score_seconds": 0.138,
+            "note": ""
+          },
+          {
+            "candidate": "random_forest[max_depth=20,min_samples_leaf=2,n_estimators=500]",
+            "params": {
+              "_candidate": "random_forest",
+              "n_estimators": 500,
+              "max_depth": 20,
+              "min_samples_leaf": 2
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7028653508588182,
+            "val_accuracy": 0.7066666666666667,
+            "val_critical_recall": 0.768888888888889,
+            "fit_seconds": 2.016,
+            "score_seconds": 0.128,
+            "note": ""
+          },
+          {
+            "candidate": "random_forest[max_depth=20,min_samples_leaf=2,n_estimators=500]+cw",
+            "params": {
+              "_candidate": "random_forest",
+              "n_estimators": 500,
+              "max_depth": 20,
+              "min_samples_leaf": 2,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7028653508588182,
+            "val_accuracy": 0.7066666666666667,
+            "val_critical_recall": 0.768888888888889,
+            "fit_seconds": 2.009,
+            "score_seconds": 0.118,
+            "note": ""
+          },
+          {
+            "candidate": "extra_trees[min_samples_leaf=1,n_estimators=500]",
+            "params": {
+              "_candidate": "extra_trees",
+              "n_estimators": 500,
+              "min_samples_leaf": 1
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7030315007198171,
+            "val_accuracy": 0.7066666666666667,
+            "val_critical_recall": 0.7955555555555556,
+            "fit_seconds": 1.13,
+            "score_seconds": 0.128,
+            "note": ""
+          },
+          {
+            "candidate": "extra_trees[min_samples_leaf=1,n_estimators=500]+cw",
+            "params": {
+              "_candidate": "extra_trees",
+              "n_estimators": 500,
+              "min_samples_leaf": 1,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7030315007198171,
+            "val_accuracy": 0.7066666666666667,
+            "val_critical_recall": 0.7955555555555556,
+            "fit_seconds": 1.124,
+            "score_seconds": 0.138,
+            "note": ""
+          },
+          {
+            "candidate": "extra_trees[min_samples_leaf=2,n_estimators=500]",
+            "params": {
+              "_candidate": "extra_trees",
+              "n_estimators": 500,
+              "min_samples_leaf": 2
+            },
+            "seed": 0,
+            "val_macro_f1": 0.6888173386748656,
+            "val_accuracy": 0.6933333333333334,
+            "val_critical_recall": 0.7777777777777778,
+            "fit_seconds": 1.075,
+            "score_seconds": 0.128,
+            "note": ""
+          },
+          {
+            "candidate": "extra_trees[min_samples_leaf=2,n_estimators=500]+cw",
+            "params": {
+              "_candidate": "extra_trees",
+              "n_estimators": 500,
+              "min_samples_leaf": 2,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.6888173386748656,
+            "val_accuracy": 0.6933333333333334,
+            "val_critical_recall": 0.7777777777777778,
+            "fit_seconds": 1.057,
+            "score_seconds": 0.127,
+            "note": ""
+          },
+          {
+            "candidate": "gradient_boosting[learning_rate=0.1,max_depth=3,n_estimators=200]",
+            "params": {
+              "_candidate": "gradient_boosting",
+              "n_estimators": 200,
+              "learning_rate": 0.1,
+              "max_depth": 3
+            },
+            "seed": 0,
+            "val_macro_f1": 0.6895244047183283,
+            "val_accuracy": 0.6888888888888889,
+            "val_critical_recall": 0.7288888888888889,
+            "fit_seconds": 253.7,
+            "score_seconds": 0.015,
+            "note": ""
+          },
+          {
+            "candidate": "gradient_boosting[learning_rate=0.1,max_depth=3,n_estimators=200]+cw",
+            "params": {
+              "_candidate": "gradient_boosting",
+              "n_estimators": 200,
+              "learning_rate": 0.1,
+              "max_depth": 3,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.6895244047183283,
+            "val_accuracy": 0.6888888888888889,
+            "val_critical_recall": 0.7288888888888889,
+            "fit_seconds": 277.62,
+            "score_seconds": 0.074,
+            "note": ""
+          },
+          {
+            "candidate": "gradient_boosting[learning_rate=0.1,max_depth=5,n_estimators=200]",
+            "params": {
+              "_candidate": "gradient_boosting",
+              "n_estimators": 200,
+              "learning_rate": 0.1,
+              "max_depth": 5
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7217304034519841,
+            "val_accuracy": 0.72,
+            "val_critical_recall": 0.7422222222222222,
+            "fit_seconds": 375.398,
+            "score_seconds": 0.028,
+            "note": ""
+          },
+          {
+            "candidate": "gradient_boosting[learning_rate=0.1,max_depth=5,n_estimators=200]+cw",
+            "params": {
+              "_candidate": "gradient_boosting",
+              "n_estimators": 200,
+              "learning_rate": 0.1,
+              "max_depth": 5,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7217304034519841,
+            "val_accuracy": 0.72,
+            "val_critical_recall": 0.7422222222222222,
+            "fit_seconds": 471.768,
+            "score_seconds": 0.029,
+            "note": ""
+          },
+          {
+            "candidate": "xgboost[learning_rate=0.1,max_depth=4,n_estimators=300]",
+            "params": {
+              "_candidate": "xgboost",
+              "n_estimators": 300,
+              "learning_rate": 0.1,
+              "max_depth": 4
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7179232336973539,
+            "val_accuracy": 0.7177777777777777,
+            "val_critical_recall": 0.768888888888889,
+            "fit_seconds": 587.473,
+            "score_seconds": 0.035,
+            "note": ""
+          },
+          {
+            "candidate": "xgboost[learning_rate=0.1,max_depth=4,n_estimators=300]+cw",
+            "params": {
+              "_candidate": "xgboost",
+              "n_estimators": 300,
+              "learning_rate": 0.1,
+              "max_depth": 4,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7179232336973539,
+            "val_accuracy": 0.7177777777777777,
+            "val_critical_recall": 0.768888888888889,
+            "fit_seconds": 639.528,
+            "score_seconds": 0.082,
+            "note": ""
+          },
+          {
+            "candidate": "xgboost[learning_rate=0.1,max_depth=6,n_estimators=300]",
+            "params": {
+              "_candidate": "xgboost",
+              "n_estimators": 300,
+              "learning_rate": 0.1,
+              "max_depth": 6
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7176175231781039,
+            "val_accuracy": 0.72,
+            "val_critical_recall": 0.7866666666666667,
+            "fit_seconds": 763.501,
+            "score_seconds": 0.074,
+            "note": ""
+          },
+          {
+            "candidate": "xgboost[learning_rate=0.1,max_depth=6,n_estimators=300]+cw",
+            "params": {
+              "_candidate": "xgboost",
+              "n_estimators": 300,
+              "learning_rate": 0.1,
+              "max_depth": 6,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7176175231781039,
+            "val_accuracy": 0.72,
+            "val_critical_recall": 0.7866666666666667,
+            "fit_seconds": 748.923,
+            "score_seconds": 0.066,
+            "note": ""
+          }
+        ]
+      },
+      "fitted_on": "train+val",
+      "critical_recall_floor": 0.85
+    }
+  },
+  "algorithm": "gradient_boosting[learning_rate=0.1,max_depth=5,n_estimators=200]",
+  "spec_notes": "sklearn boosted trees; critical-class weighting via sample_weight.",
+  "class_weights": null,
+  "fitted_on": "train+val",
+  "n_features": 254,
+  "function": "python_models.classical",
+  "feature_importances": {
+    "dmfcc_07_mean": 0.05951914117054805,
+    "mfcc_04_mean": 0.04187421085104748,
+    "centroid_mean": 0.03323184102856253,
+    "crest_factor_db": 0.03271878900652393,
+    "mfcc_03_mean": 0.020038433340041035,
+    "chroma_08_std": 0.018971673411518623,
+    "melband_012_mean": 0.018879469805797928,
+    "mfcc_01_mean": 0.018787966530770552,
+    "mfcc_19_std": 0.017751419815310386,
+    "zcr_std": 0.01641734007452936,
+    "centroid_std": 0.0157925663013442,
+    "dmfcc_04_mean": 0.01574836786847748,
+    "mfcc_08_std": 0.01343206190885213,
+    "chroma_10_std": 0.013133962729168395,
+    "rms_std_db": 0.012123070004278709,
+    "melband_006_mean": 0.011650747154432881,
+    "dmfcc_00_mean": 0.011548398486343045,
+    "rms_max_db": 0.010790856582354904,
+    "rolloff_mean": 0.010743975029442455,
+    "melband_127_mean": 0.010674177570708232,
+    "onset_max": 0.010332578467642064,
+    "dmfcc_05_mean": 0.010291839320768008,
+    "rms_p90_db": 0.010149195178576651,
+    "onset_rate": 0.009889555936670314,
+    "mfcc_06_mean": 0.009402534536773127,
+    "mfcc_05_mean": 0.009348568033822563,
+    "mfcc_14_std": 0.009259485757063828,
+    "chroma_00_mean": 0.008731704015986549,
+    "mfcc_02_mean": 0.008653515565405554,
+    "mfcc_14_mean": 0.008322625050763942,
+    "chroma_04_mean": 0.008143230874393345,
+    "bandwidth_mean": 0.007945927574796218,
+    "flatness_std": 0.007901209481257162,
+    "zcr_p90": 0.007863142185549907,
+    "zcr_mean": 0.00730246334649626,
+    "melband_016_mean": 0.006858059193063297,
+    "flatness_mean": 0.006849746834622911,
+    "chroma_00_std": 0.006819788110624587,
+    "mfcc_10_mean": 0.0067227922073753565,
+    "mfcc_17_std": 0.006560105331138872,
+    "bandwidth_std": 0.0064338618591917055,
+    "mfcc_08_mean": 0.006289881248251443,
+    "chroma_06_mean": 0.006263831194609532,
+    "melband_015_mean": 0.006216225288057718,
+    "melband_004_mean": 0.006032660973846502,
+    "chroma_03_mean": 0.005780150705705097,
+    "chroma_08_mean": 0.005694243568533139,
+    "chroma_06_std": 0.005673699542868367,
+    "mfcc_16_mean": 0.0055962559660677385,
+    "dmfcc_17_std": 0.005579202363977256,
+    "mfcc_11_mean": 0.0053057655451997044,
+    "melband_031_mean": 0.005146217901204631,
+    "chroma_10_mean": 0.005040506949031301,
+    "melband_000_mean": 0.00501195244258346,
+    "mfcc_12_mean": 0.004904564917894737,
+    "mfcc_15_std": 0.004903820410731018,
+    "rolloff_std": 0.0048530037102526135,
+    "mfcc_07_mean": 0.004835119990584495,
+    "mfcc_03_std": 0.004744415126879865,
+    "chroma_02_mean": 0.0047298112800077926,
+    "rms_p10_db": 0.004622699290519133,
+    "dmfcc_11_std": 0.004590804192052409,
+    "chroma_03_std": 0.004481011192988671,
+    "dmfcc_02_mean": 0.004445335886983745,
+    "mfcc_06_std": 0.004440358766476597,
+    "chroma_02_std": 0.004434837941868769,
+    "rms_mean_db": 0.004412509306761276,
+    "melband_014_mean": 0.004400248320280632,
+    "zcr_p10": 0.004386739188778521,
+    "mfcc_18_mean": 0.004295661044218349,
+    "dmfcc_16_std": 0.004227942397775935,
+    "melband_072_mean": 0.004207778431079091,
+    "mfcc_18_std": 0.004094866878376452,
+    "dmfcc_13_mean": 0.004013416012961083,
+    "chroma_05_std": 0.003928903177795641,
+    "mfcc_00_std": 0.0039186478803803805,
+    "chroma_09_std": 0.0038588037791649544,
+    "mfcc_04_std": 0.003830388932978322,
+    "mfcc_12_std": 0.0038059022433145667,
+    "chroma_04_std": 0.0036751407797692023,
+    "dmfcc_09_std": 0.003608014589531077,
+    "dmfcc_01_mean": 0.003457979872600667,
+    "dmfcc_03_std": 0.003434578289756668,
+    "melband_003_mean": 0.0033957190214169175,
+    "melband_035_mean": 0.0033194837257827397,
+    "melband_024_mean": 0.0032053513521900956,
+    "melband_086_mean": 0.0031957051202273993,
+    "mfcc_15_mean": 0.0031951759970405905,
+    "dmfcc_03_mean": 0.0031852979423173896,
+    "mfcc_02_std": 0.003158185895752084,
+    "chroma_07_std": 0.0031321378805379617,
+    "onset_mean": 0.003065567541258551,
+    "dmfcc_15_std": 0.003032040102715345,
+    "mfcc_11_std": 0.002828627737323041,
+    "mfcc_01_std": 0.002735623104719236,
+    "dmfcc_08_mean": 0.0027209797068964933,
+    "melband_005_mean": 0.002715469368307945,
+    "melband_094_mean": 0.0027109697690214443,
+    "dmfcc_13_std": 0.0026170681333420468,
+    "chroma_07_mean": 0.0026067619501407885,
+    "melband_047_mean": 0.0025352305819611935,
+    "melband_032_mean": 0.0025305637650810666,
+    "dmfcc_15_mean": 0.002527833205523495,
+    "chroma_05_mean": 0.0024891235339100214,
+    "mfcc_10_std": 0.002485474495892567,
+    "dmfcc_14_mean": 0.0024265064208561678,
+    "tempo_bpm": 0.0024197780186910153,
+    "chroma_01_mean": 0.0023787587507431477,
+    "mfcc_17_mean": 0.0023753164013024194,
+    "melband_021_mean": 0.002343043203044909,
+    "dmfcc_07_std": 0.0023390420753823748,
+    "melband_008_mean": 0.0023085720936537146,
+    "dmfcc_06_mean": 0.002246466739895577,
+    "melband_034_mean": 0.0021544382915776625,
+    "melband_068_mean": 0.002083353759568121,
+    "chroma_11_std": 0.00203177074400085,
+    "melband_087_mean": 0.0020001125124940347,
+    "melband_010_mean": 0.0019941666955480847,
+    "mfcc_09_std": 0.0019938508230681108,
+    "melband_088_mean": 0.001982929687532979,
+    "dmfcc_02_std": 0.001979869963767064,
+    "dmfcc_12_mean": 0.001956615669602344,
+    "mfcc_16_std": 0.001920616147550145,
+    "melband_001_mean": 0.0018969728965827078,
+    "melband_125_mean": 0.0018801796874134409,
+    "dmfcc_19_mean": 0.0018579084366887985,
+    "mfcc_13_mean": 0.0018560689576877358,
+    "melband_119_mean": 0.0018125622976824718,
+    "melband_062_mean": 0.001810298620225253,
+    "melband_009_mean": 0.001805533090045761,
+    "dmfcc_01_std": 0.0017858316497174585,
+    "melband_011_mean": 0.001779565929794524,
+    "melband_099_mean": 0.0017576516852415669,
+    "dmfcc_10_mean": 0.0017420207333981102,
+    "melband_064_mean": 0.001731883261253992,
+    "melband_118_mean": 0.0016842229804993115,
+    "dmfcc_00_std": 0.0016715451393747743,
+    "mfcc_07_std": 0.0016691064071063728,
+    "melband_020_mean": 0.0016648142740400384,
+    "melband_028_mean": 0.0016362491657433633,
+    "mfcc_05_std": 0.0015875169966718798,
+    "melband_007_mean": 0.001572376581581344,
+    "mfcc_00_mean": 0.0015602998349445302,
+    "melband_002_mean": 0.0015496838202966557,
+    "mfcc_09_mean": 0.0015081826284891774,
+    "melband_071_mean": 0.0014918243887163602,
+    "chroma_01_std": 0.0014828034767843446,
+    "dmfcc_12_std": 0.0014470192154924892,
+    "melband_080_mean": 0.0014320542405152356,
+    "melband_023_mean": 0.001412684875234131,
+    "melband_029_mean": 0.0014024341569829513,
+    "mfcc_13_std": 0.0014012568011324965,
+    "melband_100_mean": 0.0013818834739492702,
+    "dmfcc_10_std": 0.001381779455632047,
+    "dmfcc_05_std": 0.0013462956525223761,
+    "melband_084_mean": 0.001345626756497032,
+    "melband_124_mean": 0.0013432966917331498,
+    "melband_095_mean": 0.0013055462285943658,
+    "melband_096_mean": 0.0013045129249472604,
+    "dmfcc_19_std": 0.0012954599566986599,
+    "dmfcc_18_mean": 0.001294667060346015,
+    "melband_109_mean": 0.0012725872615223291,
+    "melband_026_mean": 0.0012548649141328298,
+    "melband_049_mean": 0.0012536714323525767,
+    "dmfcc_11_mean": 0.0012298505241521366,
+    "melband_112_mean": 0.0012109631386310678,
+    "melband_110_mean": 0.001190883695656799,
+    "dmfcc_16_mean": 0.0011553938733391265,
+    "dmfcc_08_std": 0.001147142214883931,
+    "melband_017_mean": 0.0011445100040578964,
+    "melband_058_mean": 0.0011300819903229142,
+    "melband_036_mean": 0.0011016975246281083,
+    "melband_116_mean": 0.0010858402492883578,
+    "melband_055_mean": 0.0010794439621722828,
+    "melband_079_mean": 0.0010718061563953424,
+    "melband_106_mean": 0.001063258210366254,
+    "melband_027_mean": 0.0010185228596954548,
+    "melband_113_mean": 0.0010173166045634875,
+    "melband_089_mean": 0.0010093199566108036,
+    "melband_103_mean": 0.000977500188811744,
+    "melband_018_mean": 0.0009732351078480172,
+    "melband_053_mean": 0.0009702891057082724,
+    "melband_076_mean": 0.0009561724506848623,
+    "melband_043_mean": 0.0009390217181276697,
+    "chroma_11_mean": 0.0008819445667562915,
+    "dmfcc_09_mean": 0.0008784830406398581,
+    "melband_025_mean": 0.000877154442210759,
+    "melband_098_mean": 0.0008626121287759819,
+    "dmfcc_06_std": 0.0008483295808855831,
+    "melband_041_mean": 0.0008205203916692842,
+    "melband_111_mean": 0.0008181414127800355,
+    "chroma_09_mean": 0.0008067284613315083,
+    "melband_065_mean": 0.0008061636993544046,
+    "melband_097_mean": 0.000793169723784019,
+    "melband_120_mean": 0.0007675493704120378,
+    "melband_038_mean": 0.0007635278415856468,
+    "dmfcc_04_std": 0.000761202921342255,
+    "melband_051_mean": 0.0007604700023892192,
+    "melband_102_mean": 0.0007521943945691373,
+    "melband_083_mean": 0.0007396752996555496,
+    "melband_082_mean": 0.0007294184812750131,
+    "melband_078_mean": 0.0007213018256643283,
+    "melband_090_mean": 0.0006911271203123939,
+    "melband_101_mean": 0.0006904255378975099,
+    "melband_093_mean": 0.0006871260643746128,
+    "dmfcc_18_std": 0.0006863985124449198,
+    "dmfcc_17_mean": 0.0006860787055412773,
+    "melband_067_mean": 0.0006852990584477176,
+    "melband_040_mean": 0.000683282139713099,
+    "melband_030_mean": 0.0006743888036566415,
+    "melband_081_mean": 0.0006713441058939472,
+    "melband_054_mean": 0.0006554772234983045,
+    "mfcc_19_mean": 0.0006395452518108462,
+    "melband_061_mean": 0.0006316695331197725,
+    "melband_074_mean": 0.0005935294526157863,
+    "melband_048_mean": 0.0005877766252718714,
+    "melband_114_mean": 0.0005865722850766952,
+    "melband_045_mean": 0.000582260709534424,
+    "melband_057_mean": 0.000579817538243532,
+    "melband_105_mean": 0.0005677957157447235,
+    "melband_091_mean": 0.0005664325241580397,
+    "melband_056_mean": 0.0005454105982930992,
+    "melband_085_mean": 0.0005330880965085972,
+    "melband_069_mean": 0.0005179921848414484,
+    "melband_123_mean": 0.0005157504664144502,
+    "melband_019_mean": 0.0005124128929607203,
+    "melband_115_mean": 0.0005120460534511617,
+    "melband_075_mean": 0.0005010536212019768,
+    "melband_039_mean": 0.00045369248442694783,
+    "melband_044_mean": 0.000434517753831009,
+    "melband_092_mean": 0.000431523064458875,
+    "melband_013_mean": 0.00042382319422644855,
+    "dmfcc_14_std": 0.00042133135670621567,
+    "melband_104_mean": 0.0004040606271724422,
+    "melband_066_mean": 0.0003813566905680489,
+    "melband_122_mean": 0.0003726054580876639,
+    "melband_070_mean": 0.000357606442574654,
+    "melband_060_mean": 0.00033559356745685865,
+    "melband_052_mean": 0.00029956144286007186,
+    "melband_022_mean": 0.00029949176745423887,
+    "melband_121_mean": 0.0002967976887746435,
+    "melband_046_mean": 0.0002959469259330383,
+    "melband_108_mean": 0.00029236631538804393,
+    "melband_107_mean": 0.00028066886008752266,
+    "melband_050_mean": 0.0002638695065813223,
+    "melband_073_mean": 0.00026248070749369145,
+    "melband_126_mean": 0.0002197038587499437,
+    "melband_037_mean": 0.00018013660638363952,
+    "melband_033_mean": 0.00016942229234882963,
+    "melband_077_mean": 0.0001626755532314458,
+    "melband_059_mean": 0.00015021425885928825,
+    "melband_042_mean": 0.00014854796431670514,
+    "melband_117_mean": 0.0001266314745858334,
+    "melband_063_mean": 0.00011179917275417727
+  },
+  "cv": {
+    "folds": 5,
+    "macro_f1_mean": 0.731369843554322,
+    "macro_f1_std": 0.023641100921668087,
+    "macro_f1_scores": [
+      0.7323383623875638,
+      0.7326509686210623,
+      0.7420950092849318,
+      0.7567715064469638,
+      0.6929933710310878
+    ],
+    "accuracy_mean": 0.7290476190476192,
+    "critical_recall_mean": 0.7714285714285714,
+    "seed": 0
+  }
+}

@@ -1,44 +1,15 @@
 #!/usr/bin/env python3
-"""Deterministic procedural corpus generator for the SonicSentinel AI dataset.
+"""Deterministic procedural synthesiser for the ten classes.
 
-WHY THIS FILE EXISTS -- read this before you question the dataset (AI_USAGE.md
-repeats it):
+It began as the whole corpus. In the submitted dataset only 75 originals (50 Aggression and
+25 Panic Scream top-ups, via data/topup_synthetic.py) come from here; the rest are
+real recordings plus 300 TTS help phrases. It is still used for the --smoke training runs.
 
-    The SRS demands >= 3,000 *unique original* clips, 300 per class, each with
-    recorded provenance.  Openly-licensed recordings cannot be guaranteed to
-    reach 300 clips per class for classes like "Gunshot" or "Panic Scream"
-    within the competition window, and inventing counts is a
-    disqualification-level failure.
+Each clip is seeded by its audio_id hash, so every clip is a distinct, reproducible signal,
+and its row says ``source = procedural_synthesis``. Recording conditions (device, distance,
+room, interference, overlap) are simulated in physical order. No split is assigned here.
 
-    So this repository generates its originals *procedurally*: every clip is
-    real audio on disk, written by our own code, reproducible bit-for-bit from
-    its ``audio_id`` and the master seed, and its manifest row says
-    ``source = procedural_synthesis`` and ``original_or_augmented = original``.
-    Nothing here is counted as a field recording and nothing is counted that is
-    not a file on disk.
-
-    Every clip is a *distinct* signal: the synthesis parameters (carrier
-    frequencies, formant targets, event timing, room, device, distance,
-    interference) are drawn from a per-clip RNG seeded by the audio_id hash, so
-    clip 0001 and clip 0002 of a class are different signals, not duplicates.
-
-    Synthesis gives us ground truth by construction and let us cover the SRS
-    variation axes (device, distance, indoor/outdoor, intensity, background
-    interference, echo/reverb, duration, clean/noisy, single vs overlapping).
-
-This generator emits the FROZEN 20-column manifest schema documented in
-``audio_dataset/manifest_schema.md`` (owner: lorena) and consumes the frozen
-class list in ``config/classes.json``.  It does NOT decide splits --
-``audio_dataset/build_split.py`` is the only writer of
-``data/splits/split.json``, so both models are guaranteed to see one split.
-Columns past the frozen 20 are simulation telemetry, preserved as extras.
-
-Usage
------
     python data/generate_corpus.py --per-class 5 --out-root /tmp/smoke
-    python data/generate_corpus.py                # full 300/class corpus
-    python data/generate_corpus.py --per-class 300 \
-        --manifest audio_dataset/manifest_generated.csv
 """
 
 from __future__ import annotations
@@ -57,12 +28,7 @@ import soundfile as sf
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CLASSES_CONFIG = REPO_ROOT / "config" / "classes.json"
 
-# --------------------------------------------------------------------------
-# The ten mandatory classes come from config/classes.json -- the single source
-# of truth (owner: lorena).  Nothing here re-declares them: the SRS lists
-# "adding a new sound category" as a surprise modification, and a duplicated
-# class list is the classic way that breaks.
-# --------------------------------------------------------------------------
+# Classes come from config/classes.json only.
 
 def load_class_config(path: Path = CLASSES_CONFIG) -> dict:
     """Load the frozen class list. Returns the parsed JSON document."""
@@ -90,18 +56,12 @@ AUTHOR_TAG = "sonicsentinel procedural synthesis (data/generate_corpus.py)"
 DATE_FETCHED = "2026-09-23"
 
 
-# ==========================================================================
-# 0.  Determinism helpers
-# ==========================================================================
 def seed_for(audio_id: str, master_seed: int) -> int:
     """Stable 32-bit seed for a clip: same id + seed => same bytes, always."""
     digest = hashlib.sha256(f"{master_seed}:{audio_id}".encode()).hexdigest()
     return int(digest[:8], 16)
 
 
-# ==========================================================================
-# 1.  DSP primitives
-# ==========================================================================
 def _norm(x: np.ndarray) -> np.ndarray:
     peak = float(np.max(np.abs(x))) if x.size else 0.0
     return x / peak if peak > 1e-12 else x
@@ -112,12 +72,8 @@ def _rms(x: np.ndarray) -> float:
 
 
 def _rms_match(x: np.ndarray, target_rms: float) -> np.ndarray:
-    """Scale ``x`` to a target RMS.
-
-    Used when summing components of different crest factor. ``_norm`` matches
-    *peak*, so a fast-decaying transient (a thump, a clap) ends up with an RMS
-    several times that of a sustained noisy component and dominates the mix,
-    which is not what the physics of the event looks like.
+    """Scale ``x`` to a target RMS; peak matching would let a fast transient dominate a sustained
+    component in the mix.
     """
     r = _rms(x)
     return x * (target_rms / r) if r > 1e-12 else x
@@ -208,7 +164,6 @@ def harmonic_stack(
 
 def onset_env(n: int, sr: int, attack: float, decay: float, hold: float = 0.0) -> np.ndarray:
     """Attack / hold / exponential-decay envelope, all times in seconds."""
-    t = np.arange(n) / sr
     env = np.ones(n)
     a = max(int(attack * sr), 1)
     env[:a] = np.linspace(0.0, 1.0, a)
@@ -256,11 +211,8 @@ def reverb(x: np.ndarray, sr: int, rt60: float, wet: float, rng: np.random.Gener
         for i in range(d, len(y)):
             y[i] = -g * out[i] + out[i - d] + g * y[i - d]
         out = y
-    # Reverb must not change the signal's LEVEL -- it changes its temporal
-    # spread. Peak-normalising the mix here (as this function used to) erased
-    # the distance attenuation computed upstream and left every clip in the
-    # corpus at the same peak regardless of how far away the source was.
-    # Match the tail's RMS to the dry signal and let the wet/dry ratio set the mix.
+    # Reverb changes temporal spread, not level: match the tail's RMS to the dry signal (peak-
+    # normalising here erased distance).
     r_in, r_tail = _rms(x), _rms(out)
     if r_tail > 1e-12:
         out = out * (r_in / r_tail)
@@ -275,10 +227,7 @@ def early_reflections(x: np.ndarray, sr: int, rng: np.random.Generator, gain: fl
     return out
 
 
-# ==========================================================================
-# 2.  Per-class synthesisers
-#     Each returns a float array in [-1, 1] of length ``n``.
-# ==========================================================================
+# Per-class synthesisers; each returns a float array in [-1, 1] of length n.
 def gen_machinery_fault(rng, sr, n, profile) -> np.ndarray:
     """Rotating machinery with a bearing knock: tonal hum + periodic impacts."""
     y = np.zeros(n)
@@ -352,7 +301,7 @@ def gen_alarm_siren(rng, sr, n, profile) -> np.ndarray:
         f0 = np.full(n, rng.uniform(600, 1100))
     y = harmonic_stack(n, sr, f0, n_harm=14, detune=0.0008, rng=rng, tilt=0.9)
     if style == "pulse":
-        y *= (spf := (np.sin(2 * math.pi * rng.uniform(1.5, 5.0) * t) > -0.2).astype(float))
+        y *= (np.sin(2 * math.pi * rng.uniform(1.5, 5.0) * t) > -0.2).astype(float)
         y = sps.sosfilt(sps.butter(2, 30 / (sr / 2), output="sos"), y)  # soften edges
     y += 0.12 * bandpass(pink_noise(n, rng), sr, 200, 6000)
     return _norm(y)
@@ -497,8 +446,8 @@ def gen_aggression(rng, sr, n, profile) -> np.ndarray:
     return _norm(y)
 
 
-#: syllable plans for the five permitted help phrases:
-#: (onset consonant kind, vowel, duration fraction, pitch scale)
+#: Syllable plans for the permitted help phrases: (onset kind, vowel, duration fraction, pitch
+#: scale)
 _SYLL = {
     "Help me": [("h", "e", 0.9, 1.0), ("m", "i", 0.7, 0.85)],
     "Somebody help": [("s", "a", 0.5, 1.15), ("b", "o", 0.5, 1.1), ("d", "i", 0.35, 1.05), ("h", "e", 0.9, 0.95)],
@@ -546,9 +495,7 @@ def gen_help_request(rng, sr, n, profile) -> np.ndarray:
     plan = _SYLL[phrase]
     f0_base = rng.uniform(105.0, 210.0)
     total = sum(p[2] for p in plan)
-    # Speech rate, not clip fraction: 3.3-6.2 syllables/s is normal speech, and
-    # a safety phrase is one short utterance inside the window, surrounded by
-    # whatever else the mic heard -- not a phrase stretched to fill the clip.
+    # Normal speech rate (3.3-6.2 syllables/s): one short utterance inside the window.
     speaking_s = min(len(plan) * rng.uniform(0.16, 0.30), 0.85 * n / sr)
     pos = int(rng.uniform(0.02, 0.35) * n)
     y = np.zeros(n)
@@ -560,10 +507,8 @@ def gen_help_request(rng, sr, n, profile) -> np.ndarray:
         f0 = f0_base * pitch * (1.0 - 0.18 * idx / max(len(plan) - 1, 1))  # declining declination
         voiced = _voiced_syllable(rng, sr, ln, f0, vowel)
         if cons:
-            # Fricatives (s/f/h) are sustained, 80-180 ms; plosives (p/b/d/g/k)
-            # are short bursts, 25-70 ms. A fixed 30 ms burst against a vowel of
-            # ~1 s leaves the clip 99.5% vowel energy, so the sibilance that
-            # distinguishes speech from the other classes disappears.
+            # Fricatives last 80-180 ms, plosives 25-70 ms; too-short consonants leave the clip all
+            # vowel.
             dur = rng.uniform(0.08, 0.18) if cons in _FRICATIVES else rng.uniform(0.025, 0.07)
             cl = max(int(dur * sr), 8)
             c = _consonant_burst(rng, sr, cons, cl)
@@ -616,9 +561,7 @@ GENERATORS = {
 }
 
 
-# ==========================================================================
-# 3.  Recording-condition simulation (the SRS variation axes)
-# ==========================================================================
+# Recording-condition simulation (the SRS variation axes)
 DEVICES = {
     # name: (low_cut, high_cut, presence_peak_gain, noise_floor_db)
     "smartphone_builtin": (90.0, 15000.0, 0.12, -52.0),
@@ -644,12 +587,7 @@ DISTANCE_BANDS = {
     "far_20-60m": (20.0, 60.0),
 }
 
-#: Simulated environment -> the values permitted in the frozen manifest's
-#: `recording_environment` column. The SRS requires the dataset to vary across
-#: indoor/outdoor/etc and the manifest must be able to SHOW that variation, but
-#: the column is free text and "synthetic" appears nowhere in the enum. We emit
-#: the room actually modelled and keep our raw name in `sim_environment`; the
-#: row is still honestly marked as synthesised by `source` + `audio_provenance`.
+#: Simulated room -> recording_environment value; the raw name stays in sim_environment.
 ENVIRONMENT_MAP = {
     "indoor_room": "indoor",
     "indoor_hall": "indoor",
@@ -660,11 +598,8 @@ ENVIRONMENT_MAP = {
 
 INTENSITIES = {"quiet": (0.06, 0.18), "normal": (0.3, 0.6), "loud": (0.75, 0.97), "clipped": (0.99, 1.25)}
 
-#: Per-recording gain staging. Real recorders (and phone AGC) do not hold a
-#: fixed gain, so the recorded level is source level - distance loss + this.
-#: Without it, every "quiet far" clip lands at the noise floor and the corpus
-#: is artificially full of unusable rows; with it, distance still dominates
-#: ((1/d)**0.85 spans ~27 dB from 1 m to 40 m) but levels stay usable.
+#: Per-recording gain, as real recorders and phone AGC vary; distance still dominates (~27 dB, 1-40
+#: m).
 RECORDER_GAIN = {"quiet": (0.7, 1.5), "normal": (0.7, 1.5),
                  "loud": (0.6, 1.1), "clipped": (1.1, 2.0)}
 
@@ -692,26 +627,21 @@ def sample_profile(rng: np.random.Generator) -> dict:
 
 
 def simulate_channel(y: np.ndarray, sr: int, rng: np.random.Generator, profile: dict) -> np.ndarray:
-    """Apply intensity, device, distance, room, interference and overlap.
-
-    Order matters and is physical: the source emits a level set by its
-    intensity *at the reference distance*, distance then attenuates it, room
-    and interference colour it, and the microphone's own noise floor is added
-    last -- at the mic, where it physically enters. Doing it in any other
-    order makes the recorded level carry no distance information.
+    """Apply intensity, device, distance, room, interference, overlap and mic noise, in physical
+    order, so the recorded level still carries distance.
     """
-    # --- 1. source level at the reference distance, from the event intensity
+    # 1. source level at the reference distance, from the event intensity
     lo_g, hi_g = INTENSITIES[profile["intensity"]]
     out = _norm(y) * float(rng.uniform(lo_g, hi_g))
 
-    # --- 2. device frequency response --------------------------------
+    # 2. device frequency response
     lo, hi, presence, floor_db = DEVICES[profile["device"]]
     out = highpass(out, sr, lo, order=2)
     out = lowpass(out, sr, hi, order=4)
     if presence > 0:  # presence peak, as most consumer mics have
         out += presence * bandpass(out, sr, 2500, 5000, order=2)
 
-    # --- 3. distance: attenuation + air absorption ----------------------
+    # 3. distance: attenuation + air absorption
     d = max(profile["distance_m"], 0.4)
     out *= (1.0 / d) ** 0.85
     air_cut = float(np.clip(19000.0 / (1.0 + d / 6.0), 1800.0, 19000.0))
@@ -724,11 +654,11 @@ def simulate_channel(y: np.ndarray, sr: int, rng: np.random.Generator, profile: 
     if rt60 > 0.03:
         out = reverb(out, sr, rt60, wet, rng)
 
-    # --- 4. wind / weather (outdoor only) --------------------------------
+    # 4. wind / weather (outdoor only)
     if wind_gain > 0.05:
         out += wind_gain * lowpass(pink_noise(len(out), rng), sr, 600)
 
-    # --- 5. background interference, at the requested SNR ----------------
+    # 5. background interference, at the requested SNR
     snr_db = {"clean": float(rng.uniform(28, 45)), "moderate": float(rng.uniform(14, 26)),
               "noisy": float(rng.uniform(4, 13))}[profile["interference"]]
     bed = gen_background_noise(rng, sr, len(out), profile) if profile["interference"] != "clean" else None
@@ -736,9 +666,7 @@ def simulate_channel(y: np.ndarray, sr: int, rng: np.random.Generator, profile: 
         sig_rms = float(np.sqrt(np.mean(out ** 2)) + 1e-9)
         out += bed * sig_rms / (10 ** (snr_db / 20.0))
 
-    # --- 6. overlapping second event -------------------------------------
-    # NOTE: no _norm() here. Renormalising after mixing would erase the level
-    # the distance stage just computed.
+    # 6. overlapping second event (no renormalising, which would erase distance)
     if profile["overlap"] and profile["overlap_class"]:
         other = profile["overlap_class"]
         if other != "Background Noise":
@@ -747,27 +675,18 @@ def simulate_channel(y: np.ndarray, sr: int, rng: np.random.Generator, profile: 
             ov = gen_background_noise(rng, sr, len(out), profile)
         out = out + _norm(ov) * (10 ** (profile["overlap_gain_db"] / 20.0)) * 0.5
 
-    # --- 7. microphone self-noise, added at the mic ----------------------
-    # After attenuation, so a distant source genuinely arrives at a worse
-    # SNR. Adding it earlier would attenuate it with the signal and leave the
-    # SNR identical at every distance.
+    # 7. mic self-noise, after attenuation, so a distant source arrives at a worse SNR
     noise_floor = 10 ** (floor_db / 20.0)
     out = out + noise_floor * rng.standard_normal(len(out))
 
-    # --- 8. gain staging, then overload -----------------------------------
+    # 8. gain staging, then overload
     out = out * float(rng.uniform(*RECORDER_GAIN[profile["intensity"]]))
     if float(np.max(np.abs(out))) > 0.95:
         out = np.tanh(out) * 0.97  # soft saturation -> audible distortion
     return np.clip(out, -1.0, 1.0).astype(np.float64)
 
 
-# ==========================================================================
-# 4.  Corpus assembly: files, manifest, frozen split
-# ==========================================================================
-# NOTE: this module deliberately contains no split function. Splits are owned by
-# audio_dataset/build_split.py, which writes data/splits/split.json exactly once
-# and is the only writer of the `dataset_split` column. Two split
-# implementations is the drift SRS Step 5 forbids.
+# Corpus assembly (splits are owned by audio_dataset/build_split.py)
 
 
 def write_audio(path: Path, y: np.ndarray, sr: int, channels: int, subtype: str) -> None:
@@ -791,16 +710,8 @@ def build(
     audio_subdir: str = "synthetic",
     id_offset: int = 0,
 ) -> list[dict]:
-    """Generate ``per_class`` originals per class.
-
-    ``audio_subdir``/``id_offset`` exist for one reason: to keep generated clips out of
-    ``audio_dataset/originals/`` and out of the ``SS-<CODE>-0001`` id range, because that
-    is where the REAL field recordings live. Generating over them would silently replace
-    licensed recordings with synthetic ones and then fail at assembly time as a duplicate
-    audio_id -- the failure is loud, but the data loss is not.
-
-    Defaults keep the historical behaviour for a fresh corpus where ``id_offset=0`` and
-    the root contains no real recordings.
+    """Generate ``per_class`` originals per class. ``audio_subdir``/``id_offset`` keep generated
+    clips away from audio_dataset/originals/ and the real recordings' id range.
     """
     rows: list[dict] = []
     for label in CLASSES:
@@ -813,8 +724,7 @@ def build(
             rng = np.random.default_rng(seed_for(audio_id, master_seed))
             profile = sample_profile(rng)
 
-            # ~10% of the corpus is deliberately 44.1/48 kHz and/or stereo so
-            # the preprocessing path (resample, mono) is exercised by real data.
+            # ~10% at 44.1/48 kHz and/or stereo, so resampling and downmixing get exercised.
             if rng.random() < 0.10:
                 sr = int(rng.choice([44100, 48000]))
                 channels = int(rng.choice([1, 2]))
@@ -829,13 +739,11 @@ def build(
             rel = Path(audio_subdir) / slug / filename
             write_audio(out_root / rel, y, sr, channels, "PCM_16")
 
-            # sha256 of the file as written: duplicate/near-duplicate detection
-            # (FR lxxiii) works on the bytes, not on our intent.
+            # sha256 of the bytes as written, for duplicate detection.
             digest = hashlib.sha256((out_root / rel).read_bytes()).hexdigest()
 
-            # Frozen 20 columns, in schema order. Missing/conditional columns are
-            # emitted blank rather than omitted so the assembler never has to
-            # guess. Everything after column 20 is simulation telemetry.
+            # Frozen 20 columns in schema order, blanks rather than omissions; the rest is
+            # simulation telemetry.
             rows.append({
                 "audio_id": audio_id,
                 "filename": str(rel),
@@ -857,7 +765,7 @@ def build(
                 "segment_end_sec": "",
                 "sha256": digest,
                 "dataset_split": "",  # builder fills this; never set it here
-                # ---- extra columns (preserved by build_split.py) ----
+                # extra columns (preserved by build_split.py)
                 "seed": seed_for(audio_id, master_seed),
                 "audio_provenance": "synthetic",
                 "sim_environment": profile["environment"],
@@ -881,7 +789,6 @@ MANIFEST_FIELDS = [
     "recording_environment", "recording_device", "approximate_distance",
     "original_or_augmented", "parent_audio_id", "segment_start_sec",
     "segment_end_sec", "sha256", "dataset_split",
-    # extras
     "seed", "audio_provenance", "sim_environment", "sim_distance_m",
     "sim_intensity", "sim_interference", "notes",
 ]

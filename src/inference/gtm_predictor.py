@@ -40,6 +40,9 @@ class GtmFrontendConfig:
     frontend_id: str = "unverified"
     source: str = "unknown"
     frontend_kind: str = "mel"
+    # "loudest": score the loudest window only. "energy_weighted": score every window at
+    # half-window hops and average the scores weighted by each window's energy.
+    window_aggregation: str = "loudest"
 
     @classmethod
     def load(cls, path: Path) -> "GtmFrontendConfig":
@@ -49,7 +52,7 @@ class GtmFrontendConfig:
                 "This file records the spectrogram parameters GTM's exported model was "
                 "trained with. Without it, server-side GTM inference would run with "
                 "guessed parameters and return confident nonsense. Capture it from the "
-                "GTM export (documentation/research/gtm_audio_export_internals.md "
+                "GTM export (gtm_model/upload_package/README.md "
                 "explains where) before enabling the server-side GTM path."
             )
         with path.open(encoding="utf-8") as fh:
@@ -66,6 +69,7 @@ class GtmFrontendConfig:
             frontend_id=str(raw.get("frontend_id", "unverified")),
             source=str(raw.get("source", "unknown")),
             frontend_kind=str(raw.get("frontend_kind", "mel")),
+            window_aggregation=str(raw.get("window_aggregation", "loudest")),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -81,14 +85,13 @@ class GtmFrontendConfig:
             "frontend_id": self.frontend_id,
             "source": self.source,
             "frontend_kind": self.frontend_kind,
+            "window_aggregation": self.window_aggregation,
         }
 
 
 def compute_spectrogram(samples: Any, config: GtmFrontendConfig) -> Any:
-    """Recompute GTM's input spectrogram from a mono waveform.
-
-    Implemented with numpy + librosa so it is testable and inspectable. The parameters are
-    the config's, never literals, so a corrected frontend means editing JSON, not code.
+    """Recompute the TM model's input spectrogram from a mono waveform, with parameters from
+    frontend_config.json.
     """
     import numpy as np
 
@@ -153,12 +156,45 @@ def compute_spectrogram(samples: Any, config: GtmFrontendConfig) -> Any:
     return mel.astype("float32")
 
 
-class GtmModelPredictor:
-    """Serves the exported Teachable Machine audio model.
+def select_gtm_window(samples: Any, sample_rate: int, config: GtmFrontendConfig) -> Any:
+    """Resample to the TM rate and return the loudest ``window_sec`` slice.
 
-    Backends: the converted Keras model if it can be loaded. Loading failure is loud — a
-    silent fallback to a dummy would fabricate the second model's opinion, which is an
-    explicit disqualification in the SRS integrity rules.
+    The loudest second, not the first, so an event that starts two seconds in is not scored on
+    silence. make_gtm_imports.py uses this same function on the training clips.
+    """
+    import numpy as np
+
+    y = np.asarray(samples, dtype="float32").ravel()
+    if sample_rate != config.sample_rate:
+        import librosa
+
+        y = librosa.resample(y, orig_sr=sample_rate,
+                             target_sr=config.sample_rate).astype("float32")
+    n = int(round(config.window_sec * config.sample_rate))
+    if y.size <= n:
+        return y
+    start = window_starts(y, n)[0]
+    return y[start:start + n]
+
+
+def window_starts(y: Any, n: int) -> list[int]:
+    """Start offsets of every ``n``-sample window at half-window hops, loudest first.
+
+    Ties keep the earlier window, so the loudest-window rule is deterministic.
+    """
+    import numpy as np
+
+    if y.size <= n:
+        return [0]
+    starts = list(range(0, y.size - n + 1, max(1, n // 2)))
+    energy = [float(np.sum(np.square(y[s:s + n], dtype=np.float64))) for s in starts]
+    order = sorted(range(len(starts)), key=lambda i: (-energy[i], i))
+    return [starts[i] for i in order]
+
+
+class GtmModelPredictor:
+    """Serves the exported Teachable Machine model (converted to Keras). A load failure raises;
+    a silent fallback would fabricate the second model's opinion.
     """
 
     def __init__(
@@ -182,7 +218,6 @@ class GtmModelPredictor:
         self.verified = verified
         self.metrics = metrics or {}
 
-    # -- loading ---------------------------------------------------------------------
 
     @classmethod
     def load(cls, gtm_dir: str | Path = DEFAULT_GTM_DIR) -> "GtmModelPredictor":
@@ -223,9 +258,13 @@ class GtmModelPredictor:
             with metrics_path.open(encoding="utf-8") as fh:
                 metrics = json.load(fh)
 
+        # Every TM export shares one frontend, so the export's own timestamp tells models apart;
+        # the aggregation mode is part of the version because it changes the predictions.
+        stamp = "".join(ch for ch in str(metadata.get("timeStamp", ""))[:16] if ch.isalnum())
         version = str(metadata.get("modelVersion")
                       or metadata.get("version")
-                      or f"gtm-{frontend.frontend_id}")
+                      or (f"tm-{stamp}" + ("-ew" if frontend.window_aggregation == "energy_weighted" else ""))
+                      if stamp else f"gtm-{frontend.frontend_id}")
 
         return cls(model, frontend, list(labels), version, backend=backend,
                    model_dir=gtm_dir, verified=verified, metrics=metrics)
@@ -255,17 +294,14 @@ class GtmModelPredictor:
             f"no loadable GTM network in {gtm_dir}. Convert the exported TF.js model:\n"
             f"  tensorflowjs_converter --input_format tfjs_layers_model "
             f"--output_format keras {gtm_dir}/model.json {gtm_dir}/gtm_model.h5\n"
-            "See documentation/research/gtm_audio_export_internals.md for the exact "
+            "See gtm_model/upload_package/README.md for the exact "
             "procedure and its known failure modes."
         )
 
-    # -- prediction ------------------------------------------------------------------
 
     def predict(self, source: AudioSource, preprocessor: Any) -> PredictionResult:
-        """Classify audio with the GTM model. Audio in, confidences out — nothing else.
-
-        Note the signature: there is deliberately no way to pass the Python model's
-        opinion in here.
+        """Classify audio with the TM model. There is deliberately no parameter for the Python
+        result.
         """
         import time
 
@@ -283,10 +319,10 @@ class GtmModelPredictor:
         import numpy as np
         import time
 
-        window = self._select_window(preprocessed)
-        spectrogram = compute_spectrogram(window, self.frontend)
-
-        model_input = spectrogram[None, ..., None]
+        windows, weights = self._windows(preprocessed)
+        spectrogram = compute_spectrogram(windows[0], self.frontend)
+        model_input = np.stack([spectrogram] + [compute_spectrogram(w, self.frontend)
+                                                for w in windows[1:]])[..., None]
         shape = self.frontend.model_input_shape
         if shape and list(model_input.shape[1:]) != [value for value in shape if value is not None][-3:]:
             raise ModelLoadError(
@@ -299,7 +335,8 @@ class GtmModelPredictor:
 
         if isinstance(output, (list, tuple)):
             output = output[0]
-        raw = np.asarray(output).ravel()
+        scores = np.asarray(output).reshape(len(windows), -1)
+        raw = (scores * (weights / weights.sum())[:, None]).sum(axis=0)
 
         if raw.size != len(self.class_names):
             raise ModelLoadError(
@@ -323,34 +360,34 @@ class GtmModelPredictor:
                 "backend": self.backend,
                 "frontend_verified": self.verified,
                 "spectrogram_shape": list(spectrogram.shape),
+                "windows_scored": len(windows),
+                "window_aggregation": self.frontend.window_aggregation,
             },
         )
 
     def _select_window(self, preprocessed: PreprocessedAudio) -> Any:
-        """GTM was trained on short fixed windows; pick a matching slice deterministically.
+        return select_gtm_window(preprocessed.samples, int(preprocessed.sample_rate),
+                                 self.frontend)
 
-        The loudest window is chosen rather than the first, because a clip whose event
-        starts two seconds in would otherwise be scored on silence.
-        """
+    def _windows(self, preprocessed: PreprocessedAudio) -> tuple[list[Any], Any]:
+        """The windows to score (loudest first) and their weights."""
         import numpy as np
 
+        if self.frontend.window_aggregation != "energy_weighted":
+            return [self._select_window(preprocessed)], np.ones(1)
         y = np.asarray(preprocessed.samples, dtype="float32").ravel()
-        if preprocessed.sample_rate != self.frontend.sample_rate:
+        if int(preprocessed.sample_rate) != self.frontend.sample_rate:
             import librosa
 
-            y = librosa.resample(y, orig_sr=preprocessed.sample_rate,
+            y = librosa.resample(y, orig_sr=int(preprocessed.sample_rate),
                                  target_sr=self.frontend.sample_rate).astype("float32")
         n = int(round(self.frontend.window_sec * self.frontend.sample_rate))
         if y.size <= n:
-            return y
-
-        hop = max(1, n // 2)
-        best_start, best_energy = 0, -1.0
-        for start in range(0, y.size - n + 1, hop):
-            energy = float(np.sum(np.square(y[start:start + n])))
-            if energy > best_energy:
-                best_energy, best_start = energy, start
-        return y[best_start:best_start + n]
+            return [y], np.ones(1)
+        starts = window_starts(y, n)
+        windows = [y[s:s + n] for s in starts]
+        energy = np.array([float(np.sum(np.square(w, dtype=np.float64))) for w in windows])
+        return windows, (energy if energy.sum() > 0 else np.ones(len(windows)))
 
     def describe(self) -> dict[str, Any]:
         return {
@@ -371,13 +408,8 @@ def compare_frontend_agreement(
     *,
     tolerance: float = 0.05,
 ) -> dict[str, Any]:
-    """Prove the server-side GTM frontend reproduces the browser's.
-
-    `recorded` is captured from the GTM project page in the browser — for each clip, GTM's
-    own predicted class and per-class confidences. We then run the same clip through this
-    module and require the argmax to match and the confidences to stay within tolerance.
-
-    Without this check, "we integrated the exported GTM model" is an unverified claim.
+    """Check the server-side frontend against predictions recorded in the browser for the same clips
+    (argmax must match, confidences within tolerance). Until this passes, frontend_verified stays false.
     """
     from .contract import AudioSource
 

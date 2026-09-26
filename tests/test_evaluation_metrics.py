@@ -47,9 +47,7 @@ def perfect_predictions(n_per_class: int = 10):
     return y_true, y_pred
 
 
-# --------------------------------------------------------------------------------------
 # The confusion matrix
-# --------------------------------------------------------------------------------------
 
 def test_confusion_matrix_axes_are_actual_rows_predicted_columns():
     """The classic transposition bug, pinned down by an asymmetric example."""
@@ -94,7 +92,6 @@ def test_per_class_scores_are_zero_not_perfect_when_a_class_is_never_predicted()
 
     Skipping it would let a model that abandons a hard class report a high macro-F1.
     """
-    labels = ["A", "B", "C"]
     matrix = np.asarray([[5, 0, 0], [0, 5, 0], [5, 0, 0]])  # C never predicted
     scores = per_class_scores(matrix)
 
@@ -104,9 +101,7 @@ def test_per_class_scores_are_zero_not_perfect_when_a_class_is_never_predicted()
     assert scores["support"][2] == 5
 
 
-# --------------------------------------------------------------------------------------
 # The core metrics
-# --------------------------------------------------------------------------------------
 
 def test_a_perfect_model_scores_one_everywhere():
     y_true, y_pred = perfect_predictions()
@@ -222,9 +217,7 @@ def test_empty_input_is_refused():
         compute_metrics([], [], CLASSES, CRITICAL)
 
 
-# --------------------------------------------------------------------------------------
 # Severe errors — ranked by consequence
-# --------------------------------------------------------------------------------------
 
 def test_severe_errors_separate_silent_misses_from_misattributed_alerts():
     """A gunshot called 'Vehicle Horn' alerts someone. Called 'Background Noise', nobody
@@ -261,9 +254,7 @@ def test_severe_errors_is_empty_when_no_critical_classes_are_configured():
     assert result.critical_recall == 0.0
 
 
-# --------------------------------------------------------------------------------------
 # The floors
-# --------------------------------------------------------------------------------------
 
 def test_a_strong_model_meets_the_floors():
     y_true, y_pred = perfect_predictions()
@@ -329,9 +320,7 @@ def test_a_missing_floor_is_skipped_not_treated_as_zero():
     assert failures == []
 
 
-# --------------------------------------------------------------------------------------
 # The leakage guards
-# --------------------------------------------------------------------------------------
 
 def _records(split: str, n: int = 3, status: str = "original"):
     return [
@@ -388,9 +377,7 @@ def test_the_guard_message_names_the_evaluated_model():
         )
 
 
-# --------------------------------------------------------------------------------------
 # Driving a model through the harness
-# --------------------------------------------------------------------------------------
 
 def test_evaluate_predictions_accepts_a_bare_class_name():
     records = _records("test", 4)
@@ -449,9 +436,7 @@ def test_the_split_can_be_bypassed_only_deliberately():
     assert result.accuracy == pytest.approx(1.0)
 
 
-# --------------------------------------------------------------------------------------
 # Serialisation — the report reads this
-# --------------------------------------------------------------------------------------
 
 def test_to_dict_round_trips_through_json():
     import json

@@ -1,37 +1,14 @@
 #!/usr/bin/env python3
-"""
-SonicSentinel AI — canonical dataset split builder.
+"""The one train/validation/test split both models are trained and evaluated on (SRS Step 5,
+FR xvii-xviii).
 
-Owner: lorena.  Authority: SRS v1.0 Step 5, FR xvii, FR xviii, Deliverable 3.
+- Clips are grouped by source recording (source_group) and each group goes to one split, so
+  slices, takes or rendered variants of one recording never straddle train and test.
+- Order comes from sha256(f"{seed}:{key}"), not random.shuffle, so every machine and Python
+  version reproduces the split byte for byte.
+- Stratified per class: 300 originals per class gives exactly 210/45/45.
+- Augmented clips and segments inherit their parent's split and never count as originals.
 
-PURPOSE
--------
-Produce THE ONE train/validation/test assignment that *both* the Python model and the
-Google Teachable Machine model are trained and evaluated on. SRS Step 5:
-
-    "The same underlying split must be used for both models."
-    "Validation and testing samples must not be used for either model's training."
-    "All segments derived from one original recording must remain in the same dataset split."
-
-If two models are judged on different splits, the comparison is worthless and the
-competition integrity rules are broken. This file exists so that cannot happen by accident.
-
-DESIGN DECISIONS (and why)
---------------------------
-1. Assignment depends ONLY on `audio_id`, never on arrival order, file size or row order.
-   The split is frozen *before* the audio is fetched, so a later download cannot bias it.
-2. Ordering uses sha256(f"{seed}:{audio_id}"), not `random.shuffle`. Python's Mersenne
-   Twister shuffle is stable in practice but is not a documented cross-version guarantee;
-   a content hash is deterministic on every machine and every Python ever. An evaluator
-   re-running this must get byte-identical output.
-3. Stratified per class, so each class contributes 70/15/15. With 300 originals per class
-   that is exactly 210/45/45 per class -> 2100/450/450 overall (SRS Hint).
-4. Lineage: an augmented clip or a segment inherits its *parent recording's* split.
-   Segments are therefore never split across train/test, which would be leakage.
-5. Augmented rows are excluded from the original counts entirely (SRS: "Augmented
-   recordings must not be counted as unique original clips").
-
-Run:
     .venv/bin/python audio_dataset/build_split.py --manifest audio_dataset/manifest.csv --strict
 """
 
@@ -46,12 +23,13 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Iterable
 
-# --------------------------------------------------------------------------------------
 # Constants
-# --------------------------------------------------------------------------------------
 
 SEED = 20260923
-ALGORITHM = "sha256-order-v1"
+# v2 (26 Sep 2026): whole source groups are assigned together. v1 split clip by clip, and
+# an audit found 125 source recordings (527 clips) and 37 synthetic voice+phrase pairs
+# (116 clips) with members in more than one partition. See documentation/devlog.md.
+ALGORITHM = "sha256-order-v2-source-groups"
 SPLIT_RATIOS = (0.70, 0.15, 0.15)
 SPLIT_NAMES = ("train", "val", "test")
 
@@ -81,15 +59,11 @@ class ManifestError(Exception):
     """Raised when the manifest cannot produce a trustworthy split."""
 
 
-# --------------------------------------------------------------------------------------
 # Loading and validation
-# --------------------------------------------------------------------------------------
 
 def load_classes(classes_path: Path | None = None) -> dict[str, dict[str, Any]]:
-    """Load the canonical class list from config/classes.json.
-
-    Class names must never be hard-coded in modelling code: the SRS lists "adding a new
-    sound category" as a surprise modification the evaluators may demand.
+    """The class list from config/classes.json; never hard-coded, since a new category may be
+    demanded live.
     """
     path = classes_path or (REPO_ROOT / "config" / "classes.json")
     with path.open(encoding="utf-8") as fh:
@@ -108,8 +82,8 @@ def load_manifest(manifest_path: Path) -> list[dict[str, str]]:
             raise ManifestError("manifest is empty (no header row)")
         missing = [c for c in REQUIRED_COLUMNS if c not in reader.fieldnames]
         if missing:
-            # A bare "missing columns" list sends people off renaming their whole
-            # generator. Name the contract, the rename map, and an escape hatch.
+            # Name the contract and the rename map; a bare list of missing columns is not enough to
+            # act on.
             renames = {
                 "sample_rate": "sampling_rate",
                 "approx_distance_m": "approximate_distance",
@@ -208,20 +182,44 @@ def validate_records(records: list[dict[str, str]], classes: dict[str, dict[str,
         raise ManifestError(f"manifest validation failed ({len(problems)} problems):\n  - {head}{more}")
 
 
-# --------------------------------------------------------------------------------------
 # Deterministic ordering
-# --------------------------------------------------------------------------------------
 
 def _order_key(seed: int, audio_id: str) -> str:
     """Deterministic, platform- and version-independent ordering key."""
     return hashlib.sha256(f"{seed}:{audio_id}".encode("utf-8")).hexdigest()
 
 
-def split_counts(n: int, ratios: tuple[float, float, float] = SPLIT_RATIOS) -> tuple[int, int, int]:
-    """Split n items into train/val/test counts that always sum to n.
+def source_group(rec: dict[str, str]) -> str:
+    """The recording a clip really came from; every clip in a group shares one split.
 
-    With n=300 this returns exactly (210, 45, 45), matching the SRS Hint.
+    UrbanSound8K ``<fsID>-<class>-<occ>-<slice>`` and ESC-50 ``<fold>-<fsID>-<take>-<target>``
+    group by Freesound ID, FSD50K by its freesound_id, synthetic help phrases by voice + phrase;
+    anything else is its own group.
     """
+    import re
+
+    source = rec.get("source", "") or ""
+    original = rec.get("original_filename", "") or ""
+    freesound = (rec.get("freesound_id", "") or "").split(".")[0]
+    if source.startswith("UrbanSound8K"):
+        match = re.match(r"(\d+)-", original)
+        if match:
+            return f"freesound:{match.group(1)}"
+    if source.startswith("ESC-50"):
+        match = re.match(r"\d+-(\d+)-", original)
+        if match:
+            return f"freesound:{match.group(1)}"
+    if freesound and freesound.lower() != "nan":
+        return f"freesound:{freesound}"
+    voice, phrase = rec.get("voice_name", "") or "", rec.get("phrase", "") or ""
+    if voice and phrase:
+        words = re.sub(r"[^a-z ]", "", phrase.lower()).split()
+        return f"tts:{voice}:{' '.join(words)}"
+    return f"clip:{rec['audio_id']}"
+
+
+def split_counts(n: int, ratios: tuple[float, float, float] = SPLIT_RATIOS) -> tuple[int, int, int]:
+    """Split n into train/val/test counts that always sum to n; (210, 45, 45) for n=300."""
     n_train = int(round(n * ratios[0]))
     n_val = int(round(n * ratios[1]))
     n_train = min(n_train, n)
@@ -230,9 +228,7 @@ def split_counts(n: int, ratios: tuple[float, float, float] = SPLIT_RATIOS) -> t
     return n_train, n_val, n_test
 
 
-# --------------------------------------------------------------------------------------
 # Split construction
-# --------------------------------------------------------------------------------------
 
 def build_split(
     records: list[dict[str, str]],
@@ -248,32 +244,53 @@ def build_split(
 
     assignments: dict[str, dict[str, str]] = {}
 
-    # --- Pass 1: originals, stratified per class -------------------------------------
-    per_class_originals: dict[str, list[str]] = defaultdict(list)
+    # Pass 1: originals, stratified per class, whole source groups at a time
+    groups: dict[str, list[str]] = defaultdict(list)
     for rec in originals:
-        per_class_originals[rec["class_label"].strip()].append(rec["audio_id"])
-
+        groups[source_group(rec)].append(rec["audio_id"])
     counts_by_split: dict[str, Counter[str]] = {s: Counter() for s in SPLIT_NAMES}
+    per_class_total = Counter(r["class_label"].strip() for r in originals)
+    remaining_by_class = {label: dict(zip(SPLIT_NAMES, split_counts(n)))
+                          for label, n in per_class_total.items()}
 
-    for label in sorted(per_class_originals):
-        ids = sorted(per_class_originals[label], key=lambda a: _order_key(seed, a))
-        n_train, n_val, _ = split_counts(len(ids))
-        buckets = {
-            "train": ids[:n_train],
-            "val": ids[n_train:n_train + n_val],
-            "test": ids[n_train + n_val:],
-        }
-        for split_name, bucket in buckets.items():
-            for audio_id in bucket:
-                assignments[audio_id] = {
-                    "split": split_name,
-                    "class_label": label,
-                    "role": ORIGINAL,
-                }
-                counts_by_split[split_name][label] += 1
+    # A recording used under two labels (Freesound 43806: ESC-50 siren and FSD50K Aggression) goes
+    # to train.
+    mixed_groups = []
+    per_class_groups: dict[str, list[tuple[str, list[str]]]] = defaultdict(list)
+    for key, members in groups.items():
+        labels = {by_id[a]["class_label"].strip() for a in members}
+        if len(labels) > 1:
+            mixed_groups.append(key)
+            for audio_id in members:
+                label = by_id[audio_id]["class_label"].strip()
+                assignments[audio_id] = {"split": "train", "class_label": label,
+                                         "role": ORIGINAL, "group": key}
+                counts_by_split["train"][label] += 1
+                remaining_by_class[label]["train"] -= 1
+            continue
+        per_class_groups[labels.pop()].append((key, sorted(members)))
 
-    # --- Pass 2: derived rows inherit their parent's split ---------------------------
-    # Segments of a recording and augmented copies must never straddle train/test.
+    for label in sorted(per_class_groups):
+        target = dict(zip(SPLIT_NAMES, split_counts(per_class_total[label])))
+        remaining = remaining_by_class[label]
+        # Biggest groups first, so they still fit somewhere; ties in a fixed hashed order.
+        ordered = sorted(per_class_groups[label],
+                         key=lambda g: (-len(g[1]), _order_key(seed, g[0])))
+        for key, members in ordered:
+            fits = [s for s in SPLIT_NAMES if remaining[s] >= len(members)]
+            if not fits:
+                raise ManifestError(f"{label}: group {key} ({len(members)} clips) does not fit "
+                                    f"the remaining quotas {remaining}")
+            # The proportionally emptiest partition takes the group, spreading multi-clip recordings
+            # out.
+            chosen = max(fits, key=lambda s: (remaining[s] / target[s], -SPLIT_NAMES.index(s)))
+            remaining[chosen] -= len(members)
+            for audio_id in members:
+                assignments[audio_id] = {"split": chosen, "class_label": label,
+                                         "role": ORIGINAL, "group": key}
+                counts_by_split[chosen][label] += 1
+
+    # Pass 2: segments and augmented copies inherit their parent's split.
     for rec in derived:
         parent = rec["parent_audio_id"].strip()
         parent_split = assignments[parent]["split"]
@@ -299,6 +316,9 @@ def build_split(
         "counts": {
             "originals_by_split": {s: dict(counts_by_split[s]) for s in SPLIT_NAMES},
             "originals_totals": {s: sum(counts_by_split[s].values()) for s in SPLIT_NAMES},
+            "source_groups": len(groups),
+            "mixed_class_groups": sorted(mixed_groups),
+            "multi_clip_groups": sum(1 for m in groups.values() if len(m) > 1),
             "derived_by_split": {
                 s: sum(1 for a in assignments.values() if a["split"] == s and a["role"] != ORIGINAL)
                 for s in SPLIT_NAMES
@@ -332,9 +352,7 @@ def assert_strict(records: list[dict[str, str]], classes: dict[str, dict[str, An
         )
 
 
-# --------------------------------------------------------------------------------------
 # Persistence
-# --------------------------------------------------------------------------------------
 
 def write_split(split: dict[str, Any], out_path: Path, ids_dir: Path) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -371,9 +389,7 @@ def write_manifest_with_split(records: list[dict[str, str]], split: dict[str, An
             writer.writerow({c: row.get(c, "") for c in columns})
 
 
-# --------------------------------------------------------------------------------------
 # CLI
-# --------------------------------------------------------------------------------------
 
 def main(argv: Iterable[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Build the canonical SonicSentinel split.")
@@ -411,9 +427,7 @@ def main(argv: Iterable[str] | None = None) -> int:
                                  if args.manifest.is_relative_to(REPO_ROOT) else args.manifest)
 
     write_split(split, args.out, args.ids_dir)
-    # The canonical manifest must carry the resolved dataset_split column so
-    # manifest.csv + split.json stay one consistent pair of frozen artifacts
-    # (the QA tests read manifest.csv directly). Rewrite it in place.
+    # Rewrite manifest.csv with the resolved dataset_split, so it and split.json stay one pair.
     write_manifest_with_split(records, split, args.manifest)
     # Keep a frozen-input copy (pre-split manifest) for provenance audits.
     write_manifest_with_split(records, split, REPO_ROOT / "audio_dataset" / "manifest_with_split.csv")

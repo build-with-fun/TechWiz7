@@ -1,6 +1,5 @@
 """Correctness tests for the 254-dim acoustic feature extractor (SRS Step 6, FR xx).
 
-Owner: taha (Audio DSP & feature engineering).
 
 These tests are the guard on criterion 4 ("feature matrix complete with no NaN"): if the
 extractor ever changes width, order, or starts emitting NaN/inf, a model trained on the
@@ -34,9 +33,7 @@ SR = 16000
 LIVE_WINDOW_SECONDS = 3.0
 
 
-# ----------------------------------------------------------------------------------------------
 # signals with analytically known answers
-# ----------------------------------------------------------------------------------------------
 
 def _time(seconds: float, sr: int = SR) -> np.ndarray:
     return np.arange(int(round(seconds * sr)), dtype=np.float64) / sr
@@ -65,9 +62,7 @@ def mix(*signals: np.ndarray) -> np.ndarray:
     return (out / len(signals)).astype(np.float32)
 
 
-# ----------------------------------------------------------------------------------------------
 # schema contract -- the frozen 254 columns
-# ----------------------------------------------------------------------------------------------
 
 
 def test_the_schema_is_exactly_254_columns_and_no_wider():
@@ -101,9 +96,7 @@ def test_extractor_returns_one_row_in_the_same_column_order():
     assert list(desc["columns"]) == list(feature_columns())
 
 
-# ----------------------------------------------------------------------------------------------
 # criterion 4: complete matrix, never NaN or inf
-# ----------------------------------------------------------------------------------------------
 
 HOSTILE_SIGNALS = [
     ("digital silence", silence(1.0)),
@@ -148,9 +141,7 @@ def test_a_real_clip_on_disk_extracts_finitely():
     assert bool(np.isfinite(vec).all())
 
 
-# ----------------------------------------------------------------------------------------------
 # analytic correctness -- the numbers mean what they say
-# ----------------------------------------------------------------------------------------------
 
 
 def _column(name: str) -> int:
@@ -218,7 +209,6 @@ def test_two_tones_a_known_interval_apart_are_resolvable():
     lo_band = int(np.argmax(bands))
     top = bands[lo_band]
     # a second, separate peak above 1.5 kHz worth at least a third of the first
-    upper = bands[80:]
     assert bands[lo_band + 10 :].max() > 0.33 * top
     # the low peak must actually sit low in the band array for a 500 Hz tone
     assert lo_band < 45
@@ -240,9 +230,7 @@ def test_the_extractor_is_deterministic():
     assert np.array_equal(a, b)
 
 
-# ----------------------------------------------------------------------------------------------
 # the live budget -- warm extraction must fit inside the window
-# ----------------------------------------------------------------------------------------------
 
 
 def test_warm_extraction_fits_inside_the_3s_live_budget():
@@ -262,10 +250,7 @@ def test_warm_extraction_fits_inside_the_3s_live_budget():
         timings.append(time.perf_counter() - start)
 
     median_ms = 1000.0 * float(np.median(timings))
-    # 3000 ms budget for the whole window; extraction claims well under a tenth of it.
-    # The assertion allows one re-measure: when the suite runs alongside CPU-heavy
-    # training jobs the OS scheduler inflates the median without any code change, so
-    # a saturated box gets a fresh chance rather than a false regression.
+    # 3 s budget per window; one re-measure is allowed because a saturated CPU inflates the median.
     if median_ms >= 300.0:
         timings = []
         for _ in range(10):

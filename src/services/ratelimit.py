@@ -1,16 +1,8 @@
-"""A small sliding-window rate limiter.
+"""In-process sliding-window rate limiter for logins and uploads (limits in config/auth.json).
 
-Owner: sara.  Implements the limits in ``config/auth.json`` and the contract §4 -- the
-login limiter (FR i, FR lxxviii) and the upload limiter.
-
-Deliberately in-process rather than in Redis: this application is served by a single
-gunicorn worker set behind one host, the deployment instructions pin it that way, and a
-second moving part during a live demo is a liability. The trade-off is recorded here so it
-is a decision rather than an oversight: **if the app is ever scaled to several machines,
-these counters must move to a shared store or each machine gets its own allowance.**
-
-The window is measured in real time (``time.monotonic``), so a clock adjustment cannot
-grant or deny a request.
+In memory on purpose for a single-host deployment. If the app ever runs on several
+machines, these counters must move to a shared store or each gets its own allowance.
+Uses time.monotonic, so a clock change cannot grant or deny a request.
 """
 
 from __future__ import annotations
@@ -36,11 +28,7 @@ class LimitResult:
 
 @dataclass
 class RateLimiter:
-    """N events per ``window_seconds``, separately for each key.
-
-    Keys are caller-chosen -- an IP, a username, or ``f"{user_id}:upload"`` -- so one
-    limiter serves every limit in the config by being asked with a different prefix.
-    """
+    """N events per ``window_seconds`` for each caller-chosen key (IP, username, user:upload)."""
 
     limit: int
     window_seconds: float
@@ -48,10 +36,8 @@ class RateLimiter:
     _lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
 
     def check(self, key: Hashable) -> LimitResult:
-        """Record an attempt and say whether it is allowed.
-
-        A refused attempt is *not* recorded, so a client that backs off is released on
-        schedule rather than being pushed further out by its own retries.
+        """Record an attempt and say whether it is allowed; refused attempts are not recorded, so
+        backing off works.
         """
         now = time.monotonic()
         cutoff = now - self.window_seconds
@@ -91,11 +77,7 @@ class RateLimiter:
                 self._hits.pop(key, None)
 
     def _prune(self, now: float) -> None:
-        """Drop keys that have gone quiet, so the counters cannot grow without bound.
-
-        An unbounded dict keyed on client-supplied values is itself a memory-exhaustion
-        vector; this makes the limiter's own footprint bounded.
-        """
+        """Drop idle keys so a dict keyed on client-supplied values cannot grow without bound."""
         if len(self._hits) < 512:
             return
         cutoff = now - self.window_seconds

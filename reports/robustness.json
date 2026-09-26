@@ -1,0 +1,179 @@
+{
+  "generated_at": "2026-09-26T08:57:37.695675+00:00",
+  "models": {
+    "python": "cnn14_embedding+mlp v2.0.0-current",
+    "gtm": "vgtm-browser-fft-2048-43x232-zscore-v1"
+  },
+  "part_a": {
+    "per_class": 15,
+    "conditions": {
+      "clean": {
+        "clips": 150,
+        "rejected_as_unusable": 0,
+        "python_accuracy": 0.74,
+        "gtm_accuracy": 0.37333333333333335,
+        "python_critical_recall": 0.8133333333333334,
+        "sent_to_review": 135,
+        "seconds": 49.8
+      },
+      "background_noise_10dB": {
+        "clips": 150,
+        "rejected_as_unusable": 0,
+        "python_accuracy": 0.6733333333333333,
+        "gtm_accuracy": 0.37333333333333335,
+        "python_critical_recall": 0.6933333333333334,
+        "sent_to_review": 133,
+        "seconds": 55.9
+      },
+      "background_noise_0dB": {
+        "clips": 150,
+        "rejected_as_unusable": 0,
+        "python_accuracy": 0.62,
+        "gtm_accuracy": 0.29333333333333333,
+        "python_critical_recall": 0.6,
+        "sent_to_review": 139,
+        "seconds": 47.0
+      },
+      "low_volume_-30dB": {
+        "clips": 150,
+        "rejected_as_unusable": 40,
+        "python_accuracy": 0.5466666666666666,
+        "gtm_accuracy": 0.26666666666666666,
+        "python_critical_recall": 0.7833333333333333,
+        "sent_to_review": 103,
+        "seconds": 38.1
+      },
+      "echo_rt60_0.8s": {
+        "clips": 150,
+        "rejected_as_unusable": 0,
+        "python_accuracy": 0.68,
+        "gtm_accuracy": 0.42,
+        "python_critical_recall": 0.76,
+        "sent_to_review": 129,
+        "seconds": 41.6
+      },
+      "phone_device": {
+        "clips": 150,
+        "rejected_as_unusable": 1,
+        "python_accuracy": 0.7066666666666667,
+        "gtm_accuracy": 0.37333333333333335,
+        "python_critical_recall": 0.7466666666666667,
+        "sent_to_review": 136,
+        "seconds": 48.5
+      },
+      "distant_20m": {
+        "clips": 150,
+        "rejected_as_unusable": 41,
+        "python_accuracy": 0.5266666666666666,
+        "gtm_accuracy": 0.3,
+        "python_critical_recall": 0.7627118644067796,
+        "sent_to_review": 98,
+        "seconds": 30.8
+      },
+      "partial_50pct": {
+        "clips": 150,
+        "rejected_as_unusable": 4,
+        "python_accuracy": 0.6333333333333333,
+        "gtm_accuracy": 0.32,
+        "python_critical_recall": 0.684931506849315,
+        "sent_to_review": 137,
+        "seconds": 29.3
+      },
+      "overlap_-6dB": {
+        "clips": 150,
+        "rejected_as_unusable": 0,
+        "python_accuracy": 0.5533333333333333,
+        "gtm_accuracy": 0.32666666666666666,
+        "python_critical_recall": 0.5866666666666667,
+        "sent_to_review": 140,
+        "seconds": 41.9
+      },
+      "mp3_64kbps": {
+        "clips": 150,
+        "rejected_as_unusable": 0,
+        "python_accuracy": 0.7333333333333333,
+        "gtm_accuracy": 0.38,
+        "python_critical_recall": 0.8,
+        "sent_to_review": 131,
+        "seconds": 51.6
+      }
+    }
+  },
+  "part_b": {
+    "fireworks": {
+      "clips": 40,
+      "easily_confused_with": "Gunshot",
+      "python_predictions": {
+        "Gunshot": 27,
+        "Panic Scream": 11,
+        "Background Noise": 2
+      },
+      "sent_to_review": 38,
+      "critical_without_review": 2,
+      "alert_eligible": 12
+    },
+    "door_wood_knock": {
+      "clips": 40,
+      "easily_confused_with": "Gunshot",
+      "python_predictions": {
+        "Aggression": 32,
+        "Machinery Fault": 4,
+        "Glass Breaking": 3,
+        "Gunshot": 1
+      },
+      "sent_to_review": 40,
+      "critical_without_review": 0,
+      "alert_eligible": 2
+    },
+    "clapping": {
+      "clips": 40,
+      "easily_confused_with": "Gunshot",
+      "python_predictions": {
+        "Aggression": 30,
+        "Background Noise": 6,
+        "Glass Breaking": 2,
+        "Panic Scream": 1,
+        "Animal Sound": 1
+      },
+      "sent_to_review": 37,
+      "critical_without_review": 2,
+      "alert_eligible": 5
+    },
+    "laughing": {
+      "clips": 40,
+      "easily_confused_with": "Panic Scream",
+      "python_predictions": {
+        "Aggression": 27,
+        "Panic Scream": 10,
+        "Glass Breaking": 2,
+        "Background Noise": 1
+      },
+      "sent_to_review": 38,
+      "critical_without_review": 2,
+      "alert_eligible": 5
+    },
+    "crying_baby": {
+      "clips": 40,
+      "easily_confused_with": "Panic Scream",
+      "python_predictions": {
+        "Panic Scream": 35,
+        "Aggression": 4,
+        "Animal Sound": 1
+      },
+      "sent_to_review": 38,
+      "critical_without_review": 2,
+      "alert_eligible": 12
+    },
+    "church_bells": {
+      "clips": 40,
+      "easily_confused_with": "Alarm or Siren",
+      "python_predictions": {
+        "Alarm or Siren": 32,
+        "Vehicle Horn": 8
+      },
+      "sent_to_review": 40,
+      "critical_without_review": 0,
+      "alert_eligible": 3
+    }
+  }
+}

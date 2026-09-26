@@ -18,7 +18,7 @@
   <div class="page-head__main">
     <div class="breadcrumb"><a href="{{ url_for('main.dashboard') }}">Home</a><span>Analytics</span></div>
     <h1 class="page-title">{{ page_title or 'Aggregate analytics' }}</h1>
-    <p class="page-sub">Aggregates over the last {{ hours }} h — since {{ since }}.</p>
+    <p class="page-sub">Aggregates over the last {{ hours }} h — since {{ since | when }}.</p>
   </div>
   <div class="page-head__actions">
     <nav class="row" aria-label="Analysis window">
@@ -115,4 +115,68 @@
     </div>
   </section>
 </div>
+
+<div class="grid grid--split">
+  <section class="panel" aria-labelledby="conf-hist">
+    <div class="panel__head">
+      <h2 class="panel__title" id="conf-hist">{{ ui.icon('chart', 14) }} Confidence distribution</h2>
+      <p class="panel__note">Python model top-class confidence · {{ critical_frequency }} critical-category events in this window</p>
+    </div>
+    <div class="panel__body">
+      <div class="bars">
+        {% for b in confidence_histogram %}
+        <div class="bar-row" data-testid="conf-bin-{{ loop.index0 }}">
+          <span class="mono">{{ b.label }}</span>
+          <span class="bar-row__track"><span class="bar-row__fill" data-bar-width="{{ b.width }}"></span></span>
+          <span class="bar-row__value">{{ b.count }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      <p class="summary-note">A confidence is the model's own estimate. The comparison report shows how often
+        high-confidence results were still wrong on the test set.</p>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="fpfn">
+    <div class="panel__head">
+      <h2 class="panel__title" id="fpfn">{{ ui.icon('alert', 14) }} False positives and false negatives</h2>
+      <p class="panel__note">judged by reviewers · {{ review_errors.reviewed }} decisions in this window</p>
+    </div>
+    <div class="panel__body">
+      <dl class="kv">
+        <dt>Model result confirmed by the reviewer</dt><dd class="mono">{{ review_errors.confirmed }}</dd>
+        <dt>False positives (critical class rejected)</dt><dd class="mono">{{ review_errors.false_positives }}</dd>
+        <dt>False negatives (critical class missed)</dt><dd class="mono">{{ review_errors.false_negatives }}</dd>
+      </dl>
+      {% if review_errors.per_class %}
+      <div class="table-wrap"><table class="data">
+        <thead><tr><th scope="col">Class</th><th scope="col" class="num">False positives</th><th scope="col" class="num">False negatives</th></tr></thead>
+        <tbody>{% for r in review_errors.per_class %}
+          <tr><td>{{ r.class }}</td><td class="num">{{ r.fp }}</td><td class="num">{{ r.fn }}</td></tr>
+        {% endfor %}</tbody>
+      </table></div>
+      {% endif %}
+      <p class="summary-note">Only reviewed events have a ground truth, so unreviewed events are not
+        counted either way.</p>
+    </div>
+  </section>
+</div>
+
+<section class="panel" aria-labelledby="alert-resp">
+  <div class="panel__head">
+    <h2 class="panel__title" id="alert-resp">{{ ui.icon('check', 14) }} Alert response</h2>
+    <p class="panel__note">{{ alert_response.total }} alerts in this window</p>
+  </div>
+  <div class="panel__body">
+    <dl class="kv">
+      <dt>Median time to acknowledge</dt><dd class="mono">{{ '%.0f s' % alert_response.median_ack_sec if alert_response.median_ack_sec is not none else '—' }}</dd>
+      <dt>Median time to resolve</dt><dd class="mono">{{ '%.0f s' % alert_response.median_resolve_sec if alert_response.median_resolve_sec is not none else '—' }}</dd>
+      <dt>Still unacknowledged</dt><dd class="mono">{{ alert_response.unacknowledged }}</dd>
+      <dt>Marked as false alarms</dt><dd class="mono">{{ alert_response.false_alarms }}</dd>
+      {% for status, n in alert_response.by_status | dictsort %}
+      <dt>{{ status }}</dt><dd class="mono">{{ n }}</dd>
+      {% endfor %}
+    </dl>
+  </div>
+</section>
 {% endblock %}

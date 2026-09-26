@@ -89,6 +89,16 @@
       if (audio) audio.volume = Number(volumeEl.value) / 100;
     });
   }
+  var replayBtn = playerEl.querySelector("[data-player-replay]");
+  if (replayBtn) {
+    // FR ix asks for replay separately from seek: one press, back to 0:00 and playing.
+    replayBtn.addEventListener("click", function () {
+      var a = ensureAudio();
+      a.currentTime = 0;
+      var p = a.play();
+      if (p && p.catch) p.catch(function () {});
+    });
+  }
   if (playBtn) {
     playBtn.addEventListener("click", function () {
       var a = ensureAudio();
@@ -140,6 +150,16 @@
     drawProgress();
   }
 
+  // Perceptual "inferno"-style colour map, dark to bright; matches the legend swatches.
+  var STOPS = [[0, 0, 4], [50, 10, 94], [120, 28, 109], [188, 55, 84], [237, 105, 37], [252, 255, 164]];
+
+  function colour(v) {
+    var x = Math.max(0, Math.min(1, v)) * (STOPS.length - 1);
+    var k = Math.min(STOPS.length - 2, Math.floor(x)), t = x - k;
+    var a = STOPS[k], b = STOPS[k + 1];
+    return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+  }
+
   function drawSpectrogram() {
     if (!specCanvas || !visuals || !visuals.spectrogram) return;
     var spec = visuals.spectrogram;
@@ -149,9 +169,12 @@
     var f = fit(specCanvas);
     if (!f) return;
     var ctx = f.ctx, w = f.w, h = f.h;
-    var image = ctx.createImageData(Math.ceil(w), Math.ceil(h));
-    var px = image.data;
-    // Draw offscreen at native frame resolution then scale -- crisp and fast.
+    // Stretch between the 1st and 99.5th percentile so quiet recordings stay readable.
+    var sorted = Array.prototype.slice.call(data).sort(function (x, y) { return x - y; });
+    var lo = sorted[Math.floor(sorted.length * 0.01)] || 0;
+    var hi = sorted[Math.floor(sorted.length * 0.995)] || 1;
+    var span = hi - lo > 1e-6 ? hi - lo : 1;
+    // Draw offscreen at native frame resolution then scale: crisp and fast.
     var off = document.createElement("canvas");
     off.width = frames; off.height = mels;
     var octx = off.getContext("2d");
@@ -159,20 +182,15 @@
     var d = img.data;
     for (var j = 0; j < mels; j++) {           // mel row 0 = low frequency = bottom
       for (var i = 0; i < frames; i++) {
-        var v = data[j * frames + i];          // already normalised 0..1 server-side
+        var c = colour((data[j * frames + i] - lo) / span);
         var idx = ((mels - 1 - j) * frames + i) * 4;
-        // quiet -> deep navy, loud -> bright cyan (matches the page legend)
-        d[idx] = Math.round(11 + 45 * v);
-        d[idx + 1] = Math.round(18 + 169 * v);
-        d[idx + 2] = Math.round(32 + 216 * v);
-        d[idx + 3] = 255;
+        d[idx] = c[0]; d[idx + 1] = c[1]; d[idx + 2] = c[2]; d[idx + 3] = 255;
       }
     }
     octx.putImageData(img, 0, 0);
     ctx.imageSmoothingEnabled = true;
     ctx.clearRect(0, 0, w, h);
     ctx.drawImage(off, 0, 0, frames, mels, 0, 0, w, h);
-    void px; // image kept for potential per-pixel overlays later
   }
 
   function drawProgress() {

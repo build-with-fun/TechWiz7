@@ -26,7 +26,7 @@
     {% set status_tabs = [('Pending Review', 'Pending review'), ('In Review', 'In review'), ('Reviewed', 'Reviewed'), ('all', 'All')] %}
     {% for value, label in status_tabs %}
     <li>
-      <a class="chip {{ 'chip--critical' if value == current_status else '' }}"
+      <a class="chip"
          href="{{ url_for('main.reviews', status=value) }}"
          {% if value == current_status %}aria-current="page"{% endif %}>
         <span class="chip__text">{{ label }}</span>
@@ -68,7 +68,7 @@
             </td>
             <td>{{ review.priority or 'normal' }}</td>
             <td>
-              {% if review.reason_text %}<div>{{ review.reason_text }}</div>{% endif %}
+              {% if review.reason_text and not review.condition_ids %}<div>{{ review.reason_text | review_reason }}</div>{% endif %}
               {% if review.condition_ids %}
               <ul class="tag-list">
                 {% for cid in review.condition_ids %}
@@ -79,14 +79,18 @@
               {% endif %}
             </td>
             <td>
-              <div class="row">
-                {{ ui.class_chip(review.original_python_class) }} {{ ui.confidence(review.original_python_confidence) }}
+              <div class="orig">
+                <span class="dot dot--python" title="Python model" aria-label="Python model"></span>
+                <span class="orig__class">{{ review.original_python_class or '—' }}</span>
+                <span class="orig__conf">{{ ui.confidence(review.original_python_confidence) }}</span>
               </div>
-              <div class="row">
-                {{ ui.class_chip(review.original_gtm_class) }} {{ ui.confidence(review.original_gtm_confidence) }}
+              <div class="orig">
+                <span class="dot dot--gtm" title="Teachable Machine" aria-label="Teachable Machine"></span>
+                <span class="orig__class">{{ review.original_gtm_class or '—' }}</span>
+                <span class="orig__conf">{{ ui.confidence(review.original_gtm_confidence) }}</span>
               </div>
             </td>
-            <td>{{ review.queued_at }}</td>
+            <td>{{ review.queued_at | when }}</td>
             <td>
               {% if review.status == 'Reviewed' %}
               <div>{{ ui.review_chip('Reviewed') }}</div>
@@ -95,9 +99,9 @@
               {% elif can_decide %}
               <form method="post" action="/api/reviews/{{ review.id }}/decision" class="row row--end">
                 <input type="hidden" name="decision" value="confirm">
-                <button type="submit" class="btn btn--sm btn--primary">{{ ui.icon('check', 12) }} Confirm AI result</button>
+                <button type="submit" class="btn btn--sm">{{ ui.icon('check', 12) }} Confirm</button>
+                <a class="btn btn--sm btn--ghost" href="{{ url_for('main.event_detail', event_id=review.event_id) }}">Override</a>
               </form>
-              <div class="summary-note">Override / reject is available on the event detail page.</div>
               {% else %}
               <span class="field__hint">{{ ui.review_chip(review.status) }}</span>
               {% endif %}

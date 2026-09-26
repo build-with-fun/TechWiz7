@@ -46,11 +46,8 @@ def _user_payload(user) -> dict:
 def login():
     """Exchange a username and password for a session.
 
-    Failures are uniform: a wrong password, an unknown username, a locked account and a
-    disabled account each return a stable ``code`` so the page can react specifically, but
-    the response for an unknown username is byte-identical to a wrong password -- sign-in
-    must not be usable to discover which usernames exist. The difference is recorded in the
-    audit trail (FR lxxvi) instead, where an investigator can see it.
+    Each failure has a stable code, but an unknown username gets exactly the same response as a
+    wrong password; the difference is recorded only in the audit trail.
     """
     payload = request.get_json(silent=True) or request.form or {}
     username = str(payload.get("username", "")).strip()
@@ -108,8 +105,7 @@ def login():
     if not outcome.ok:
         outcome.raise_if_failed()
 
-    # A good sign-in clears that username's limiter, so a legitimate typo spree does not
-    # leave the operator throttled after they get in.
+    # A good sign-in clears the username limiter, so a typo spree does not throttle the operator.
     limiter_user.reset(username.lower())
     sign_in(outcome.user, remember=remember)
 
@@ -135,10 +131,8 @@ def logout():
 @bp.get("/me")
 @login_required
 def me():
-    """Who am I, and what may I do. The frontend uses ``capabilities`` to build its menus.
-
-    The lists come from ``ROLE_CAPABILITIES`` -- the same source the server checks -- so a
-    menu can never offer an action the server would refuse.
+    """The current user and their capabilities (the same matrix the server checks), for building
+    menus.
     """
     return jsonify({
         "user": _user_payload(current_user.row),
@@ -156,11 +150,7 @@ def me():
 @bp.post("/password")
 @login_required
 def change_password():
-    """Change your own password. FR i: credentials are managed, not handed out.
-
-    Requires the current password even for an administrator, so a hijacked session cannot
-    be turned into permanent account takeover.
-    """
+    """Change your own password; the current password is required even for administrators."""
     from werkzeug.security import check_password_hash
 
     payload = request.get_json(silent=True) or request.form or {}

@@ -1,37 +1,13 @@
 #!/usr/bin/env python3
-"""
-SonicSentinel AI -- Google Teachable Machine sample cutter.
+"""Cut short Teachable Machine samples out of the same train recordings the Python model uses.
 
-Owner: omar (GTM evidence).  Authority: SRS Step 5, deliverable 5, integrity rules.
+Aborts if any parent is in val or test. Each sample id is ``<parent_audio_id>S<n>`` with
+parent_audio_id and segment times, so build_split.py keeps it in its parent's split.
+Positions are fixed fractions of the parent, so output is byte-identical on re-run.
 
-WHY THIS EXISTS
----------------
-SRS Step 5: the Python model and the Teachable Machine model must be trained on the
-SAME underlying recordings. GTM cannot take a 7-second field recording; it takes
-short samples. So this cuts short mono samples OUT of the exact recordings the
-Python model trains on, and gives every sample a manifest row of its own.
-
-WHAT IT GUARANTEES
-------------------
-1. **Train only.** A sample is cut only from a parent the frozen split
-   (`data/splits/split.json`, owner: lorena) has assigned to `train`. If a parent is
-   in val or test this script ABORTS. This is the difference between an honest
-   accuracy number and a fantasy one.
-2. **Lineage.** Every sample carries `parent_audio_id`, `segment_start_sec`,
-   `segment_end_sec`, so `build_split.py` classifies it as a `segment` and forces it
-   into its parent's split -- validation and test material therefore can never
-   appear in the GTM training set even by accident.
-3. **Same Audio ID lineage.** The sample id is `<parent_audio_id>S<n>`, so a reviewer
-   can go from a GTM sample back to the exact original recording and its licence.
-4. **Deterministic.** Sample positions are fixed fractions of the parent duration,
-   not random: re-running produces byte-identical output, so the GTM upload can be
-   reproduced.
-5. **It does not assign a split.** `dataset_split` is emitted EMPTY, always.
-
-Usage
------
     .venv/bin/python audio_dataset/scripts/cut_gtm_samples.py --check
-    .venv/bin/python audio_dataset/scripts/cut_gtm_samples.py --segments-per-recording 3
+
+The TM model that ships was trained from make_gtm_imports.py's output instead.
 """
 
 from __future__ import annotations
@@ -41,7 +17,6 @@ import csv
 import hashlib
 import json
 import subprocess
-import sys
 from collections import Counter, defaultdict
 from datetime import date
 from pathlib import Path
@@ -127,7 +102,7 @@ def main(argv: list[str] | None = None) -> int:
     split = json.loads(args.split.read_text(encoding="utf-8"))
     assign = split["assignments"]
 
-    # ---- select parents: originals in the TRAIN split ------------------------------
+    # select parents: originals in the TRAIN split
     train_originals = [aid for aid, a in assign.items()
                        if a["split"] == "train" and a["role"] == "original"]
     if not train_originals:

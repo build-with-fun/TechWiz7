@@ -1,7 +1,4 @@
-"""Build cached waveform peaks and a mel-spectrogram visualization for event detail.
-
-The display transform covers the whole recording and is intentionally separate from
-the short browser-FFT window consumed by the Teachable Machine model.
+"""Cached waveform peaks and a mel spectrogram of a stored recording, for the event page and report.
 """
 
 from __future__ import annotations
@@ -13,8 +10,7 @@ from typing import Any
 
 import numpy as np
 
-# How many waveform columns the client draws. 1200 matches the canvas width in
-# templates/event_detail.html; one peak pair per pixel keeps the drawing trivial.
+# One peak per canvas pixel (templates/event_detail.html draws 1200 columns).
 PEAK_COLUMNS = 1200
 
 _CACHE_LOCK = threading.Lock()
@@ -65,12 +61,7 @@ def build_visuals(
     fallback_duration: float | None = None,
     fallback_sample_rate: int | None = None,
 ) -> dict[str, Any]:
-    """Return ``{duration_sec, sample_rate, peaks, spectrogram: {n_mels, n_frames, data}}``.
-
-    ``peaks`` is a list of normalised non-negative peak amplitudes (length
-    :data:`PEAK_COLUMNS`). ``data`` is the mel spectrogram as a flat row-major float list
-    (n_mels rows x n_frames columns), normalised to 0..1 so the client needs no scaling.
-    """
+    """Peaks (normalised, PEAK_COLUMNS long) and a 0..1 mel spectrogram as a flat row-major list."""
     path = storage.resolve(stored_path)
     cache_file = _cache_path(storage.root, str(event_id), stored_path)
 
@@ -141,3 +132,44 @@ def _mel(y: np.ndarray, cfg: Any) -> np.ndarray:
     if frames < cfg.n_frames:
         mel = np.pad(mel, ((0, 0), (0, cfg.n_frames - frames)))
     return mel[:, : cfg.n_frames]
+
+
+def report_figures(path: Path) -> dict[str, str]:
+    """Waveform and spectrogram PNGs (base64) for the standalone event report (FR lxix)."""
+    import base64
+    import io
+
+    import librosa
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    y, sr = librosa.load(str(path), sr=16000, mono=True, duration=60.0)
+    t = np.arange(y.size) / sr
+    figures: dict[str, str] = {}
+
+    fig, ax = plt.subplots(figsize=(8, 2.2), dpi=110)
+    ax.plot(t, y, linewidth=0.5, color="#1f6feb")
+    ax.set(xlabel="Time (s)", ylabel="Amplitude", xlim=(0, max(t[-1] if t.size else 1, 0.1)))
+    ax.set_title("Waveform")
+    fig.tight_layout()
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png")
+    plt.close(fig)
+    figures["waveform"] = base64.b64encode(buf.getvalue()).decode("ascii")
+
+    mel = librosa.feature.melspectrogram(y=y, sr=sr, n_fft=1024, hop_length=256, n_mels=64)
+    db = librosa.power_to_db(mel, ref=np.max)
+    fig, ax = plt.subplots(figsize=(8, 2.6), dpi=110)
+    img = ax.imshow(db, origin="lower", aspect="auto", cmap="magma",
+                    extent=(0, y.size / sr, 0, 64))
+    ax.set(xlabel="Time (s)", ylabel="Mel band")
+    ax.set_title("Mel spectrogram (dB relative to peak)")
+    fig.colorbar(img, ax=ax, format="%+2.0f dB")
+    fig.tight_layout()
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png")
+    plt.close(fig)
+    figures["spectrogram"] = base64.b64encode(buf.getvalue()).decode("ascii")
+    return figures

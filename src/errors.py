@@ -1,22 +1,8 @@
-"""The error contract, in one place.
+"""One error envelope for the whole API (FR lxxvii) and the refusal audit (FR lxxvi).
 
-Owner: sara.  SRS FR lxxvii (error handling: invalid files, unsupported formats, decode
-failure, model failure, database failure, report failure) and FR lxxviii (monitoring).
-
-Two rules this module exists to enforce, both of them things a reviewer will try to break:
-
-1. **Every failure looks the same.** All 4xx and 5xx responses from ``/api/`` are the
-   envelope in ``documentation/api_contract.md`` §1.1 -- ``code``, ``message``,
-   ``details``, ``request_id``. No stack trace, no SQL, no file path, no library name,
-   ever. The exception goes to the log with the ``request_id``; the client gets the
-   ``request_id`` so support can correlate without us leaking the internals.
-2. **A failure is diagnosable without reading the client's screen.** Every 5xx and every
-   permission refusal is logged with the request id, the route and the actor, and every
-   permission refusal also lands in the audit trail (FR lxxvi ``access_denied``).
-
-The ``code`` values are stable identifiers the frontend branches on; the list below is the
-same one published in the contract, and ``tests/test_api_auth_rbac.py`` asserts the two
-have not drifted apart.
+Every 4xx/5xx from /api/ is {code, message, details, request_id}: no stack trace, SQL, file
+path or library name ever reaches the client. The traceback goes to the log with the
+request id. The ``code`` values are stable identifiers the frontend branches on.
 """
 
 from __future__ import annotations
@@ -31,8 +17,7 @@ from werkzeug.exceptions import HTTPException
 
 logger = logging.getLogger("sonicsentinel.errors")
 
-#: Every code the API is allowed to return. A code that is not here is a bug in a handler,
-#: and the contract publishes this list, so adding one is a deliberate act.
+#: Every code the API may return; anything else is a handler bug.
 ERROR_CODES: tuple[str, ...] = (
     # authentication and authorisation -- FR i, FR ii
     "invalid_credentials",
@@ -74,9 +59,7 @@ ERROR_CODES: tuple[str, ...] = (
     "internal_error",
 )
 
-#: The status code each error code is returned with. Kept beside the code list so the two
-#: cannot disagree, and so a handler says ``raise ApiError("duplicate_audio")`` and gets the
-#: right status without restating it.
+#: HTTP status per code, so handlers raise ApiError("duplicate_audio") without restating it.
 DEFAULT_STATUS: Mapping[str, int] = {
     "invalid_credentials": 401,
     "account_locked": 423,
@@ -86,10 +69,8 @@ DEFAULT_STATUS: Mapping[str, int] = {
     "not_found": 404,
     "method_not_allowed": 405,
     "conflict": 409,
-    # Contract §3.2 / api_contract.md line 272: an unknown value in a validated param
-    # returns "422 validation_error naming the param". Every raise site is a rejected
-    # but well-formed request (bad filter, bad sort, missing file part), which is the
-    # 422 definition at line 94, not a malformed body (400).
+    # An unknown value in a validated parameter is a well-formed but rejected request: 422,
+    # not 400.
     "validation_error": 422,
     "unsupported_media_type": 415,
     "file_too_large": 413,
@@ -113,8 +94,7 @@ DEFAULT_STATUS: Mapping[str, int] = {
     "internal_error": 500,
 }
 
-#: Safe, plain sentences for codes thrown without a message. Each one is written to be
-#: readable aloud to a user (faris audits this) and to describe no internals.
+#: Plain sentences for codes raised without a message; they describe no internals.
 DEFAULT_MESSAGES: Mapping[str, str] = {
     "invalid_credentials": "That username and password do not match an account.",
     "account_locked": "This account is locked after too many failed sign-in attempts. "
@@ -152,9 +132,7 @@ DEFAULT_MESSAGES: Mapping[str, str] = {
     "internal_error": "Something went wrong on our side. The error has been logged.",
 }
 
-#: Which HTTP status each code maps to when the client did not choose. Used to translate a
-#: bare Werkzeug ``HTTPException`` into our envelope without leaking its description text
-#: (Werkzeug's messages name routes and methods; ours must not).
+#: Status -> code for bare Werkzeug exceptions, whose own messages name routes and methods.
 _STATUS_TO_CODE: Mapping[int, str] = {
     400: "validation_error",
     401: "not_authenticated",
@@ -175,20 +153,16 @@ _STATUS_TO_CODE: Mapping[int, str] = {
 }
 
 
-#: The statuses a browser gets an HTML page for. Beyond these the client gets the JSON
-#: envelope even on a page route, because there is no page worth writing for them and a
-#: half-designed one is worse than a clear answer. The frontend ships one template per entry.
+#: Statuses with an HTML error page; anything else gets the JSON envelope.
 _RENDERABLE_STATUSES: frozenset[int] = frozenset({400, 401, 403, 404, 405, 409, 413, 415,
                                                   422, 423, 429, 500, 503})
 
 
 class ApiError(Exception):
-    """A failure a handler chose deliberately, with a code the frontend can branch on.
+    """A failure a handler chose deliberately, with a stable code and a message safe to show.
 
-    Raising one of these is how a handler says "this is expected, tell the user this" as
-    opposed to letting something explode and become an opaque 500. The message is written
-    by us and is safe to show; ``details`` carries field-level validation help and must
-    never contain a path, a query or an exception's text.
+    ``details`` carries field-level validation help and must never contain a path, a query or
+    an exception's text.
     """
 
     def __init__(
@@ -209,10 +183,7 @@ class ApiError(Exception):
         self.message = message or DEFAULT_MESSAGES.get(code) or DEFAULT_MESSAGES["internal_error"]
         self.status = status or DEFAULT_STATUS[code]
         self.details: dict[str, Any] = dict(details or {})
-        #: Extra response headers this failure needs -- a ``429`` is not much use without its
-        #: ``Retry-After``, and a ``405`` should say which methods it does allow. Carried on
-        #: the exception so the handler that raises it does not have to build a Response by
-        #: hand and thereby risk bypassing the shared envelope.
+        #: Extra headers the response needs (Retry-After for 429, Allow for 405).
         self.headers: dict[str, str] = dict(headers or {})
         super().__init__(f"{self.status} {self.code}: {self.message}")
 
@@ -230,34 +201,28 @@ class ApiError(Exception):
         return f"<ApiError {self.status} {self.code}>"
 
 
-# ---------------------------------------------------------------------------------------
-# Named constructors -- so handlers read like the contract, not like plumbing
-# ---------------------------------------------------------------------------------------
 
 
 def validation_error(message: str | None = None, **fields: Any) -> ApiError:
-    """422-body shaped problem. ``validator_error("Too short", confidence="must be 0-1")``."""
+    """A 422 naming the offending fields, e.g. validation_error("Too short", confidence="must be
+    0-1").
+    """
     return ApiError("validation_error", message, details=fields or None)
 
 
 def not_found(what: str = "item") -> ApiError:
-    """404. Also used deliberately where naming the resource would leak another user's data
-    -- see the contract §1.4, rule: *capability* is 403, *existence of another's data* is 404.
-    """
+    """404, also used where naming the resource would reveal another user's data."""
     return ApiError("not_found", f"That {what} does not exist.")
 
 
 def forbidden(what: str | None = None) -> ApiError:
-    """403, with the role named so the message is actionable rather than a wall."""
+    """403 with the role named, so the message is actionable."""
     message = "Your role does not permit this action."
     if what:
         message = f"Your role does not permit this action: {what}."
     return ApiError("forbidden", message)
 
 
-# ---------------------------------------------------------------------------------------
-# Request identity
-# ---------------------------------------------------------------------------------------
 
 
 def new_request_id() -> str:
@@ -270,25 +235,17 @@ def current_request_id() -> str:
 
 
 def wants_json() -> bool:
-    """JSON for the API and for any client that asked for it; HTML for a browser page.
-
-    A person who opens ``/dashboard`` and hits an error should get a page, not a JSON blob;
-    ``fetch()`` from the same app always sends ``Accept: application/json``. This is what
-    makes one error layer serve both, so the two can never disagree about a status code.
-    """
+    """JSON for API calls and fetch(); an HTML error page for a browser page."""
     if request.path.startswith("/api/"):
         return True
     accept = request.accept_mimetypes
     return accept["application/json"] > accept["text/html"]
 
 
-# ---------------------------------------------------------------------------------------
-# Handler registration
-# ---------------------------------------------------------------------------------------
 
 
 def _log_failure(err: ApiError, *, exc_info: bool = False) -> None:
-    """Log at a level that matches what it is. A 401 is not an incident; a 500 is."""
+    """Log at a level matching the failure: a 401 is not an incident, a 500 is."""
     context = {
         "request_id": current_request_id(),
         "method": request.method,
@@ -300,8 +257,7 @@ def _log_failure(err: ApiError, *, exc_info: bool = False) -> None:
     if actor:
         context["actor"] = actor
     if err.status >= 500:
-        # exc_info gives the traceback in the log -- which is where it belongs, and the one
-        # place it must never reach the client from.
+        # The traceback goes to the log, never to the client.
         logger.error("request failed: %s", context, exc_info=exc_info)
     elif err.status == 403 or err.status == 401 or err.status == 429:
         logger.warning("request refused: %s", context)
@@ -310,11 +266,8 @@ def _log_failure(err: ApiError, *, exc_info: bool = False) -> None:
 
 
 def _html_or_json(err: ApiError, request_id: str) -> Response:
-    """Render the error the way the client asked for it.
-
-    A browser gets the page for its status (``errors/404.html``, ``errors/500.html``, ...).
-    The API always gets the JSON envelope, and so does any status we have no page for -- a
-    missing template must not turn a clean 403 into a blank screen or a 500.
+    """Render the error as the client asked; a missing error template falls back to JSON rather than
+    a 500.
     """
     if wants_json() or not err.status in _RENDERABLE_STATUSES:
         response = jsonify(err.to_dict(request_id))
@@ -343,14 +296,36 @@ def _html_or_json(err: ApiError, request_id: str) -> Response:
     return response
 
 
-def _audit_denial(err: ApiError, request_id: str) -> None:
-    """FR lxxvi: a refusal is an event worth recording.
+# Codes on the upload/live routes that mean the analysis could not run; audited so the
+# anomaly checks can count failed uploads and model failures (FR lxxviii).
+_MODEL_FAILURE_CODES = {"model_unavailable", "pipeline_unavailable"}
 
-    Written with its own short transaction so it cannot be rolled back by whatever the
-    request was doing when it failed, and it never raises: an audit write that breaks the
-    error response would turn a 403 into a 500.
+
+def _audit_action_for(err: ApiError) -> str | None:
+    if err.status in (401, 403, 429):
+        return "access_denied"
+    is_analysis = request.path == "/api/audio/upload" or (
+        request.path.startswith("/api/live/sessions/") and request.path.endswith("/windows"))
+    if not is_analysis:
+        return None
+    if err.code in _MODEL_FAILURE_CODES:
+        return "model_failure"
+    if err.code == "duplicate_audio":
+        return "audio_duplicate_rejected"
+    return "audio_upload"
+
+
+def _audit_denial(err: ApiError, request_id: str) -> None:
+    """Audit refusals and failed analyses (FR lxxvi, lxxviii).
+
+    Uses its own short transaction and never raises: an audit write that breaks the error
+    response would turn a 403 into a 500.
     """
-    if err.status not in (401, 403, 429):
+    try:
+        action = _audit_action_for(err)
+    except RuntimeError:  # outside a request context
+        return
+    if action is None:
         return
     from src.auth import get_db_factory
 
@@ -366,7 +341,7 @@ def _audit_denial(err: ApiError, request_id: str) -> None:
         with session_scope(db) as session:
             record_audit(
                 session,
-                action="access_denied",
+                action=action,
                 actor=getattr(g, "current_user_row", None),
                 target_type="endpoint",
                 target_id=request.path,
@@ -380,7 +355,7 @@ def _audit_denial(err: ApiError, request_id: str) -> None:
 
 
 def register_error_handlers(app: Flask) -> None:
-    """Attach the envelope to the app. Called once, by the factory."""
+    """Attach the error handlers; called once by the app factory."""
 
     @app.errorhandler(ApiError)
     def _handle_api_error(err: ApiError):  # type: ignore[unused-ignore]
@@ -391,8 +366,7 @@ def register_error_handlers(app: Flask) -> None:
 
     @app.errorhandler(HTTPException)
     def _handle_http_exception(err: HTTPException):  # type: ignore[unused-ignore]
-        # Werkzeug's own errors (404 on an unknown route, 405, 413 from the body parser).
-        # Its description can name a route or a limit, so only our text is sent.
+        # Werkzeug's own errors (unknown route, 405, 413); only our text is sent.
         code = _STATUS_TO_CODE.get(err.code or 500, "internal_error")
         wrapped = ApiError(code, status=err.code or 500)
         _log_failure(wrapped)
@@ -400,10 +374,7 @@ def register_error_handlers(app: Flask) -> None:
 
     @app.errorhandler(Exception)
     def _handle_unexpected(err: Exception):  # type: ignore[unused-ignore]
-        # The last line of defence. The traceback goes to the log with the request id; the
-        # client gets a sentence and the id. FR lxxvii also wants "database failure" and
-        # "report failure" distinguished, so those get their own codes rather than being
-        # flattened into internal_error.
+        # Last line of defence. Database and storage failures get their own codes (FR lxxvii).
         code = "internal_error"
         status = 500
         name = type(err).__module__ + "." + type(err).__name__
@@ -428,5 +399,5 @@ def register_error_handlers(app: Flask) -> None:
 
 
 def error_codes() -> tuple[str, ...]:
-    """The published list, for a test to compare against the contract."""
+    """The published error codes."""
     return ERROR_CODES

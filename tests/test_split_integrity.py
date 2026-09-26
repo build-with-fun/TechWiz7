@@ -1,15 +1,6 @@
-"""
-Split integrity tests — the leakage guard for the whole project.
+"""Split logic on a synthetic 3,000-clip manifest (SRS Step 5, FR xvii-xviii).
 
-Owner: lorena.  SRS Step 5, FR xvii, FR xviii, Deliverable 3, and Integrity rules 7 and 8.
-
-These tests are self-contained: they build a synthetic 3000-clip manifest in a temp
-directory, so they prove the split logic is correct without depending on how much audio
-`omar` has downloaded. That matters — if these only ran against real data they would be
-skipped exactly when the dataset is incomplete, which is when leakage is most likely.
-
-A leak here would not fail loudly in training. It would show up as a suspiciously good
-accuracy figure in the report, and an evaluator who counted the files would find it.
+Self-contained on purpose, so leakage checks still run while the real corpus is incomplete.
 """
 
 from __future__ import annotations
@@ -36,9 +27,7 @@ CLASSES = list(load_classes())
 N_PER_CLASS = 300
 
 
-# --------------------------------------------------------------------------------------
 # Helpers
-# --------------------------------------------------------------------------------------
 
 def make_record(audio_id: str, label: str, *, filename: str | None = None,
                 status: str = ORIGINAL, parent: str | None = None,
@@ -92,9 +81,7 @@ def classes_config() -> dict:
     return load_classes()
 
 
-# --------------------------------------------------------------------------------------
 # split_counts — boundary behaviour
-# --------------------------------------------------------------------------------------
 
 def test_split_counts_300_matches_srs_hint_exactly():
     """300 per class must give 210/45/45, the exact numbers in the SRS Hint."""
@@ -116,9 +103,7 @@ def test_split_counts_degenerate_sizes():
     assert split_counts(0) == (0, 0, 0)
 
 
-# --------------------------------------------------------------------------------------
 # The headline requirement
-# --------------------------------------------------------------------------------------
 
 def test_exact_2100_450_450_split():
     """SRS Hint: 70/15/15 over 3000 originals = 2100 train / 450 val / 450 test."""
@@ -145,9 +130,7 @@ def test_all_ten_mandatory_classes_present():
     assert len(CLASSES) == 10
 
 
-# --------------------------------------------------------------------------------------
 # Disjointness and leakage — the project-ending defects
-# --------------------------------------------------------------------------------------
 
 def test_splits_are_pairwise_disjoint():
     """An audio_id in two splits is leakage. Prove it never happens."""
@@ -218,9 +201,7 @@ def test_augmented_are_not_counted_as_originals():
     assert sum(with_aug["counts"]["derived_by_split"].values()) == 80
 
 
-# --------------------------------------------------------------------------------------
 # Determinism — an evaluator must be able to reproduce the freeze
-# --------------------------------------------------------------------------------------
 
 def test_split_is_deterministic_across_runs():
     records = make_manifest()
@@ -245,9 +226,7 @@ def test_different_seed_gives_a_different_split():
     assert a != b
 
 
-# --------------------------------------------------------------------------------------
 # Validation — negative tests
-# --------------------------------------------------------------------------------------
 
 def test_duplicate_audio_id_is_rejected():
     records = make_manifest()
@@ -322,9 +301,7 @@ def test_strict_accepts_a_compliant_dataset():
     assert_strict(make_manifest(), classes_config())
 
 
-# --------------------------------------------------------------------------------------
 # End-to-end artifact test: build -> write -> reload -> re-audit
-# --------------------------------------------------------------------------------------
 
 def test_build_write_and_reload_round_trip(tmp_path: Path):
     """The frozen file must survive a write/read cycle and still audit clean."""
@@ -352,7 +329,9 @@ def test_build_write_and_reload_round_trip(tmp_path: Path):
 def test_split_json_records_its_provenance():
     """The artifact must state how it was made, so an evaluator can reproduce it."""
     split = build_split(make_manifest(), classes_config())
-    assert split["algorithm"] == "sha256-order-v1"
+    from audio_dataset.build_split import ALGORITHM
+
+    assert split["algorithm"] == ALGORITHM
     assert split["seed"] == 20260923
     assert split["ratios"] == {"train": 0.7, "val": 0.15, "test": 0.15}
 
@@ -372,17 +351,10 @@ def test_manifest_csv_round_trip(tmp_path: Path):
     assert {r["audio_id"] for r in back} == {r["audio_id"] for r in records}
 
 
-# --------------------------------------------------------------------------------------
 # Schema interop — the contract must accept other people's generators
-# --------------------------------------------------------------------------------------
 
 def test_extra_columns_from_a_generator_are_preserved_not_rejected(tmp_path: Path):
-    """A generator may carry more than the contract requires; that must not be an error.
-
-    Guaranteeing interop by forbidding extra columns would make every generator conform
-    to exactly the contract, which is how you get two contracts. Extra columns are kept
-    so the split output loses nothing the generator knew.
-    """
+    """Extra generator columns are kept, not rejected."""
     records = make_manifest(n_per_class=5)
     for record in records:
         record["condition"] = "clean"
@@ -404,11 +376,8 @@ def test_extra_columns_from_a_generator_are_preserved_not_rejected(tmp_path: Pat
 
 
 def test_missing_columns_error_names_the_fix_and_the_no_write_rule(tmp_path: Path):
-    """The error is read by whoever is mid-debug on a generator at 1am.
-
-    It must say which contract, map the obvious near-misses, and warn against emitting
-    dataset_split itself — two split definitions is the one thing that quietly produces
-    an 85% score that means nothing.
+    """The missing-columns error names the contract, maps near-misses and warns against writing
+    dataset_split.
     """
     path = tmp_path / "manifest.csv"
     path.write_text(

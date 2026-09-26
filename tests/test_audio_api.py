@@ -1,6 +1,5 @@
 """Tests for ``/api/audio`` and ``/api/events``.
 
-Owner: sara.
 
 The pipeline is stubbed, not the endpoints. A real trained model does not exist on disk
 yet, and these tests are about the contract the console relies on -- the status codes, the
@@ -11,7 +10,6 @@ which class the model picked. The stub returns a record shaped exactly like
 
 from __future__ import annotations
 
-import datetime as dt
 import hashlib
 import io
 import itertools
@@ -21,14 +19,11 @@ import pytest
 from sqlalchemy import select
 
 from src.app import create_app
-from src.auth import hash_password, sign_in
-from src.db import create_engine_for, create_schema, make_session_factory
-from src.models import AudioFile, Event, User
+from src.auth import hash_password
+from src.models import Event, User
 
 
-# --------------------------------------------------------------------------------------
 # A pipeline stub that returns a realistic record
-# --------------------------------------------------------------------------------------
 
 def _record(*, event_id: int = 1, sha256: str = "a" * 64, agree: bool = True,
             severity: str = "High", alert: bool = True, review: bool = False,
@@ -75,13 +70,8 @@ def _record(*, event_id: int = 1, sha256: str = "a" * 64, agree: bool = True,
 
 
 class _StubPipeline:
-    """Returns a canned record and records what it was asked to analyse.
-
-    Mirrors the real contract: the pipeline calls ``persist`` itself and returns the record
-    it was handed back (enriched with the ids the database assigned). The endpoint reads
-    ``event_id`` / ``created_by`` straight off that returned record, so a stub that skips the
-    callback hands the serialiser a record with no id at all -- which is why the response
-    came back as a 201 full of ``None``.
+    """Returns a canned record, calls ``persist`` like the real pipeline, and records what it
+    analysed.
     """
 
     def __init__(self):
@@ -99,18 +89,13 @@ class _StubPipeline:
                                   "summary": "0.2s is below the 0.5s minimum"}}
         else:
             record = _record(verdict=self.next_quality_verdict)
-        # Mirror the real pipeline: the digest is of the bytes actually received, so two
-        # uploads of the same bytes collide and two different uploads do not. The stub
-        # used to ship a fixed digest, which made the second seed of any test a
-        # duplicate and broke the 409 gate's premise.
+        # Digest of the bytes actually received, so identical uploads collide and different ones do
+        # not.
         digest = hashlib.sha256(raw).hexdigest()
         record["audio"]["sha256"] = digest
         record["audio"]["fingerprint"] = f"fp-{digest[:8]}"
         if persist is not None:
-            # The real pipeline does `record["stored"] = dict(stored)` and keeps the
-            # record: persist returns the *stored result*, not a replacement record.
-            # Replacing the record here used to throw away everything (class, severity,
-            # audio) and hand the serialiser a bare id bag -- hence a 201 full of None.
+            # Like the real pipeline, keep the record and attach the stored result to it.
             stored = persist(record)
             record["stored"] = dict(stored)
             if stored.get("event_ids"):
@@ -129,9 +114,7 @@ def stub(monkeypatch):
     return stub_
 
 
-# --------------------------------------------------------------------------------------
 # App + users
-# --------------------------------------------------------------------------------------
 
 @pytest.fixture()
 def app(tmp_path, stub):
@@ -172,18 +155,7 @@ def reviewer(factory):
 
 
 def _client(app, user):
-    """A test client carrying that user's signed session.
-
-    ``login_user`` (via ``sign_in``) only writes to ``flask.session``; Flask serialises
-    that session into a cookie only when a request completes, so there is no cookie to read
-    off the session object itself -- the old code read ``session.cookies``, which does not
-    exist on a ``SecureCookieSession``.
-
-    ``session_transaction`` is the documented way to seed a client's cookie session
-    outside a request, but it needs a request context to build the identifier
-    flask_login's session protection checks. Opening that context here is exactly what
-    ``sign_in`` was already trying to do; the missing piece was reading the serialised
-    cookie back out of the transaction rather than off ``flask.session``.
+    """A test client carrying that user's signed session cookie, read back from session_transaction.
     """
     client = app.test_client()
     with app.test_request_context("/"):
@@ -205,9 +177,7 @@ def _upload(client, *, data=b"RIFF****", filename="probe.wav", **form):
     }, content_type="multipart/form-data")
 
 
-# --------------------------------------------------------------------------------------
 # /api/audio/upload
-# --------------------------------------------------------------------------------------
 
 def test_upload_returns_201_with_the_event_shape(app, viewer, stub):
     client = _client(app, viewer)
@@ -297,20 +267,8 @@ def test_an_anonymous_upload_is_not_allowed(app):
     assert resp.status_code in (401, 403)
 
 
-# --------------------------------------------------------------------------------------
-# An unloadable pipeline is a 503, never a 500
-# --------------------------------------------------------------------------------------
-#
-# The stub fixture replaces ``get_pipeline``, so it cannot reach the "nothing was ever
-# loaded" branch -- that lives in the real function. These tests put the real one back and
-# pin the contract that README.md and src/app.py:253 both advertise for a server started
-# without model artifacts: a 503 with a sentence a user can read.
-#
-# Regression: the guard in ``upload`` caught ``ModelsUnavailable``, but ``get_pipeline``
-# raises its *parent* ``PipelineError``. The isinstance check missed, the bare ``raise``
-# re-raised, and the catch-all handler turned a documented 503 into an opaque 500 -- which
-# is what the browser saw on the one code path a grader is most likely to try on a machine
-# that has the repo but not the model bundles.
+# A server started without model artifacts answers 503 with a readable sentence, never 500
+# (regression: PipelineError slipped past the ModelsUnavailable guard).
 
 @pytest.fixture()
 def no_models_app(tmp_path, monkeypatch):
@@ -384,9 +342,7 @@ def test_an_unexpected_pipeline_failure_is_not_echoed_to_the_caller(app, viewer,
     assert "sqlite3" not in err["message"]
 
 
-# --------------------------------------------------------------------------------------
 # /api/events -- scoping
-# --------------------------------------------------------------------------------------
 
 _seed_counter = itertools.count()
 _seed_digests: dict[int, str] = {}
@@ -398,9 +354,7 @@ def _seed_event(factory, user, *, predicted="Gunshot", severity="High"):
 
     layout = StorageLayout(Path("/tmp") / f"sst-test-{user.id}")
     layout.ensure()
-    # A distinct digest per seed: the store treats an identical sha256 as a re-upload of
-    # already-known bytes and files none, which is correct for production and fatal for a
-    # fixture that seeds twice.
+    # A distinct digest per seed, or the store treats the second seed as a re-upload.
     digest = hashlib.sha256(str(next(_seed_counter)).encode()).hexdigest()
     record = _record(severity=severity, sha256=digest)
     record["predictions"]["python"]["predicted_class"] = predicted
@@ -442,9 +396,7 @@ def test_unknown_event_id_is_a_404(app, viewer):
     assert resp.status_code == 404
 
 
-# --------------------------------------------------------------------------------------
 # /api/events -- filters and sort
-# --------------------------------------------------------------------------------------
 
 def test_severity_filter_narrows_the_list(app, factory, viewer):
     _seed_event(factory, viewer, severity="High")
@@ -479,9 +431,7 @@ def test_pagination_meta_is_present(app, factory, viewer):
     assert len(page["data"]) == 2
 
 
-# --------------------------------------------------------------------------------------
 # Evidence, audio, flag, delete
-# --------------------------------------------------------------------------------------
 
 def test_evidence_returns_both_models_distributions(app, factory, viewer):
     event_id = _seed_event(factory, viewer)

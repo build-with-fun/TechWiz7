@@ -1,6 +1,5 @@
 {
   "version": "1.0.0",
-  "owner": "sara",
   "srs_refs": ["Step 17 (Manual Review)", "FR lvii (Manual Review Queue)", "FR li (Unknown Sound Handling)", "FR xxxviii (Uncertain Sound Detection)", "FR xxxix (Overlapping Sound Detection)"],
   "read_by": ["src/services/config.py", "src/services/review.py", "src/services/decision.py"],
 

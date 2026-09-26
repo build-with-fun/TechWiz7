@@ -1,54 +1,13 @@
-"""Classical model zoo for SonicSentinel AI -- SRS Step 7, FR xxiii-xxvi.
+"""Classical candidates for the Python model comparison (SRS Step 7, FR xxiii-xxvi).
 
-Owner: bilal (classical ML + tuning).
+SVM (RBF), random forest, extra trees, gradient boosting, HistGradientBoosting and XGBoost,
+all on the same 254 hand-made features and the same split, built through build_estimator
+so the only thing that differs between candidates is the estimator.
 
-WHAT THIS IS
-------------
-The SRS requires "at least three models trained and compared". This module defines the
-classical half of that comparison: a linear/RBF SVM, a Random Forest, a Gradient Boosting
-machine and an XGBoost model, all consuming the SAME locked feature vector from
-``feature_extraction.feature_columns()`` on the SAME frozen split.
-
-WHY THESE FOUR
---------------
-Each one probes a different hypothesis about this problem, which is the only reason to
-compare models at all:
-
-* ``svm_rbf``  -- with 254 standardised features and 2,100 training rows, a kernel SVM is
-  the strongest cheap model available. It handles the class-to-class boundaries in this
-  feature space smoothly and needs no feature engineering. It is also the model whose
-  confidence output is worst calibrated (Platt scaling), which the report must say.
-* ``random_forest`` -- a bagged tree ensemble: robust to feature scaling, gives an honest
-  out-of-bag view, and its ``feature_importances_`` let us defend columns to an evaluator.
-* ``gradient_boosting`` -- sklearn's boosted trees: sequential error correction, usually
-  the best classical model on tabular features of this size.
-* ``xgboost`` -- a faster, regularised boosted-tree implementation with explicit
-  ``sample_weight`` support, which is how critical-class weighting is applied here.
-
-Every one of them is a legitimately trainable model on 2,100 x 254. None is a wrapper
-around an external API -- the SRS forbids an external generative-AI API for the final
-classification, and nothing here calls one.
-
-THE TWO THINGS THAT BREAK COMPARISONS
--------------------------------------
-1. Different preprocessing per model. Every candidate here is built by
-   :func:`build_estimator`, which composes from the same ``preprocess`` step, so the only
-   thing that differs between candidates is the estimator itself.
-2. Different feature columns per model. The column list is passed in from the extractor
-   and stored in the saved bundle; ``save_bundle`` then makes a mismatch a load-time
-   error rather than a silently permuted prediction.
-
-CLASS WEIGHTING, HONESTLY
--------------------------
-The SRS demands >= 85% recall on five critical classes and only >= 85% accuracy overall.
-Those two goals conflict: the critical classes are 5 of 10, so a model that never
-predicts ``Gunshot`` still scores 90% accuracy if the other nine are easy. Weighting the
-critical classes trades overall accuracy for critical recall.
-
-That trade is MEASURED, not assumed: :func:`weighted_variant` returns the same model with
-the class weights applied, :mod:`tuning` scores both on validation, and the report records
-the accuracy each one gave up for the recall it bought. If weighting does not earn its
-cost on this dataset, the numbers will say so and the unweighted model wins.
+Critical-class weighting is a candidate dimension (weighted_variant), not a global setting:
+the SRS asks for 85% recall on five critical classes, which competes with overall accuracy,
+so every model is trained both ways and the comparison table shows what the weighting cost.
+The best of these (HistGradientBoosting) is the baseline; the served model is CNN14 + MLP.
 """
 
 from __future__ import annotations
@@ -60,20 +19,14 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 
 import numpy as np
 
-# --------------------------------------------------------------------------------------
-# Candidate specification
-# --------------------------------------------------------------------------------------
 
 
 @dataclass
 class CandidateSpec:
     """One comparable model: how to build it, what to search, and what it costs.
 
-    ``preprocess`` is ``"scale"`` or ``"none"``. Scaling is part of the model pipeline, not
-    a separate step, so a saved bundle always carries the exact transform that produced its
-    training features -- the classic failure where a scaler fitted on the whole dataset
-    leaks test statistics into training is impossible here because the scaler lives inside
-    the estimator and is therefore fitted by ``fit(X_train)`` alone.
+    Scaling lives inside the estimator pipeline, so it is fitted on training rows only and
+    saved with the model.
     """
 
     name: str
@@ -88,18 +41,10 @@ class CandidateSpec:
 
 
 def _svm(params: Mapping[str, Any], seed: int, _rng: Any) -> Any:
-    """RBF SVM with explicitly calibrated probabilities.
+    """RBF SVM with cross-validated (Platt) probability calibration.
 
-    ``SVC(probability=True)`` is deprecated in scikit-learn 1.9 and, more importantly, its
-    Platt scaling is fitted on the same data the support vectors came from. This module uses
-    ``CalibratedClassifierCV(..., ensemble=False)``, which calibrates the SVC's decision
-    function with cross-validated folds instead.
-
-    That is not a detail: the SRS's consistency taxonomy is computed from
-    ``|python_top_confidence - gtm_top_confidence|``, so a model whose confidences are not
-    probabilities makes that subtraction meaningless. A model that says 0.99 when it is
-    right 70% of the time would inflate every "Strong Match" it appears in, and every
-    "Model Disagreement" it fails to trigger.
+    The comparison subtracts the two models' top confidences, so an uncalibrated SVM that says
+    0.99 when it is right 70% of the time would distort every consistency status.
     """
     from sklearn.calibration import CalibratedClassifierCV
     from sklearn.svm import SVC
@@ -112,8 +57,7 @@ def _svm(params: Mapping[str, Any], seed: int, _rng: Any) -> Any:
         random_state=seed,
         cache_size=512,
     )
-    # sigmoid == Platt scaling, the standard choice for SVM; isotonic needs far more
-    # calibration data than 10 classes x ~200 rows can supply without overfitting the map.
+    # Sigmoid (Platt) rather than isotonic: ~200 rows per class is too few for an isotonic map.
     return CalibratedClassifierCV(
         base,
         method=str(params.get("calibration", "sigmoid")),
@@ -139,8 +83,7 @@ def _random_forest(params: Mapping[str, Any], seed: int, _rng: Any) -> Any:
 def _gradient_boosting(params: Mapping[str, Any], seed: int, _rng: Any) -> Any:
     from sklearn.ensemble import GradientBoostingClassifier
 
-    # sklearn's GradientBoostingClassifier has no class_weight parameter, so critical-class
-    # weighting is applied through sample_weight at fit time instead (see fit_estimator).
+    # No class_weight parameter here; the weights go in as sample_weight (see fit_estimator).
     return GradientBoostingClassifier(
         n_estimators=int(params.get("n_estimators", 200)),
         learning_rate=float(params.get("learning_rate", 0.1)),
@@ -167,26 +110,17 @@ def _hist_gradient_boosting(params: Mapping[str, Any], seed: int, _rng: Any) -> 
 
 
 class _HistGBShim(BaseEstimator, ClassifierMixin):
-    """The two translations ``HistGradientBoostingClassifier`` needs to join the zoo.
+    """Wrapper that lets HistGradientBoosting take string-keyed class weights.
 
-    HGB encodes string labels to integers internally, but validates a ``class_weight``
-    dict against the *encoded* integer labels -- a string-keyed dict (the zoo's convention,
-    the one ``critical_class_weights`` produces) raises ``ValueError: The classes, [0, 1, 2],
-    are not in class_weight``. So, exactly like ``_gradient_boosting``, the weights must
-    travel as row weights via :func:`fit_estimator`'s sample-weight path.
-
-    That path is chosen by ``_class_weight_key``/``_accepts_sample_weight``. A sklearn
-    ``get_params(deep=True)`` would expose the inner estimator's ``class_weight`` and make
-    ``build_estimator`` bake the string-keyed dict straight into HGB -- the crash above, at
-    fit time, on the weighted variants only. ``get_params`` is therefore deliberately
-    shallow: the shim hides the inner estimator's params and owns the translation itself.
+    HGB validates a class_weight dict against its internal integer labels, so the zoo's
+    string-keyed weights raise. The weights travel as sample_weight instead, and get_params is
+    deliberately shallow so build_estimator cannot bake the string dict into the inner model.
     """
 
     def __init__(self, estimator: Any):
         self.estimator = estimator
 
     def get_params(self, deep: bool = True) -> dict[str, Any]:
-        # Deliberately shallow -- see the class docstring.
         return {"estimator": self.estimator}
 
     def fit(self, X, y, sample_weight=None, **fit_params):
@@ -201,38 +135,22 @@ class _HistGBShim(BaseEstimator, ClassifierMixin):
         return self.classes_[np.asarray(self.estimator.predict(X))]
 
     def predict_proba(self, X):
-        # Columns follow the inner estimator's classes_ (sorted ints) == sorted strings,
-        # i.e. exactly ``self.classes_`` order -- the zoo-wide predict_proba contract.
+        # Inner classes_ are sorted ints, i.e. the same order as the sorted string labels.
         return self.estimator.predict_proba(X)
 
 
 class _LabelEncodedClassifier(BaseEstimator, ClassifierMixin):
-    """Fit an integer-only estimator on string class labels.
+    """Fit an integer-only estimator (XGBoost) on string class labels.
 
-    XGBoost's sklearn wrapper infers ``[0..n-1]`` from ``y`` and refuses strings::
-
-        ValueError: Invalid classes inferred from unique values of `y`.
-
-    Every other estimator in the zoo (SVM, RandomForest, ExtraTrees,
-    GradientBoosting, and ``CalibratedClassifierCV`` over them) accepts strings
-    natively, and the rest of the pipeline -- the manifest, the metrics, the
-    confidence comparison, the saved bundle -- is string-labelled end to end.
-    Encoding at the boundary keeps it that way: callers pass and receive the real
-    class names and never learn that a translation happened.
-
-    The mapping is built from ``sorted(unique(y))``, so the encoded order is the
-    same order sklearn itself would use, and ``classes_`` stays the string labels
-    -- ``predict_proba`` columns line up with it exactly.
+    Labels are encoded as sorted(unique(y)), the order sklearn itself uses, so classes_ and
+    the predict_proba columns stay in string-label order for the rest of the pipeline.
     """
 
     def __init__(self, estimator: Any):
         self.estimator = estimator
 
-    # -- fit/predict/predict_proba -------------------------------------------------
-    # ``sample_weight`` is named explicitly rather than folded into ``**fit_params``:
-    # fit_estimator introspects this signature to decide how critical-class weighting is
-    # delivered. Without a discoverable name it would fall through to the warning branch
-    # and the boost would be dropped -- silently, with the model still training.
+    # sample_weight is named explicitly: fit_estimator reads this signature to decide how to
+    # pass class weights, and without it the weighting would be dropped silently.
     def fit(self, X, y, sample_weight=None, **fit_params):
         labels = sorted({str(v) for v in y})
         self._label_to_int_ = {label: i for i, label in enumerate(labels)}
@@ -247,22 +165,18 @@ class _LabelEncodedClassifier(BaseEstimator, ClassifierMixin):
 
     def predict(self, X):
         ints = np.asarray(self.estimator.predict(X))
-        # ``self.classes_`` is object-dtype, so fancy indexing yields real strings.
         return self.classes_[ints]
 
     def predict_proba(self, X):
         return self.estimator.predict_proba(X)
 
-    # -- delegation ----------------------------------------------------------------
-    # Fitted state lives on the inner estimator. ``feature_importances_`` is what
-    # ``feature_importances()`` reads to rank the 254 axes for the report.
+    # Fitted state (feature_importances_ etc.) lives on the inner estimator.
     @property
     def feature_importances_(self):
         return self.estimator.feature_importances_
 
     def __getattr__(self, name):
-        # Anything else (n_estimators_, feature_names_in_, ...) belongs to the inner
-        # estimator. Only called when the attribute is not found on the wrapper.
+        # Only reached for attributes the wrapper does not define itself.
         return getattr(self.estimator, name)
 
 
@@ -299,13 +213,9 @@ def _extra_trees(params: Mapping[str, Any], seed: int, _rng: Any) -> Any:
     )
 
 
-# --------------------------------------------------------------------------------------
-# The registry
-# --------------------------------------------------------------------------------------
 
-#: The comparable classical candidates, cheapest first. The grids are deliberately small:
-#: two or three values per axis keeps the search inside the SRS budget on a CPU box, and a
-#: wide coarse grid beats a narrow fine one when the real question is "which family wins".
+#: The classical candidates, cheapest first. Two or three values per axis keeps the search
+#: within a CPU budget; the question is which family wins, not the fourth decimal.
 CLASSICAL_CANDIDATES: dict[str, CandidateSpec] = {
     "svm_rbf": CandidateSpec(
         name="svm_rbf",
@@ -386,9 +296,6 @@ def get_candidate(name: str) -> CandidateSpec:
         ) from None
 
 
-# --------------------------------------------------------------------------------------
-# Class weighting for the critical classes
-# --------------------------------------------------------------------------------------
 
 
 def critical_class_weights(
@@ -397,17 +304,7 @@ def critical_class_weights(
     *,
     boost: float = 2.0,
 ) -> dict[str, float]:
-    """Weights that make a critical-class miss cost more than a non-critical-class miss.
-
-    ``boost`` multiplies the critical classes' weight. It is a parameter rather than a
-    constant because how far to push recall above precision is a product decision the SRS
-    sets a floor for (>= 85% critical recall) and does not otherwise specify -- and because
-    the tuning harness measures whether the boost actually bought the recall it was
-    supposed to, rather than trusting that it does.
-
-    Non-critical classes stay at 1.0, so the weights are interpretable to an evaluator:
-    "a Gunshot training clip counted twice as much as a Background Noise clip."
-    """
+    """Class weights with the critical classes multiplied by ``boost``; the rest stay at 1.0."""
     critical = set(critical_classes)
     unknown = critical - set(class_names)
     if unknown:
@@ -418,13 +315,7 @@ def critical_class_weights(
 
 
 def _class_weight_key(estimator: Any) -> str | None:
-    """The fit param name that carries ``class_weight``, or None if there is none.
-
-    Searches nested params too, because some estimators wrap the classifier that actually
-    takes the weights (``CalibratedClassifierCV`` puts it at ``estimator__class_weight``).
-    Returning the *path* rather than a bool means the caller can set it, and means a model
-    that cannot be weighted is detected rather than silently trained unweighted.
-    """
+    """Parameter path that carries class_weight (nested ones included), or None."""
     try:
         params = estimator.get_params()
     except AttributeError:
@@ -436,7 +327,7 @@ def _class_weight_key(estimator: Any) -> str | None:
 
 
 def supports_class_weight(estimator: Any) -> bool:
-    """True when ``class_weight`` can be set somewhere on this estimator."""
+    """True when class_weight can be set somewhere on this estimator."""
     return _class_weight_key(estimator) is not None
 
 
@@ -444,7 +335,7 @@ def sample_weights_for(
     y: Sequence[str],
     weights: Mapping[str, float],
 ) -> np.ndarray:
-    """Per-row weights for the estimators that take ``sample_weight`` instead."""
+    """Per-row weights for estimators that take sample_weight instead of class_weight."""
     missing = sorted({str(label) for label in y} - set(weights))
     if missing:
         raise ValueError(f"no weight defined for label(s): {missing}")
@@ -452,12 +343,7 @@ def sample_weights_for(
 
 
 def weighted_variant(spec: CandidateSpec, weights: Mapping[str, float] | None) -> CandidateSpec:
-    """``spec`` with the class weights baked into its parameter grid.
-
-    Weighting is a *candidate dimension*, not a global setting, precisely so the report can
-    say what weighting cost and bought: the harness trains the weighted and unweighted
-    version of every model and both appear in the comparison table.
-    """
+    """``spec`` with the class weights added to its parameter grid."""
     if not weights:
         return spec
     grid = {k: list(v) for k, v in spec.param_grid.items()}
@@ -472,18 +358,13 @@ def weighted_variant(spec: CandidateSpec, weights: Mapping[str, float] | None) -
     )
 
 
-# --------------------------------------------------------------------------------------
-# Building the estimator
-# --------------------------------------------------------------------------------------
 
 
 def build_estimator(spec: CandidateSpec, params: Mapping[str, Any] | None = None, seed: int = 0) -> Any:
-    """A ready-to-fit estimator, with the spec's preprocessing composed in front when needed.
+    """A ready-to-fit estimator with the spec's preprocessing in front.
 
-    ``class_weight`` is stripped for estimators that do not accept it, so a weighted grid
-    can be applied uniformly and the weighting silently travels via ``sample_weight`` in
-    :func:`fit_estimator` instead. That keeps ``weighted_variant`` usable for every
-    candidate rather than only the ones whose API happens to match.
+    class_weight is stripped for estimators that do not accept it; fit_estimator then passes
+    the weights as sample_weight.
     """
     from sklearn.pipeline import Pipeline
     from sklearn.preprocessing import StandardScaler
@@ -510,15 +391,10 @@ def fit_estimator(
     *,
     class_weights: Mapping[str, float] | None = None,
 ) -> Any:
-    """Fit, routing class weights to whichever mechanism the estimator understands.
+    """Fit, routing class weights to whatever the estimator understands.
 
-    Three cases, and getting this wrong is invisible -- the model trains happily and just
-    ignores the weighting:
-
-    * a Pipeline whose final step takes ``class_weight`` -> already applied by
-      :func:`build_estimator`; nothing to do here.
-    * an estimator that takes ``sample_weight`` (GBM, XGBoost) -> pass row weights.
-    * anything else -> warn loudly rather than pretend the weighting happened.
+    A wrong route is invisible (the model trains and ignores the weights), so an estimator
+    that takes neither class_weight nor sample_weight gets a warning.
     """
     import warnings
 
@@ -526,8 +402,7 @@ def fit_estimator(
 
     if class_weights:
         if supports_class_weight(target):
-            # Already baked in by build_estimator; re-applying via sample_weight would
-            # double-count the boost.
+            # Already in the estimator; sample_weight as well would double-count the boost.
             return estimator.fit(X, list(y))
         if _accepts_sample_weight(target):
             estimator.fit(X, list(y), estimator__sample_weight=sample_weights_for(y, class_weights))
@@ -551,17 +426,12 @@ def _accepts_sample_weight(estimator: Any) -> bool:
 
 
 def estimator_coefficients(estimator: Any) -> Mapping[str, Any]:
-    """The fitted inner estimator, for introspection (importances, support vectors)."""
+    """The fitted inner estimator, for importances or support vectors."""
     return getattr(estimator, "named_steps", {}).get("estimator", estimator)
 
 
 def feature_importances(estimator: Any, columns: Sequence[str]) -> dict[str, float]:
-    """Ranked feature importances, or an empty dict for models that do not expose them.
-
-    An empty dict is returned rather than fabricated values -- an SVM has no
-    ``feature_importances_`` and inventing one from coefficient magnitudes would be a
-    different quantity wearing the same name.
-    """
+    """Ranked feature importances, or {} for models that have none (no substitute is invented)."""
     inner = estimator_coefficients(estimator)
     importances = getattr(inner, "feature_importances_", None)
     if importances is None:
@@ -571,7 +441,7 @@ def feature_importances(estimator: Any, columns: Sequence[str]) -> dict[str, flo
 
 
 def describe_zoo() -> list[dict[str, Any]]:
-    """What the comparison report lists as 'the models we trained and compared'."""
+    """The classical candidates, for the comparison report."""
     return [
         {
             "name": spec.name,

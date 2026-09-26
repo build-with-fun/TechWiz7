@@ -1,27 +1,14 @@
 #!/usr/bin/env python3
-"""Swap defective original clips for quality-checked replacements.
+"""Move defective originals (shorter than 0.5 s or quieter than -50 dBFS RMS) to
+data/dataset_overflow/, drop their manifest rows and report the freed slots. Nothing is deleted.
 
-Defective = shorter than the 0.5 s preprocessing floor, or effectively silent
-(RMS below the -50 dBFS corpus gate).  Both make the clip unusable for feature
-extraction, so keeping it would leak rejected rows into training and shrink the
-per-class totals below the SRS 300/class floor.
-
-For every defective original this script:
-  1. moves the WAV to data/dataset_overflow/ (nothing is deleted),
-  2. drops its row from manifest.csv / manifest_with_split.csv,
-  3. records the freed class slot.
-
-Backfill happens by re-running audio_dataset/scripts/acquire_corpus.py, whose
-_ingest_blob now enforces the same quality gate, followed by
-data/topup_synthetic.py for any residual shortfall.  Run those afterwards:
+Backfill afterwards:
 
     python audio_dataset/scripts/acquire_corpus.py
     python data/topup_synthetic.py
     python audio_dataset/build_split.py && python audio_dataset/verify_split.py
 
-Usage:
     python audio_dataset/scripts/swap_defective_clips.py --check   # report only
-    python audio_dataset/scripts/swap_defective_clips.py           # do the swap
 """
 from __future__ import annotations
 
@@ -29,7 +16,6 @@ import argparse
 import csv
 import json
 import shutil
-import sys
 from collections import Counter
 from pathlib import Path
 

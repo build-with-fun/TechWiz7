@@ -1,16 +1,7 @@
-"""Acoustic feature extraction -- SRS Step 6, FR xx.
+"""Acoustic feature extraction (SRS Step 6, FR xx).
 
-Owner: taha (Audio DSP & feature engineering).
-
-    from feature_extraction import FeatureExtractor, extract_mel_tensor, feature_columns
-
-    extractor = FeatureExtractor()
-    x = extractor.extract_matrix(preprocessed)      # (1, n_features) for a sklearn model
-    mel = extract_mel_tensor(preprocessed)          # (128, 94) for nadia's CNN
-
-``feature_columns()`` is the frozen schema shared with ``bilal`` and ``nadia``: the
-extractor emits its values in exactly that order and the version string
-(``FEATURE_SCHEMA_VERSION``) is bumped whenever a column's name, order or meaning changes.
+``feature_columns()`` is the frozen schema shared with the model trainers; bump
+``FEATURE_SCHEMA_VERSION`` whenever a column's name, order or meaning changes.
 """
 
 from __future__ import annotations
@@ -57,7 +48,7 @@ __all__ = [
     "estimate_tempo",
     "waveform_envelope",
     "spectrogram_db",
-    # segment enumeration + cache + normalisation (nadia's conditions 2, 3, 4)
+    # segment enumeration + cache + normalisation (deep-model conditions 2, 3, 4)
     "enumerate_segments",
     "audio_id_for",
     "MelCache",

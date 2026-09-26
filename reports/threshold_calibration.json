@@ -1,0 +1,49 @@
+{
+  "split": "val",
+  "n": 450,
+  "configured_min_confidence": 0.6,
+  "table": [
+    {
+      "min_confidence": 0.4,
+      "auto_decided_share": 0.978,
+      "accuracy_of_auto_decisions": 0.848,
+      "accuracy_sent_to_review": 0.5,
+      "critical_recordings_wrongly_auto_decided": 31
+    },
+    {
+      "min_confidence": 0.5,
+      "auto_decided_share": 0.944,
+      "accuracy_of_auto_decisions": 0.861,
+      "accuracy_sent_to_review": 0.48,
+      "critical_recordings_wrongly_auto_decided": 27
+    },
+    {
+      "min_confidence": 0.6,
+      "auto_decided_share": 0.9,
+      "accuracy_of_auto_decisions": 0.879,
+      "accuracy_sent_to_review": 0.489,
+      "critical_recordings_wrongly_auto_decided": 23
+    },
+    {
+      "min_confidence": 0.7,
+      "auto_decided_share": 0.862,
+      "accuracy_of_auto_decisions": 0.902,
+      "accuracy_sent_to_review": 0.452,
+      "critical_recordings_wrongly_auto_decided": 19
+    },
+    {
+      "min_confidence": 0.8,
+      "auto_decided_share": 0.822,
+      "accuracy_of_auto_decisions": 0.916,
+      "accuracy_sent_to_review": 0.487,
+      "critical_recordings_wrongly_auto_decided": 15
+    },
+    {
+      "min_confidence": 0.9,
+      "auto_decided_share": 0.767,
+      "accuracy_of_auto_decisions": 0.925,
+      "accuracy_sent_to_review": 0.562,
+      "critical_recordings_wrongly_auto_decided": 14
+    }
+  ]
+}

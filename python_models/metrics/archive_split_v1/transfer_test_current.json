@@ -1,0 +1,1651 @@
+{
+  "selected_family": "logreg",
+  "results": {
+    "logreg": {
+      "model_name": "cnn14+logreg",
+      "model_version": "",
+      "split": "test",
+      "n_records": 450,
+      "probe": false,
+      "probe_label": "",
+      "accuracy": 0.8244444444444444,
+      "macro_precision": 0.828311160238384,
+      "macro_recall": 0.8244444444444445,
+      "macro_f1": 0.8247921326001478,
+      "weighted_f1": 0.8247921326001479,
+      "critical_classes": [
+        "Gunshot",
+        "Glass Breaking",
+        "Panic Scream",
+        "Aggression",
+        "Person Asking for Help"
+      ],
+      "critical_recall": 0.8577777777777778,
+      "critical_recall_by_class": {
+        "Glass Breaking": 0.8888888888888888,
+        "Gunshot": 0.8666666666666667,
+        "Panic Scream": 0.8444444444444444,
+        "Aggression": 0.6888888888888889,
+        "Person Asking for Help": 1.0
+      },
+      "top2_accuracy": 0.92,
+      "per_class": [
+        {
+          "class_name": "Machinery Fault",
+          "index": 0,
+          "support": 45,
+          "predicted": 44,
+          "true_positive": 36,
+          "precision": 0.8181818181818182,
+          "recall": 0.8,
+          "f1": 0.8089887640449439,
+          "is_critical": false
+        },
+        {
+          "class_name": "Glass Breaking",
+          "index": 1,
+          "support": 45,
+          "predicted": 53,
+          "true_positive": 40,
+          "precision": 0.7547169811320755,
+          "recall": 0.8888888888888888,
+          "f1": 0.8163265306122449,
+          "is_critical": true
+        },
+        {
+          "class_name": "Alarm or Siren",
+          "index": 2,
+          "support": 45,
+          "predicted": 39,
+          "true_positive": 33,
+          "precision": 0.8461538461538461,
+          "recall": 0.7333333333333333,
+          "f1": 0.7857142857142856,
+          "is_critical": false
+        },
+        {
+          "class_name": "Vehicle Horn",
+          "index": 3,
+          "support": 45,
+          "predicted": 40,
+          "true_positive": 37,
+          "precision": 0.925,
+          "recall": 0.8222222222222222,
+          "f1": 0.8705882352941177,
+          "is_critical": false
+        },
+        {
+          "class_name": "Animal Sound",
+          "index": 4,
+          "support": 45,
+          "predicted": 49,
+          "true_positive": 36,
+          "precision": 0.7346938775510204,
+          "recall": 0.8,
+          "f1": 0.7659574468085106,
+          "is_critical": false
+        },
+        {
+          "class_name": "Gunshot",
+          "index": 5,
+          "support": 45,
+          "predicted": 45,
+          "true_positive": 39,
+          "precision": 0.8666666666666667,
+          "recall": 0.8666666666666667,
+          "f1": 0.8666666666666667,
+          "is_critical": true
+        },
+        {
+          "class_name": "Panic Scream",
+          "index": 6,
+          "support": 45,
+          "predicted": 48,
+          "true_positive": 38,
+          "precision": 0.7916666666666666,
+          "recall": 0.8444444444444444,
+          "f1": 0.8172043010752689,
+          "is_critical": true
+        },
+        {
+          "class_name": "Aggression",
+          "index": 7,
+          "support": 45,
+          "predicted": 45,
+          "true_positive": 31,
+          "precision": 0.6888888888888889,
+          "recall": 0.6888888888888889,
+          "f1": 0.6888888888888889,
+          "is_critical": true
+        },
+        {
+          "class_name": "Person Asking for Help",
+          "index": 8,
+          "support": 45,
+          "predicted": 45,
+          "true_positive": 45,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "is_critical": true
+        },
+        {
+          "class_name": "Background Noise",
+          "index": 9,
+          "support": 45,
+          "predicted": 42,
+          "true_positive": 36,
+          "precision": 0.8571428571428571,
+          "recall": 0.8,
+          "f1": 0.8275862068965518,
+          "is_critical": false
+        }
+      ],
+      "confusion_matrix": [
+        [
+          36,
+          0,
+          2,
+          1,
+          3,
+          1,
+          0,
+          1,
+          0,
+          1
+        ],
+        [
+          0,
+          40,
+          1,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          3
+        ],
+        [
+          1,
+          6,
+          33,
+          2,
+          1,
+          0,
+          0,
+          2,
+          0,
+          0
+        ],
+        [
+          2,
+          1,
+          1,
+          37,
+          2,
+          0,
+          1,
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          1,
+          1,
+          0,
+          36,
+          0,
+          2,
+          3,
+          0,
+          1
+        ],
+        [
+          1,
+          2,
+          0,
+          0,
+          0,
+          39,
+          0,
+          3,
+          0,
+          0
+        ],
+        [
+          0,
+          1,
+          0,
+          0,
+          2,
+          0,
+          38,
+          4,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          0,
+          0,
+          2,
+          3,
+          7,
+          31,
+          0,
+          1
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          45,
+          0
+        ],
+        [
+          2,
+          2,
+          1,
+          0,
+          3,
+          1,
+          0,
+          0,
+          0,
+          36
+        ]
+      ],
+      "class_names": [
+        "Machinery Fault",
+        "Glass Breaking",
+        "Alarm or Siren",
+        "Vehicle Horn",
+        "Animal Sound",
+        "Gunshot",
+        "Panic Scream",
+        "Aggression",
+        "Person Asking for Help",
+        "Background Noise"
+      ],
+      "severe_errors": [
+        {
+          "audio_id": "row-5",
+          "actual": "Aggression",
+          "predicted": "Background Noise",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-6",
+          "actual": "Aggression",
+          "predicted": "Animal Sound",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-11",
+          "actual": "Aggression",
+          "predicted": "Machinery Fault",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-12",
+          "actual": "Aggression",
+          "predicted": "Animal Sound",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-185",
+          "actual": "Glass Breaking",
+          "predicted": "Alarm or Siren",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-200",
+          "actual": "Glass Breaking",
+          "predicted": "Background Noise",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-207",
+          "actual": "Glass Breaking",
+          "predicted": "Background Noise",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-209",
+          "actual": "Glass Breaking",
+          "predicted": "Background Noise",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-266",
+          "actual": "Gunshot",
+          "predicted": "Machinery Fault",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-351",
+          "actual": "Panic Scream",
+          "predicted": "Animal Sound",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-354",
+          "actual": "Panic Scream",
+          "predicted": "Animal Sound",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-0",
+          "actual": "Aggression",
+          "predicted": "Gunshot",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-7",
+          "actual": "Aggression",
+          "predicted": "Gunshot",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-18",
+          "actual": "Aggression",
+          "predicted": "Panic Scream",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-21",
+          "actual": "Aggression",
+          "predicted": "Panic Scream",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-22",
+          "actual": "Aggression",
+          "predicted": "Panic Scream",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-26",
+          "actual": "Aggression",
+          "predicted": "Panic Scream",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-27",
+          "actual": "Aggression",
+          "predicted": "Panic Scream",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-28",
+          "actual": "Aggression",
+          "predicted": "Panic Scream",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-39",
+          "actual": "Aggression",
+          "predicted": "Panic Scream",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-43",
+          "actual": "Aggression",
+          "predicted": "Gunshot",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-206",
+          "actual": "Glass Breaking",
+          "predicted": "Gunshot",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-225",
+          "actual": "Gunshot",
+          "predicted": "Glass Breaking",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-228",
+          "actual": "Gunshot",
+          "predicted": "Aggression",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-231",
+          "actual": "Gunshot",
+          "predicted": "Aggression",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-240",
+          "actual": "Gunshot",
+          "predicted": "Aggression",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-269",
+          "actual": "Gunshot",
+          "predicted": "Glass Breaking",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-316",
+          "actual": "Panic Scream",
+          "predicted": "Aggression",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-319",
+          "actual": "Panic Scream",
+          "predicted": "Glass Breaking",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-320",
+          "actual": "Panic Scream",
+          "predicted": "Aggression",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-321",
+          "actual": "Panic Scream",
+          "predicted": "Aggression",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-325",
+          "actual": "Panic Scream",
+          "predicted": "Aggression",
+          "silent_miss": false,
+          "misattributed_alert": true
+        }
+      ],
+      "config_snapshot": {}
+    },
+    "mlp": {
+      "model_name": "cnn14+mlp",
+      "model_version": "",
+      "split": "test",
+      "n_records": 450,
+      "probe": false,
+      "probe_label": "",
+      "accuracy": 0.8111111111111111,
+      "macro_precision": 0.8198548303929603,
+      "macro_recall": 0.8111111111111112,
+      "macro_f1": 0.8101284291887169,
+      "weighted_f1": 0.8101284291887167,
+      "critical_classes": [
+        "Gunshot",
+        "Glass Breaking",
+        "Panic Scream",
+        "Aggression",
+        "Person Asking for Help"
+      ],
+      "critical_recall": 0.8444444444444443,
+      "critical_recall_by_class": {
+        "Glass Breaking": 0.8888888888888888,
+        "Gunshot": 0.8222222222222222,
+        "Panic Scream": 0.8888888888888888,
+        "Aggression": 0.6444444444444445,
+        "Person Asking for Help": 0.9777777777777777
+      },
+      "top2_accuracy": 0.9133333333333333,
+      "per_class": [
+        {
+          "class_name": "Machinery Fault",
+          "index": 0,
+          "support": 45,
+          "predicted": 44,
+          "true_positive": 39,
+          "precision": 0.8863636363636364,
+          "recall": 0.8666666666666667,
+          "f1": 0.8764044943820225,
+          "is_critical": false
+        },
+        {
+          "class_name": "Glass Breaking",
+          "index": 1,
+          "support": 45,
+          "predicted": 57,
+          "true_positive": 40,
+          "precision": 0.7017543859649122,
+          "recall": 0.8888888888888888,
+          "f1": 0.7843137254901961,
+          "is_critical": true
+        },
+        {
+          "class_name": "Alarm or Siren",
+          "index": 2,
+          "support": 45,
+          "predicted": 31,
+          "true_positive": 29,
+          "precision": 0.9354838709677419,
+          "recall": 0.6444444444444445,
+          "f1": 0.763157894736842,
+          "is_critical": false
+        },
+        {
+          "class_name": "Vehicle Horn",
+          "index": 3,
+          "support": 45,
+          "predicted": 44,
+          "true_positive": 36,
+          "precision": 0.8181818181818182,
+          "recall": 0.8,
+          "f1": 0.8089887640449439,
+          "is_critical": false
+        },
+        {
+          "class_name": "Animal Sound",
+          "index": 4,
+          "support": 45,
+          "predicted": 47,
+          "true_positive": 35,
+          "precision": 0.7446808510638298,
+          "recall": 0.7777777777777778,
+          "f1": 0.7608695652173912,
+          "is_critical": false
+        },
+        {
+          "class_name": "Gunshot",
+          "index": 5,
+          "support": 45,
+          "predicted": 44,
+          "true_positive": 37,
+          "precision": 0.8409090909090909,
+          "recall": 0.8222222222222222,
+          "f1": 0.8314606741573033,
+          "is_critical": true
+        },
+        {
+          "class_name": "Panic Scream",
+          "index": 6,
+          "support": 45,
+          "predicted": 56,
+          "true_positive": 40,
+          "precision": 0.7142857142857143,
+          "recall": 0.8888888888888888,
+          "f1": 0.792079207920792,
+          "is_critical": true
+        },
+        {
+          "class_name": "Aggression",
+          "index": 7,
+          "support": 45,
+          "predicted": 38,
+          "true_positive": 29,
+          "precision": 0.7631578947368421,
+          "recall": 0.6444444444444445,
+          "f1": 0.6987951807228916,
+          "is_critical": true
+        },
+        {
+          "class_name": "Person Asking for Help",
+          "index": 8,
+          "support": 45,
+          "predicted": 46,
+          "true_positive": 44,
+          "precision": 0.9565217391304348,
+          "recall": 0.9777777777777777,
+          "f1": 0.967032967032967,
+          "is_critical": true
+        },
+        {
+          "class_name": "Background Noise",
+          "index": 9,
+          "support": 45,
+          "predicted": 43,
+          "true_positive": 36,
+          "precision": 0.8372093023255814,
+          "recall": 0.8,
+          "f1": 0.8181818181818183,
+          "is_critical": false
+        }
+      ],
+      "confusion_matrix": [
+        [
+          39,
+          0,
+          1,
+          0,
+          2,
+          0,
+          0,
+          2,
+          0,
+          1
+        ],
+        [
+          0,
+          40,
+          0,
+          1,
+          0,
+          1,
+          0,
+          0,
+          1,
+          2
+        ],
+        [
+          0,
+          8,
+          29,
+          3,
+          2,
+          0,
+          0,
+          1,
+          0,
+          2
+        ],
+        [
+          2,
+          2,
+          1,
+          36,
+          1,
+          0,
+          2,
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          3,
+          35,
+          0,
+          3,
+          3,
+          0,
+          1
+        ],
+        [
+          0,
+          4,
+          0,
+          1,
+          0,
+          37,
+          2,
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          1,
+          0,
+          0,
+          2,
+          0,
+          40,
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          2,
+          3,
+          9,
+          29,
+          1,
+          1
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          44,
+          0
+        ],
+        [
+          2,
+          2,
+          0,
+          0,
+          3,
+          2,
+          0,
+          0,
+          0,
+          36
+        ]
+      ],
+      "class_names": [
+        "Machinery Fault",
+        "Glass Breaking",
+        "Alarm or Siren",
+        "Vehicle Horn",
+        "Animal Sound",
+        "Gunshot",
+        "Panic Scream",
+        "Aggression",
+        "Person Asking for Help",
+        "Background Noise"
+      ],
+      "severe_errors": [
+        {
+          "audio_id": "row-5",
+          "actual": "Aggression",
+          "predicted": "Background Noise",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-6",
+          "actual": "Aggression",
+          "predicted": "Animal Sound",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-12",
+          "actual": "Aggression",
+          "predicted": "Animal Sound",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-185",
+          "actual": "Glass Breaking",
+          "predicted": "Vehicle Horn",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-197",
+          "actual": "Glass Breaking",
+          "predicted": "Background Noise",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-207",
+          "actual": "Glass Breaking",
+          "predicted": "Background Noise",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-240",
+          "actual": "Gunshot",
+          "predicted": "Vehicle Horn",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-325",
+          "actual": "Panic Scream",
+          "predicted": "Machinery Fault",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-351",
+          "actual": "Panic Scream",
+          "predicted": "Animal Sound",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-354",
+          "actual": "Panic Scream",
+          "predicted": "Animal Sound",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-0",
+          "actual": "Aggression",
+          "predicted": "Gunshot",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-2",
+          "actual": "Aggression",
+          "predicted": "Panic Scream",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-3",
+          "actual": "Aggression",
+          "predicted": "Panic Scream",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-7",
+          "actual": "Aggression",
+          "predicted": "Gunshot",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-18",
+          "actual": "Aggression",
+          "predicted": "Panic Scream",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-21",
+          "actual": "Aggression",
+          "predicted": "Panic Scream",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-22",
+          "actual": "Aggression",
+          "predicted": "Panic Scream",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-26",
+          "actual": "Aggression",
+          "predicted": "Panic Scream",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-27",
+          "actual": "Aggression",
+          "predicted": "Panic Scream",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-28",
+          "actual": "Aggression",
+          "predicted": "Panic Scream",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-30",
+          "actual": "Aggression",
+          "predicted": "Person Asking for Help",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-39",
+          "actual": "Aggression",
+          "predicted": "Panic Scream",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-43",
+          "actual": "Aggression",
+          "predicted": "Gunshot",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-200",
+          "actual": "Glass Breaking",
+          "predicted": "Person Asking for Help",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-206",
+          "actual": "Glass Breaking",
+          "predicted": "Gunshot",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-228",
+          "actual": "Gunshot",
+          "predicted": "Aggression",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-230",
+          "actual": "Gunshot",
+          "predicted": "Panic Scream",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-232",
+          "actual": "Gunshot",
+          "predicted": "Panic Scream",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-234",
+          "actual": "Gunshot",
+          "predicted": "Glass Breaking",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-241",
+          "actual": "Gunshot",
+          "predicted": "Glass Breaking",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-266",
+          "actual": "Gunshot",
+          "predicted": "Glass Breaking",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-269",
+          "actual": "Gunshot",
+          "predicted": "Glass Breaking",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-319",
+          "actual": "Panic Scream",
+          "predicted": "Glass Breaking",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-321",
+          "actual": "Panic Scream",
+          "predicted": "Aggression",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-394",
+          "actual": "Person Asking for Help",
+          "predicted": "Gunshot",
+          "silent_miss": false,
+          "misattributed_alert": true
+        }
+      ],
+      "config_snapshot": {}
+    },
+    "svm_rbf": {
+      "model_name": "cnn14+svm_rbf",
+      "model_version": "",
+      "split": "test",
+      "n_records": 450,
+      "probe": false,
+      "probe_label": "",
+      "accuracy": 0.7755555555555556,
+      "macro_precision": 0.7910463119547007,
+      "macro_recall": 0.7755555555555556,
+      "macro_f1": 0.7796472336270522,
+      "weighted_f1": 0.7796472336270522,
+      "critical_classes": [
+        "Gunshot",
+        "Glass Breaking",
+        "Panic Scream",
+        "Aggression",
+        "Person Asking for Help"
+      ],
+      "critical_recall": 0.7822222222222222,
+      "critical_recall_by_class": {
+        "Glass Breaking": 0.8,
+        "Gunshot": 0.7555555555555555,
+        "Panic Scream": 0.8444444444444444,
+        "Aggression": 0.6444444444444445,
+        "Person Asking for Help": 0.8666666666666667
+      },
+      "top2_accuracy": 0.8844444444444445,
+      "per_class": [
+        {
+          "class_name": "Machinery Fault",
+          "index": 0,
+          "support": 45,
+          "predicted": 43,
+          "true_positive": 35,
+          "precision": 0.813953488372093,
+          "recall": 0.7777777777777778,
+          "f1": 0.7954545454545455,
+          "is_critical": false
+        },
+        {
+          "class_name": "Glass Breaking",
+          "index": 1,
+          "support": 45,
+          "predicted": 48,
+          "true_positive": 36,
+          "precision": 0.75,
+          "recall": 0.8,
+          "f1": 0.7741935483870969,
+          "is_critical": true
+        },
+        {
+          "class_name": "Alarm or Siren",
+          "index": 2,
+          "support": 45,
+          "predicted": 66,
+          "true_positive": 34,
+          "precision": 0.5151515151515151,
+          "recall": 0.7555555555555555,
+          "f1": 0.6126126126126126,
+          "is_critical": false
+        },
+        {
+          "class_name": "Vehicle Horn",
+          "index": 3,
+          "support": 45,
+          "predicted": 40,
+          "true_positive": 35,
+          "precision": 0.875,
+          "recall": 0.7777777777777778,
+          "f1": 0.823529411764706,
+          "is_critical": false
+        },
+        {
+          "class_name": "Animal Sound",
+          "index": 4,
+          "support": 45,
+          "predicted": 41,
+          "true_positive": 31,
+          "precision": 0.7560975609756098,
+          "recall": 0.6888888888888889,
+          "f1": 0.7209302325581395,
+          "is_critical": false
+        },
+        {
+          "class_name": "Gunshot",
+          "index": 5,
+          "support": 45,
+          "predicted": 42,
+          "true_positive": 34,
+          "precision": 0.8095238095238095,
+          "recall": 0.7555555555555555,
+          "f1": 0.7816091954022989,
+          "is_critical": true
+        },
+        {
+          "class_name": "Panic Scream",
+          "index": 6,
+          "support": 45,
+          "predicted": 47,
+          "true_positive": 38,
+          "precision": 0.8085106382978723,
+          "recall": 0.8444444444444444,
+          "f1": 0.8260869565217391,
+          "is_critical": true
+        },
+        {
+          "class_name": "Aggression",
+          "index": 7,
+          "support": 45,
+          "predicted": 39,
+          "true_positive": 29,
+          "precision": 0.7435897435897436,
+          "recall": 0.6444444444444445,
+          "f1": 0.6904761904761906,
+          "is_critical": true
+        },
+        {
+          "class_name": "Person Asking for Help",
+          "index": 8,
+          "support": 45,
+          "predicted": 40,
+          "true_positive": 39,
+          "precision": 0.975,
+          "recall": 0.8666666666666667,
+          "f1": 0.9176470588235294,
+          "is_critical": true
+        },
+        {
+          "class_name": "Background Noise",
+          "index": 9,
+          "support": 45,
+          "predicted": 44,
+          "true_positive": 38,
+          "precision": 0.8636363636363636,
+          "recall": 0.8444444444444444,
+          "f1": 0.853932584269663,
+          "is_critical": false
+        }
+      ],
+      "confusion_matrix": [
+        [
+          35,
+          0,
+          4,
+          0,
+          2,
+          1,
+          0,
+          2,
+          0,
+          1
+        ],
+        [
+          0,
+          36,
+          5,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          3
+        ],
+        [
+          1,
+          6,
+          34,
+          2,
+          1,
+          0,
+          0,
+          1,
+          0,
+          0
+        ],
+        [
+          3,
+          1,
+          2,
+          35,
+          1,
+          0,
+          1,
+          1,
+          1,
+          0
+        ],
+        [
+          0,
+          0,
+          7,
+          3,
+          31,
+          0,
+          2,
+          1,
+          0,
+          1
+        ],
+        [
+          1,
+          3,
+          4,
+          0,
+          0,
+          34,
+          0,
+          3,
+          0,
+          0
+        ],
+        [
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          38,
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          3,
+          0,
+          2,
+          3,
+          6,
+          29,
+          0,
+          1
+        ],
+        [
+          0,
+          0,
+          5,
+          0,
+          0,
+          0,
+          0,
+          1,
+          39,
+          0
+        ],
+        [
+          2,
+          1,
+          0,
+          0,
+          3,
+          1,
+          0,
+          0,
+          0,
+          38
+        ]
+      ],
+      "class_names": [
+        "Machinery Fault",
+        "Glass Breaking",
+        "Alarm or Siren",
+        "Vehicle Horn",
+        "Animal Sound",
+        "Gunshot",
+        "Panic Scream",
+        "Aggression",
+        "Person Asking for Help",
+        "Background Noise"
+      ],
+      "severe_errors": [
+        {
+          "audio_id": "row-2",
+          "actual": "Aggression",
+          "predicted": "Alarm or Siren",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-5",
+          "actual": "Aggression",
+          "predicted": "Background Noise",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-6",
+          "actual": "Aggression",
+          "predicted": "Animal Sound",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-11",
+          "actual": "Aggression",
+          "predicted": "Machinery Fault",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-12",
+          "actual": "Aggression",
+          "predicted": "Animal Sound",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-13",
+          "actual": "Aggression",
+          "predicted": "Alarm or Siren",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-26",
+          "actual": "Aggression",
+          "predicted": "Alarm or Siren",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-181",
+          "actual": "Glass Breaking",
+          "predicted": "Alarm or Siren",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-185",
+          "actual": "Glass Breaking",
+          "predicted": "Alarm or Siren",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-192",
+          "actual": "Glass Breaking",
+          "predicted": "Alarm or Siren",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-197",
+          "actual": "Glass Breaking",
+          "predicted": "Background Noise",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-200",
+          "actual": "Glass Breaking",
+          "predicted": "Background Noise",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-207",
+          "actual": "Glass Breaking",
+          "predicted": "Background Noise",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-212",
+          "actual": "Glass Breaking",
+          "predicted": "Alarm or Siren",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-224",
+          "actual": "Glass Breaking",
+          "predicted": "Alarm or Siren",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-230",
+          "actual": "Gunshot",
+          "predicted": "Alarm or Siren",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-232",
+          "actual": "Gunshot",
+          "predicted": "Alarm or Siren",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-235",
+          "actual": "Gunshot",
+          "predicted": "Alarm or Siren",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-242",
+          "actual": "Gunshot",
+          "predicted": "Alarm or Siren",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-266",
+          "actual": "Gunshot",
+          "predicted": "Machinery Fault",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-345",
+          "actual": "Panic Scream",
+          "predicted": "Alarm or Siren",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-354",
+          "actual": "Panic Scream",
+          "predicted": "Animal Sound",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-357",
+          "actual": "Panic Scream",
+          "predicted": "Alarm or Siren",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-360",
+          "actual": "Person Asking for Help",
+          "predicted": "Alarm or Siren",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-388",
+          "actual": "Person Asking for Help",
+          "predicted": "Alarm or Siren",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-389",
+          "actual": "Person Asking for Help",
+          "predicted": "Alarm or Siren",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-391",
+          "actual": "Person Asking for Help",
+          "predicted": "Alarm or Siren",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-394",
+          "actual": "Person Asking for Help",
+          "predicted": "Alarm or Siren",
+          "silent_miss": true,
+          "misattributed_alert": false
+        },
+        {
+          "audio_id": "row-0",
+          "actual": "Aggression",
+          "predicted": "Gunshot",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-7",
+          "actual": "Aggression",
+          "predicted": "Gunshot",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-18",
+          "actual": "Aggression",
+          "predicted": "Panic Scream",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-21",
+          "actual": "Aggression",
+          "predicted": "Panic Scream",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-22",
+          "actual": "Aggression",
+          "predicted": "Panic Scream",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-27",
+          "actual": "Aggression",
+          "predicted": "Panic Scream",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-28",
+          "actual": "Aggression",
+          "predicted": "Panic Scream",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-39",
+          "actual": "Aggression",
+          "predicted": "Panic Scream",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-43",
+          "actual": "Aggression",
+          "predicted": "Gunshot",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-206",
+          "actual": "Glass Breaking",
+          "predicted": "Gunshot",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-225",
+          "actual": "Gunshot",
+          "predicted": "Glass Breaking",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-228",
+          "actual": "Gunshot",
+          "predicted": "Aggression",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-231",
+          "actual": "Gunshot",
+          "predicted": "Aggression",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-240",
+          "actual": "Gunshot",
+          "predicted": "Aggression",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-241",
+          "actual": "Gunshot",
+          "predicted": "Glass Breaking",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-269",
+          "actual": "Gunshot",
+          "predicted": "Glass Breaking",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-316",
+          "actual": "Panic Scream",
+          "predicted": "Aggression",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-319",
+          "actual": "Panic Scream",
+          "predicted": "Glass Breaking",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-321",
+          "actual": "Panic Scream",
+          "predicted": "Gunshot",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-325",
+          "actual": "Panic Scream",
+          "predicted": "Gunshot",
+          "silent_miss": false,
+          "misattributed_alert": true
+        },
+        {
+          "audio_id": "row-395",
+          "actual": "Person Asking for Help",
+          "predicted": "Aggression",
+          "silent_miss": false,
+          "misattributed_alert": true
+        }
+      ],
+      "config_snapshot": {}
+    }
+  }
+}

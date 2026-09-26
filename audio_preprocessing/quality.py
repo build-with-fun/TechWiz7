@@ -1,18 +1,8 @@
-"""Audio-quality analysis -- SRS Step 13, FR xii/xiii, and the gate on repeat detection.
+"""Audio-quality verdict (SRS Step 13, FR xii-xiv): Good, Acceptable, Poor or Unusable.
 
-Owner: taha.
-
-The verdict this module returns is not decoration.  ``config/thresholds.json`` sets
-``repeat_detection.min_quality = "Acceptable"``, so a clip that scores Poor or Unusable
-**cannot raise a confirmed alert**, however confident the model is.  That makes this the
-rule that stops a clipped, saturated recording from firing a Gunshot alert, and it is
-therefore the module with the harshest test suite.
-
-Seven checks, straight from the SRS wording -- silence, clipping, excessive noise, low
-signal strength, unsuitable duration, encoding problems, missing audio frames -- each
-measured, each reported with the number that produced it.  No check returns a bare
-boolean: every flag carries the measurement, because an evaluator will ask "why is this
-Poor?" and "because the threshold said so" is not an answer.
+The seven SRS checks (silence, clipping, excessive noise, low signal, unsuitable duration,
+encoding problems, missing frames) each report the measurement behind them. The verdict
+matters: repeat_detection.min_quality is Acceptable, so a Poor clip cannot confirm an alert.
 """
 
 from __future__ import annotations
@@ -22,7 +12,7 @@ from typing import Any
 import numpy as np
 
 from .config import quality_config
-from .transforms import db_to_amplitude, peak_dbfs, rms_dbfs, to_mono
+from .transforms import peak_dbfs, rms_dbfs, to_mono
 
 GOOD = "Good"
 ACCEPTABLE = "Acceptable"
@@ -51,35 +41,12 @@ def estimate_snr_db(
     signal_fraction: float = 0.10,
     max_db: float = 120.0,
 ) -> float:
-    """Signal-to-noise ratio in dB: how far the sound's structural peaks sit above its
-    broadband floor.
+    """Signal-to-noise estimate in dB: strongest spectral bins versus the median of the rest.
 
-    Definition: take the mean power spectrum over the whole recording, rank the bins, and
-    compare the mean power of the strongest ``signal_fraction`` of bins against the median
-    power of the remaining bins.  The result is ``10 * log10(peak_power / floor_power)``.
-
-    WHY NOT THE OBVIOUS FRAME-PERCENTILE ESTIMATOR
-    ----------------------------------------------
-    The textbook approach -- "quietest 10% of frames is the noise, loudest 10% is the
-    signal" -- was measured here and **rejected**, and it is worth recording why, because it
-    is the natural thing to write.  A steady sound has no quiet frames: a siren, an alarm
-    or machinery hum fills every frame at the same level, so "signal minus noise" collapses
-    to roughly zero and a perfectly clean 440 Hz tone scores about **-23 dB SNR**, i.e.
-    "Poor".  A quality metric that condemns a pure tone would condemn exactly the tonal
-    classes this application exists to detect (Alarm or Siren, Machinery Fault), and it would
-    have been invisible to a test that only checked the function returns a float.
-
-    The spectral peak-to-floor ratio asks the question that actually matters -- "does this
-    sound stand out from its own broadband floor?" -- and answers correctly for both steady
-    and intermittent sounds:
-
-    * clean tone            -> peaks far above the floor      -> very high SNR
-    * white noise           -> flat spectrum                  -> ~0 dB
-    * siren buried in noise -> harmonics still above the floor -> moderate SNR
-    * digital silence       -> no power anywhere              -> 0.0, flagged as silence elsewhere
-
-    Deterministic: a ranking and a median, no random sampling.  Returns ``0.0`` when there
-    is no measurable floor or no structure (never ``nan``).
+    The textbook frame-percentile estimator (quietest frames = noise) was tried and rejected: a
+    steady siren or machine hum has no quiet frames, so a clean 440 Hz tone scored about -23 dB
+    and would have condemned exactly the tonal classes we detect. This estimator gives a clean
+    tone a high SNR and white noise about 0 dB. Returns 0.0 rather than NaN.
     """
     arr = to_mono(y)
     if arr.size == 0:
@@ -120,13 +87,8 @@ def frame_dynamic_range_db(
     low: float = 10.0,
     high: float = 90.0,
 ) -> float:
-    """Spread between the quiet and loud frames of a recording, in dB.
-
-    Reported alongside the SNR as a diagnostic, **not** used as a threshold: it answers a
-    different question ("does this recording change over time?" versus "does it stand out
-    from its floor?").  An intermittent Gunshot has a huge dynamic range; a steady siren has
-    almost none.  Both can be perfectly good recordings, which is exactly why this must not
-    feed the verdict.
+    """Spread between quiet and loud frames in dB; reported only, never used in the verdict
+    (an intermittent gunshot and a steady siren can both be good recordings).
     """
     frames = _frame_powers(to_mono(y), frame_length=frame_length, hop_length=hop_length)
     if frames.size == 0 or float(np.max(frames)) <= EPS:
@@ -151,11 +113,8 @@ def _frame_powers(y: np.ndarray, *, frame_length: int, hop_length: int) -> np.nd
 
 
 def clipping_stats(y: np.ndarray, threshold: float = 0.99) -> dict[str, float]:
-    """Clipping ratio and the longest run of consecutive samples at full scale.
-
-    The run length is what separates "a loud but honest recording" from "an amplifier
-    driven into its rails": true clipping produces runs of dozens of identical full-scale
-    samples, whereas a merely loud signal touches 0.99 for a sample or two.
+    """Clipping ratio plus the longest run at full scale: real clipping gives long runs, a loud
+    signal only touches the rails.
     """
     arr = to_mono(y)
     if arr.size == 0:
@@ -185,30 +144,15 @@ def analyze_quality(
     decoded_with_error: bool = False,
     non_finite_count: int | None = None,
 ) -> dict[str, Any]:
-    """Measure every SRS Step 13 audio-quality signal and return a verdict.
-
-    Parameters
-    ----------
-    decoded_with_error:
-        True when a decoder reported a recoverable decode problem (e.g. a resync after a
-        damaged frame).  Recorded as the ``encoding`` problem the SRS lists -- a clip that
-        decoded "well enough" is not the same as one that decoded cleanly.
-    non_finite_count:
-        Number of NaN/Inf samples the decoder produced, if any (missing frames).
-
-    Returns
-    -------
-    dict with ``verdict`` (Good/Acceptable/Poor/Unusable), ``problems`` (list of codes),
-    ``urgent`` (codes that alone make a clip Unusable), ``measurements`` (every number used),
-    ``thresholds`` (the values it was judged against) and ``notes`` (human-readable lines).
+    """Measure the Step 13 signals and return verdict, problems, urgent problems, measurements,
+    thresholds and human-readable notes. ``decoded_with_error`` and ``non_finite_count`` report
+    decoder trouble (encoding problems, missing frames).
     """
     settings = cfg or quality_config()
     arr = to_mono(y)
     n = int(arr.size)
 
-    # Non-finite samples mean the decoder hit a gap (SRS: missing audio frames).  Replace
-    # them with zeros for measurement -- a NaN would otherwise poison every statistic --
-    # and count them, because the count is the evidence for the missing-frames problem.
+    # NaN/Inf samples are decoder gaps: zero them for measurement and count them as evidence.
     detected_missing = int(np.count_nonzero(~np.isfinite(arr))) if n else 0
     if detected_missing:
         arr = np.where(np.isfinite(arr), arr, np.float32(0.0)).astype(np.float32)
@@ -222,17 +166,31 @@ def analyze_quality(
         "sample_rate": int(sample_rate),
     }
 
-    # --- 1. signal presence / silence --------------------------------------------------
+    # 1. signal presence / silence
     rms_db = rms_dbfs(arr)
     peak_db = peak_dbfs(arr)
     measurements["rms_dbfs"] = _clean(rms_db)
     measurements["peak_dbfs"] = _clean(peak_db)
     silence_max = float(settings.get("silence_rms_dbfs_max", -50.0))
-    checks["silence"] = bool(n == 0 or rms_db <= silence_max)
+    # Silence means no part of the clip rises above the floor, judged on the loudest 50 ms
+    # frame. The whole-clip RMS was used until 26 Sep, and a gunshot followed by quiet
+    # averaged out as "silent" once it was 30 dB down: 102 of 150 test clips at -30 dB
+    # were refused although the models classified most of the rest correctly.
+    frame = max(1, int(0.05 * sample_rate)) if sample_rate else max(1, n)
+    usable = (n // frame) * frame
+    if usable:
+        frames = arr[:usable].reshape(-1, frame).astype(np.float64)
+        loudest = float(np.sqrt(np.max(np.mean(frames ** 2, axis=1))))
+        loudest_db = 20.0 * np.log10(loudest) if loudest > 0 else float("-inf")
+    else:
+        loudest_db = rms_db
+    measurements["loudest_frame_rms_dbfs"] = _clean(loudest_db)
+    checks["silence"] = bool(n == 0 or loudest_db <= silence_max)
     if checks["silence"]:
-        notes.append(f"RMS {_fmt_db(rms_db)} is at or below the silence floor {silence_max:.1f} dBFS")
+        notes.append(f"loudest 50 ms frame {_fmt_db(loudest_db)} is at or below the silence "
+                     f"floor {silence_max:.1f} dBFS")
 
-    # --- 2. clipping -------------------------------------------------------------------
+    # 2. clipping
     clip = clipping_stats(arr)
     measurements.update(
         clipping_ratio=round(clip["clipping_ratio"], 6),
@@ -247,7 +205,7 @@ def analyze_quality(
             f"(limit {clip_max * 100:.2f}%), longest full-scale run {clip['longest_run']} samples"
         )
 
-    # --- 3. excessive noise / SNR ------------------------------------------------------
+    # 3. excessive noise / SNR
     snr_db = estimate_snr_db(arr)
     measurements["snr_db"] = _clean(snr_db)
     good_snr = float(settings.get("good_snr_db", 20.0))
@@ -261,16 +219,15 @@ def analyze_quality(
     elif checks["noise_below_acceptable"]:
         notes.append(f"SNR {_fmt_db(snr_db)} is below the acceptable floor {acceptable_snr:.1f} dB")
 
-    # --- 4. low signal strength --------------------------------------------------------
-    # Not the same as silence: there is a signal, but it is so far down that the features
-    # are dominated by the quantisation floor.
+    # 4. low signal strength
+    # There is a signal, but it is close to the quantisation floor.
     low_peak = float(settings.get("low_signal_peak_dbfs", -40.0))
     checks["low_signal"] = bool(not checks["silence"] and peak_db < low_peak)
     measurements["low_signal_peak_dbfs"] = low_peak
     if checks["low_signal"]:
         notes.append(f"peak {_fmt_db(peak_db)} is below the low-signal floor {low_peak:.1f} dBFS")
 
-    # --- 5. duration -------------------------------------------------------------------
+    # 5. duration
     min_dur = float(settings.get("min_duration_sec", 0.5))
     max_dur = float(settings.get("max_duration_sec", 300.0))
     checks["duration_short"] = bool(duration < min_dur)
@@ -280,19 +237,19 @@ def analyze_quality(
     if checks["duration_long"]:
         notes.append(f"duration {duration:.1f}s exceeds the {max_dur:.0f}s limit")
 
-    # --- 6. encoding problems ----------------------------------------------------------
+    # 6. encoding problems
     checks["encoding"] = bool(decoded_with_error)
     if checks["encoding"]:
         notes.append("the decoder reported an encoding problem while reading this file")
 
-    # --- 7. missing frames -------------------------------------------------------------
+    # 7. missing frames
     missing = max(int(non_finite_count or 0), detected_missing)
     measurements["non_finite_samples"] = missing
     checks["missing_frames"] = bool(missing > 0)
     if checks["missing_frames"]:
         notes.append(f"{missing} sample(s) could not be decoded (missing frames)")
 
-    # --- verdict -----------------------------------------------------------------------
+    # verdict
     verdict, urgent, problems = _decide(
         checks, snr_db=snr_db, peak_db=peak_db,
         min_snr=min_snr, poor_snr=poor_snr, acceptable_snr=acceptable_snr, good_snr=good_snr,
@@ -335,11 +292,7 @@ def _decide(
     clip: dict[str, float],
     clip_max: float,
 ) -> tuple[str, list[str], list[str]]:
-    """Map the measurements to Good/Acceptable/Poor/Unusable.
-
-    ``urgent`` is kept separate from ``problems`` so the caller can distinguish "this clip
-    is bad but analysable" from "this clip must not be analysed at all".
-    """
+    """Map measurements to a verdict; ``urgent`` problems alone make a clip Unusable."""
     problems: list[str] = []
     urgent: list[str] = []
 
@@ -365,18 +318,18 @@ def _decide(
     if urgent:
         return UNUSABLE, urgent, problems
 
-    # Severely clipped: more than five times the tolerance means the waveform is a square
-    # wave in places and the spectral features are no longer a description of the source.
+    # More than 5x the clipping tolerance: parts of the waveform are a square wave.
     severe_clip = checks.get("clipping") and clip["clipping_ratio"] > 5.0 * clip_max
     very_short = duration < max(min_dur, 0.6 * min_dur + 0.2) and duration < min_dur * 1.5
-    if severe_clip or snr_db < poor_snr or checks.get("duration_long") or very_short:
+    # A faint but real event is analysed and rated Poor: it reaches a reviewer, and the
+    # quality gate keeps it from raising an alert on its own.
+    if severe_clip or snr_db < poor_snr or checks.get("duration_long") or very_short or checks.get("low_signal"):
         return POOR, urgent, problems
-    # Undecodable gaps are never "Acceptable": the waveform is not a faithful record of what
-    # the microphone heard, so no confidence computed from it should be trusted.
+    # Decoder gaps are never Acceptable: the waveform is not what the microphone heard.
     if checks.get("missing_frames"):
         return POOR, urgent, problems
 
-    if checks.get("clipping") or checks.get("noise_below_acceptable") or checks.get("low_signal") or checks.get("encoding"):
+    if checks.get("clipping") or checks.get("noise_below_acceptable") or checks.get("encoding"):
         return ACCEPTABLE, urgent, problems
 
     healthy = (

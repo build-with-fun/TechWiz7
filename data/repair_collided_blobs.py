@@ -1,17 +1,9 @@
-"""Repair collided original blobs in audio_dataset/originals/.
+"""One-off repair (already applied): two crashed acquire_corpus.py runs both started at
+SS-*-0501 and overwrote each other's files. Each damaged row's clip is re-harvested from the
+raw caches (ESC-50, UrbanSound8K, FSD50K.eval), verified against the row's sha256 and
+written back.
 
-Symptom: two crashed acquire_corpus.py runs with count-based id allocation both
-started at SS-*-0501 and *overwrote* each other's files, while the merged
-acquired_rows.csv kept the ORIGINAL rows' sha256. The verifier then reports
-(1) sha256 mismatches and (2) duplicate-content groups, because each damaged
-file now holds byte-identical content to some other row's file.
-
-Fix: every damaged row's corpus_id points at a clip that still lives in the
-raw caches (ESC-50 parquet, UrbanSound8K parquet, FSD50K.eval recovered wavs),
-and _ingest_blob ships bytes verbatim -- so the exact original blob can be
-re-harvested, sha-verified against the manifest row, and written back.
-
-Run:  .venv/bin/python data/repair_collided_blobs.py
+    .venv/bin/python data/repair_collided_blobs.py
 """
 from __future__ import annotations
 
@@ -76,10 +68,7 @@ def ensure_eval_labels() -> None:
 
 
 def harvest_needed(needed: dict[str, set[str]]) -> dict[str, bytes]:
-    """Stream the raw caches once, keeping only the blobs we need.
-
-    needed: source tag ('esc50' | 'us8k' | 'fsd50k_eval') -> set of corpus keys.
-    Returns corpus key -> blob bytes."""
+    """Stream the raw caches once, keeping only the needed blobs (source tag -> corpus keys)."""
     import pandas as pd
 
     blobs: dict[str, bytes] = {}

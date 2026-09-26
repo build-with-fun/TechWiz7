@@ -198,4 +198,4 @@ ask on, so a stray `--reset` in a script cannot silently empty the demo database
 - `src/db.py` — engine, session factory, storage layout, `record_audit()`.
 - `tests/test_database.py` — the contract on this layer, including the FR lxxv immutability
   test and a 20,000-event test that asserts the search filter uses the index.
-- `documentation/api_contract.md` — the HTTP surface that reads and writes these tables.
+- `API_DOCUMENTATION.md` — the HTTP surface that reads and writes these tables.

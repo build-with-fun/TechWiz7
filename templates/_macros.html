@@ -116,10 +116,14 @@
 {%- endif -%}
 {% endmacro %}
 
-{% macro seconds(ms) -%}
-{%- if ms is none -%}--
-{%- elif ms is number -%}{{ '%.0f' | format(ms) }} ms
-{%- else -%}{{ ms }}
+{# A latency, formatted the way the live console shows it: whole milliseconds and the
+   unit ("1284 ms", see static/js/live.js). Named for the unit it *renders*, not the unit
+   it takes -- a macro called ``seconds`` that consumed milliseconds invited the mismatch
+   that made /events/<id> a 500 for every event whose top score carried a latency. #}
+{% macro ms(value) -%}
+{%- if value is none -%}--
+{%- elif value is number -%}{{ '%.0f' | format(value) }} ms
+{%- else -%}{{ value }}
 {%- endif -%}
 {% endmacro %}
 
@@ -285,7 +289,7 @@
 {% endmacro %}
 
 {# ------------------------------------------------------------ filter form --
-   Rendered entirely from `filter_fields`, which sara builds in
+   Rendered entirely from `filter_fields`, which is built in
    src/services/search.py. No field name, no option list and no label is typed
    into a template: adding a class to config/classes.json grows the dropdown,
    and an evaluator's surprise request ("filter by quality") is already here.
@@ -350,7 +354,7 @@
         <option value="{{ option.value }}" {% if option.value == is_selected %}selected{% endif %}>{{ option.label }}</option>
         {% endfor %}
       </select>
-      {% if field.srs %}<span class="field__hint">SRS {{ field.srs }}</span>{% endif %}
+
     </span>
 
     {% elif field.type == 'number' %}

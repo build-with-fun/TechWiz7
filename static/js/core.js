@@ -484,45 +484,30 @@
 
   /* ---------------------------------------------------------------- theme - */
 
-  var THEME_COOKIE = 'sst_theme';
+  var THEMES = ['dark', 'light'];
 
   function currentTheme() {
-    return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    var theme = document.documentElement.getAttribute('data-theme');
+    return THEMES.indexOf(theme) >= 0 ? theme : 'dark';
   }
 
   function setTheme(theme) {
-    var next = theme === 'light' ? 'light' : 'dark';
+    var next = THEMES.indexOf(theme) >= 0 ? theme : 'dark';
     document.documentElement.setAttribute('data-theme', next);
-    // Cookie, not localStorage: the server renders data-theme on the first byte,
-    // so there is no flash of the wrong theme before scripts run.
-    document.cookie = THEME_COOKIE + '=' + next + '; path=/; max-age=31536000; SameSite=Lax';
+    // The server reads the same cookie, avoiding a flash of the default theme.
+    document.cookie = 'sst_theme=' + next + '; path=/; max-age=31536000; SameSite=Lax' +
+      (window.location.protocol === 'https:' ? '; Secure' : '');
     qsa('[data-theme-toggle]').forEach(function (button) {
       button.setAttribute('aria-pressed', next === 'light' ? 'true' : 'false');
-      button.title = next === 'light' ? 'Switch to the dark console' : 'Switch to the light theme';
-      var slot = button.querySelector('[data-theme-icon]');
-      if (slot) {
-        slot.innerHTML = '';
-        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('viewBox', '0 0 24 24');
-        svg.setAttribute('width', '16'); svg.setAttribute('height', '16');
-        svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor');
-        svg.setAttribute('stroke-width', '1.8'); svg.setAttribute('stroke-linecap', 'round');
-        svg.setAttribute('stroke-linejoin', 'round'); svg.setAttribute('aria-hidden', 'true');
-        var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('d', next === 'light'
-          ? 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z'
-          : 'M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4');
-        svg.appendChild(path);
-        if (next === 'light') {
-          var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-          circle.setAttribute('cx', '12'); circle.setAttribute('cy', '12'); circle.setAttribute('r', '4');
-          svg.appendChild(circle);
-          svg.removeAttribute('fill');
-        } else {
-          svg.setAttribute('fill', 'none');
-        }
-        slot.appendChild(svg);
-      }
+    });
+    dispatch('themechange', next);
+  }
+
+  function initThemeToggle() {
+    qsa('[data-theme-toggle]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        setTheme(currentTheme() === 'light' ? 'dark' : 'light');
+      });
     });
   }
 
@@ -536,14 +521,6 @@
       var pct = parseFloat(fill.getAttribute('data-bar-width'));
       fill.style.width = (isFinite(pct) ? Math.max(0, Math.min(100, pct)) : 0) + '%';
       fill.removeAttribute('data-bar-width');
-    });
-  }
-
-  function initTheme() {
-    qsa('[data-theme-toggle]').forEach(function (button) {
-      button.addEventListener('click', function () {
-        setTheme(currentTheme() === 'light' ? 'dark' : 'light');
-      });
     });
   }
 
@@ -564,9 +541,9 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    initTheme();
     initDelegates();
     initBars();
+    initThemeToggle();
     if (window.matchMedia('(max-width: 720px)').matches) {
       var activeNav = document.querySelector('.nav__link[aria-current="page"]');
       if (activeNav) activeNav.scrollIntoView({ block: 'nearest', inline: 'center' });

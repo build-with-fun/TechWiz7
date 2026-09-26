@@ -1,29 +1,15 @@
-"""
-Cross-model comparison and consistency classification.
+"""Compares the two models' outputs and assigns the SRS consistency status (Step 11).
 
-Owner: lorena.  SRS Step 11, Step 14, FR xxiii-xxx, lii, Deliverable 3.
-
-THE TAXONOMY (SRS Step 11)
---------------------------
     difference = |python_top_confidence - gtm_top_confidence|
 
-    Strong Match          both models agree on the class, difference is small
-    Acceptable Match      both agree, difference is moderate
-    Weak Match            both agree, but the confidence gap is wide
-    Model Disagreement    the two models name different classes
-    Uncertain Result      neither model is confident enough to be relied on
-
-Ordering of the checks matters and is argued in the module docstrings below, because the
-taxonomy is not fully specified and the order is where the judgement lives.
-
-Every threshold is injected from config/thresholds.json. None is a literal here — the SRS
-says an evaluator may demand a changed threshold, and a threshold buried in this file
-would require a code change to satisfy them.
+Strong / Acceptable / Weak Match when both name the same class (graded by the difference),
+Model Disagreement when they name different classes, Uncertain Result when either is not
+confident enough to rely on. Every threshold comes from config/thresholds.json.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Mapping
 
 from .contract import PredictionResult
@@ -89,12 +75,7 @@ class ComparisonResult:
 
 
 def _top_two_margin(result: PredictionResult) -> float:
-    """Gap between the best and second-best class.
-
-    A large margin means the model is decisive; a tiny margin means two classes are
-    nearly tied and the "prediction" is close to a coin toss. The SRS asks for this
-    explicitly, and it is the honest way to explain a low-confidence result.
-    """
+    """Gap between the top two classes; near zero means the prediction is close to a coin toss."""
     top = result.top_k(2)
     if len(top) < 2:
         return float(top[0][1]) if top else 0.0
@@ -106,18 +87,14 @@ def classify_consistency(
     gtm_result: PredictionResult,
     thresholds: Mapping[str, Any],
 ) -> ComparisonResult:
-    """Apply the SRS consistency taxonomy to two independent model outputs.
+    """Apply the consistency taxonomy to two independent model outputs.
 
-    Precondition the caller must uphold: `python_result` and `gtm_result` come from
-    models that have never seen each other's output. The GTM model receives audio only.
-    If anyone ever feeds a Python confidence into the GTM path, this function's
-    output becomes meaningless — and the integrity rules would be broken.
+    The caller must guarantee the two results never saw each other; the TM model receives audio only.
     """
     conf = thresholds["confidence"]
     cons = thresholds["consistency"]
 
     min_confidence = float(conf["min_confidence"])
-    low_band = float(conf.get("low_confidence_band", min_confidence))
     overlap_conf = float(conf.get("overlap_secondary_confidence", 0.25))
 
     py_top3 = [{"class": c, "confidence": round(v, 6)} for c, v in python_result.top_k(3)]
@@ -135,19 +112,16 @@ def classify_consistency(
         "weak_match_max_diff": float(cons["weak_match_max_diff"]),
     }
 
-    # --- Overlap / secondary event detection -----------------------------------------
-    # Only meaningful when BOTH models agree on the primary class; then a strong runner-up
-    # in the Python model suggests a second simultaneous event (SRS "overlapping sounds").
+    # Overlap: only meaningful when both models agree; then a strong Python runner-up suggests
+    # a second simultaneous event.
     secondary = None
     overlapping = False
     if agree and len(py_top3) >= 2 and float(py_top3[1]["confidence"]) >= overlap_conf:
         secondary = py_top3[1]["class"]
         overlapping = True
 
-    # --- Decision order -----------------------------------------------------------------
-    # 1. Both models unsure -> Uncertain Result, even if they happen to agree. Two models
-    #    agreeing on a guess is not evidence; the SRS lists "Uncertain Result" precisely so
-    #    that a weak agreement is not dressed up as a match.
+    # Order matters:
+    # 1. Both unsure -> Uncertain, even if they agree: two agreeing guesses are not evidence.
     if py_conf < min_confidence and gtm_conf < min_confidence:
         status = UNCERTAIN_RESULT
         reason = (
@@ -162,8 +136,7 @@ def classify_consistency(
             f"{weaker} model below the {min_confidence:.2f} confidence floor "
             f"(Python {py_conf:.3f}, GTM {gtm_conf:.3f}). Routed to manual review."
         )
-    # 3. Different classes: the models contradict each other. Report the disagreement
-    #    rather than picking a winner — the SRS wants that conflict visible to a reviewer.
+    # 3. Different classes: report the conflict rather than pick a winner.
     elif not agree:
         status = MODEL_DISAGREEMENT
         reason = (
@@ -221,11 +194,7 @@ def classify_consistency(
 
 
 def requires_manual_review(comparison: ComparisonResult, thresholds: Mapping[str, Any]) -> tuple[bool, str]:
-    """SRS Step 19 / FR lvii: which cases go to a human.
-
-    Returns (needs_review, reason) so the queue can show WHY an item is there; an
-    unexplained queue entry is a usability defect the reviewers will (rightly) flag.
-    """
+    """Quick check: does this comparison need a person, and why (the queue shows the reason)."""
     reasons: list[str] = []
 
     if comparison.consistency_status in (MODEL_DISAGREEMENT, UNCERTAIN_RESULT):

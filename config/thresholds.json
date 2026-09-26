@@ -1,9 +1,8 @@
 {
   "version": "1.0.0",
-  "owner": "lorena",
   "note": "Every value here is read at runtime. The SRS states evaluators may demand a changed confidence threshold live, so no threshold may ever be a literal in code. src/inference and src/services read this file; the admin UI edits it.",
   "confidence": {
-    "min_confidence": 0.60,
+    "min_confidence": 0.6,
     "low_confidence_band": 0.75,
     "top_two_margin_min": 0.15,
     "overlap_secondary_confidence": 0.25
@@ -11,7 +10,7 @@
   "consistency": {
     "strong_match_max_diff": 0.05,
     "acceptable_match_max_diff": 0.15,
-    "weak_match_max_diff": 0.30,
+    "weak_match_max_diff": 0.3,
     "comment": "Difference = |python_top_confidence - gtm_top_confidence|. Above weak_match_max_diff and the models disagree on class => Model Disagreement. Same class but a large gap => Weak Match. Below min_confidence on both => Uncertain Result."
   },
   "repeat_detection": {
@@ -19,7 +18,8 @@
     "window_seconds": 8,
     "requires_model_agreement": true,
     "min_quality": "Acceptable",
-    "comment": "SRS Step 15. A single unstable prediction must not raise a critical alert."
+    "comment": "SRS Step 15. A single unstable prediction must not raise a critical alert: live windows need required_consecutive_detections agreeing windows within window_seconds. An uploaded recording has no later windows, so it needs required_for_uploads (default 1) plus model agreement, acceptable quality and the confidence/margin gates.",
+    "required_for_uploads": 1
   },
   "audio_quality": {
     "silence_rms_dbfs_max": -50.0,
@@ -36,7 +36,13 @@
     "target_channels": 1,
     "segment_duration_sec": 3.0,
     "max_upload_mb": 50,
-    "supported_formats": ["wav", "mp3", "flac", "ogg", "m4a"],
+    "supported_formats": [
+      "wav",
+      "mp3",
+      "flac",
+      "ogg",
+      "m4a"
+    ],
     "live_window_sec": 2.0
   },
   "performance": {
@@ -45,10 +51,39 @@
     "clip_budget_seconds": 30.0
   },
   "robustness": {
-    "probe_snr_db": [20.0, 10.0, 5.0, 0.0],
-    "gain_shift_db": [-12.0, 6.0],
+    "probe_snr_db": [
+      20.0,
+      10.0,
+      5.0,
+      0.0
+    ],
+    "gain_shift_db": [
+      -12.0,
+      6.0
+    ],
     "probe_seed": 20260923,
     "seek_quietest": false,
     "comment": "Noise-robustness conditions. A probe scores DEGRADED test audio, so its numbers are not test accuracy and meets_floors() refuses to certify them. Hard rule: the probe runs ONCE, after python_models/selection.json is frozen. Choosing a model because it wins under noise would leak the test split into the selection, and the reported test accuracy would no longer be an unbiased estimate."
+  },
+  "monitoring": {
+    "window_minutes": 60,
+    "failed_uploads": 5,
+    "model_failures": 1,
+    "low_confidence_share": 0.5,
+    "low_confidence_min_events": 10,
+    "low_confidence_vs_baseline": 2.0,
+    "critical_alerts": 10,
+    "duplicate_files": 5,
+    "failed_logins": 10,
+    "error_rate": 0.2,
+    "review_queue_depth": 100,
+    "comment": "FR lxxviii anomaly thresholds, read by src/services/monitoring.py. Counts are per window_minutes."
+  },
+  "duplicate_detection": {
+    "enabled": true,
+    "near_duplicate_similarity": 0.92,
+    "shortlist": 5,
+    "spectral_match_min": 0.9,
+    "comment": "FR lxxiv. The perceptual fingerprint ranks up to 500 recent uploads and the top 'shortlist' are confirmed by an aligned log-mel correlation (spectral_match_min). Measured in reports/near_duplicates.json (tools/evaluate_near_duplicates.py)."
   }
 }

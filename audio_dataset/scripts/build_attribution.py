@@ -1,36 +1,13 @@
 #!/usr/bin/env python3
-"""
-SonicSentinel AI -- attribution + licence summary generator.
+"""Write per-author credits and a licence summary for the real (non-synthetic) audio.
 
-Owner: omar (data sourcing).
+CC-BY audio is only licensed if the author and licence are credited, so the credit file is
+what makes the corpus publishable. The summary also counts non-commercial licences, so
+"no NC audio" is read off a generated file rather than asserted.
 
-WHY THIS EXISTS
----------------
-Most of the real audio in this project is Freesound audio used under CC-BY-3.0.
-That licence is only valid if the author is credited and the licence named -- a
-dataset that uses CC-BY audio without attribution is not licensed at all, it is
-just copied. So the credit file is not decoration: it is the thing that makes the
-corpus legal to publish.
+    .venv/bin/python audio_dataset/scripts/build_attribution.py [--manifest <csv>]
 
-It also produces a licence summary, so the report's claim "no non-commercial audio
-anywhere" can be read off a generated file rather than asserted by hand.
-
-INPUT
------
-Any manifest-shaped CSV with the frozen columns. Defaults to the assembled
-`audio_dataset/manifest.csv` if it exists, otherwise the real-audio source rows.
-Only rows with a real (non-synthetic) provenance are credited; synthetic rows are
-listed separately as project-generated.
-
-OUTPUT
-------
-  audio_dataset/licences/ATTRIBUTION.md      -- per-author credits, CC-BY compliant
-  audio_dataset/licences/LICENCE_SUMMARY.md  -- licence mix + non-commercial check
-
-Usage
------
-    .venv/bin/python audio_dataset/scripts/build_attribution.py
-    .venv/bin/python audio_dataset/scripts/build_attribution.py --manifest <csv>
+Writes audio_dataset/licences/ATTRIBUTION.md and LICENCE_SUMMARY.md.
 """
 
 from __future__ import annotations
@@ -91,7 +68,7 @@ def main(argv: list[str] | None = None) -> int:
     real = [r for r in rows if not is_synthetic(r)]
     synth = [r for r in rows if is_synthetic(r)]
 
-    # ---- per-author credit table -------------------------------------------------
+    # per-author credit table
     by_author: dict[str, list[dict]] = defaultdict(list)
     for r in real:
         by_author[(r.get("author") or "unknown").strip()].append(r)
@@ -153,7 +130,7 @@ def main(argv: list[str] | None = None) -> int:
     args.attribution.parent.mkdir(parents=True, exist_ok=True)
     args.attribution.write_text("\n".join(lines), encoding="utf-8")
 
-    # ---- licence summary ----------------------------------------------------------
+    # licence summary
     sm = [
         "# Licence summary",
         "",

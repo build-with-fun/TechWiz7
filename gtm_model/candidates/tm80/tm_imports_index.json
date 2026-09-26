@@ -1,0 +1,4092 @@
+[
+  {
+    "class": "Aggression",
+    "zip": "gtm_model/upload_package/tm_imports/aggression.zip",
+    "sample_count": 80,
+    "distinct_parents": 80,
+    "windows_per_clip": 1,
+    "samples": [
+      {
+        "sample": "sample-1.webm",
+        "parent_audio_id": "SS-AGG-0003",
+        "window": 1
+      },
+      {
+        "sample": "sample-2.webm",
+        "parent_audio_id": "SS-AGG-0005",
+        "window": 1
+      },
+      {
+        "sample": "sample-3.webm",
+        "parent_audio_id": "SS-AGG-0007",
+        "window": 1
+      },
+      {
+        "sample": "sample-4.webm",
+        "parent_audio_id": "SS-AGG-0008",
+        "window": 1
+      },
+      {
+        "sample": "sample-5.webm",
+        "parent_audio_id": "SS-AGG-0010",
+        "window": 1
+      },
+      {
+        "sample": "sample-6.webm",
+        "parent_audio_id": "SS-AGG-0011",
+        "window": 1
+      },
+      {
+        "sample": "sample-7.webm",
+        "parent_audio_id": "SS-AGG-0012",
+        "window": 1
+      },
+      {
+        "sample": "sample-8.webm",
+        "parent_audio_id": "SS-AGG-0013",
+        "window": 1
+      },
+      {
+        "sample": "sample-9.webm",
+        "parent_audio_id": "SS-AGG-0016",
+        "window": 1
+      },
+      {
+        "sample": "sample-10.webm",
+        "parent_audio_id": "SS-AGG-0017",
+        "window": 1
+      },
+      {
+        "sample": "sample-11.webm",
+        "parent_audio_id": "SS-AGG-0018",
+        "window": 1
+      },
+      {
+        "sample": "sample-12.webm",
+        "parent_audio_id": "SS-AGG-0020",
+        "window": 1
+      },
+      {
+        "sample": "sample-13.webm",
+        "parent_audio_id": "SS-AGG-0022",
+        "window": 1
+      },
+      {
+        "sample": "sample-14.webm",
+        "parent_audio_id": "SS-AGG-0023",
+        "window": 1
+      },
+      {
+        "sample": "sample-15.webm",
+        "parent_audio_id": "SS-AGG-0025",
+        "window": 1
+      },
+      {
+        "sample": "sample-16.webm",
+        "parent_audio_id": "SS-AGG-0026",
+        "window": 1
+      },
+      {
+        "sample": "sample-17.webm",
+        "parent_audio_id": "SS-AGG-0028",
+        "window": 1
+      },
+      {
+        "sample": "sample-18.webm",
+        "parent_audio_id": "SS-AGG-0029",
+        "window": 1
+      },
+      {
+        "sample": "sample-19.webm",
+        "parent_audio_id": "SS-AGG-0030",
+        "window": 1
+      },
+      {
+        "sample": "sample-20.webm",
+        "parent_audio_id": "SS-AGG-0031",
+        "window": 1
+      },
+      {
+        "sample": "sample-21.webm",
+        "parent_audio_id": "SS-AGG-0032",
+        "window": 1
+      },
+      {
+        "sample": "sample-22.webm",
+        "parent_audio_id": "SS-AGG-0033",
+        "window": 1
+      },
+      {
+        "sample": "sample-23.webm",
+        "parent_audio_id": "SS-AGG-0035",
+        "window": 1
+      },
+      {
+        "sample": "sample-24.webm",
+        "parent_audio_id": "SS-AGG-0037",
+        "window": 1
+      },
+      {
+        "sample": "sample-25.webm",
+        "parent_audio_id": "SS-AGG-0039",
+        "window": 1
+      },
+      {
+        "sample": "sample-26.webm",
+        "parent_audio_id": "SS-AGG-0040",
+        "window": 1
+      },
+      {
+        "sample": "sample-27.webm",
+        "parent_audio_id": "SS-AGG-0043",
+        "window": 1
+      },
+      {
+        "sample": "sample-28.webm",
+        "parent_audio_id": "SS-AGG-0044",
+        "window": 1
+      },
+      {
+        "sample": "sample-29.webm",
+        "parent_audio_id": "SS-AGG-0048",
+        "window": 1
+      },
+      {
+        "sample": "sample-30.webm",
+        "parent_audio_id": "SS-AGG-0050",
+        "window": 1
+      },
+      {
+        "sample": "sample-31.webm",
+        "parent_audio_id": "SS-AGG-0051",
+        "window": 1
+      },
+      {
+        "sample": "sample-32.webm",
+        "parent_audio_id": "SS-AGG-0052",
+        "window": 1
+      },
+      {
+        "sample": "sample-33.webm",
+        "parent_audio_id": "SS-AGG-0054",
+        "window": 1
+      },
+      {
+        "sample": "sample-34.webm",
+        "parent_audio_id": "SS-AGG-0056",
+        "window": 1
+      },
+      {
+        "sample": "sample-35.webm",
+        "parent_audio_id": "SS-AGG-0058",
+        "window": 1
+      },
+      {
+        "sample": "sample-36.webm",
+        "parent_audio_id": "SS-AGG-0059",
+        "window": 1
+      },
+      {
+        "sample": "sample-37.webm",
+        "parent_audio_id": "SS-AGG-0061",
+        "window": 1
+      },
+      {
+        "sample": "sample-38.webm",
+        "parent_audio_id": "SS-AGG-0063",
+        "window": 1
+      },
+      {
+        "sample": "sample-39.webm",
+        "parent_audio_id": "SS-AGG-0064",
+        "window": 1
+      },
+      {
+        "sample": "sample-40.webm",
+        "parent_audio_id": "SS-AGG-0066",
+        "window": 1
+      },
+      {
+        "sample": "sample-41.webm",
+        "parent_audio_id": "SS-AGG-0067",
+        "window": 1
+      },
+      {
+        "sample": "sample-42.webm",
+        "parent_audio_id": "SS-AGG-0068",
+        "window": 1
+      },
+      {
+        "sample": "sample-43.webm",
+        "parent_audio_id": "SS-AGG-0069",
+        "window": 1
+      },
+      {
+        "sample": "sample-44.webm",
+        "parent_audio_id": "SS-AGG-0070",
+        "window": 1
+      },
+      {
+        "sample": "sample-45.webm",
+        "parent_audio_id": "SS-AGG-0071",
+        "window": 1
+      },
+      {
+        "sample": "sample-46.webm",
+        "parent_audio_id": "SS-AGG-0072",
+        "window": 1
+      },
+      {
+        "sample": "sample-47.webm",
+        "parent_audio_id": "SS-AGG-0075",
+        "window": 1
+      },
+      {
+        "sample": "sample-48.webm",
+        "parent_audio_id": "SS-AGG-0077",
+        "window": 1
+      },
+      {
+        "sample": "sample-49.webm",
+        "parent_audio_id": "SS-AGG-0078",
+        "window": 1
+      },
+      {
+        "sample": "sample-50.webm",
+        "parent_audio_id": "SS-AGG-0080",
+        "window": 1
+      },
+      {
+        "sample": "sample-51.webm",
+        "parent_audio_id": "SS-AGG-0083",
+        "window": 1
+      },
+      {
+        "sample": "sample-52.webm",
+        "parent_audio_id": "SS-AGG-0087",
+        "window": 1
+      },
+      {
+        "sample": "sample-53.webm",
+        "parent_audio_id": "SS-AGG-0089",
+        "window": 1
+      },
+      {
+        "sample": "sample-54.webm",
+        "parent_audio_id": "SS-AGG-0090",
+        "window": 1
+      },
+      {
+        "sample": "sample-55.webm",
+        "parent_audio_id": "SS-AGG-0094",
+        "window": 1
+      },
+      {
+        "sample": "sample-56.webm",
+        "parent_audio_id": "SS-AGG-0095",
+        "window": 1
+      },
+      {
+        "sample": "sample-57.webm",
+        "parent_audio_id": "SS-AGG-0096",
+        "window": 1
+      },
+      {
+        "sample": "sample-58.webm",
+        "parent_audio_id": "SS-AGG-0097",
+        "window": 1
+      },
+      {
+        "sample": "sample-59.webm",
+        "parent_audio_id": "SS-AGG-0098",
+        "window": 1
+      },
+      {
+        "sample": "sample-60.webm",
+        "parent_audio_id": "SS-AGG-0100",
+        "window": 1
+      },
+      {
+        "sample": "sample-61.webm",
+        "parent_audio_id": "SS-AGG-0502",
+        "window": 1
+      },
+      {
+        "sample": "sample-62.webm",
+        "parent_audio_id": "SS-AGG-0504",
+        "window": 1
+      },
+      {
+        "sample": "sample-63.webm",
+        "parent_audio_id": "SS-AGG-0506",
+        "window": 1
+      },
+      {
+        "sample": "sample-64.webm",
+        "parent_audio_id": "SS-AGG-0507",
+        "window": 1
+      },
+      {
+        "sample": "sample-65.webm",
+        "parent_audio_id": "SS-AGG-0508",
+        "window": 1
+      },
+      {
+        "sample": "sample-66.webm",
+        "parent_audio_id": "SS-AGG-0509",
+        "window": 1
+      },
+      {
+        "sample": "sample-67.webm",
+        "parent_audio_id": "SS-AGG-0510",
+        "window": 1
+      },
+      {
+        "sample": "sample-68.webm",
+        "parent_audio_id": "SS-AGG-0512",
+        "window": 1
+      },
+      {
+        "sample": "sample-69.webm",
+        "parent_audio_id": "SS-AGG-0513",
+        "window": 1
+      },
+      {
+        "sample": "sample-70.webm",
+        "parent_audio_id": "SS-AGG-0514",
+        "window": 1
+      },
+      {
+        "sample": "sample-71.webm",
+        "parent_audio_id": "SS-AGG-0515",
+        "window": 1
+      },
+      {
+        "sample": "sample-72.webm",
+        "parent_audio_id": "SS-AGG-0516",
+        "window": 1
+      },
+      {
+        "sample": "sample-73.webm",
+        "parent_audio_id": "SS-AGG-0517",
+        "window": 1
+      },
+      {
+        "sample": "sample-74.webm",
+        "parent_audio_id": "SS-AGG-0518",
+        "window": 1
+      },
+      {
+        "sample": "sample-75.webm",
+        "parent_audio_id": "SS-AGG-0519",
+        "window": 1
+      },
+      {
+        "sample": "sample-76.webm",
+        "parent_audio_id": "SS-AGG-0520",
+        "window": 1
+      },
+      {
+        "sample": "sample-77.webm",
+        "parent_audio_id": "SS-AGG-0522",
+        "window": 1
+      },
+      {
+        "sample": "sample-78.webm",
+        "parent_audio_id": "SS-AGG-0523",
+        "window": 1
+      },
+      {
+        "sample": "sample-79.webm",
+        "parent_audio_id": "SS-AGG-0524",
+        "window": 1
+      },
+      {
+        "sample": "sample-80.webm",
+        "parent_audio_id": "SS-AGG-0526",
+        "window": 1
+      }
+    ]
+  },
+  {
+    "class": "Alarm or Siren",
+    "zip": "gtm_model/upload_package/tm_imports/alarm_or_siren.zip",
+    "sample_count": 80,
+    "distinct_parents": 80,
+    "windows_per_clip": 1,
+    "samples": [
+      {
+        "sample": "sample-1.webm",
+        "parent_audio_id": "SS-ALM-0002",
+        "window": 1
+      },
+      {
+        "sample": "sample-2.webm",
+        "parent_audio_id": "SS-ALM-0003",
+        "window": 1
+      },
+      {
+        "sample": "sample-3.webm",
+        "parent_audio_id": "SS-ALM-0004",
+        "window": 1
+      },
+      {
+        "sample": "sample-4.webm",
+        "parent_audio_id": "SS-ALM-0005",
+        "window": 1
+      },
+      {
+        "sample": "sample-5.webm",
+        "parent_audio_id": "SS-ALM-0006",
+        "window": 1
+      },
+      {
+        "sample": "sample-6.webm",
+        "parent_audio_id": "SS-ALM-0007",
+        "window": 1
+      },
+      {
+        "sample": "sample-7.webm",
+        "parent_audio_id": "SS-ALM-0008",
+        "window": 1
+      },
+      {
+        "sample": "sample-8.webm",
+        "parent_audio_id": "SS-ALM-0009",
+        "window": 1
+      },
+      {
+        "sample": "sample-9.webm",
+        "parent_audio_id": "SS-ALM-0011",
+        "window": 1
+      },
+      {
+        "sample": "sample-10.webm",
+        "parent_audio_id": "SS-ALM-0012",
+        "window": 1
+      },
+      {
+        "sample": "sample-11.webm",
+        "parent_audio_id": "SS-ALM-0013",
+        "window": 1
+      },
+      {
+        "sample": "sample-12.webm",
+        "parent_audio_id": "SS-ALM-0014",
+        "window": 1
+      },
+      {
+        "sample": "sample-13.webm",
+        "parent_audio_id": "SS-ALM-0016",
+        "window": 1
+      },
+      {
+        "sample": "sample-14.webm",
+        "parent_audio_id": "SS-ALM-0017",
+        "window": 1
+      },
+      {
+        "sample": "sample-15.webm",
+        "parent_audio_id": "SS-ALM-0018",
+        "window": 1
+      },
+      {
+        "sample": "sample-16.webm",
+        "parent_audio_id": "SS-ALM-0019",
+        "window": 1
+      },
+      {
+        "sample": "sample-17.webm",
+        "parent_audio_id": "SS-ALM-0020",
+        "window": 1
+      },
+      {
+        "sample": "sample-18.webm",
+        "parent_audio_id": "SS-ALM-0021",
+        "window": 1
+      },
+      {
+        "sample": "sample-19.webm",
+        "parent_audio_id": "SS-ALM-0022",
+        "window": 1
+      },
+      {
+        "sample": "sample-20.webm",
+        "parent_audio_id": "SS-ALM-0023",
+        "window": 1
+      },
+      {
+        "sample": "sample-21.webm",
+        "parent_audio_id": "SS-ALM-0024",
+        "window": 1
+      },
+      {
+        "sample": "sample-22.webm",
+        "parent_audio_id": "SS-ALM-0025",
+        "window": 1
+      },
+      {
+        "sample": "sample-23.webm",
+        "parent_audio_id": "SS-ALM-0026",
+        "window": 1
+      },
+      {
+        "sample": "sample-24.webm",
+        "parent_audio_id": "SS-ALM-0027",
+        "window": 1
+      },
+      {
+        "sample": "sample-25.webm",
+        "parent_audio_id": "SS-ALM-0030",
+        "window": 1
+      },
+      {
+        "sample": "sample-26.webm",
+        "parent_audio_id": "SS-ALM-0032",
+        "window": 1
+      },
+      {
+        "sample": "sample-27.webm",
+        "parent_audio_id": "SS-ALM-0033",
+        "window": 1
+      },
+      {
+        "sample": "sample-28.webm",
+        "parent_audio_id": "SS-ALM-0034",
+        "window": 1
+      },
+      {
+        "sample": "sample-29.webm",
+        "parent_audio_id": "SS-ALM-0035",
+        "window": 1
+      },
+      {
+        "sample": "sample-30.webm",
+        "parent_audio_id": "SS-ALM-0039",
+        "window": 1
+      },
+      {
+        "sample": "sample-31.webm",
+        "parent_audio_id": "SS-ALM-0041",
+        "window": 1
+      },
+      {
+        "sample": "sample-32.webm",
+        "parent_audio_id": "SS-ALM-0042",
+        "window": 1
+      },
+      {
+        "sample": "sample-33.webm",
+        "parent_audio_id": "SS-ALM-0044",
+        "window": 1
+      },
+      {
+        "sample": "sample-34.webm",
+        "parent_audio_id": "SS-ALM-0048",
+        "window": 1
+      },
+      {
+        "sample": "sample-35.webm",
+        "parent_audio_id": "SS-ALM-0050",
+        "window": 1
+      },
+      {
+        "sample": "sample-36.webm",
+        "parent_audio_id": "SS-ALM-0051",
+        "window": 1
+      },
+      {
+        "sample": "sample-37.webm",
+        "parent_audio_id": "SS-ALM-0052",
+        "window": 1
+      },
+      {
+        "sample": "sample-38.webm",
+        "parent_audio_id": "SS-ALM-0053",
+        "window": 1
+      },
+      {
+        "sample": "sample-39.webm",
+        "parent_audio_id": "SS-ALM-0054",
+        "window": 1
+      },
+      {
+        "sample": "sample-40.webm",
+        "parent_audio_id": "SS-ALM-0055",
+        "window": 1
+      },
+      {
+        "sample": "sample-41.webm",
+        "parent_audio_id": "SS-ALM-0056",
+        "window": 1
+      },
+      {
+        "sample": "sample-42.webm",
+        "parent_audio_id": "SS-ALM-0057",
+        "window": 1
+      },
+      {
+        "sample": "sample-43.webm",
+        "parent_audio_id": "SS-ALM-0058",
+        "window": 1
+      },
+      {
+        "sample": "sample-44.webm",
+        "parent_audio_id": "SS-ALM-0059",
+        "window": 1
+      },
+      {
+        "sample": "sample-45.webm",
+        "parent_audio_id": "SS-ALM-0061",
+        "window": 1
+      },
+      {
+        "sample": "sample-46.webm",
+        "parent_audio_id": "SS-ALM-0064",
+        "window": 1
+      },
+      {
+        "sample": "sample-47.webm",
+        "parent_audio_id": "SS-ALM-0065",
+        "window": 1
+      },
+      {
+        "sample": "sample-48.webm",
+        "parent_audio_id": "SS-ALM-0066",
+        "window": 1
+      },
+      {
+        "sample": "sample-49.webm",
+        "parent_audio_id": "SS-ALM-0067",
+        "window": 1
+      },
+      {
+        "sample": "sample-50.webm",
+        "parent_audio_id": "SS-ALM-0069",
+        "window": 1
+      },
+      {
+        "sample": "sample-51.webm",
+        "parent_audio_id": "SS-ALM-0070",
+        "window": 1
+      },
+      {
+        "sample": "sample-52.webm",
+        "parent_audio_id": "SS-ALM-0071",
+        "window": 1
+      },
+      {
+        "sample": "sample-53.webm",
+        "parent_audio_id": "SS-ALM-0072",
+        "window": 1
+      },
+      {
+        "sample": "sample-54.webm",
+        "parent_audio_id": "SS-ALM-0074",
+        "window": 1
+      },
+      {
+        "sample": "sample-55.webm",
+        "parent_audio_id": "SS-ALM-0075",
+        "window": 1
+      },
+      {
+        "sample": "sample-56.webm",
+        "parent_audio_id": "SS-ALM-0076",
+        "window": 1
+      },
+      {
+        "sample": "sample-57.webm",
+        "parent_audio_id": "SS-ALM-0078",
+        "window": 1
+      },
+      {
+        "sample": "sample-58.webm",
+        "parent_audio_id": "SS-ALM-0079",
+        "window": 1
+      },
+      {
+        "sample": "sample-59.webm",
+        "parent_audio_id": "SS-ALM-0080",
+        "window": 1
+      },
+      {
+        "sample": "sample-60.webm",
+        "parent_audio_id": "SS-ALM-0081",
+        "window": 1
+      },
+      {
+        "sample": "sample-61.webm",
+        "parent_audio_id": "SS-ALM-0083",
+        "window": 1
+      },
+      {
+        "sample": "sample-62.webm",
+        "parent_audio_id": "SS-ALM-0086",
+        "window": 1
+      },
+      {
+        "sample": "sample-63.webm",
+        "parent_audio_id": "SS-ALM-0087",
+        "window": 1
+      },
+      {
+        "sample": "sample-64.webm",
+        "parent_audio_id": "SS-ALM-0088",
+        "window": 1
+      },
+      {
+        "sample": "sample-65.webm",
+        "parent_audio_id": "SS-ALM-0089",
+        "window": 1
+      },
+      {
+        "sample": "sample-66.webm",
+        "parent_audio_id": "SS-ALM-0090",
+        "window": 1
+      },
+      {
+        "sample": "sample-67.webm",
+        "parent_audio_id": "SS-ALM-0091",
+        "window": 1
+      },
+      {
+        "sample": "sample-68.webm",
+        "parent_audio_id": "SS-ALM-0092",
+        "window": 1
+      },
+      {
+        "sample": "sample-69.webm",
+        "parent_audio_id": "SS-ALM-0094",
+        "window": 1
+      },
+      {
+        "sample": "sample-70.webm",
+        "parent_audio_id": "SS-ALM-0095",
+        "window": 1
+      },
+      {
+        "sample": "sample-71.webm",
+        "parent_audio_id": "SS-ALM-0096",
+        "window": 1
+      },
+      {
+        "sample": "sample-72.webm",
+        "parent_audio_id": "SS-ALM-0097",
+        "window": 1
+      },
+      {
+        "sample": "sample-73.webm",
+        "parent_audio_id": "SS-ALM-0098",
+        "window": 1
+      },
+      {
+        "sample": "sample-74.webm",
+        "parent_audio_id": "SS-ALM-0099",
+        "window": 1
+      },
+      {
+        "sample": "sample-75.webm",
+        "parent_audio_id": "SS-ALM-0100",
+        "window": 1
+      },
+      {
+        "sample": "sample-76.webm",
+        "parent_audio_id": "SS-ALM-0101",
+        "window": 1
+      },
+      {
+        "sample": "sample-77.webm",
+        "parent_audio_id": "SS-ALM-0102",
+        "window": 1
+      },
+      {
+        "sample": "sample-78.webm",
+        "parent_audio_id": "SS-ALM-0104",
+        "window": 1
+      },
+      {
+        "sample": "sample-79.webm",
+        "parent_audio_id": "SS-ALM-0106",
+        "window": 1
+      },
+      {
+        "sample": "sample-80.webm",
+        "parent_audio_id": "SS-ALM-0107",
+        "window": 1
+      }
+    ]
+  },
+  {
+    "class": "Animal Sound",
+    "zip": "gtm_model/upload_package/tm_imports/animal_sound.zip",
+    "sample_count": 80,
+    "distinct_parents": 80,
+    "windows_per_clip": 1,
+    "samples": [
+      {
+        "sample": "sample-1.webm",
+        "parent_audio_id": "SS-ANI-0001",
+        "window": 1
+      },
+      {
+        "sample": "sample-2.webm",
+        "parent_audio_id": "SS-ANI-0004",
+        "window": 1
+      },
+      {
+        "sample": "sample-3.webm",
+        "parent_audio_id": "SS-ANI-0006",
+        "window": 1
+      },
+      {
+        "sample": "sample-4.webm",
+        "parent_audio_id": "SS-ANI-0007",
+        "window": 1
+      },
+      {
+        "sample": "sample-5.webm",
+        "parent_audio_id": "SS-ANI-0009",
+        "window": 1
+      },
+      {
+        "sample": "sample-6.webm",
+        "parent_audio_id": "SS-ANI-0010",
+        "window": 1
+      },
+      {
+        "sample": "sample-7.webm",
+        "parent_audio_id": "SS-ANI-0011",
+        "window": 1
+      },
+      {
+        "sample": "sample-8.webm",
+        "parent_audio_id": "SS-ANI-0012",
+        "window": 1
+      },
+      {
+        "sample": "sample-9.webm",
+        "parent_audio_id": "SS-ANI-0013",
+        "window": 1
+      },
+      {
+        "sample": "sample-10.webm",
+        "parent_audio_id": "SS-ANI-0014",
+        "window": 1
+      },
+      {
+        "sample": "sample-11.webm",
+        "parent_audio_id": "SS-ANI-0015",
+        "window": 1
+      },
+      {
+        "sample": "sample-12.webm",
+        "parent_audio_id": "SS-ANI-0016",
+        "window": 1
+      },
+      {
+        "sample": "sample-13.webm",
+        "parent_audio_id": "SS-ANI-0018",
+        "window": 1
+      },
+      {
+        "sample": "sample-14.webm",
+        "parent_audio_id": "SS-ANI-0023",
+        "window": 1
+      },
+      {
+        "sample": "sample-15.webm",
+        "parent_audio_id": "SS-ANI-0024",
+        "window": 1
+      },
+      {
+        "sample": "sample-16.webm",
+        "parent_audio_id": "SS-ANI-0025",
+        "window": 1
+      },
+      {
+        "sample": "sample-17.webm",
+        "parent_audio_id": "SS-ANI-0026",
+        "window": 1
+      },
+      {
+        "sample": "sample-18.webm",
+        "parent_audio_id": "SS-ANI-0028",
+        "window": 1
+      },
+      {
+        "sample": "sample-19.webm",
+        "parent_audio_id": "SS-ANI-0029",
+        "window": 1
+      },
+      {
+        "sample": "sample-20.webm",
+        "parent_audio_id": "SS-ANI-0031",
+        "window": 1
+      },
+      {
+        "sample": "sample-21.webm",
+        "parent_audio_id": "SS-ANI-0032",
+        "window": 1
+      },
+      {
+        "sample": "sample-22.webm",
+        "parent_audio_id": "SS-ANI-0034",
+        "window": 1
+      },
+      {
+        "sample": "sample-23.webm",
+        "parent_audio_id": "SS-ANI-0035",
+        "window": 1
+      },
+      {
+        "sample": "sample-24.webm",
+        "parent_audio_id": "SS-ANI-0036",
+        "window": 1
+      },
+      {
+        "sample": "sample-25.webm",
+        "parent_audio_id": "SS-ANI-0037",
+        "window": 1
+      },
+      {
+        "sample": "sample-26.webm",
+        "parent_audio_id": "SS-ANI-0038",
+        "window": 1
+      },
+      {
+        "sample": "sample-27.webm",
+        "parent_audio_id": "SS-ANI-0039",
+        "window": 1
+      },
+      {
+        "sample": "sample-28.webm",
+        "parent_audio_id": "SS-ANI-0041",
+        "window": 1
+      },
+      {
+        "sample": "sample-29.webm",
+        "parent_audio_id": "SS-ANI-0042",
+        "window": 1
+      },
+      {
+        "sample": "sample-30.webm",
+        "parent_audio_id": "SS-ANI-0043",
+        "window": 1
+      },
+      {
+        "sample": "sample-31.webm",
+        "parent_audio_id": "SS-ANI-0044",
+        "window": 1
+      },
+      {
+        "sample": "sample-32.webm",
+        "parent_audio_id": "SS-ANI-0045",
+        "window": 1
+      },
+      {
+        "sample": "sample-33.webm",
+        "parent_audio_id": "SS-ANI-0046",
+        "window": 1
+      },
+      {
+        "sample": "sample-34.webm",
+        "parent_audio_id": "SS-ANI-0047",
+        "window": 1
+      },
+      {
+        "sample": "sample-35.webm",
+        "parent_audio_id": "SS-ANI-0050",
+        "window": 1
+      },
+      {
+        "sample": "sample-36.webm",
+        "parent_audio_id": "SS-ANI-0051",
+        "window": 1
+      },
+      {
+        "sample": "sample-37.webm",
+        "parent_audio_id": "SS-ANI-0053",
+        "window": 1
+      },
+      {
+        "sample": "sample-38.webm",
+        "parent_audio_id": "SS-ANI-0055",
+        "window": 1
+      },
+      {
+        "sample": "sample-39.webm",
+        "parent_audio_id": "SS-ANI-0056",
+        "window": 1
+      },
+      {
+        "sample": "sample-40.webm",
+        "parent_audio_id": "SS-ANI-0057",
+        "window": 1
+      },
+      {
+        "sample": "sample-41.webm",
+        "parent_audio_id": "SS-ANI-0058",
+        "window": 1
+      },
+      {
+        "sample": "sample-42.webm",
+        "parent_audio_id": "SS-ANI-0060",
+        "window": 1
+      },
+      {
+        "sample": "sample-43.webm",
+        "parent_audio_id": "SS-ANI-0061",
+        "window": 1
+      },
+      {
+        "sample": "sample-44.webm",
+        "parent_audio_id": "SS-ANI-0062",
+        "window": 1
+      },
+      {
+        "sample": "sample-45.webm",
+        "parent_audio_id": "SS-ANI-0064",
+        "window": 1
+      },
+      {
+        "sample": "sample-46.webm",
+        "parent_audio_id": "SS-ANI-0065",
+        "window": 1
+      },
+      {
+        "sample": "sample-47.webm",
+        "parent_audio_id": "SS-ANI-0067",
+        "window": 1
+      },
+      {
+        "sample": "sample-48.webm",
+        "parent_audio_id": "SS-ANI-0068",
+        "window": 1
+      },
+      {
+        "sample": "sample-49.webm",
+        "parent_audio_id": "SS-ANI-0069",
+        "window": 1
+      },
+      {
+        "sample": "sample-50.webm",
+        "parent_audio_id": "SS-ANI-0070",
+        "window": 1
+      },
+      {
+        "sample": "sample-51.webm",
+        "parent_audio_id": "SS-ANI-0071",
+        "window": 1
+      },
+      {
+        "sample": "sample-52.webm",
+        "parent_audio_id": "SS-ANI-0072",
+        "window": 1
+      },
+      {
+        "sample": "sample-53.webm",
+        "parent_audio_id": "SS-ANI-0074",
+        "window": 1
+      },
+      {
+        "sample": "sample-54.webm",
+        "parent_audio_id": "SS-ANI-0075",
+        "window": 1
+      },
+      {
+        "sample": "sample-55.webm",
+        "parent_audio_id": "SS-ANI-0079",
+        "window": 1
+      },
+      {
+        "sample": "sample-56.webm",
+        "parent_audio_id": "SS-ANI-0080",
+        "window": 1
+      },
+      {
+        "sample": "sample-57.webm",
+        "parent_audio_id": "SS-ANI-0081",
+        "window": 1
+      },
+      {
+        "sample": "sample-58.webm",
+        "parent_audio_id": "SS-ANI-0082",
+        "window": 1
+      },
+      {
+        "sample": "sample-59.webm",
+        "parent_audio_id": "SS-ANI-0083",
+        "window": 1
+      },
+      {
+        "sample": "sample-60.webm",
+        "parent_audio_id": "SS-ANI-0084",
+        "window": 1
+      },
+      {
+        "sample": "sample-61.webm",
+        "parent_audio_id": "SS-ANI-0088",
+        "window": 1
+      },
+      {
+        "sample": "sample-62.webm",
+        "parent_audio_id": "SS-ANI-0091",
+        "window": 1
+      },
+      {
+        "sample": "sample-63.webm",
+        "parent_audio_id": "SS-ANI-0093",
+        "window": 1
+      },
+      {
+        "sample": "sample-64.webm",
+        "parent_audio_id": "SS-ANI-0096",
+        "window": 1
+      },
+      {
+        "sample": "sample-65.webm",
+        "parent_audio_id": "SS-ANI-0097",
+        "window": 1
+      },
+      {
+        "sample": "sample-66.webm",
+        "parent_audio_id": "SS-ANI-0099",
+        "window": 1
+      },
+      {
+        "sample": "sample-67.webm",
+        "parent_audio_id": "SS-ANI-0100",
+        "window": 1
+      },
+      {
+        "sample": "sample-68.webm",
+        "parent_audio_id": "SS-ANI-0104",
+        "window": 1
+      },
+      {
+        "sample": "sample-69.webm",
+        "parent_audio_id": "SS-ANI-0106",
+        "window": 1
+      },
+      {
+        "sample": "sample-70.webm",
+        "parent_audio_id": "SS-ANI-0109",
+        "window": 1
+      },
+      {
+        "sample": "sample-71.webm",
+        "parent_audio_id": "SS-ANI-0110",
+        "window": 1
+      },
+      {
+        "sample": "sample-72.webm",
+        "parent_audio_id": "SS-ANI-0111",
+        "window": 1
+      },
+      {
+        "sample": "sample-73.webm",
+        "parent_audio_id": "SS-ANI-0112",
+        "window": 1
+      },
+      {
+        "sample": "sample-74.webm",
+        "parent_audio_id": "SS-ANI-0113",
+        "window": 1
+      },
+      {
+        "sample": "sample-75.webm",
+        "parent_audio_id": "SS-ANI-0114",
+        "window": 1
+      },
+      {
+        "sample": "sample-76.webm",
+        "parent_audio_id": "SS-ANI-0115",
+        "window": 1
+      },
+      {
+        "sample": "sample-77.webm",
+        "parent_audio_id": "SS-ANI-0118",
+        "window": 1
+      },
+      {
+        "sample": "sample-78.webm",
+        "parent_audio_id": "SS-ANI-0122",
+        "window": 1
+      },
+      {
+        "sample": "sample-79.webm",
+        "parent_audio_id": "SS-ANI-0123",
+        "window": 1
+      },
+      {
+        "sample": "sample-80.webm",
+        "parent_audio_id": "SS-ANI-0128",
+        "window": 1
+      }
+    ]
+  },
+  {
+    "class": "Background Noise",
+    "zip": "gtm_model/upload_package/tm_imports/background_noise.zip",
+    "sample_count": 80,
+    "distinct_parents": 80,
+    "windows_per_clip": 1,
+    "samples": [
+      {
+        "sample": "sample-1.webm",
+        "parent_audio_id": "SS-BGN-0002",
+        "window": 1
+      },
+      {
+        "sample": "sample-2.webm",
+        "parent_audio_id": "SS-BGN-0003",
+        "window": 1
+      },
+      {
+        "sample": "sample-3.webm",
+        "parent_audio_id": "SS-BGN-0005",
+        "window": 1
+      },
+      {
+        "sample": "sample-4.webm",
+        "parent_audio_id": "SS-BGN-0006",
+        "window": 1
+      },
+      {
+        "sample": "sample-5.webm",
+        "parent_audio_id": "SS-BGN-0009",
+        "window": 1
+      },
+      {
+        "sample": "sample-6.webm",
+        "parent_audio_id": "SS-BGN-0010",
+        "window": 1
+      },
+      {
+        "sample": "sample-7.webm",
+        "parent_audio_id": "SS-BGN-0011",
+        "window": 1
+      },
+      {
+        "sample": "sample-8.webm",
+        "parent_audio_id": "SS-BGN-0012",
+        "window": 1
+      },
+      {
+        "sample": "sample-9.webm",
+        "parent_audio_id": "SS-BGN-0013",
+        "window": 1
+      },
+      {
+        "sample": "sample-10.webm",
+        "parent_audio_id": "SS-BGN-0016",
+        "window": 1
+      },
+      {
+        "sample": "sample-11.webm",
+        "parent_audio_id": "SS-BGN-0017",
+        "window": 1
+      },
+      {
+        "sample": "sample-12.webm",
+        "parent_audio_id": "SS-BGN-0018",
+        "window": 1
+      },
+      {
+        "sample": "sample-13.webm",
+        "parent_audio_id": "SS-BGN-0020",
+        "window": 1
+      },
+      {
+        "sample": "sample-14.webm",
+        "parent_audio_id": "SS-BGN-0021",
+        "window": 1
+      },
+      {
+        "sample": "sample-15.webm",
+        "parent_audio_id": "SS-BGN-0022",
+        "window": 1
+      },
+      {
+        "sample": "sample-16.webm",
+        "parent_audio_id": "SS-BGN-0023",
+        "window": 1
+      },
+      {
+        "sample": "sample-17.webm",
+        "parent_audio_id": "SS-BGN-0025",
+        "window": 1
+      },
+      {
+        "sample": "sample-18.webm",
+        "parent_audio_id": "SS-BGN-0026",
+        "window": 1
+      },
+      {
+        "sample": "sample-19.webm",
+        "parent_audio_id": "SS-BGN-0028",
+        "window": 1
+      },
+      {
+        "sample": "sample-20.webm",
+        "parent_audio_id": "SS-BGN-0029",
+        "window": 1
+      },
+      {
+        "sample": "sample-21.webm",
+        "parent_audio_id": "SS-BGN-0030",
+        "window": 1
+      },
+      {
+        "sample": "sample-22.webm",
+        "parent_audio_id": "SS-BGN-0032",
+        "window": 1
+      },
+      {
+        "sample": "sample-23.webm",
+        "parent_audio_id": "SS-BGN-0033",
+        "window": 1
+      },
+      {
+        "sample": "sample-24.webm",
+        "parent_audio_id": "SS-BGN-0035",
+        "window": 1
+      },
+      {
+        "sample": "sample-25.webm",
+        "parent_audio_id": "SS-BGN-0037",
+        "window": 1
+      },
+      {
+        "sample": "sample-26.webm",
+        "parent_audio_id": "SS-BGN-0038",
+        "window": 1
+      },
+      {
+        "sample": "sample-27.webm",
+        "parent_audio_id": "SS-BGN-0039",
+        "window": 1
+      },
+      {
+        "sample": "sample-28.webm",
+        "parent_audio_id": "SS-BGN-0041",
+        "window": 1
+      },
+      {
+        "sample": "sample-29.webm",
+        "parent_audio_id": "SS-BGN-0043",
+        "window": 1
+      },
+      {
+        "sample": "sample-30.webm",
+        "parent_audio_id": "SS-BGN-0044",
+        "window": 1
+      },
+      {
+        "sample": "sample-31.webm",
+        "parent_audio_id": "SS-BGN-0045",
+        "window": 1
+      },
+      {
+        "sample": "sample-32.webm",
+        "parent_audio_id": "SS-BGN-0047",
+        "window": 1
+      },
+      {
+        "sample": "sample-33.webm",
+        "parent_audio_id": "SS-BGN-0049",
+        "window": 1
+      },
+      {
+        "sample": "sample-34.webm",
+        "parent_audio_id": "SS-BGN-0050",
+        "window": 1
+      },
+      {
+        "sample": "sample-35.webm",
+        "parent_audio_id": "SS-BGN-0053",
+        "window": 1
+      },
+      {
+        "sample": "sample-36.webm",
+        "parent_audio_id": "SS-BGN-0054",
+        "window": 1
+      },
+      {
+        "sample": "sample-37.webm",
+        "parent_audio_id": "SS-BGN-0056",
+        "window": 1
+      },
+      {
+        "sample": "sample-38.webm",
+        "parent_audio_id": "SS-BGN-0058",
+        "window": 1
+      },
+      {
+        "sample": "sample-39.webm",
+        "parent_audio_id": "SS-BGN-0059",
+        "window": 1
+      },
+      {
+        "sample": "sample-40.webm",
+        "parent_audio_id": "SS-BGN-0060",
+        "window": 1
+      },
+      {
+        "sample": "sample-41.webm",
+        "parent_audio_id": "SS-BGN-0063",
+        "window": 1
+      },
+      {
+        "sample": "sample-42.webm",
+        "parent_audio_id": "SS-BGN-0064",
+        "window": 1
+      },
+      {
+        "sample": "sample-43.webm",
+        "parent_audio_id": "SS-BGN-0066",
+        "window": 1
+      },
+      {
+        "sample": "sample-44.webm",
+        "parent_audio_id": "SS-BGN-0067",
+        "window": 1
+      },
+      {
+        "sample": "sample-45.webm",
+        "parent_audio_id": "SS-BGN-0068",
+        "window": 1
+      },
+      {
+        "sample": "sample-46.webm",
+        "parent_audio_id": "SS-BGN-0070",
+        "window": 1
+      },
+      {
+        "sample": "sample-47.webm",
+        "parent_audio_id": "SS-BGN-0071",
+        "window": 1
+      },
+      {
+        "sample": "sample-48.webm",
+        "parent_audio_id": "SS-BGN-0072",
+        "window": 1
+      },
+      {
+        "sample": "sample-49.webm",
+        "parent_audio_id": "SS-BGN-0073",
+        "window": 1
+      },
+      {
+        "sample": "sample-50.webm",
+        "parent_audio_id": "SS-BGN-0074",
+        "window": 1
+      },
+      {
+        "sample": "sample-51.webm",
+        "parent_audio_id": "SS-BGN-0075",
+        "window": 1
+      },
+      {
+        "sample": "sample-52.webm",
+        "parent_audio_id": "SS-BGN-0078",
+        "window": 1
+      },
+      {
+        "sample": "sample-53.webm",
+        "parent_audio_id": "SS-BGN-0081",
+        "window": 1
+      },
+      {
+        "sample": "sample-54.webm",
+        "parent_audio_id": "SS-BGN-0083",
+        "window": 1
+      },
+      {
+        "sample": "sample-55.webm",
+        "parent_audio_id": "SS-BGN-0085",
+        "window": 1
+      },
+      {
+        "sample": "sample-56.webm",
+        "parent_audio_id": "SS-BGN-0086",
+        "window": 1
+      },
+      {
+        "sample": "sample-57.webm",
+        "parent_audio_id": "SS-BGN-0087",
+        "window": 1
+      },
+      {
+        "sample": "sample-58.webm",
+        "parent_audio_id": "SS-BGN-0088",
+        "window": 1
+      },
+      {
+        "sample": "sample-59.webm",
+        "parent_audio_id": "SS-BGN-0089",
+        "window": 1
+      },
+      {
+        "sample": "sample-60.webm",
+        "parent_audio_id": "SS-BGN-0090",
+        "window": 1
+      },
+      {
+        "sample": "sample-61.webm",
+        "parent_audio_id": "SS-BGN-0092",
+        "window": 1
+      },
+      {
+        "sample": "sample-62.webm",
+        "parent_audio_id": "SS-BGN-0093",
+        "window": 1
+      },
+      {
+        "sample": "sample-63.webm",
+        "parent_audio_id": "SS-BGN-0094",
+        "window": 1
+      },
+      {
+        "sample": "sample-64.webm",
+        "parent_audio_id": "SS-BGN-0098",
+        "window": 1
+      },
+      {
+        "sample": "sample-65.webm",
+        "parent_audio_id": "SS-BGN-0099",
+        "window": 1
+      },
+      {
+        "sample": "sample-66.webm",
+        "parent_audio_id": "SS-BGN-0103",
+        "window": 1
+      },
+      {
+        "sample": "sample-67.webm",
+        "parent_audio_id": "SS-BGN-0104",
+        "window": 1
+      },
+      {
+        "sample": "sample-68.webm",
+        "parent_audio_id": "SS-BGN-0105",
+        "window": 1
+      },
+      {
+        "sample": "sample-69.webm",
+        "parent_audio_id": "SS-BGN-0107",
+        "window": 1
+      },
+      {
+        "sample": "sample-70.webm",
+        "parent_audio_id": "SS-BGN-0109",
+        "window": 1
+      },
+      {
+        "sample": "sample-71.webm",
+        "parent_audio_id": "SS-BGN-0111",
+        "window": 1
+      },
+      {
+        "sample": "sample-72.webm",
+        "parent_audio_id": "SS-BGN-0112",
+        "window": 1
+      },
+      {
+        "sample": "sample-73.webm",
+        "parent_audio_id": "SS-BGN-0114",
+        "window": 1
+      },
+      {
+        "sample": "sample-74.webm",
+        "parent_audio_id": "SS-BGN-0118",
+        "window": 1
+      },
+      {
+        "sample": "sample-75.webm",
+        "parent_audio_id": "SS-BGN-0119",
+        "window": 1
+      },
+      {
+        "sample": "sample-76.webm",
+        "parent_audio_id": "SS-BGN-0120",
+        "window": 1
+      },
+      {
+        "sample": "sample-77.webm",
+        "parent_audio_id": "SS-BGN-0503",
+        "window": 1
+      },
+      {
+        "sample": "sample-78.webm",
+        "parent_audio_id": "SS-BGN-0504",
+        "window": 1
+      },
+      {
+        "sample": "sample-79.webm",
+        "parent_audio_id": "SS-BGN-0507",
+        "window": 1
+      },
+      {
+        "sample": "sample-80.webm",
+        "parent_audio_id": "SS-BGN-0508",
+        "window": 1
+      }
+    ]
+  },
+  {
+    "class": "Glass Breaking",
+    "zip": "gtm_model/upload_package/tm_imports/glass_breaking.zip",
+    "sample_count": 80,
+    "distinct_parents": 80,
+    "windows_per_clip": 1,
+    "samples": [
+      {
+        "sample": "sample-1.webm",
+        "parent_audio_id": "SS-GLA-0002",
+        "window": 1
+      },
+      {
+        "sample": "sample-2.webm",
+        "parent_audio_id": "SS-GLA-0003",
+        "window": 1
+      },
+      {
+        "sample": "sample-3.webm",
+        "parent_audio_id": "SS-GLA-0004",
+        "window": 1
+      },
+      {
+        "sample": "sample-4.webm",
+        "parent_audio_id": "SS-GLA-0006",
+        "window": 1
+      },
+      {
+        "sample": "sample-5.webm",
+        "parent_audio_id": "SS-GLA-0008",
+        "window": 1
+      },
+      {
+        "sample": "sample-6.webm",
+        "parent_audio_id": "SS-GLA-0009",
+        "window": 1
+      },
+      {
+        "sample": "sample-7.webm",
+        "parent_audio_id": "SS-GLA-0011",
+        "window": 1
+      },
+      {
+        "sample": "sample-8.webm",
+        "parent_audio_id": "SS-GLA-0012",
+        "window": 1
+      },
+      {
+        "sample": "sample-9.webm",
+        "parent_audio_id": "SS-GLA-0013",
+        "window": 1
+      },
+      {
+        "sample": "sample-10.webm",
+        "parent_audio_id": "SS-GLA-0016",
+        "window": 1
+      },
+      {
+        "sample": "sample-11.webm",
+        "parent_audio_id": "SS-GLA-0017",
+        "window": 1
+      },
+      {
+        "sample": "sample-12.webm",
+        "parent_audio_id": "SS-GLA-0020",
+        "window": 1
+      },
+      {
+        "sample": "sample-13.webm",
+        "parent_audio_id": "SS-GLA-0021",
+        "window": 1
+      },
+      {
+        "sample": "sample-14.webm",
+        "parent_audio_id": "SS-GLA-0023",
+        "window": 1
+      },
+      {
+        "sample": "sample-15.webm",
+        "parent_audio_id": "SS-GLA-0025",
+        "window": 1
+      },
+      {
+        "sample": "sample-16.webm",
+        "parent_audio_id": "SS-GLA-0027",
+        "window": 1
+      },
+      {
+        "sample": "sample-17.webm",
+        "parent_audio_id": "SS-GLA-0029",
+        "window": 1
+      },
+      {
+        "sample": "sample-18.webm",
+        "parent_audio_id": "SS-GLA-0031",
+        "window": 1
+      },
+      {
+        "sample": "sample-19.webm",
+        "parent_audio_id": "SS-GLA-0035",
+        "window": 1
+      },
+      {
+        "sample": "sample-20.webm",
+        "parent_audio_id": "SS-GLA-0036",
+        "window": 1
+      },
+      {
+        "sample": "sample-21.webm",
+        "parent_audio_id": "SS-GLA-0037",
+        "window": 1
+      },
+      {
+        "sample": "sample-22.webm",
+        "parent_audio_id": "SS-GLA-0039",
+        "window": 1
+      },
+      {
+        "sample": "sample-23.webm",
+        "parent_audio_id": "SS-GLA-0040",
+        "window": 1
+      },
+      {
+        "sample": "sample-24.webm",
+        "parent_audio_id": "SS-GLA-0042",
+        "window": 1
+      },
+      {
+        "sample": "sample-25.webm",
+        "parent_audio_id": "SS-GLA-0043",
+        "window": 1
+      },
+      {
+        "sample": "sample-26.webm",
+        "parent_audio_id": "SS-GLA-0050",
+        "window": 1
+      },
+      {
+        "sample": "sample-27.webm",
+        "parent_audio_id": "SS-GLA-0051",
+        "window": 1
+      },
+      {
+        "sample": "sample-28.webm",
+        "parent_audio_id": "SS-GLA-0052",
+        "window": 1
+      },
+      {
+        "sample": "sample-29.webm",
+        "parent_audio_id": "SS-GLA-0056",
+        "window": 1
+      },
+      {
+        "sample": "sample-30.webm",
+        "parent_audio_id": "SS-GLA-0057",
+        "window": 1
+      },
+      {
+        "sample": "sample-31.webm",
+        "parent_audio_id": "SS-GLA-0058",
+        "window": 1
+      },
+      {
+        "sample": "sample-32.webm",
+        "parent_audio_id": "SS-GLA-0059",
+        "window": 1
+      },
+      {
+        "sample": "sample-33.webm",
+        "parent_audio_id": "SS-GLA-0060",
+        "window": 1
+      },
+      {
+        "sample": "sample-34.webm",
+        "parent_audio_id": "SS-GLA-0061",
+        "window": 1
+      },
+      {
+        "sample": "sample-35.webm",
+        "parent_audio_id": "SS-GLA-0063",
+        "window": 1
+      },
+      {
+        "sample": "sample-36.webm",
+        "parent_audio_id": "SS-GLA-0066",
+        "window": 1
+      },
+      {
+        "sample": "sample-37.webm",
+        "parent_audio_id": "SS-GLA-0067",
+        "window": 1
+      },
+      {
+        "sample": "sample-38.webm",
+        "parent_audio_id": "SS-GLA-0068",
+        "window": 1
+      },
+      {
+        "sample": "sample-39.webm",
+        "parent_audio_id": "SS-GLA-0070",
+        "window": 1
+      },
+      {
+        "sample": "sample-40.webm",
+        "parent_audio_id": "SS-GLA-0072",
+        "window": 1
+      },
+      {
+        "sample": "sample-41.webm",
+        "parent_audio_id": "SS-GLA-0075",
+        "window": 1
+      },
+      {
+        "sample": "sample-42.webm",
+        "parent_audio_id": "SS-GLA-0076",
+        "window": 1
+      },
+      {
+        "sample": "sample-43.webm",
+        "parent_audio_id": "SS-GLA-0077",
+        "window": 1
+      },
+      {
+        "sample": "sample-44.webm",
+        "parent_audio_id": "SS-GLA-0078",
+        "window": 1
+      },
+      {
+        "sample": "sample-45.webm",
+        "parent_audio_id": "SS-GLA-0079",
+        "window": 1
+      },
+      {
+        "sample": "sample-46.webm",
+        "parent_audio_id": "SS-GLA-0085",
+        "window": 1
+      },
+      {
+        "sample": "sample-47.webm",
+        "parent_audio_id": "SS-GLA-0088",
+        "window": 1
+      },
+      {
+        "sample": "sample-48.webm",
+        "parent_audio_id": "SS-GLA-0089",
+        "window": 1
+      },
+      {
+        "sample": "sample-49.webm",
+        "parent_audio_id": "SS-GLA-0090",
+        "window": 1
+      },
+      {
+        "sample": "sample-50.webm",
+        "parent_audio_id": "SS-GLA-0091",
+        "window": 1
+      },
+      {
+        "sample": "sample-51.webm",
+        "parent_audio_id": "SS-GLA-0093",
+        "window": 1
+      },
+      {
+        "sample": "sample-52.webm",
+        "parent_audio_id": "SS-GLA-0095",
+        "window": 1
+      },
+      {
+        "sample": "sample-53.webm",
+        "parent_audio_id": "SS-GLA-0096",
+        "window": 1
+      },
+      {
+        "sample": "sample-54.webm",
+        "parent_audio_id": "SS-GLA-0098",
+        "window": 1
+      },
+      {
+        "sample": "sample-55.webm",
+        "parent_audio_id": "SS-GLA-0099",
+        "window": 1
+      },
+      {
+        "sample": "sample-56.webm",
+        "parent_audio_id": "SS-GLA-0100",
+        "window": 1
+      },
+      {
+        "sample": "sample-57.webm",
+        "parent_audio_id": "SS-GLA-0101",
+        "window": 1
+      },
+      {
+        "sample": "sample-58.webm",
+        "parent_audio_id": "SS-GLA-0102",
+        "window": 1
+      },
+      {
+        "sample": "sample-59.webm",
+        "parent_audio_id": "SS-GLA-0103",
+        "window": 1
+      },
+      {
+        "sample": "sample-60.webm",
+        "parent_audio_id": "SS-GLA-0104",
+        "window": 1
+      },
+      {
+        "sample": "sample-61.webm",
+        "parent_audio_id": "SS-GLA-0105",
+        "window": 1
+      },
+      {
+        "sample": "sample-62.webm",
+        "parent_audio_id": "SS-GLA-0106",
+        "window": 1
+      },
+      {
+        "sample": "sample-63.webm",
+        "parent_audio_id": "SS-GLA-0108",
+        "window": 1
+      },
+      {
+        "sample": "sample-64.webm",
+        "parent_audio_id": "SS-GLA-0110",
+        "window": 1
+      },
+      {
+        "sample": "sample-65.webm",
+        "parent_audio_id": "SS-GLA-0111",
+        "window": 1
+      },
+      {
+        "sample": "sample-66.webm",
+        "parent_audio_id": "SS-GLA-0113",
+        "window": 1
+      },
+      {
+        "sample": "sample-67.webm",
+        "parent_audio_id": "SS-GLA-0114",
+        "window": 1
+      },
+      {
+        "sample": "sample-68.webm",
+        "parent_audio_id": "SS-GLA-0115",
+        "window": 1
+      },
+      {
+        "sample": "sample-69.webm",
+        "parent_audio_id": "SS-GLA-0118",
+        "window": 1
+      },
+      {
+        "sample": "sample-70.webm",
+        "parent_audio_id": "SS-GLA-0119",
+        "window": 1
+      },
+      {
+        "sample": "sample-71.webm",
+        "parent_audio_id": "SS-GLA-0120",
+        "window": 1
+      },
+      {
+        "sample": "sample-72.webm",
+        "parent_audio_id": "SS-GLA-0122",
+        "window": 1
+      },
+      {
+        "sample": "sample-73.webm",
+        "parent_audio_id": "SS-GLA-0124",
+        "window": 1
+      },
+      {
+        "sample": "sample-74.webm",
+        "parent_audio_id": "SS-GLA-0127",
+        "window": 1
+      },
+      {
+        "sample": "sample-75.webm",
+        "parent_audio_id": "SS-GLA-0129",
+        "window": 1
+      },
+      {
+        "sample": "sample-76.webm",
+        "parent_audio_id": "SS-GLA-0130",
+        "window": 1
+      },
+      {
+        "sample": "sample-77.webm",
+        "parent_audio_id": "SS-GLA-0132",
+        "window": 1
+      },
+      {
+        "sample": "sample-78.webm",
+        "parent_audio_id": "SS-GLA-0133",
+        "window": 1
+      },
+      {
+        "sample": "sample-79.webm",
+        "parent_audio_id": "SS-GLA-0134",
+        "window": 1
+      },
+      {
+        "sample": "sample-80.webm",
+        "parent_audio_id": "SS-GLA-0135",
+        "window": 1
+      }
+    ]
+  },
+  {
+    "class": "Gunshot",
+    "zip": "gtm_model/upload_package/tm_imports/gunshot.zip",
+    "sample_count": 80,
+    "distinct_parents": 80,
+    "windows_per_clip": 1,
+    "samples": [
+      {
+        "sample": "sample-1.webm",
+        "parent_audio_id": "SS-GUN-0001",
+        "window": 1
+      },
+      {
+        "sample": "sample-2.webm",
+        "parent_audio_id": "SS-GUN-0002",
+        "window": 1
+      },
+      {
+        "sample": "sample-3.webm",
+        "parent_audio_id": "SS-GUN-0003",
+        "window": 1
+      },
+      {
+        "sample": "sample-4.webm",
+        "parent_audio_id": "SS-GUN-0004",
+        "window": 1
+      },
+      {
+        "sample": "sample-5.webm",
+        "parent_audio_id": "SS-GUN-0005",
+        "window": 1
+      },
+      {
+        "sample": "sample-6.webm",
+        "parent_audio_id": "SS-GUN-0006",
+        "window": 1
+      },
+      {
+        "sample": "sample-7.webm",
+        "parent_audio_id": "SS-GUN-0007",
+        "window": 1
+      },
+      {
+        "sample": "sample-8.webm",
+        "parent_audio_id": "SS-GUN-0008",
+        "window": 1
+      },
+      {
+        "sample": "sample-9.webm",
+        "parent_audio_id": "SS-GUN-0009",
+        "window": 1
+      },
+      {
+        "sample": "sample-10.webm",
+        "parent_audio_id": "SS-GUN-0011",
+        "window": 1
+      },
+      {
+        "sample": "sample-11.webm",
+        "parent_audio_id": "SS-GUN-0014",
+        "window": 1
+      },
+      {
+        "sample": "sample-12.webm",
+        "parent_audio_id": "SS-GUN-0017",
+        "window": 1
+      },
+      {
+        "sample": "sample-13.webm",
+        "parent_audio_id": "SS-GUN-0021",
+        "window": 1
+      },
+      {
+        "sample": "sample-14.webm",
+        "parent_audio_id": "SS-GUN-0022",
+        "window": 1
+      },
+      {
+        "sample": "sample-15.webm",
+        "parent_audio_id": "SS-GUN-0024",
+        "window": 1
+      },
+      {
+        "sample": "sample-16.webm",
+        "parent_audio_id": "SS-GUN-0025",
+        "window": 1
+      },
+      {
+        "sample": "sample-17.webm",
+        "parent_audio_id": "SS-GUN-0026",
+        "window": 1
+      },
+      {
+        "sample": "sample-18.webm",
+        "parent_audio_id": "SS-GUN-0027",
+        "window": 1
+      },
+      {
+        "sample": "sample-19.webm",
+        "parent_audio_id": "SS-GUN-0029",
+        "window": 1
+      },
+      {
+        "sample": "sample-20.webm",
+        "parent_audio_id": "SS-GUN-0030",
+        "window": 1
+      },
+      {
+        "sample": "sample-21.webm",
+        "parent_audio_id": "SS-GUN-0031",
+        "window": 1
+      },
+      {
+        "sample": "sample-22.webm",
+        "parent_audio_id": "SS-GUN-0032",
+        "window": 1
+      },
+      {
+        "sample": "sample-23.webm",
+        "parent_audio_id": "SS-GUN-0034",
+        "window": 1
+      },
+      {
+        "sample": "sample-24.webm",
+        "parent_audio_id": "SS-GUN-0035",
+        "window": 1
+      },
+      {
+        "sample": "sample-25.webm",
+        "parent_audio_id": "SS-GUN-0036",
+        "window": 1
+      },
+      {
+        "sample": "sample-26.webm",
+        "parent_audio_id": "SS-GUN-0038",
+        "window": 1
+      },
+      {
+        "sample": "sample-27.webm",
+        "parent_audio_id": "SS-GUN-0039",
+        "window": 1
+      },
+      {
+        "sample": "sample-28.webm",
+        "parent_audio_id": "SS-GUN-0040",
+        "window": 1
+      },
+      {
+        "sample": "sample-29.webm",
+        "parent_audio_id": "SS-GUN-0041",
+        "window": 1
+      },
+      {
+        "sample": "sample-30.webm",
+        "parent_audio_id": "SS-GUN-0042",
+        "window": 1
+      },
+      {
+        "sample": "sample-31.webm",
+        "parent_audio_id": "SS-GUN-0043",
+        "window": 1
+      },
+      {
+        "sample": "sample-32.webm",
+        "parent_audio_id": "SS-GUN-0044",
+        "window": 1
+      },
+      {
+        "sample": "sample-33.webm",
+        "parent_audio_id": "SS-GUN-0045",
+        "window": 1
+      },
+      {
+        "sample": "sample-34.webm",
+        "parent_audio_id": "SS-GUN-0048",
+        "window": 1
+      },
+      {
+        "sample": "sample-35.webm",
+        "parent_audio_id": "SS-GUN-0049",
+        "window": 1
+      },
+      {
+        "sample": "sample-36.webm",
+        "parent_audio_id": "SS-GUN-0050",
+        "window": 1
+      },
+      {
+        "sample": "sample-37.webm",
+        "parent_audio_id": "SS-GUN-0051",
+        "window": 1
+      },
+      {
+        "sample": "sample-38.webm",
+        "parent_audio_id": "SS-GUN-0053",
+        "window": 1
+      },
+      {
+        "sample": "sample-39.webm",
+        "parent_audio_id": "SS-GUN-0055",
+        "window": 1
+      },
+      {
+        "sample": "sample-40.webm",
+        "parent_audio_id": "SS-GUN-0056",
+        "window": 1
+      },
+      {
+        "sample": "sample-41.webm",
+        "parent_audio_id": "SS-GUN-0058",
+        "window": 1
+      },
+      {
+        "sample": "sample-42.webm",
+        "parent_audio_id": "SS-GUN-0062",
+        "window": 1
+      },
+      {
+        "sample": "sample-43.webm",
+        "parent_audio_id": "SS-GUN-0064",
+        "window": 1
+      },
+      {
+        "sample": "sample-44.webm",
+        "parent_audio_id": "SS-GUN-0066",
+        "window": 1
+      },
+      {
+        "sample": "sample-45.webm",
+        "parent_audio_id": "SS-GUN-0067",
+        "window": 1
+      },
+      {
+        "sample": "sample-46.webm",
+        "parent_audio_id": "SS-GUN-0068",
+        "window": 1
+      },
+      {
+        "sample": "sample-47.webm",
+        "parent_audio_id": "SS-GUN-0070",
+        "window": 1
+      },
+      {
+        "sample": "sample-48.webm",
+        "parent_audio_id": "SS-GUN-0071",
+        "window": 1
+      },
+      {
+        "sample": "sample-49.webm",
+        "parent_audio_id": "SS-GUN-0072",
+        "window": 1
+      },
+      {
+        "sample": "sample-50.webm",
+        "parent_audio_id": "SS-GUN-0073",
+        "window": 1
+      },
+      {
+        "sample": "sample-51.webm",
+        "parent_audio_id": "SS-GUN-0074",
+        "window": 1
+      },
+      {
+        "sample": "sample-52.webm",
+        "parent_audio_id": "SS-GUN-0075",
+        "window": 1
+      },
+      {
+        "sample": "sample-53.webm",
+        "parent_audio_id": "SS-GUN-0076",
+        "window": 1
+      },
+      {
+        "sample": "sample-54.webm",
+        "parent_audio_id": "SS-GUN-0077",
+        "window": 1
+      },
+      {
+        "sample": "sample-55.webm",
+        "parent_audio_id": "SS-GUN-0078",
+        "window": 1
+      },
+      {
+        "sample": "sample-56.webm",
+        "parent_audio_id": "SS-GUN-0081",
+        "window": 1
+      },
+      {
+        "sample": "sample-57.webm",
+        "parent_audio_id": "SS-GUN-0082",
+        "window": 1
+      },
+      {
+        "sample": "sample-58.webm",
+        "parent_audio_id": "SS-GUN-0083",
+        "window": 1
+      },
+      {
+        "sample": "sample-59.webm",
+        "parent_audio_id": "SS-GUN-0084",
+        "window": 1
+      },
+      {
+        "sample": "sample-60.webm",
+        "parent_audio_id": "SS-GUN-0085",
+        "window": 1
+      },
+      {
+        "sample": "sample-61.webm",
+        "parent_audio_id": "SS-GUN-0086",
+        "window": 1
+      },
+      {
+        "sample": "sample-62.webm",
+        "parent_audio_id": "SS-GUN-0088",
+        "window": 1
+      },
+      {
+        "sample": "sample-63.webm",
+        "parent_audio_id": "SS-GUN-0089",
+        "window": 1
+      },
+      {
+        "sample": "sample-64.webm",
+        "parent_audio_id": "SS-GUN-0090",
+        "window": 1
+      },
+      {
+        "sample": "sample-65.webm",
+        "parent_audio_id": "SS-GUN-0091",
+        "window": 1
+      },
+      {
+        "sample": "sample-66.webm",
+        "parent_audio_id": "SS-GUN-0092",
+        "window": 1
+      },
+      {
+        "sample": "sample-67.webm",
+        "parent_audio_id": "SS-GUN-0093",
+        "window": 1
+      },
+      {
+        "sample": "sample-68.webm",
+        "parent_audio_id": "SS-GUN-0094",
+        "window": 1
+      },
+      {
+        "sample": "sample-69.webm",
+        "parent_audio_id": "SS-GUN-0095",
+        "window": 1
+      },
+      {
+        "sample": "sample-70.webm",
+        "parent_audio_id": "SS-GUN-0096",
+        "window": 1
+      },
+      {
+        "sample": "sample-71.webm",
+        "parent_audio_id": "SS-GUN-0097",
+        "window": 1
+      },
+      {
+        "sample": "sample-72.webm",
+        "parent_audio_id": "SS-GUN-0099",
+        "window": 1
+      },
+      {
+        "sample": "sample-73.webm",
+        "parent_audio_id": "SS-GUN-0102",
+        "window": 1
+      },
+      {
+        "sample": "sample-74.webm",
+        "parent_audio_id": "SS-GUN-0103",
+        "window": 1
+      },
+      {
+        "sample": "sample-75.webm",
+        "parent_audio_id": "SS-GUN-0106",
+        "window": 1
+      },
+      {
+        "sample": "sample-76.webm",
+        "parent_audio_id": "SS-GUN-0107",
+        "window": 1
+      },
+      {
+        "sample": "sample-77.webm",
+        "parent_audio_id": "SS-GUN-0108",
+        "window": 1
+      },
+      {
+        "sample": "sample-78.webm",
+        "parent_audio_id": "SS-GUN-0113",
+        "window": 1
+      },
+      {
+        "sample": "sample-79.webm",
+        "parent_audio_id": "SS-GUN-0114",
+        "window": 1
+      },
+      {
+        "sample": "sample-80.webm",
+        "parent_audio_id": "SS-GUN-0116",
+        "window": 1
+      }
+    ]
+  },
+  {
+    "class": "Machinery Fault",
+    "zip": "gtm_model/upload_package/tm_imports/machinery_fault.zip",
+    "sample_count": 80,
+    "distinct_parents": 80,
+    "windows_per_clip": 1,
+    "samples": [
+      {
+        "sample": "sample-1.webm",
+        "parent_audio_id": "SS-MAC-0001",
+        "window": 1
+      },
+      {
+        "sample": "sample-2.webm",
+        "parent_audio_id": "SS-MAC-0003",
+        "window": 1
+      },
+      {
+        "sample": "sample-3.webm",
+        "parent_audio_id": "SS-MAC-0006",
+        "window": 1
+      },
+      {
+        "sample": "sample-4.webm",
+        "parent_audio_id": "SS-MAC-0008",
+        "window": 1
+      },
+      {
+        "sample": "sample-5.webm",
+        "parent_audio_id": "SS-MAC-0009",
+        "window": 1
+      },
+      {
+        "sample": "sample-6.webm",
+        "parent_audio_id": "SS-MAC-0010",
+        "window": 1
+      },
+      {
+        "sample": "sample-7.webm",
+        "parent_audio_id": "SS-MAC-0011",
+        "window": 1
+      },
+      {
+        "sample": "sample-8.webm",
+        "parent_audio_id": "SS-MAC-0012",
+        "window": 1
+      },
+      {
+        "sample": "sample-9.webm",
+        "parent_audio_id": "SS-MAC-0013",
+        "window": 1
+      },
+      {
+        "sample": "sample-10.webm",
+        "parent_audio_id": "SS-MAC-0014",
+        "window": 1
+      },
+      {
+        "sample": "sample-11.webm",
+        "parent_audio_id": "SS-MAC-0015",
+        "window": 1
+      },
+      {
+        "sample": "sample-12.webm",
+        "parent_audio_id": "SS-MAC-0018",
+        "window": 1
+      },
+      {
+        "sample": "sample-13.webm",
+        "parent_audio_id": "SS-MAC-0020",
+        "window": 1
+      },
+      {
+        "sample": "sample-14.webm",
+        "parent_audio_id": "SS-MAC-0022",
+        "window": 1
+      },
+      {
+        "sample": "sample-15.webm",
+        "parent_audio_id": "SS-MAC-0023",
+        "window": 1
+      },
+      {
+        "sample": "sample-16.webm",
+        "parent_audio_id": "SS-MAC-0024",
+        "window": 1
+      },
+      {
+        "sample": "sample-17.webm",
+        "parent_audio_id": "SS-MAC-0028",
+        "window": 1
+      },
+      {
+        "sample": "sample-18.webm",
+        "parent_audio_id": "SS-MAC-0029",
+        "window": 1
+      },
+      {
+        "sample": "sample-19.webm",
+        "parent_audio_id": "SS-MAC-0030",
+        "window": 1
+      },
+      {
+        "sample": "sample-20.webm",
+        "parent_audio_id": "SS-MAC-0031",
+        "window": 1
+      },
+      {
+        "sample": "sample-21.webm",
+        "parent_audio_id": "SS-MAC-0032",
+        "window": 1
+      },
+      {
+        "sample": "sample-22.webm",
+        "parent_audio_id": "SS-MAC-0033",
+        "window": 1
+      },
+      {
+        "sample": "sample-23.webm",
+        "parent_audio_id": "SS-MAC-0034",
+        "window": 1
+      },
+      {
+        "sample": "sample-24.webm",
+        "parent_audio_id": "SS-MAC-0035",
+        "window": 1
+      },
+      {
+        "sample": "sample-25.webm",
+        "parent_audio_id": "SS-MAC-0036",
+        "window": 1
+      },
+      {
+        "sample": "sample-26.webm",
+        "parent_audio_id": "SS-MAC-0037",
+        "window": 1
+      },
+      {
+        "sample": "sample-27.webm",
+        "parent_audio_id": "SS-MAC-0040",
+        "window": 1
+      },
+      {
+        "sample": "sample-28.webm",
+        "parent_audio_id": "SS-MAC-0042",
+        "window": 1
+      },
+      {
+        "sample": "sample-29.webm",
+        "parent_audio_id": "SS-MAC-0045",
+        "window": 1
+      },
+      {
+        "sample": "sample-30.webm",
+        "parent_audio_id": "SS-MAC-0046",
+        "window": 1
+      },
+      {
+        "sample": "sample-31.webm",
+        "parent_audio_id": "SS-MAC-0048",
+        "window": 1
+      },
+      {
+        "sample": "sample-32.webm",
+        "parent_audio_id": "SS-MAC-0050",
+        "window": 1
+      },
+      {
+        "sample": "sample-33.webm",
+        "parent_audio_id": "SS-MAC-0051",
+        "window": 1
+      },
+      {
+        "sample": "sample-34.webm",
+        "parent_audio_id": "SS-MAC-0052",
+        "window": 1
+      },
+      {
+        "sample": "sample-35.webm",
+        "parent_audio_id": "SS-MAC-0054",
+        "window": 1
+      },
+      {
+        "sample": "sample-36.webm",
+        "parent_audio_id": "SS-MAC-0056",
+        "window": 1
+      },
+      {
+        "sample": "sample-37.webm",
+        "parent_audio_id": "SS-MAC-0058",
+        "window": 1
+      },
+      {
+        "sample": "sample-38.webm",
+        "parent_audio_id": "SS-MAC-0059",
+        "window": 1
+      },
+      {
+        "sample": "sample-39.webm",
+        "parent_audio_id": "SS-MAC-0060",
+        "window": 1
+      },
+      {
+        "sample": "sample-40.webm",
+        "parent_audio_id": "SS-MAC-0062",
+        "window": 1
+      },
+      {
+        "sample": "sample-41.webm",
+        "parent_audio_id": "SS-MAC-0063",
+        "window": 1
+      },
+      {
+        "sample": "sample-42.webm",
+        "parent_audio_id": "SS-MAC-0064",
+        "window": 1
+      },
+      {
+        "sample": "sample-43.webm",
+        "parent_audio_id": "SS-MAC-0065",
+        "window": 1
+      },
+      {
+        "sample": "sample-44.webm",
+        "parent_audio_id": "SS-MAC-0066",
+        "window": 1
+      },
+      {
+        "sample": "sample-45.webm",
+        "parent_audio_id": "SS-MAC-0067",
+        "window": 1
+      },
+      {
+        "sample": "sample-46.webm",
+        "parent_audio_id": "SS-MAC-0068",
+        "window": 1
+      },
+      {
+        "sample": "sample-47.webm",
+        "parent_audio_id": "SS-MAC-0070",
+        "window": 1
+      },
+      {
+        "sample": "sample-48.webm",
+        "parent_audio_id": "SS-MAC-0071",
+        "window": 1
+      },
+      {
+        "sample": "sample-49.webm",
+        "parent_audio_id": "SS-MAC-0072",
+        "window": 1
+      },
+      {
+        "sample": "sample-50.webm",
+        "parent_audio_id": "SS-MAC-0073",
+        "window": 1
+      },
+      {
+        "sample": "sample-51.webm",
+        "parent_audio_id": "SS-MAC-0074",
+        "window": 1
+      },
+      {
+        "sample": "sample-52.webm",
+        "parent_audio_id": "SS-MAC-0076",
+        "window": 1
+      },
+      {
+        "sample": "sample-53.webm",
+        "parent_audio_id": "SS-MAC-0077",
+        "window": 1
+      },
+      {
+        "sample": "sample-54.webm",
+        "parent_audio_id": "SS-MAC-0079",
+        "window": 1
+      },
+      {
+        "sample": "sample-55.webm",
+        "parent_audio_id": "SS-MAC-0081",
+        "window": 1
+      },
+      {
+        "sample": "sample-56.webm",
+        "parent_audio_id": "SS-MAC-0082",
+        "window": 1
+      },
+      {
+        "sample": "sample-57.webm",
+        "parent_audio_id": "SS-MAC-0083",
+        "window": 1
+      },
+      {
+        "sample": "sample-58.webm",
+        "parent_audio_id": "SS-MAC-0084",
+        "window": 1
+      },
+      {
+        "sample": "sample-59.webm",
+        "parent_audio_id": "SS-MAC-0087",
+        "window": 1
+      },
+      {
+        "sample": "sample-60.webm",
+        "parent_audio_id": "SS-MAC-0088",
+        "window": 1
+      },
+      {
+        "sample": "sample-61.webm",
+        "parent_audio_id": "SS-MAC-0089",
+        "window": 1
+      },
+      {
+        "sample": "sample-62.webm",
+        "parent_audio_id": "SS-MAC-0091",
+        "window": 1
+      },
+      {
+        "sample": "sample-63.webm",
+        "parent_audio_id": "SS-MAC-0092",
+        "window": 1
+      },
+      {
+        "sample": "sample-64.webm",
+        "parent_audio_id": "SS-MAC-0093",
+        "window": 1
+      },
+      {
+        "sample": "sample-65.webm",
+        "parent_audio_id": "SS-MAC-0095",
+        "window": 1
+      },
+      {
+        "sample": "sample-66.webm",
+        "parent_audio_id": "SS-MAC-0096",
+        "window": 1
+      },
+      {
+        "sample": "sample-67.webm",
+        "parent_audio_id": "SS-MAC-0097",
+        "window": 1
+      },
+      {
+        "sample": "sample-68.webm",
+        "parent_audio_id": "SS-MAC-0099",
+        "window": 1
+      },
+      {
+        "sample": "sample-69.webm",
+        "parent_audio_id": "SS-MAC-0100",
+        "window": 1
+      },
+      {
+        "sample": "sample-70.webm",
+        "parent_audio_id": "SS-MAC-0102",
+        "window": 1
+      },
+      {
+        "sample": "sample-71.webm",
+        "parent_audio_id": "SS-MAC-0103",
+        "window": 1
+      },
+      {
+        "sample": "sample-72.webm",
+        "parent_audio_id": "SS-MAC-0104",
+        "window": 1
+      },
+      {
+        "sample": "sample-73.webm",
+        "parent_audio_id": "SS-MAC-0105",
+        "window": 1
+      },
+      {
+        "sample": "sample-74.webm",
+        "parent_audio_id": "SS-MAC-0106",
+        "window": 1
+      },
+      {
+        "sample": "sample-75.webm",
+        "parent_audio_id": "SS-MAC-0107",
+        "window": 1
+      },
+      {
+        "sample": "sample-76.webm",
+        "parent_audio_id": "SS-MAC-0108",
+        "window": 1
+      },
+      {
+        "sample": "sample-77.webm",
+        "parent_audio_id": "SS-MAC-0109",
+        "window": 1
+      },
+      {
+        "sample": "sample-78.webm",
+        "parent_audio_id": "SS-MAC-0110",
+        "window": 1
+      },
+      {
+        "sample": "sample-79.webm",
+        "parent_audio_id": "SS-MAC-0114",
+        "window": 1
+      },
+      {
+        "sample": "sample-80.webm",
+        "parent_audio_id": "SS-MAC-0115",
+        "window": 1
+      }
+    ]
+  },
+  {
+    "class": "Panic Scream",
+    "zip": "gtm_model/upload_package/tm_imports/panic_scream.zip",
+    "sample_count": 80,
+    "distinct_parents": 80,
+    "windows_per_clip": 1,
+    "samples": [
+      {
+        "sample": "sample-1.webm",
+        "parent_audio_id": "SS-SCR-0001",
+        "window": 1
+      },
+      {
+        "sample": "sample-2.webm",
+        "parent_audio_id": "SS-SCR-0002",
+        "window": 1
+      },
+      {
+        "sample": "sample-3.webm",
+        "parent_audio_id": "SS-SCR-0003",
+        "window": 1
+      },
+      {
+        "sample": "sample-4.webm",
+        "parent_audio_id": "SS-SCR-0004",
+        "window": 1
+      },
+      {
+        "sample": "sample-5.webm",
+        "parent_audio_id": "SS-SCR-0005",
+        "window": 1
+      },
+      {
+        "sample": "sample-6.webm",
+        "parent_audio_id": "SS-SCR-0006",
+        "window": 1
+      },
+      {
+        "sample": "sample-7.webm",
+        "parent_audio_id": "SS-SCR-0007",
+        "window": 1
+      },
+      {
+        "sample": "sample-8.webm",
+        "parent_audio_id": "SS-SCR-0008",
+        "window": 1
+      },
+      {
+        "sample": "sample-9.webm",
+        "parent_audio_id": "SS-SCR-0010",
+        "window": 1
+      },
+      {
+        "sample": "sample-10.webm",
+        "parent_audio_id": "SS-SCR-0011",
+        "window": 1
+      },
+      {
+        "sample": "sample-11.webm",
+        "parent_audio_id": "SS-SCR-0012",
+        "window": 1
+      },
+      {
+        "sample": "sample-12.webm",
+        "parent_audio_id": "SS-SCR-0014",
+        "window": 1
+      },
+      {
+        "sample": "sample-13.webm",
+        "parent_audio_id": "SS-SCR-0015",
+        "window": 1
+      },
+      {
+        "sample": "sample-14.webm",
+        "parent_audio_id": "SS-SCR-0016",
+        "window": 1
+      },
+      {
+        "sample": "sample-15.webm",
+        "parent_audio_id": "SS-SCR-0018",
+        "window": 1
+      },
+      {
+        "sample": "sample-16.webm",
+        "parent_audio_id": "SS-SCR-0019",
+        "window": 1
+      },
+      {
+        "sample": "sample-17.webm",
+        "parent_audio_id": "SS-SCR-0020",
+        "window": 1
+      },
+      {
+        "sample": "sample-18.webm",
+        "parent_audio_id": "SS-SCR-0021",
+        "window": 1
+      },
+      {
+        "sample": "sample-19.webm",
+        "parent_audio_id": "SS-SCR-0022",
+        "window": 1
+      },
+      {
+        "sample": "sample-20.webm",
+        "parent_audio_id": "SS-SCR-0023",
+        "window": 1
+      },
+      {
+        "sample": "sample-21.webm",
+        "parent_audio_id": "SS-SCR-0025",
+        "window": 1
+      },
+      {
+        "sample": "sample-22.webm",
+        "parent_audio_id": "SS-SCR-0026",
+        "window": 1
+      },
+      {
+        "sample": "sample-23.webm",
+        "parent_audio_id": "SS-SCR-0027",
+        "window": 1
+      },
+      {
+        "sample": "sample-24.webm",
+        "parent_audio_id": "SS-SCR-0032",
+        "window": 1
+      },
+      {
+        "sample": "sample-25.webm",
+        "parent_audio_id": "SS-SCR-0033",
+        "window": 1
+      },
+      {
+        "sample": "sample-26.webm",
+        "parent_audio_id": "SS-SCR-0035",
+        "window": 1
+      },
+      {
+        "sample": "sample-27.webm",
+        "parent_audio_id": "SS-SCR-0036",
+        "window": 1
+      },
+      {
+        "sample": "sample-28.webm",
+        "parent_audio_id": "SS-SCR-0037",
+        "window": 1
+      },
+      {
+        "sample": "sample-29.webm",
+        "parent_audio_id": "SS-SCR-0039",
+        "window": 1
+      },
+      {
+        "sample": "sample-30.webm",
+        "parent_audio_id": "SS-SCR-0040",
+        "window": 1
+      },
+      {
+        "sample": "sample-31.webm",
+        "parent_audio_id": "SS-SCR-0042",
+        "window": 1
+      },
+      {
+        "sample": "sample-32.webm",
+        "parent_audio_id": "SS-SCR-0044",
+        "window": 1
+      },
+      {
+        "sample": "sample-33.webm",
+        "parent_audio_id": "SS-SCR-0045",
+        "window": 1
+      },
+      {
+        "sample": "sample-34.webm",
+        "parent_audio_id": "SS-SCR-0046",
+        "window": 1
+      },
+      {
+        "sample": "sample-35.webm",
+        "parent_audio_id": "SS-SCR-0047",
+        "window": 1
+      },
+      {
+        "sample": "sample-36.webm",
+        "parent_audio_id": "SS-SCR-0048",
+        "window": 1
+      },
+      {
+        "sample": "sample-37.webm",
+        "parent_audio_id": "SS-SCR-0049",
+        "window": 1
+      },
+      {
+        "sample": "sample-38.webm",
+        "parent_audio_id": "SS-SCR-0050",
+        "window": 1
+      },
+      {
+        "sample": "sample-39.webm",
+        "parent_audio_id": "SS-SCR-0051",
+        "window": 1
+      },
+      {
+        "sample": "sample-40.webm",
+        "parent_audio_id": "SS-SCR-0052",
+        "window": 1
+      },
+      {
+        "sample": "sample-41.webm",
+        "parent_audio_id": "SS-SCR-0054",
+        "window": 1
+      },
+      {
+        "sample": "sample-42.webm",
+        "parent_audio_id": "SS-SCR-0055",
+        "window": 1
+      },
+      {
+        "sample": "sample-43.webm",
+        "parent_audio_id": "SS-SCR-0056",
+        "window": 1
+      },
+      {
+        "sample": "sample-44.webm",
+        "parent_audio_id": "SS-SCR-0057",
+        "window": 1
+      },
+      {
+        "sample": "sample-45.webm",
+        "parent_audio_id": "SS-SCR-0058",
+        "window": 1
+      },
+      {
+        "sample": "sample-46.webm",
+        "parent_audio_id": "SS-SCR-0059",
+        "window": 1
+      },
+      {
+        "sample": "sample-47.webm",
+        "parent_audio_id": "SS-SCR-0060",
+        "window": 1
+      },
+      {
+        "sample": "sample-48.webm",
+        "parent_audio_id": "SS-SCR-0062",
+        "window": 1
+      },
+      {
+        "sample": "sample-49.webm",
+        "parent_audio_id": "SS-SCR-0067",
+        "window": 1
+      },
+      {
+        "sample": "sample-50.webm",
+        "parent_audio_id": "SS-SCR-0068",
+        "window": 1
+      },
+      {
+        "sample": "sample-51.webm",
+        "parent_audio_id": "SS-SCR-0069",
+        "window": 1
+      },
+      {
+        "sample": "sample-52.webm",
+        "parent_audio_id": "SS-SCR-0070",
+        "window": 1
+      },
+      {
+        "sample": "sample-53.webm",
+        "parent_audio_id": "SS-SCR-0071",
+        "window": 1
+      },
+      {
+        "sample": "sample-54.webm",
+        "parent_audio_id": "SS-SCR-0072",
+        "window": 1
+      },
+      {
+        "sample": "sample-55.webm",
+        "parent_audio_id": "SS-SCR-0074",
+        "window": 1
+      },
+      {
+        "sample": "sample-56.webm",
+        "parent_audio_id": "SS-SCR-0075",
+        "window": 1
+      },
+      {
+        "sample": "sample-57.webm",
+        "parent_audio_id": "SS-SCR-0076",
+        "window": 1
+      },
+      {
+        "sample": "sample-58.webm",
+        "parent_audio_id": "SS-SCR-0077",
+        "window": 1
+      },
+      {
+        "sample": "sample-59.webm",
+        "parent_audio_id": "SS-SCR-0078",
+        "window": 1
+      },
+      {
+        "sample": "sample-60.webm",
+        "parent_audio_id": "SS-SCR-0079",
+        "window": 1
+      },
+      {
+        "sample": "sample-61.webm",
+        "parent_audio_id": "SS-SCR-0080",
+        "window": 1
+      },
+      {
+        "sample": "sample-62.webm",
+        "parent_audio_id": "SS-SCR-0081",
+        "window": 1
+      },
+      {
+        "sample": "sample-63.webm",
+        "parent_audio_id": "SS-SCR-0082",
+        "window": 1
+      },
+      {
+        "sample": "sample-64.webm",
+        "parent_audio_id": "SS-SCR-0084",
+        "window": 1
+      },
+      {
+        "sample": "sample-65.webm",
+        "parent_audio_id": "SS-SCR-0085",
+        "window": 1
+      },
+      {
+        "sample": "sample-66.webm",
+        "parent_audio_id": "SS-SCR-0088",
+        "window": 1
+      },
+      {
+        "sample": "sample-67.webm",
+        "parent_audio_id": "SS-SCR-0090",
+        "window": 1
+      },
+      {
+        "sample": "sample-68.webm",
+        "parent_audio_id": "SS-SCR-0091",
+        "window": 1
+      },
+      {
+        "sample": "sample-69.webm",
+        "parent_audio_id": "SS-SCR-0092",
+        "window": 1
+      },
+      {
+        "sample": "sample-70.webm",
+        "parent_audio_id": "SS-SCR-0093",
+        "window": 1
+      },
+      {
+        "sample": "sample-71.webm",
+        "parent_audio_id": "SS-SCR-0094",
+        "window": 1
+      },
+      {
+        "sample": "sample-72.webm",
+        "parent_audio_id": "SS-SCR-0095",
+        "window": 1
+      },
+      {
+        "sample": "sample-73.webm",
+        "parent_audio_id": "SS-SCR-0096",
+        "window": 1
+      },
+      {
+        "sample": "sample-74.webm",
+        "parent_audio_id": "SS-SCR-0099",
+        "window": 1
+      },
+      {
+        "sample": "sample-75.webm",
+        "parent_audio_id": "SS-SCR-0100",
+        "window": 1
+      },
+      {
+        "sample": "sample-76.webm",
+        "parent_audio_id": "SS-SCR-0501",
+        "window": 1
+      },
+      {
+        "sample": "sample-77.webm",
+        "parent_audio_id": "SS-SCR-0502",
+        "window": 1
+      },
+      {
+        "sample": "sample-78.webm",
+        "parent_audio_id": "SS-SCR-0505",
+        "window": 1
+      },
+      {
+        "sample": "sample-79.webm",
+        "parent_audio_id": "SS-SCR-0506",
+        "window": 1
+      },
+      {
+        "sample": "sample-80.webm",
+        "parent_audio_id": "SS-SCR-0507",
+        "window": 1
+      }
+    ]
+  },
+  {
+    "class": "Person Asking for Help",
+    "zip": "gtm_model/upload_package/tm_imports/person_asking_for_help.zip",
+    "sample_count": 80,
+    "distinct_parents": 80,
+    "windows_per_clip": 1,
+    "samples": [
+      {
+        "sample": "sample-1.webm",
+        "parent_audio_id": "SS-HAL-0504",
+        "window": 1
+      },
+      {
+        "sample": "sample-2.webm",
+        "parent_audio_id": "SS-HAL-0505",
+        "window": 1
+      },
+      {
+        "sample": "sample-3.webm",
+        "parent_audio_id": "SS-HAL-0509",
+        "window": 1
+      },
+      {
+        "sample": "sample-4.webm",
+        "parent_audio_id": "SS-HAL-0510",
+        "window": 1
+      },
+      {
+        "sample": "sample-5.webm",
+        "parent_audio_id": "SS-HAL-0511",
+        "window": 1
+      },
+      {
+        "sample": "sample-6.webm",
+        "parent_audio_id": "SS-HAL-0512",
+        "window": 1
+      },
+      {
+        "sample": "sample-7.webm",
+        "parent_audio_id": "SS-HAL-0515",
+        "window": 1
+      },
+      {
+        "sample": "sample-8.webm",
+        "parent_audio_id": "SS-HAL-0517",
+        "window": 1
+      },
+      {
+        "sample": "sample-9.webm",
+        "parent_audio_id": "SS-HAL-0518",
+        "window": 1
+      },
+      {
+        "sample": "sample-10.webm",
+        "parent_audio_id": "SS-HAL-0519",
+        "window": 1
+      },
+      {
+        "sample": "sample-11.webm",
+        "parent_audio_id": "SS-HAL-0520",
+        "window": 1
+      },
+      {
+        "sample": "sample-12.webm",
+        "parent_audio_id": "SS-HAL-0521",
+        "window": 1
+      },
+      {
+        "sample": "sample-13.webm",
+        "parent_audio_id": "SS-HAL-0522",
+        "window": 1
+      },
+      {
+        "sample": "sample-14.webm",
+        "parent_audio_id": "SS-HAL-0524",
+        "window": 1
+      },
+      {
+        "sample": "sample-15.webm",
+        "parent_audio_id": "SS-HAL-0525",
+        "window": 1
+      },
+      {
+        "sample": "sample-16.webm",
+        "parent_audio_id": "SS-HAL-0526",
+        "window": 1
+      },
+      {
+        "sample": "sample-17.webm",
+        "parent_audio_id": "SS-HAL-0528",
+        "window": 1
+      },
+      {
+        "sample": "sample-18.webm",
+        "parent_audio_id": "SS-HAL-0530",
+        "window": 1
+      },
+      {
+        "sample": "sample-19.webm",
+        "parent_audio_id": "SS-HAL-0531",
+        "window": 1
+      },
+      {
+        "sample": "sample-20.webm",
+        "parent_audio_id": "SS-HAL-0532",
+        "window": 1
+      },
+      {
+        "sample": "sample-21.webm",
+        "parent_audio_id": "SS-HAL-0533",
+        "window": 1
+      },
+      {
+        "sample": "sample-22.webm",
+        "parent_audio_id": "SS-HAL-0536",
+        "window": 1
+      },
+      {
+        "sample": "sample-23.webm",
+        "parent_audio_id": "SS-HAL-0538",
+        "window": 1
+      },
+      {
+        "sample": "sample-24.webm",
+        "parent_audio_id": "SS-HAL-0540",
+        "window": 1
+      },
+      {
+        "sample": "sample-25.webm",
+        "parent_audio_id": "SS-HAL-0541",
+        "window": 1
+      },
+      {
+        "sample": "sample-26.webm",
+        "parent_audio_id": "SS-HAL-0542",
+        "window": 1
+      },
+      {
+        "sample": "sample-27.webm",
+        "parent_audio_id": "SS-HAL-0543",
+        "window": 1
+      },
+      {
+        "sample": "sample-28.webm",
+        "parent_audio_id": "SS-HAL-0544",
+        "window": 1
+      },
+      {
+        "sample": "sample-29.webm",
+        "parent_audio_id": "SS-HAL-0545",
+        "window": 1
+      },
+      {
+        "sample": "sample-30.webm",
+        "parent_audio_id": "SS-HAL-0546",
+        "window": 1
+      },
+      {
+        "sample": "sample-31.webm",
+        "parent_audio_id": "SS-HAL-0547",
+        "window": 1
+      },
+      {
+        "sample": "sample-32.webm",
+        "parent_audio_id": "SS-HAL-0554",
+        "window": 1
+      },
+      {
+        "sample": "sample-33.webm",
+        "parent_audio_id": "SS-HAL-0555",
+        "window": 1
+      },
+      {
+        "sample": "sample-34.webm",
+        "parent_audio_id": "SS-HAL-0556",
+        "window": 1
+      },
+      {
+        "sample": "sample-35.webm",
+        "parent_audio_id": "SS-HAL-0557",
+        "window": 1
+      },
+      {
+        "sample": "sample-36.webm",
+        "parent_audio_id": "SS-HAL-0559",
+        "window": 1
+      },
+      {
+        "sample": "sample-37.webm",
+        "parent_audio_id": "SS-HAL-0560",
+        "window": 1
+      },
+      {
+        "sample": "sample-38.webm",
+        "parent_audio_id": "SS-HAL-0561",
+        "window": 1
+      },
+      {
+        "sample": "sample-39.webm",
+        "parent_audio_id": "SS-HAL-0562",
+        "window": 1
+      },
+      {
+        "sample": "sample-40.webm",
+        "parent_audio_id": "SS-HAL-0563",
+        "window": 1
+      },
+      {
+        "sample": "sample-41.webm",
+        "parent_audio_id": "SS-HAL-0565",
+        "window": 1
+      },
+      {
+        "sample": "sample-42.webm",
+        "parent_audio_id": "SS-HAL-0566",
+        "window": 1
+      },
+      {
+        "sample": "sample-43.webm",
+        "parent_audio_id": "SS-HAL-0567",
+        "window": 1
+      },
+      {
+        "sample": "sample-44.webm",
+        "parent_audio_id": "SS-HAL-0568",
+        "window": 1
+      },
+      {
+        "sample": "sample-45.webm",
+        "parent_audio_id": "SS-HAL-0569",
+        "window": 1
+      },
+      {
+        "sample": "sample-46.webm",
+        "parent_audio_id": "SS-HAL-0570",
+        "window": 1
+      },
+      {
+        "sample": "sample-47.webm",
+        "parent_audio_id": "SS-HAL-0571",
+        "window": 1
+      },
+      {
+        "sample": "sample-48.webm",
+        "parent_audio_id": "SS-HAL-0574",
+        "window": 1
+      },
+      {
+        "sample": "sample-49.webm",
+        "parent_audio_id": "SS-HAL-0577",
+        "window": 1
+      },
+      {
+        "sample": "sample-50.webm",
+        "parent_audio_id": "SS-HAL-0579",
+        "window": 1
+      },
+      {
+        "sample": "sample-51.webm",
+        "parent_audio_id": "SS-HAL-0580",
+        "window": 1
+      },
+      {
+        "sample": "sample-52.webm",
+        "parent_audio_id": "SS-HAL-0582",
+        "window": 1
+      },
+      {
+        "sample": "sample-53.webm",
+        "parent_audio_id": "SS-HAL-0583",
+        "window": 1
+      },
+      {
+        "sample": "sample-54.webm",
+        "parent_audio_id": "SS-HAL-0584",
+        "window": 1
+      },
+      {
+        "sample": "sample-55.webm",
+        "parent_audio_id": "SS-HAL-0585",
+        "window": 1
+      },
+      {
+        "sample": "sample-56.webm",
+        "parent_audio_id": "SS-HAL-0586",
+        "window": 1
+      },
+      {
+        "sample": "sample-57.webm",
+        "parent_audio_id": "SS-HAL-0587",
+        "window": 1
+      },
+      {
+        "sample": "sample-58.webm",
+        "parent_audio_id": "SS-HAL-0588",
+        "window": 1
+      },
+      {
+        "sample": "sample-59.webm",
+        "parent_audio_id": "SS-HAL-0589",
+        "window": 1
+      },
+      {
+        "sample": "sample-60.webm",
+        "parent_audio_id": "SS-HAL-0590",
+        "window": 1
+      },
+      {
+        "sample": "sample-61.webm",
+        "parent_audio_id": "SS-HAL-0591",
+        "window": 1
+      },
+      {
+        "sample": "sample-62.webm",
+        "parent_audio_id": "SS-HAL-0593",
+        "window": 1
+      },
+      {
+        "sample": "sample-63.webm",
+        "parent_audio_id": "SS-HAL-0594",
+        "window": 1
+      },
+      {
+        "sample": "sample-64.webm",
+        "parent_audio_id": "SS-HAL-0596",
+        "window": 1
+      },
+      {
+        "sample": "sample-65.webm",
+        "parent_audio_id": "SS-HAL-0597",
+        "window": 1
+      },
+      {
+        "sample": "sample-66.webm",
+        "parent_audio_id": "SS-HAL-0599",
+        "window": 1
+      },
+      {
+        "sample": "sample-67.webm",
+        "parent_audio_id": "SS-HAL-0601",
+        "window": 1
+      },
+      {
+        "sample": "sample-68.webm",
+        "parent_audio_id": "SS-HAL-0603",
+        "window": 1
+      },
+      {
+        "sample": "sample-69.webm",
+        "parent_audio_id": "SS-HAL-0604",
+        "window": 1
+      },
+      {
+        "sample": "sample-70.webm",
+        "parent_audio_id": "SS-HAL-0608",
+        "window": 1
+      },
+      {
+        "sample": "sample-71.webm",
+        "parent_audio_id": "SS-HAL-0610",
+        "window": 1
+      },
+      {
+        "sample": "sample-72.webm",
+        "parent_audio_id": "SS-HAL-0612",
+        "window": 1
+      },
+      {
+        "sample": "sample-73.webm",
+        "parent_audio_id": "SS-HAL-0613",
+        "window": 1
+      },
+      {
+        "sample": "sample-74.webm",
+        "parent_audio_id": "SS-HAL-0614",
+        "window": 1
+      },
+      {
+        "sample": "sample-75.webm",
+        "parent_audio_id": "SS-HAL-0615",
+        "window": 1
+      },
+      {
+        "sample": "sample-76.webm",
+        "parent_audio_id": "SS-HAL-0617",
+        "window": 1
+      },
+      {
+        "sample": "sample-77.webm",
+        "parent_audio_id": "SS-HAL-0618",
+        "window": 1
+      },
+      {
+        "sample": "sample-78.webm",
+        "parent_audio_id": "SS-HAL-0621",
+        "window": 1
+      },
+      {
+        "sample": "sample-79.webm",
+        "parent_audio_id": "SS-HAL-0623",
+        "window": 1
+      },
+      {
+        "sample": "sample-80.webm",
+        "parent_audio_id": "SS-HAL-0624",
+        "window": 1
+      }
+    ]
+  },
+  {
+    "class": "Vehicle Horn",
+    "zip": "gtm_model/upload_package/tm_imports/vehicle_horn.zip",
+    "sample_count": 80,
+    "distinct_parents": 80,
+    "windows_per_clip": 1,
+    "samples": [
+      {
+        "sample": "sample-1.webm",
+        "parent_audio_id": "SS-HOR-0002",
+        "window": 1
+      },
+      {
+        "sample": "sample-2.webm",
+        "parent_audio_id": "SS-HOR-0003",
+        "window": 1
+      },
+      {
+        "sample": "sample-3.webm",
+        "parent_audio_id": "SS-HOR-0005",
+        "window": 1
+      },
+      {
+        "sample": "sample-4.webm",
+        "parent_audio_id": "SS-HOR-0006",
+        "window": 1
+      },
+      {
+        "sample": "sample-5.webm",
+        "parent_audio_id": "SS-HOR-0007",
+        "window": 1
+      },
+      {
+        "sample": "sample-6.webm",
+        "parent_audio_id": "SS-HOR-0012",
+        "window": 1
+      },
+      {
+        "sample": "sample-7.webm",
+        "parent_audio_id": "SS-HOR-0015",
+        "window": 1
+      },
+      {
+        "sample": "sample-8.webm",
+        "parent_audio_id": "SS-HOR-0016",
+        "window": 1
+      },
+      {
+        "sample": "sample-9.webm",
+        "parent_audio_id": "SS-HOR-0017",
+        "window": 1
+      },
+      {
+        "sample": "sample-10.webm",
+        "parent_audio_id": "SS-HOR-0018",
+        "window": 1
+      },
+      {
+        "sample": "sample-11.webm",
+        "parent_audio_id": "SS-HOR-0019",
+        "window": 1
+      },
+      {
+        "sample": "sample-12.webm",
+        "parent_audio_id": "SS-HOR-0020",
+        "window": 1
+      },
+      {
+        "sample": "sample-13.webm",
+        "parent_audio_id": "SS-HOR-0021",
+        "window": 1
+      },
+      {
+        "sample": "sample-14.webm",
+        "parent_audio_id": "SS-HOR-0023",
+        "window": 1
+      },
+      {
+        "sample": "sample-15.webm",
+        "parent_audio_id": "SS-HOR-0024",
+        "window": 1
+      },
+      {
+        "sample": "sample-16.webm",
+        "parent_audio_id": "SS-HOR-0026",
+        "window": 1
+      },
+      {
+        "sample": "sample-17.webm",
+        "parent_audio_id": "SS-HOR-0028",
+        "window": 1
+      },
+      {
+        "sample": "sample-18.webm",
+        "parent_audio_id": "SS-HOR-0029",
+        "window": 1
+      },
+      {
+        "sample": "sample-19.webm",
+        "parent_audio_id": "SS-HOR-0030",
+        "window": 1
+      },
+      {
+        "sample": "sample-20.webm",
+        "parent_audio_id": "SS-HOR-0031",
+        "window": 1
+      },
+      {
+        "sample": "sample-21.webm",
+        "parent_audio_id": "SS-HOR-0032",
+        "window": 1
+      },
+      {
+        "sample": "sample-22.webm",
+        "parent_audio_id": "SS-HOR-0033",
+        "window": 1
+      },
+      {
+        "sample": "sample-23.webm",
+        "parent_audio_id": "SS-HOR-0034",
+        "window": 1
+      },
+      {
+        "sample": "sample-24.webm",
+        "parent_audio_id": "SS-HOR-0035",
+        "window": 1
+      },
+      {
+        "sample": "sample-25.webm",
+        "parent_audio_id": "SS-HOR-0036",
+        "window": 1
+      },
+      {
+        "sample": "sample-26.webm",
+        "parent_audio_id": "SS-HOR-0037",
+        "window": 1
+      },
+      {
+        "sample": "sample-27.webm",
+        "parent_audio_id": "SS-HOR-0038",
+        "window": 1
+      },
+      {
+        "sample": "sample-28.webm",
+        "parent_audio_id": "SS-HOR-0039",
+        "window": 1
+      },
+      {
+        "sample": "sample-29.webm",
+        "parent_audio_id": "SS-HOR-0040",
+        "window": 1
+      },
+      {
+        "sample": "sample-30.webm",
+        "parent_audio_id": "SS-HOR-0041",
+        "window": 1
+      },
+      {
+        "sample": "sample-31.webm",
+        "parent_audio_id": "SS-HOR-0042",
+        "window": 1
+      },
+      {
+        "sample": "sample-32.webm",
+        "parent_audio_id": "SS-HOR-0043",
+        "window": 1
+      },
+      {
+        "sample": "sample-33.webm",
+        "parent_audio_id": "SS-HOR-0045",
+        "window": 1
+      },
+      {
+        "sample": "sample-34.webm",
+        "parent_audio_id": "SS-HOR-0046",
+        "window": 1
+      },
+      {
+        "sample": "sample-35.webm",
+        "parent_audio_id": "SS-HOR-0047",
+        "window": 1
+      },
+      {
+        "sample": "sample-36.webm",
+        "parent_audio_id": "SS-HOR-0048",
+        "window": 1
+      },
+      {
+        "sample": "sample-37.webm",
+        "parent_audio_id": "SS-HOR-0049",
+        "window": 1
+      },
+      {
+        "sample": "sample-38.webm",
+        "parent_audio_id": "SS-HOR-0052",
+        "window": 1
+      },
+      {
+        "sample": "sample-39.webm",
+        "parent_audio_id": "SS-HOR-0053",
+        "window": 1
+      },
+      {
+        "sample": "sample-40.webm",
+        "parent_audio_id": "SS-HOR-0054",
+        "window": 1
+      },
+      {
+        "sample": "sample-41.webm",
+        "parent_audio_id": "SS-HOR-0057",
+        "window": 1
+      },
+      {
+        "sample": "sample-42.webm",
+        "parent_audio_id": "SS-HOR-0058",
+        "window": 1
+      },
+      {
+        "sample": "sample-43.webm",
+        "parent_audio_id": "SS-HOR-0059",
+        "window": 1
+      },
+      {
+        "sample": "sample-44.webm",
+        "parent_audio_id": "SS-HOR-0060",
+        "window": 1
+      },
+      {
+        "sample": "sample-45.webm",
+        "parent_audio_id": "SS-HOR-0061",
+        "window": 1
+      },
+      {
+        "sample": "sample-46.webm",
+        "parent_audio_id": "SS-HOR-0062",
+        "window": 1
+      },
+      {
+        "sample": "sample-47.webm",
+        "parent_audio_id": "SS-HOR-0063",
+        "window": 1
+      },
+      {
+        "sample": "sample-48.webm",
+        "parent_audio_id": "SS-HOR-0065",
+        "window": 1
+      },
+      {
+        "sample": "sample-49.webm",
+        "parent_audio_id": "SS-HOR-0066",
+        "window": 1
+      },
+      {
+        "sample": "sample-50.webm",
+        "parent_audio_id": "SS-HOR-0068",
+        "window": 1
+      },
+      {
+        "sample": "sample-51.webm",
+        "parent_audio_id": "SS-HOR-0069",
+        "window": 1
+      },
+      {
+        "sample": "sample-52.webm",
+        "parent_audio_id": "SS-HOR-0072",
+        "window": 1
+      },
+      {
+        "sample": "sample-53.webm",
+        "parent_audio_id": "SS-HOR-0074",
+        "window": 1
+      },
+      {
+        "sample": "sample-54.webm",
+        "parent_audio_id": "SS-HOR-0075",
+        "window": 1
+      },
+      {
+        "sample": "sample-55.webm",
+        "parent_audio_id": "SS-HOR-0076",
+        "window": 1
+      },
+      {
+        "sample": "sample-56.webm",
+        "parent_audio_id": "SS-HOR-0079",
+        "window": 1
+      },
+      {
+        "sample": "sample-57.webm",
+        "parent_audio_id": "SS-HOR-0080",
+        "window": 1
+      },
+      {
+        "sample": "sample-58.webm",
+        "parent_audio_id": "SS-HOR-0081",
+        "window": 1
+      },
+      {
+        "sample": "sample-59.webm",
+        "parent_audio_id": "SS-HOR-0082",
+        "window": 1
+      },
+      {
+        "sample": "sample-60.webm",
+        "parent_audio_id": "SS-HOR-0084",
+        "window": 1
+      },
+      {
+        "sample": "sample-61.webm",
+        "parent_audio_id": "SS-HOR-0085",
+        "window": 1
+      },
+      {
+        "sample": "sample-62.webm",
+        "parent_audio_id": "SS-HOR-0086",
+        "window": 1
+      },
+      {
+        "sample": "sample-63.webm",
+        "parent_audio_id": "SS-HOR-0090",
+        "window": 1
+      },
+      {
+        "sample": "sample-64.webm",
+        "parent_audio_id": "SS-HOR-0091",
+        "window": 1
+      },
+      {
+        "sample": "sample-65.webm",
+        "parent_audio_id": "SS-HOR-0092",
+        "window": 1
+      },
+      {
+        "sample": "sample-66.webm",
+        "parent_audio_id": "SS-HOR-0093",
+        "window": 1
+      },
+      {
+        "sample": "sample-67.webm",
+        "parent_audio_id": "SS-HOR-0094",
+        "window": 1
+      },
+      {
+        "sample": "sample-68.webm",
+        "parent_audio_id": "SS-HOR-0095",
+        "window": 1
+      },
+      {
+        "sample": "sample-69.webm",
+        "parent_audio_id": "SS-HOR-0098",
+        "window": 1
+      },
+      {
+        "sample": "sample-70.webm",
+        "parent_audio_id": "SS-HOR-0099",
+        "window": 1
+      },
+      {
+        "sample": "sample-71.webm",
+        "parent_audio_id": "SS-HOR-0100",
+        "window": 1
+      },
+      {
+        "sample": "sample-72.webm",
+        "parent_audio_id": "SS-HOR-0101",
+        "window": 1
+      },
+      {
+        "sample": "sample-73.webm",
+        "parent_audio_id": "SS-HOR-0102",
+        "window": 1
+      },
+      {
+        "sample": "sample-74.webm",
+        "parent_audio_id": "SS-HOR-0104",
+        "window": 1
+      },
+      {
+        "sample": "sample-75.webm",
+        "parent_audio_id": "SS-HOR-0108",
+        "window": 1
+      },
+      {
+        "sample": "sample-76.webm",
+        "parent_audio_id": "SS-HOR-0109",
+        "window": 1
+      },
+      {
+        "sample": "sample-77.webm",
+        "parent_audio_id": "SS-HOR-0110",
+        "window": 1
+      },
+      {
+        "sample": "sample-78.webm",
+        "parent_audio_id": "SS-HOR-0111",
+        "window": 1
+      },
+      {
+        "sample": "sample-79.webm",
+        "parent_audio_id": "SS-HOR-0113",
+        "window": 1
+      },
+      {
+        "sample": "sample-80.webm",
+        "parent_audio_id": "SS-HOR-0114",
+        "window": 1
+      }
+    ]
+  }
+]

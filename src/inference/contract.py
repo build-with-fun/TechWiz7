@@ -1,19 +1,8 @@
-"""
-The inference contract — the one interface every agent builds against.
+"""The shapes both input modes and both models share: AudioSource, PreprocessedAudio, PredictionResult.
 
-Owner: lorena.  This module is the boundary between "audio arrives" and "predictions come
-out".  SRS Step 2, Step 11, FR xviii-xx, Deliverable 3.
-
-WHY THIS FILE EXISTS
---------------------
-The SRS requires that an uploaded clip and a live microphone window be treated identically:
-"both models must be applied consistently".  The cheapest way to break that is for the
-upload path to preprocess one way and the live path another.  So both paths produce an
-`AudioSource` and both go through one `preprocess` callable and one `predictor.predict()`.
-
-Nothing in this module imports a model framework.  The predictor receives preprocessed
-features and a loaded sklearn-compatible estimator.  That keeps the web app importable
-without loading a model, and keeps the model swappable without touching the app.
+An upload and a live window both become an AudioSource and go through the same preprocessing
+and the same predictors. Nothing here imports a model framework, so the web app can start
+without loading one.
 """
 
 from __future__ import annotations
@@ -26,9 +15,7 @@ from typing import Any, Mapping, Protocol, Sequence, runtime_checkable
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-# --------------------------------------------------------------------------------------
 # Class list — loaded from config, never hard-coded
-# --------------------------------------------------------------------------------------
 
 
 def load_class_config(config_path: Path | None = None) -> dict[str, Any]:
@@ -54,20 +41,12 @@ def load_thresholds(config_path: Path | None = None) -> dict[str, Any]:
         return json.load(fh)
 
 
-# --------------------------------------------------------------------------------------
 # Input
-# --------------------------------------------------------------------------------------
 
 @dataclass
 class AudioSource:
-    """Audio entering the system, from EITHER input mode.
-
-    Exactly one of `path` or `samples` is set.
-
-    - Upload mode:      AudioSource.from_path("clip.wav")
-    - Live window mode: AudioSource.from_samples(mono_float32_array, sample_rate=48000)
-
-    Both are then handled by the same preprocessing call, which is the point.
+    """Audio entering the system: exactly one of ``path`` (upload) or ``samples`` (live window) is
+    set.
     """
 
     path: Path | None = None
@@ -96,16 +75,11 @@ class AudioSource:
         return self.origin == "live"
 
 
-# --------------------------------------------------------------------------------------
 # Preprocessing handoff
-# --------------------------------------------------------------------------------------
 
 @dataclass
 class PreprocessedAudio:
-    """Output of preprocessing, input to feature extraction.
-
-    `taha` owns the code that produces this; `lorena` owns the shape of the contract.
-    The `quality` block is what the UI and the manual-review rules read (SRS Step 13).
+    """Output of preprocessing, input to both models. ``quality`` feeds the UI and the review rules.
     """
 
     samples: Any                                     # numpy float32 mono, target sample rate
@@ -126,17 +100,12 @@ class Preprocessor(Protocol):
     def __call__(self, source: AudioSource) -> PreprocessedAudio: ...
 
 
-# --------------------------------------------------------------------------------------
 # Output
-# --------------------------------------------------------------------------------------
 
 @dataclass
 class PredictionResult:
-    """One model's opinion about one audio input.
-
-    `confidences` MUST contain an entry for every configured class — the SRS requires
-    per-class confidences for the dashboard, and a missing class would silently become
-    a zero that the comparison then uses.
+    """One model's opinion about one input. ``confidences`` must have every configured class; a
+    missing class would silently become a zero in the comparison.
     """
 
     model_name: str
@@ -174,11 +143,8 @@ class ModelLoadError(RuntimeError):
 
 
 def audio_fingerprint(source: AudioSource) -> str:
-    """Stable identity for an audio input.
-
-    For a file: sha256 of its bytes — this is the duplicate/near-duplicate key (FR lxxiii).
-    For a live window: sha256 of the samples plus rate, so an identical window is
-    recognisable but two different windows never collide.
+    """Stable identity of an input: SHA-256 of a file's bytes, or of a live window's samples and
+    rate.
     """
     if source.path is not None:
         digest = hashlib.sha256()
@@ -197,11 +163,8 @@ def audio_fingerprint(source: AudioSource) -> str:
 
 
 def normalise_confidences(raw: Sequence[float], labels: Sequence[str]) -> dict[str, float]:
-    """Turn a raw score vector into a {class: confidence} map summing to 1.
-
-    Guards the integrity rule against invented confidences: if a model returns
-    probabilities that do not sum to 1, we normalise and SAY SO in the log rather than
-    passing a number we did not verify. Negative scores and NaN are clamped, not hidden.
+    """Turn raw scores into {class: confidence} summing to 1; renormalising is logged, NaN and
+    negatives are clamped.
     """
     import math
 
@@ -217,8 +180,7 @@ def normalise_confidences(raw: Sequence[float], labels: Sequence[str]) -> dict[s
 
     total = sum(cleaned)
     if total <= 0.0:
-        # A model that outputs all zeros is broken; a uniform distribution is the honest
-        # representation of "I know nothing" rather than a fabricated confident answer.
+        # All zeros means the model is broken; uniform is the honest 'I know nothing'.
         uniform = 1.0 / len(labels)
         return {label: uniform for label in labels}
     return {label: value / total for label, value in zip(labels, cleaned, strict=True)}

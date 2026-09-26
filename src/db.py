@@ -1,17 +1,11 @@
-"""Engine, session and storage plumbing for the SonicSentinel database.
+"""Engine, sessions and audio storage (SRS FR lxxi-lxxii, lxxvi, lxxx).
 
-Owner: sara.  SRS FR lxxi (secure audio storage), FR lxxii, FR lxxvi, FR lxxx.
+Separate from src.models so database/init_db.py and the tests can build a database without a
+Flask app. Storage layout (root overridable by SST_STORAGE_DIR)::
 
-Kept separate from :mod:`src.models` so that the schema can be imported — and the database
-created — without a Flask application object. Evaluators run ``database/init_db.py``
-directly, and the test suite builds throwaway databases; neither should need a running app.
-
-Storage layout, with the root overridable by ``SST_STORAGE_DIR``::
-
-    <root>/
-      audio/<yyyy>/<mm>/<audio_id>.<ext>     uploaded and retained event audio
-      live/<session_id>/<seq>.wav            short-lived microphone windows
-      exports/<yyyy>/<mm>/<name>             generated CSV/Excel/report artifacts
+    <root>/audio/<yyyy>/<mm>/<audio_id>.<ext>   uploaded and retained audio
+    <root>/live/<session_id>/<seq>.wav          short-lived microphone windows
+    <root>/exports/<yyyy>/<mm>/<name>           generated exports
 """
 
 from __future__ import annotations
@@ -40,11 +34,7 @@ def repo_root() -> Path:
 
 
 def default_db_path() -> Path:
-    """Where the application database lives unless told otherwise.
-
-    ``SST_DB_PATH`` wins, then ``database/sonicsentinel.db``. Tests set the env var to a
-    temp file so a test run can never touch the development database.
-    """
+    """``SST_DB_PATH`` if set (tests use a temp file), else ``database/sonicsentinel.db``."""
     override = os.environ.get("SST_DB_PATH")
     if override:
         return Path(override).expanduser().resolve()
@@ -68,14 +58,8 @@ def database_url(path: str | os.PathLike[str] | None = None) -> str:
 
 
 def create_engine_for(target: str | os.PathLike[str] | None = None, *, echo: bool = False) -> Engine:
-    """An engine configured for correctness, not for defaults.
-
-    Two pragmas are set explicitly because both default to the wrong thing:
-
-    * ``foreign_keys=ON`` — SQLite ignores FK constraints unless asked, which would let a
-      confidence score outlive its event and quietly corrupt the analytics.
-    * ``journal_mode=WAL`` — lets the search endpoint read while a classification is being
-      written, which is what keeps the dashboard responsive during a live demo.
+    """SQLite engine with foreign keys on (SQLite ignores them by default) and WAL journaling,
+    so searches can read while a classification is being written.
     """
     is_memory = str(target) == ":memory:"
     url = "sqlite+pysqlite:///:memory:" if is_memory else database_url(target)
@@ -102,9 +86,25 @@ def create_engine_for(target: str | os.PathLike[str] | None = None, *, echo: boo
     return engine
 
 
+# Columns added after the first release (create_all never alters a table): (table, column, SQL
+# type).
+_ADDED_COLUMNS = (
+    ("audio_files", "bit_depth", "INTEGER"),
+)
+
+
 def create_schema(engine: Engine) -> None:
     """Create every table and index. Idempotent: safe to re-run on an existing database."""
     Base.metadata.create_all(engine)
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(engine)
+    with engine.begin() as conn:
+        for table, column, sql_type in _ADDED_COLUMNS:
+            if table in inspector.get_table_names() and column not in {
+                c["name"] for c in inspector.get_columns(table)
+            }:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {sql_type}"))
 
 
 def make_session_factory(engine: Engine) -> sessionmaker[Session]:
@@ -115,16 +115,8 @@ def make_session_factory(engine: Engine) -> sessionmaker[Session]:
 def session_scope(factory: sessionmaker[Session] | None = None) -> Iterator[Session]:
     """Commit on success, roll back on any exception, always close.
 
-    Always commits on the way out, whether the factory was supplied or looked up. Callers
-    that pass one rely on that commit to finish their unit of work -- the seed and admin
-    paths write rows inside this block and expect them to survive it. Callers that need to
-    hold a transaction open across several statements call ``commit`` themselves and the
-    trailing one is then a harmless empty transaction.
-
-    Without a factory this uses the application's own session factory, which is what a
-    background caller reaches for -- the pipeline's ``persist`` callback runs with no
-    request context of its own and must not open a second engine against a database the
-    app already has open in WAL mode.
+    Without a factory it uses the running app's factory, so background callers (the persistence
+    callback) never open a second engine against the app's WAL database.
     """
     owns_factory = factory is None
     if owns_factory:
@@ -141,13 +133,7 @@ def session_scope(factory: sessionmaker[Session] | None = None) -> Iterator[Sess
 
 
 def app_session_factory() -> sessionmaker[Session]:
-    """The session factory the running application is bound to.
-
-    ``create_app`` stores its engine and factory on ``current_app.config`` because that is
-    the one place every request shares; this is the reader for code that is not inside a
-    request and still needs the same database (the pipeline's persistence callback, the
-    background live monitor). It raises ``RuntimeError`` when no app is running rather than
-    silently opening a second engine against a database the app already has open.
+    """The running app's session factory, for code outside a request; raises when no app is running.
     """
     from flask import current_app
 
@@ -163,9 +149,7 @@ def app_session_factory() -> sessionmaker[Session]:
     return factory
 
 
-# --------------------------------------------------------------------------------------
 # Identifiers
-# --------------------------------------------------------------------------------------
 
 _AUDIO_ID_RE = re.compile(r"^SST-(\d{4})-(\d{2})-(\d{2})-(\d{6})$")
 
@@ -185,11 +169,8 @@ def parse_audio_id(audio_id: str) -> _dt.date | None:
 
 
 def next_audio_id(session: Session, when: _dt.datetime | None = None) -> str:
-    """Next free identifier.
-
-    Derived from the highest existing suffix for the same day rather than the row count:
-    a row count would hand out a duplicate the moment anything is ever deleted, and
-    ``audio_id`` is unique-constrained, so the bug would surface as a 500 on upload.
+    """Next free id for the day, from the highest existing suffix (a row count would repeat after a
+    delete).
     """
     from src.models import AudioFile
 
@@ -212,9 +193,7 @@ def new_session_id() -> str:
     return secrets.token_hex(16)
 
 
-# --------------------------------------------------------------------------------------
 # Storage paths
-# --------------------------------------------------------------------------------------
 
 
 class StorageLayout:
@@ -264,9 +243,7 @@ class StorageLayout:
         return candidate
 
 
-# --------------------------------------------------------------------------------------
 # Audit helper
-# --------------------------------------------------------------------------------------
 
 
 def record_audit(
@@ -284,11 +261,8 @@ def record_audit(
     user_agent: str | None = None,
     request_id: str | None = None,
 ) -> AuditRecord:
-    """Append an audit row (FR lxxvi). Callers never construct the model directly.
-
-    ``actor`` may be a :class:`~src.models.User`, or ``None`` for an anonymous action such
-    as a failed login for a username that does not exist. The username and role are copied
-    onto the row so the record stays readable after the user is deleted.
+    """Append an audit row (FR lxxvi). ``actor`` may be None (e.g. a failed login for an unknown
+    user); username and role are copied so the row stays readable after the user is deleted.
     """
     record = AuditRecord(
         action=action,

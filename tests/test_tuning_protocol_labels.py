@@ -9,7 +9,6 @@ candidate sweeps scored at chance level -- silently, with no error.
 from __future__ import annotations
 
 import numpy as np
-import pytest
 from sklearn.ensemble import RandomForestClassifier
 
 from python_models.tuning import TuningProtocol
@@ -80,11 +79,7 @@ def _attach(protocol: TuningProtocol, alphabetical_labels: bool):
 
 
 def test_columns_are_resolved_through_the_estimators_classes():
-    """A sklearn estimator (classes_ alphabetical) scored against config-order names.
-
-    The confidence matrix comes back as (n_rows, n_classes) in class_names order, and
-    the predicted names match the true ones -- i.e. the argmax was resolved against
-    classes_, not applied positionally to the config list.
+    """Scores come back in class_names order: argmax is resolved through the estimator's classes_.
     """
     protocol = _attach(_protocol(alphabetical_labels=False), alphabetical_labels=False)
     selection = protocol.select(

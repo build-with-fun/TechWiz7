@@ -1,34 +1,8 @@
-"""
-Tests against the REAL frozen artifacts on disk.
+"""Checks on the real committed artifacts (audio_dataset/manifest.csv, data/splits/split.json).
 
-Owner: fatima (QA).
-
-WHY THIS FILE IS NOT A DUPLICATE OF test_split_integrity.py
-------------------------------------------------------------
-`test_split_integrity.py` builds a synthetic 3000-clip manifest in a temp directory.
-That is the right design for proving the *split logic* — but it says nothing about the
-actual repository. This file reads the committed artifacts:
-
-    audio_dataset/manifest.csv
-    data/splits/split.json
-
-and refuses to pass on anything less. An evaluator counts the files on disk; these
-tests count the same files.
-
-The one check nobody else performs: every manifest row's sha256 must match the bytes of
-the file it points at. build_split.py and verify_split.py compute the hash, but
-verify_split.py only checks that no two rows *share* one — a manifest could describe a
-completely different file and still pass `--check-duplicates`. This is where a swapped
-or truncated clip would hide, and it is the QA gate.
-
-SKIP POLICY (deliberate, not a soft failure)
---------------------------------------------
-If the frozen artifacts do not exist yet, these tests SKIP with the reason printed in the
-report, so the suite stays green while the corpus is incomplete. The day they exist, the
-same tests become hard assertions. A skip is visible in pytest output — it is not a pass.
-
-Run:
-    .venv/bin/python -m pytest tests/test_frozen_split.py -v
+test_split_integrity.py proves the split logic on a synthetic manifest; this file checks the
+actual repository, including that every row's sha256 matches the file on disk. If the
+artifacts are missing the tests skip with a reason (visible in the report, not a pass).
 """
 
 from __future__ import annotations
@@ -46,7 +20,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from audio_dataset.build_split import (  # noqa: E402
-    AUGMENTED, ORIGINAL, SPLIT_NAMES, load_classes, load_manifest,
+    ORIGINAL, SPLIT_NAMES, load_classes, load_manifest,
 )
 
 MANIFEST = REPO_ROOT / "audio_dataset" / "manifest.csv"
@@ -61,9 +35,7 @@ CRITICAL_CLASSES = {
 TRAIN_TOTAL, VAL_TOTAL, TEST_TOTAL = 2100, 450, 450
 
 
-# ---------------------------------------------------------------------------
 # Fixtures: load the real artifacts once, skip if absent
-# ---------------------------------------------------------------------------
 
 def _require(path: Path) -> Path:
     """Return `path` if it exists, else pytest.skip with an actionable reason."""
@@ -107,9 +79,7 @@ def split(split_path: Path) -> dict:
         return json.load(fh)
 
 
-# ---------------------------------------------------------------------------
 # Criterion 1 — all 10 classes, >=300 unique originals each
-# ---------------------------------------------------------------------------
 
 def test_all_ten_mandatory_classes_present(classes: dict, records: list[dict[str, str]]):
     """No class may be dropped, and no phantom class invented."""
@@ -145,9 +115,7 @@ def test_audio_ids_are_unique(records: list[dict[str, str]]):
     assert not dupes, f"{len(dupes)} duplicate audio_id, e.g. {sorted(dupes)[:5]}"
 
 
-# ---------------------------------------------------------------------------
 # Criterion 2 — exactly 2100 / 450 / 450 over originals
-# ---------------------------------------------------------------------------
 
 def test_frozen_split_totals_are_exactly_2100_450_450(split: dict):
     """Overall stratified totals for ORIGINALS (SRS hint)."""
@@ -182,9 +150,7 @@ def test_split_is_exhaustive_over_manifest(records: list[dict[str, str]], split:
     assert not (assigned - manifest_ids), f"{len(assigned - manifest_ids)} phantom ids"
 
 
-# ---------------------------------------------------------------------------
 # Criterion 3 — zero val/test leakage into training
-# ---------------------------------------------------------------------------
 
 def test_no_audio_id_in_two_splits(split: dict):
     """An id in train and test is the textbook leak."""
@@ -243,9 +209,7 @@ def test_lineage_never_crosses_a_split_boundary(records: list[dict[str, str]], s
     )
 
 
-# ---------------------------------------------------------------------------
 # Criterion 4 — the feature matrix basis: files exist and hashes are honest
-# ---------------------------------------------------------------------------
 
 def test_every_manifest_file_exists_on_disk(records: list[dict[str, str]]):
     """A row pointing at a missing file is a row the extractor cannot consume."""
@@ -260,6 +224,15 @@ def test_every_manifest_file_exists_on_disk(records: list[dict[str, str]]):
     assert not missing, f"{len(missing)} manifest files missing on disk, e.g. {missing[:5]}"
 
 
+def _augmented_files() -> set[str]:
+    """Training-only augmented copies are listed in their own manifest, not manifest.csv."""
+    path = REPO_ROOT / "audio_dataset" / "manifests" / "augmented_rows.csv"
+    if not path.exists():
+        return set()
+    with path.open(newline="", encoding="utf-8") as fh:
+        return {r["filename"] for r in csv.DictReader(fh)}
+
+
 def test_no_audio_file_on_disk_is_unlisted(records: list[dict[str, str]]):
     """A clip that exists but is in no manifest row is invisible to the split —
     it could be an unsplit training file, so it must be surfaced."""
@@ -270,18 +243,14 @@ def test_no_audio_file_on_disk_is_unlisted(records: list[dict[str, str]]):
         rel = str(path.relative_to(AUDIO_ROOT))
         if rel in listed or "/__pycache__/" in rel:
             continue
-        # raw_downloads/ holds UNPROCESSED acquisition inventory (FSD50K mirror
-        # clips, ESC-50 parquet) downloaded by acquire_corpus.py. These files are
-        # intentionally not in the manifest and must never enter a split; they
-        # live under audio_dataset/ only because that is where the fetcher
-        # writes. Everything else unlisted under audio_dataset/ is an orphan.
+        # raw_downloads/ is unprocessed acquisition inventory, never part of a split.
         if rel.startswith("raw_downloads/"):
             continue
-        # gtm_samples/ holds the per-class export slices shipped in
-        # gtm_model/upload_package/ for training the Google Teachable Machine
-        # model. They are derived from already-split originals and are
-        # deliberately NOT manifest rows — the GTM model is trained outside
-        # the frozen 2100/450/450 split by design.
+        # gtm_samples/ holds the one-second windows Teachable Machine trains on, written by
+        # make_gtm_imports.py from training recordings and listed in
+        # manifests/gtm_segment_rows.csv (checked in test_augmentation.py).
+        if rel.startswith("augmented/") and rel in _augmented_files():
+            continue
         if rel.startswith("gtm_samples/"):
             continue
         unlisted.append(rel)
@@ -347,3 +316,20 @@ def test_critical_classes_are_all_populated(records: list[dict[str, str]]):
     )
     empty = [c for c in CRITICAL_CLASSES if per_class.get(c, 0) == 0]
     assert not empty, f"critical classes with zero originals: {empty}"
+
+
+def test_no_source_recording_or_tts_phrase_spans_two_splits():
+    """Leakage guard added 26 Sep: slices/takes of one Freesound upload, and one synthetic
+    voice saying one phrase, must all sit in the same partition (split algorithm v2)."""
+    import sys
+
+    sys.path.insert(0, str(REPO_ROOT / "audio_dataset"))
+    from build_split import source_group
+
+    with MANIFEST.open(newline="", encoding="utf-8") as fh:
+        rows = [r for r in csv.DictReader(fh) if r["original_or_augmented"] == "original"]
+    splits_by_group: dict[str, set[str]] = {}
+    for r in rows:
+        splits_by_group.setdefault(source_group(r), set()).add(r["dataset_split"])
+    leaking = {g: s for g, s in splits_by_group.items() if len(s) > 1}
+    assert not leaking, f"{len(leaking)} source groups span splits, e.g. {list(leaking.items())[:3]}"

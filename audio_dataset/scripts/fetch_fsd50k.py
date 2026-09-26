@@ -1,45 +1,17 @@
 #!/usr/bin/env python3
-"""
-SonicSentinel AI -- real field-recording fetcher (FSD50K).
+"""Download real, openly licensed FSD50K recordings of the target classes and write one
+manifest row per file.
 
-Owner: omar (data sourcing).  Authority: SRS v1.0 Step 1 ("collect, create, or
-ethically source labelled audio recordings"), FR xvii, deliverable 3.
+- Licence is recorded per clip from FSD50K's clips_info metadata; clips not on the
+  accept-list (every CC-BY-NC clip) are never downloaded.
+- Multi-label clips go to exactly one class, the first match in priority order.
+- Within a class, uploaders are taken round-robin so no class is one recordist's mic and room.
+- Deterministic (sorted, no random), resumable, and duration/rate/channels are measured with
+  ffprobe.
+- dataset_split is left blank for build_split.py.
 
-WHAT THIS DOES
---------------
-Downloads REAL, openly-licensed field recordings of the target sound classes from
-FSD50K and writes one manifest row per file in the frozen schema of
-`audio_dataset/manifest_schema.md` (owner: lorena).
-
-Provenance is per FILE, not per corpus. FSD50K ships a per-clip metadata file
-(`*_clips_info_FSD50K.json`) giving each clip's own Freesound licence and uploader.
-We read it and RECORD the licence of the individual clip, so a reviewer can check
-any single file. Clips whose licence is not on the accept-list -- notably every
-CC-BY-NC clip -- are never downloaded at all.
-
-DESIGN DECISIONS (and why)
---------------------------
-1. **One clip, one class.** A clip is assigned to exactly one class: the first
-   class in the configured priority order whose label list it matches. FSD50K
-   clips are multi-label, so without this rule the same recording could be counted
-   as an "original" in two classes and the 300-per-class floor would be a fiction.
-2. **Round-robin across uploaders.** Within a class, candidates are taken one at a
-   time from each distinct Freesound uploader before taking a second from any.
-   Taking the first N by id would concentrate a class in one recordist's mic,
-   room and habits -- a model trained on that learns the recordist, not the sound.
-   This is the cheapest way to satisfy SRS 1.5's variation requirement.
-3. **Deterministic.** No `random`: sort by (uploader, int(fname)) and take in
-   order. Re-running yields the same selection on any machine.
-4. **Resumable and verifiable.** A file already on disk with a valid RIFF header
-   is not re-fetched. Duration/rate/channels are MEASURED with ffprobe, never
-   assumed from the request.
-5. **Empty `dataset_split`.** `audio_dataset/build_split.py` (lorena) is the only
-   thing that assigns a split. This script must not.
-
-Usage
------
-    .venv/bin/python audio_dataset/scripts/fetch_fsd50k.py --check          # plan only
-    .venv/bin/python audio_dataset/scripts/fetch_fsd50k.py --workers 8      # fetch
+    .venv/bin/python audio_dataset/scripts/fetch_fsd50k.py --check        # plan only
+    .venv/bin/python audio_dataset/scripts/fetch_fsd50k.py --workers 8
 """
 
 from __future__ import annotations
@@ -51,7 +23,6 @@ import json
 import os
 import shutil
 import subprocess
-import sys
 import threading
 import time
 from collections import Counter, defaultdict
@@ -61,9 +32,7 @@ from pathlib import Path
 
 import requests
 
-# --------------------------------------------------------------------------------------
 # Paths and constants
-# --------------------------------------------------------------------------------------
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 AUDIO_DATASET = SCRIPT_DIR.parent                 # audio_dataset/
@@ -86,8 +55,8 @@ FROZEN_COLUMNS = [
     "recording_device", "approximate_distance", "original_or_augmented", "parent_audio_id",
     "segment_start_sec", "segment_end_sec", "sha256", "dataset_split",
 ]
-# Extra columns beyond the frozen set are preserved by build_split.py; these carry
-# provenance a reviewer needs to re-verify the row without re-downloading anything.
+# Extra provenance columns, preserved by build_split.py, so a row can be checked without re-
+# downloading.
 EXTRA_COLUMNS = ["freesound_id", "fsd50k_split", "fsd50k_labels", "licence_url",
                  "environment_basis", "fetch_batch"]
 
@@ -99,14 +68,8 @@ def log(msg: str) -> None:
         print(msg, flush=True)
 
 
-# --------------------------------------------------------------------------------------
-# Environment inference
-# --------------------------------------------------------------------------------------
-# FSD50K does not state a recording environment. We infer one from the clip's OWN
-# title, description and tags (which the uploader wrote), and we record how we got
-# it in `environment_basis` -- `stated` if the word appears in the description,
-# `inferred_from_tags` if only from tags, `unmatched` if nothing matched. An
-# evaluator can therefore see exactly which rows are a claim and which are a guess.
+# Environment is inferred from the uploader's own title, description and tags; environment_basis
+# says how (stated, inferred_from_tags, unmatched).
 
 ENV_RULES: list[tuple[str, tuple[str, ...]]] = [
     ("studio",   ("studio", "recording studio", "booth", "sound design", "sounddesign")),
@@ -136,9 +99,7 @@ def infer_environment(meta: dict) -> tuple[str, str]:
     return "unspecified", "unmatched"
 
 
-# --------------------------------------------------------------------------------------
 # Loading
-# --------------------------------------------------------------------------------------
 
 def load_allowed_licences(cfg: dict) -> dict[str, str]:
     return dict(cfg.get("licence_policy", {}).get("accept", {}))
@@ -172,9 +133,7 @@ def load_ground_truth() -> list[dict]:
     return rows
 
 
-# --------------------------------------------------------------------------------------
 # Selection
-# --------------------------------------------------------------------------------------
 
 def assign_and_select(cfg: dict, gt_rows: list[dict], info: dict[str, dict],
                       allowed: dict[str, str]) -> tuple[dict[str, list[dict]], dict]:
@@ -186,7 +145,6 @@ def assign_and_select(cfg: dict, gt_rows: list[dict], info: dict[str, dict],
     stats = {"clips_total": len(gt_rows), "licence_rejected": 0, "licence_missing": 0,
              "assigned": Counter(), "unmatched_clips": 0}
 
-    # candidate pool per class
     pool: dict[str, list[dict]] = defaultdict(list)
     for row in gt_rows:
         fname = row["fname"]
@@ -232,8 +190,8 @@ def assign_and_select(cfg: dict, gt_rows: list[dict], info: dict[str, dict],
         by_uploader: dict[str, list[dict]] = defaultdict(list)
         for c in sorted(cands, key=lambda c: (c["uploader"], int(c["fname"]))):
             by_uploader[c["uploader"]].append(c)
-        # rotate uploaders (most-prolific first, name as tiebreak) so every
-        # recordist is represented before any is used twice
+        # Rotate uploaders (most prolific first) so every recordist appears before any appears
+        # twice.
         uploaders = sorted(by_uploader, key=lambda u: (-len(by_uploader[u]), u))
         picked: list[dict] = []
         idx = 0
@@ -253,9 +211,7 @@ def assign_and_select(cfg: dict, gt_rows: list[dict], info: dict[str, dict],
     return selected, stats
 
 
-# --------------------------------------------------------------------------------------
 # Download
-# --------------------------------------------------------------------------------------
 
 def valid_wav(path: Path) -> bool:
     """A file is reusable only if it is a real RIFF/WAVE container of non-trivial size."""
@@ -327,9 +283,7 @@ def download_one(session: requests.Session, item: dict) -> dict:
     return {**item, "status": "failed", "pool_path": None, "error": last}
 
 
-# --------------------------------------------------------------------------------------
 # Main
-# --------------------------------------------------------------------------------------
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Fetch real, licence-checked FSD50K field recordings.")
@@ -371,7 +325,6 @@ def main(argv: list[str] | None = None) -> int:
     POOL.mkdir(parents=True, exist_ok=True)
     MANIFESTS.mkdir(parents=True, exist_ok=True)
 
-    # ---- download -----------------------------------------------------------------
     flat = [item for cls in cfg["assignment_priority"] for item in selected[cls]]
     for item in flat:
         item.setdefault("class_label", None)
@@ -400,17 +353,14 @@ def main(argv: list[str] | None = None) -> int:
     bad = [r for r in results if r["status"] not in ("downloaded", "cached")]
     log(f"\nfetched ok: {len(ok)}   failed/not-found: {len(bad)}")
 
-    # ---- measure + place + build rows ---------------------------------------------
+    # measure + place + build rows
     rows: list[dict] = []
-    # audio ids are assigned AFTER selection, grouped by class, in deterministic order,
-    # using the frozen SS-<CODE>-<NNNN> scheme from config/classes.json
+    # Ids are assigned after selection, per class, in deterministic order.
     classes_cfg = json.loads((REPO_ROOT / "config" / "classes.json").read_text(encoding="utf-8"))
     code = {c["name"]: c["code"] for c in classes_cfg["classes"]}
     today = date.today().isoformat()
-    # Real field recordings are numbered from 1001, synthetic from 0001 (see
-    # DATA_DICTIONARY.md). The two producers must never share an id range, because
-    # audio_id is the primary key -- a collision would silently drop a row from the
-    # assembled manifest and corrupt the per-class counts we report.
+    # This script numbers from 1001. The committed rows (manifests/fsd50k_real_rows.csv) use
+    # 0001-0150, so a re-run does not reproduce those ids.
     per_class_counter: dict[str, int] = defaultdict(lambda: 1000)
     measure_fail: list[str] = []
 
@@ -469,7 +419,6 @@ def main(argv: list[str] | None = None) -> int:
                 "fetch_batch": "fsd50k_real_v1",
             })
 
-    # ---- write ---------------------------------------------------------------------
     cols = FROZEN_COLUMNS + EXTRA_COLUMNS
     rows.sort(key=lambda r: r["audio_id"])
     with args.out.open("w", newline="", encoding="utf-8") as fh:

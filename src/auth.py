@@ -1,20 +1,9 @@
-"""Authentication and role-based access control.  SRS FR i and FR ii.
+"""Authentication and role-based access control (FR i, FR ii).
 
-Owner: sara.
-
-Three things here are deliberately not template concerns:
-
-* **The permission matrix is code.** ``ROLE_CAPABILITIES`` is the executable form of the
-  table published in ``documentation/api_contract.md`` §1.2, and a test parses that table
-  back out of the markdown and fails if the two disagree. Hiding a link in a template is not
-  access control; every capability is checked server-side on the endpoint itself.
-* **A wrong role is a 403, not a 404 and not a hidden button.** The one exception the
-  contract names: a request that must not reveal whether a row exists returns 404, because
-  the row belongs to someone else. That is the *existence of another user's data* case, and
-  it is decided in the handler, not here.
-* **Sessions are server-validated on every request.** ``load_user`` re-reads the account, so
-  deactivating or locking an account takes effect on the account's very next request rather
-  than whenever its cookie happens to expire.
+ROLE_CAPABILITIES is the permission matrix, checked on the server for every endpoint;
+hiding a link in a template is not access control. A wrong role gets 403. Handlers that
+must not reveal whether another user's row exists answer 404 instead. load_user re-reads
+the account on every request, so locking or deactivating it takes effect immediately.
 """
 
 from __future__ import annotations
@@ -22,9 +11,9 @@ from __future__ import annotations
 import logging
 import datetime as dt
 from functools import wraps
-from typing import Any, Callable, Iterable, Mapping, TypeVar
+from typing import Any, Callable, Mapping, TypeVar
 
-from flask import abort, current_app, g, redirect, request, url_for
+from flask import current_app, g, redirect, request, url_for
 from flask_login import LoginManager, current_user, login_required, login_user, logout_user
 from sqlalchemy import select
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -37,13 +26,9 @@ logger = logging.getLogger("sonicsentinel.auth")
 
 F = TypeVar("F", bound=Callable[..., Any])
 
-# ---------------------------------------------------------------------------------------
-# The permission matrix -- FR ii, executable
-# ---------------------------------------------------------------------------------------
 
-#: Capability -> roles that hold it. Written as a mapping from capability so that adding a
-#: capability forces an explicit decision for every role, rather than defaulting to "nobody
-#: noticed it was missing".
+#: Capability -> roles. Keyed by capability so a new one needs an explicit decision for
+#: every role.
 ROLE_CAPABILITIES: Mapping[str, frozenset[str]] = {
     # Everyone signed in
     "view_own_events": frozenset(ROLES),
@@ -95,18 +80,11 @@ def has_capability(role: str | None, capability: str) -> bool:
     return role in ROLE_CAPABILITIES.get(capability, frozenset())
 
 
-# ---------------------------------------------------------------------------------------
-# The signed-in user
-# ---------------------------------------------------------------------------------------
 
 
 class AuthUser:
-    """A thin, immutable view of a ``User`` row for Flask-Login.
-
-    It delegates attribute access to the row, so templates written for the model
-    (``current_user.username``, ``current_user.role_label``) keep working, while the
-    capability question gets a real answer instead of a role string compared in a template.
-    The row itself is kept as ``row`` for the audit trail.
+    """Flask-Login view of a User row: templates keep reading row attributes, and ``can()`` answers
+    capability questions.
     """
 
     __slots__ = ("row",)
@@ -114,7 +92,6 @@ class AuthUser:
     def __init__(self, row: User) -> None:
         self.row = row
 
-    # -- Flask-Login's five ---------------------------------------------------------
     def get_id(self) -> str:
         return str(self.row.id)
 
@@ -130,7 +107,6 @@ class AuthUser:
     def is_active(self) -> bool:
         return bool(self.row.is_active)
 
-    # -- what the capability layer and the templates ask -----------------------------
     @property
     def id(self) -> int:
         return self.row.id
@@ -154,8 +130,7 @@ class AuthUser:
         return any(self.can(c) for c in capabilities)
 
     def __getattr__(self, name: str) -> Any:
-        # Anything else the templates use (email, role_label, must_change_password, ...)
-        # comes straight off the row, so new columns need no change here.
+        # Other attributes (email, role_label, ...) come straight off the row.
         return getattr(self.row, name)
 
     def __repr__(self) -> str:  # pragma: no cover - debugging aid
@@ -187,8 +162,7 @@ def _load_user_record(user_id: str) -> User | None:
 def _register_login_manager(app) -> LoginManager:
     manager = LoginManager()
     manager.init_app(app)
-    # Prompt the *user*, not a route: the browser gets redirected to the sign-in page,
-    # while the API gets a 401 envelope from the unauthorized handler below.
+    # Browsers are redirected to sign in; API calls get a 401 from the handler below.
     manager.login_view = "auth.login"
     manager.login_message = "Sign in to continue."
     manager.login_message_category = "warning"
@@ -196,9 +170,7 @@ def _register_login_manager(app) -> LoginManager:
 
     @manager.user_loader
     def _user_loader(user_id: str):  # type: ignore[unused-ignore]
-        # Re-read on every request rather than trusting the cookie: a locked or disabled
-        # account stops working immediately, which is what an operator expects after
-        # locking it mid-incident.
+        # Re-read on every request so a locked account stops working immediately.
         row = _load_user_record(user_id)
         if row is None or not row.is_active or row.is_locked():
             return None
@@ -218,18 +190,10 @@ def _register_login_manager(app) -> LoginManager:
     return manager
 
 
-# ---------------------------------------------------------------------------------------
-# Decorators
-# ---------------------------------------------------------------------------------------
 
 
 def roles_required(*roles: str) -> Callable[[F], F]:
-    """Restrict an endpoint to the named FR ii roles.
-
-    Unauthenticated is ``401``; authenticated with the wrong role is ``403`` -- the contract's
-    §1.4 rule, and the reason a reviewer testing "can the maintenance operator close an
-    alert?" gets a refusal rather than a 500 or a silent success.
-    """
+    """Restrict an endpoint to named roles: 401 when signed out, 403 for the wrong role."""
     unknown = set(roles) - set(ROLES)
     if unknown:
         raise ValueError(f"roles_required got unknown role(s): {sorted(unknown)}")
@@ -255,11 +219,8 @@ def roles_required(*roles: str) -> Callable[[F], F]:
 
 
 def capability_required(capability: str) -> Callable[[F], F]:
-    """Restrict an endpoint to whoever holds a capability in ``ROLE_CAPABILITIES``.
-
-    Preferred over ``roles_required`` inside the API: the handler then states the *action*
-    it needs, and moving a capability between roles is a one-line change here rather than a
-    hunt through decorators.
+    """Restrict an endpoint to holders of a capability. Preferred over roles_required, so moving a
+    capability is a one-line change.
     """
     if capability not in ROLE_CAPABILITIES:
         raise ValueError(
@@ -289,13 +250,10 @@ def capability_required(capability: str) -> Callable[[F], F]:
 
 
 def owner_or_capability(capability: str, owner_attr: str = "created_by_id") -> Callable[[F], F]:
-    """Allow the holder of ``capability``, or the person who created the row.
+    """Allow a capability holder or the row's creator (FR lxvii: normal users see only their own events).
 
-    This is the FR lxvii rule that a normal user sees only their own events: a normal user
-    holds no fleet-wide capability, so the handler must compare the row's owner to
-    ``current_user.id`` -- and must answer **404**, not 403, because a 403 would confirm that
-    someone else's event exists. That decision lives in the handler; this decorator only
-    records the intent and enforces the "signed in" part.
+    The handler compares the owner and answers 404, not 403, so a refusal does not confirm that
+    someone else's event exists.
     """
 
     def decorator(view: F) -> F:
@@ -316,16 +274,10 @@ def is_admin() -> bool:
                 and current_user.role == "administrator")  # type: ignore[attr-defined]
 
 
-# ---------------------------------------------------------------------------------------
-# Password policy -- config/auth.json, not a literal
-# ---------------------------------------------------------------------------------------
 
 
 def password_problems(password: str, store=None) -> list[str]:
-    """Every way the password breaks the configured policy.
-
-    Returns *all* problems rather than the first, so the sign-up form can mark every failing
-    field at once instead of the user discovering them one at a time.
+    """Every way the password breaks the configured policy, so the form can flag them all at once.
     """
     from src.services.config import get_store
 
@@ -350,9 +302,6 @@ def hash_password(password: str) -> str:
     return generate_password_hash(password, method="pbkdf2:sha256")
 
 
-# ---------------------------------------------------------------------------------------
-# Sign-in, with lockout -- FR i and FR lxxviii
-# ---------------------------------------------------------------------------------------
 
 
 class LoginOutcome:
@@ -374,15 +323,11 @@ class LoginOutcome:
 
 
 def authenticate(session, username: str, password: str, *, store=None) -> LoginOutcome:
-    """Check a username and password, applying the configured lockout.
+    """Check a username and password with the configured per-account lockout.
 
-    Every failure mode returns the *same* message for a wrong password and a missing
-    account, so sign-in cannot be used to enumerate usernames -- the difference is only in
-    the audit trail, where it belongs.
-
-    The lockout counter is per account, not per IP: FR lxxviii wants a sustained attempt
-    against one account to be visible and stoppable even when the attempts come from
-    different addresses.
+    A wrong password and an unknown account get the same message, so sign-in cannot be used to
+    list usernames; the audit trail records the difference. The lockout is per account so an
+    attack spread across addresses is still stopped (FR lxxviii).
     """
     from src.services.config import get_store
 
@@ -394,8 +339,8 @@ def authenticate(session, username: str, password: str, *, store=None) -> LoginO
                           ).scalar_one_or_none()
 
     if row is None:
-        # Spend roughly the same time as a real verification would, so the response time
-        # does not answer "does this username exist?" either.
+        # Spend about as long as a real verification, so timing does not reveal whether the
+        # username exists.
         check_password_hash(
             "pbkdf2:sha256:600000$abcdefghijklmnop$"
             + "0" * 64,
@@ -436,7 +381,6 @@ def authenticate(session, username: str, password: str, *, store=None) -> LoginO
                     f"{remaining} attempt(s) remain before the account is locked.",
         )
 
-    # Success.
     row.failed_login_count = 0
     row.locked_until = None
     row.last_login_at = utcnow()
@@ -444,9 +388,6 @@ def authenticate(session, username: str, password: str, *, store=None) -> LoginO
     return LoginOutcome(user=row)
 
 
-# ---------------------------------------------------------------------------------------
-# Small helpers used by the factory and the API
-# ---------------------------------------------------------------------------------------
 
 
 def sign_in(user_row: User, *, remember: bool = False) -> None:
@@ -459,11 +400,7 @@ def sign_out() -> None:
 
 
 def absolute_session_expiry() -> str | None:
-    """When this session will expire, as ISO-8601, for the client to show.
-
-    Read from the signed-in user's session rather than computed from "now", so the value
-    the client displays is the one the server will actually enforce.
-    """
+    """When this session expires (ISO-8601), read from the session the server will enforce."""
     from flask import session as flask_session
 
     if not flask_session:
@@ -473,25 +410,26 @@ def absolute_session_expiry() -> str | None:
 
 
 def client_ip() -> str:
-    """The best address we have. Behind a proxy this is the forwarded original.
+    """The caller's address, used for per-IP rate limits and the audit trail.
 
-    Only the first hop is taken, so a client cannot append a forged chain and shift the
-    blame for its own attempts onto an address it chose.
+    X-Forwarded-For is only trusted when SST_TRUSTED_PROXY_HOPS says proxies are in front,
+    and then the entry our own proxy appended is used (counting from the right). The first
+    entry is whatever the client chose to send: trusting it, as this function did until
+    26 Sep, let a client dodge the per-IP login limit with a new fake address per attempt.
     """
-    forwarded = request.headers.get("X-Forwarded-For", "")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    hops = int(current_app.config.get("SST_TRUSTED_PROXY_HOPS", 0) or 0)
+    forwarded = [part.strip() for part in request.headers.get("X-Forwarded-For", "").split(",")
+                 if part.strip()]
+    if hops > 0 and len(forwarded) >= hops:
+        return forwarded[-hops]
     return request.remote_addr or "unknown"
 
 
 def audit_login(session, *, action: str, username: str, role: str | None = None,
                 outcome: str = "success", detail: str | None = None,
                 user_id: int | None = None, request_id: str | None = None) -> None:
-    """Write a sign-in or refusal to the audit trail (FR lxxvi).
-
-    Takes plain values rather than a row, because the failed-login case has no row to point
-    at -- and "somebody tried 'admin' forty times" is exactly the record an investigation
-    needs.
+    """Write a sign-in or refusal to the audit trail; takes plain values because a failed login has
+    no user row.
     """
     from src.db import record_audit
 
@@ -506,8 +444,7 @@ def audit_login(session, *, action: str, username: str, role: str | None = None,
         ip_address=client_ip(),
         request_id=request_id,
     )
-    # record_audit resolves the actor from a row; for failed attempts the denormalised
-    # columns must be filled in by hand so the trail still names the username tried.
+    # Failed attempts have no row, so the denormalised actor columns are filled in by hand.
     if user_id is None:
         from src.models import AuditRecord
 

@@ -1,7 +1,7 @@
 {# ==========================================================================
    templates/event_detail.html — one event in full.
 
-   Owner: hina (front end). The comparison page: both models' classes and
+   The comparison page: both models' classes and
    confidences side by side, the difference, the consistency verdict, the
    quality verdict, severity, the rule that fired, and the audio with its
    waveform and spectrogram.
@@ -23,6 +23,8 @@
 {% extends "base.html" %}
 {% import "_macros.html" as ui %}
 {% import "_presentation.html" as pres %}
+{% import "_player.html" as player_ui with context %}
+{% import "_charts.html" as charts %}
 
 {% block title %}{{ page_title|default('Event') }} · {{ app_name }}{% endblock %}
 {% block page_id %}event-detail{% endblock %}
@@ -41,7 +43,7 @@
       Event <span class="mono">#{{ event.id }}</span>
       {% if audio %}· <span class="mono">{{ audio.audio_id }}</span>{% endif %}
       · {{ event.source }}
-      · created {{ event.created_at }}
+      · {{ event.created_at | when }}
     </p>
   </div>
   <div class="page-head__actions">
@@ -120,7 +122,7 @@
 <div class="banner banner--warn">
   <span class="banner__icon" aria-hidden="true">{{ ui.icon('clipboard', 20) }}</span>
   <div class="banner__body">
-    <p class="banner__text"><strong>Queued for manual review.</strong> {{ event.review_reason }}</p>
+    <p class="banner__text"><strong>Queued for manual review.</strong> {{ event.review_reason | review_reason }}</p>
   </div>
 </div>
 {% endif %}
@@ -141,45 +143,7 @@
   </div>
   <div class="panel__body">
     {% if audio %}
-    <div class="player" data-audio-player
-         data-src="{{ url_for('main.event_audio', event_id=event.id) }}"
-         data-visuals="{{ url_for('event_visuals.visuals', event_id=event.id) }}">
-      <div class="player__controls">
-        <button class="btn btn--icon" type="button" data-player-play aria-label="Play recording">
-          {{ ui.icon('play', 18) }}
-        </button>
-        <span class="player__time" data-player-time>0:00.0</span>
-        <input class="player__seek" type="range" min="0" max="1000" value="0" step="1"
-               data-player-seek aria-label="Seek">
-        <div class="player__volume">
-          {{ ui.icon('volume', 16) }}
-          <input type="range" min="0" max="100" value="80" step="1" data-player-volume
-                 aria-label="Volume">
-        </div>
-      </div>
-      <div class="canvas-frame canvas-frame--wave">
-        <canvas data-player-waveform width="1200" height="128" aria-hidden="true"></canvas>
-      </div>
-      <p class="canvas-caption">
-        <span>Waveform — peaks computed server-side from the stored recording</span>
-        <span data-player-duration>{{ ui.duration(audio.duration_sec) if audio.duration_sec else '' }}</span>
-      </p>
-      <div class="canvas-frame canvas-frame--spec">
-        <canvas data-player-spectrogram width="1200" height="192" aria-hidden="true"></canvas>
-      </div>
-      <p class="canvas-caption">
-        <span>Spectrogram — frequency over time</span>
-        <span class="legend">
-          <span class="legend__item"><span class="legend__swatch legend__swatch--quiet"></span>quiet</span>
-          <span class="legend__item"><span class="legend__swatch legend__swatch--loud"></span>loud</span>
-        </span>
-      </p>
-      <p class="field__hint">
-        Both visuals are computed server-side from the same signal the models were given,
-        so what you see is what they heard. The spectrogram endpoint is
-        <span class="mono">{{ url_for('event_visuals.visuals', event_id=event.id) }}</span>.
-      </p>
-    </div>
+    {{ player_ui.player(event.id, audio.duration_sec) }}
     {% else %}
     {{ ui.empty_state('No recording attached',
                       'This event has no stored audio, so there is nothing to play back. Its analysis and history are unaffected.',
@@ -200,6 +164,7 @@
       {% for model_name in ('python', 'gtm') %}
       <article class="model-card model-card--{{ model_name }}" data-model-card="{{ model_name }}">
         <header class="model-card__head">
+          <span class="dot dot--{{ model_name }}" aria-hidden="true"></span>
           <span class="model-card__name">{{ model_labels[model_name] }}</span>
         </header>
         {% set rows = scores.get(model_name, []) %}
@@ -207,33 +172,18 @@
           {% set top = rows[0] %}
           <div class="model-card__class">{{ top.class_name }}</div>
           <div class="model-card__conf">
-            {{ ui.confidence(top.confidence) }}
-            <span class="model-card__conf-unit">top-class confidence</span>
-          </div>
-          <div class="model-card__bar" aria-hidden="true">
-            <div class="model-card__bar-fill" data-bar-width="{{ (top.confidence * 100)|round(1) }}"></div>
+            <span class="model-card__pct">{{ '%.1f' % (top.confidence * 100) }}%</span>
+            <span class="model-card__conf-unit">top-class confidence ({{ ui.confidence(top.confidence) }})</span>
           </div>
           {% if top.latency_sec is not none %}
           <p class="model-card__note">Inference {{ ui.ms(top.latency_sec * 1000) }}</p>
           {% endif %}
           <h3 class="model-card__subhead">Top classes</h3>
-          <ol class="pred">
-            {% for row in rows[:5] %}
-            <li class="pred__row">
-              <span class="pred__rank">{{ loop.index }}</span>
-              <span class="pred__label">
-                <span class="pred__name"><span class="pred__name-text">{{ row.class_name }}</span></span>
-                <span class="pred__bar"><span class="pred__bar-fill"
-                       data-bar-width="{{ (row.confidence * 100)|round(1) }}"></span></span>
-              </span>
-              <span class="pred__value">{{ ui.confidence(row.confidence, 2) }}</span>
-            </li>
-            {% endfor %}
-          </ol>
+          {% set top5 = [] %}{% for r in rows[:5] %}{% set _ = top5.append({'class': r.class_name, 'confidence': r.confidence}) %}{% endfor %}
+          {{ charts.score_bars(top5, model_name) }}
         {% else %}
           <div class="model-card__class">—</div>
-          <p class="model-card__note">No prediction from this model is recorded for this
-            event.</p>
+          <p class="model-card__note">No prediction from this model is recorded for this event.</p>
         {% endif %}
       </article>
       {% endfor %}
@@ -340,7 +290,7 @@
           <td>{{ ui.alert_chip(alert.status) }}</td>
           <td>{{ alert.rule_class or '—' }}</td>
           <td>{{ alert.message or '—' }}</td>
-          <td class="mono">{{ alert.created_at }}</td>
+          <td>{{ alert.created_at | when }}</td>
           <td>{{ alert.recommended_action or '—' }}</td>
         </tr>
         {% endfor %}
@@ -368,7 +318,7 @@
       {% for review in reviews %}
       <li class="timeline__item">
         <span class="timeline__when">
-          {{ review.queued_at }}{% if review.decided_at %}<br>→ {{ review.decided_at }}{% endif %}
+          {{ review.queued_at | when }}{% if review.decided_at %}<br>→ {{ review.decided_at | when }}{% endif %}
         </span>
         <div class="timeline__body">
           <p class="timeline__title">
@@ -377,7 +327,7 @@
             <strong>{{ review.decision }}</strong>
             {% endif %}
           </p>
-          {% if review.reason_text %}<p>{{ review.reason_text }}</p>{% endif %}
+          {% if review.reason_text %}<p>{{ review.reason_text | review_reason }}</p>{% endif %}
           {% if review.comments %}<p>{{ review.comments }}</p>{% endif %}
           {% if review.is_decided %}
           <dl class="kv">

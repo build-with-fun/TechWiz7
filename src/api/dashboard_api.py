@@ -1,19 +1,5 @@
-"""``/api/dashboard`` + ``/api/analytics`` -- the aggregate-queries slice (FR lxiv-lxx).
-
-Owner: sara.
-
-These endpoints exist because the console pages answer "what is happening now", but the
-evaluators and the operators need the same numbers without a page -- the SRS's dashboards
-(3.2.3) and the API contract's analytics table are the same aggregates, one rendered in
-HTML and one in JSON. The single most important rule here is the one the dashboards share
-with the search endpoint: **every number comes from a stored column**, never recomputed
-from a partially remembered shape, so a card and the CSV export of the same period cannot
-disagree.
-
-Windows: every analytics endpoint takes ``hours`` (1..8760), defaulting to 7 days, because
-an evaluator will ask "and the last hour?" during the demo. Model-comparison aggregates
-read the *stored* per-event class and confidence pair -- the comparison report's numbers
-and this slice's must be the same numbers (FR xxxii-xxxiii).
+"""Dashboard and analytics JSON (FR lxiv-lxviii). Every number comes from stored columns, so a
+card and the CSV export of the same period agree. Windows are ``hours`` (1-8760, default a week).
 """
 
 from __future__ import annotations
@@ -28,7 +14,7 @@ from sqlalchemy import case, func, select
 from src.auth import capability_required
 from src.db import session_scope
 from src.errors import validation_error
-from src.models import ALERT_STATUSES, Alert, Event, Review, utcnow
+from src.models import Alert, Event, Review, utcnow
 from src.services.config import get_store
 
 bp = Blueprint("dashboard_api", __name__)
@@ -62,9 +48,6 @@ def _counts(session, column, since=None) -> list[dict]:
             session.execute(statement).all()]
 
 
-# ---------------------------------------------------------------------------------------
-# dashboard
-# ---------------------------------------------------------------------------------------
 
 
 @bp.get("/dashboard/summary")
@@ -115,10 +98,8 @@ def summary():
 @bp.get("/dashboard/timeline")
 @capability_required("view_dashboards")
 def timeline():
-    """FR lxv: events per bucket for the trend chart, bucketed in Python after one query.
-
-    SQLite's date-format dialects are not portable; grouping the day's rows in one pass
-    over a bounded result set is, and the bucket size stays explicit.
+    """Events per day for the trend chart, bucketed in Python (SQLite date functions are not
+    portable).
     """
     hours, since = _window()
     bucket = request.args.get("bucket") or "hour"
@@ -145,9 +126,6 @@ def timeline():
     )
 
 
-# ---------------------------------------------------------------------------------------
-# analytics
-# ---------------------------------------------------------------------------------------
 
 
 @bp.get("/analytics/classes")

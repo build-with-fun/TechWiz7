@@ -1,0 +1,2 @@
+candidate,val_accuracy,val_macro_f1,val_critical_recall,fit_seconds,selected
+"hist_gradient_boosting[learning_rate=0.1,max_depth=8,max_iter=400,max_leaf_nodes=31]",0.7356,0.7329,0.8311,11.39,True

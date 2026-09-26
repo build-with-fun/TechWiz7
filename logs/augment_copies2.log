@@ -1,0 +1,15 @@
+/home/ammar/Downloads/SRS_NextWave AI and ML/sonicsentinel-ai/.venv/lib/python3.12/site-packages/librosa/effects.py:448: FutureWarning: The `hop_length` parameter is deprecated as of 1.0 and will be removed in 1.1. It is unused in the current implementation.
+  stft_stretch = core.phase_vocoder(
+/home/ammar/Downloads/SRS_NextWave AI and ML/sonicsentinel-ai/.venv/lib/python3.12/site-packages/librosa/effects.py:448: FutureWarning: The `n_fft` parameter is deprecated as of 1.0 and will be removed in 1.1. It is unused in the current implementation.
+  stft_stretch = core.phase_vocoder(
+/home/ammar/Downloads/SRS_NextWave AI and ML/sonicsentinel-ai/.venv/lib/python3.12/site-packages/numba/np/ufunc/dufunc.py:303: RuntimeWarning: invalid value encountered in cast
+  return super().__call__(*args, **kws)
+  300/2100 training clips augmented
+  600/2100 training clips augmented
+  900/2100 training clips augmented
+  1200/2100 training clips augmented
+  1500/2100 training clips augmented
+  1800/2100 training clips augmented
+  2100/2100 training clips augmented
+wrote 4200 augmented rows to audio_dataset/manifests/augmented_rows.csv
+EXIT=0

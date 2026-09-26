@@ -1,0 +1,44 @@
+{# Audio player with server-computed waveform and spectrogram; static/js/event.js drives it. #}
+{% import "_macros.html" as ui %}
+{% macro player(event_id, duration_sec=None, compact=False) -%}
+<div class="player{{ ' player--compact' if compact else '' }}" data-audio-player
+     data-src="{{ url_for('main.event_audio', event_id=event_id) }}"
+     data-visuals="{{ url_for('event_visuals.visuals', event_id=event_id) }}">
+  <div class="player__controls">
+    <button class="btn btn--icon" type="button" data-player-play aria-label="Play recording">
+      {{ ui.icon('play', 18) }}
+    </button>
+    <button class="btn btn--icon" type="button" data-player-replay aria-label="Replay from the start">
+      <span aria-hidden="true">&#8634;</span>
+    </button>
+    <span class="player__time" data-player-time>0:00.0</span>
+    <input class="player__seek" type="range" min="0" max="1000" value="0" step="1"
+           data-player-seek aria-label="Seek">
+    <div class="player__volume">
+      {{ ui.icon('volume', 16) }}
+      <input type="range" min="0" max="100" value="80" step="1" data-player-volume aria-label="Volume">
+    </div>
+  </div>
+  <div class="canvas-frame canvas-frame--wave">
+    <canvas data-player-waveform width="1200" height="{{ 96 if compact else 128 }}" aria-hidden="true"></canvas>
+  </div>
+  <p class="canvas-caption">
+    <span>Waveform</span>
+    <span data-player-duration>{{ ui.duration(duration_sec) if duration_sec else '' }}</span>
+  </p>
+  <div class="canvas-frame canvas-frame--spec">
+    <canvas data-player-spectrogram width="1200" height="{{ 128 if compact else 192 }}" aria-hidden="true"></canvas>
+  </div>
+  <p class="canvas-caption">
+    <span>Spectrogram, frequency over time</span>
+    <span class="legend">
+      <span class="legend__item"><span class="legend__swatch legend__swatch--quiet"></span>quiet</span>
+      <span class="legend__item"><span class="legend__swatch legend__swatch--loud"></span>loud</span>
+    </span>
+  </p>
+  {% if not compact %}
+  <p class="field__hint">Both are computed server-side from the stored original recording; the models
+    received its preprocessed version (resampled, filtered, trimmed and normalised).</p>
+  {% endif %}
+</div>
+{%- endmacro %}

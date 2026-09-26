@@ -1,130 +1,309 @@
 {% extends "base.html" %}
 {% import "_macros.html" as ui %}
 {% import "_presentation.html" as pres %}
-{# ==========================================================================
-   templates/dashboard.html — the operational dashboards (FR lxiii–lxv).
-
-   Server-rendered, CSP-safe. Volume bars use the shared .bars/.bar-row
-   components; the fill width comes from a CSS custom property set via an
-   inline style attribute — style-src 'self' blocks <style> ELEMENTS and
-   inline <style> blocks, not style="" attributes. (Verified against the
-   app's CSP header before shipping.)
-   ========================================================================== #}
-{% set page_id = "main.dashboard" %}
+{% import "_charts.html" as charts %}
+{% import "_player.html" as player_ui with context %}
+{% block page_id %}dashboard{% endblock %}
 {% block title %}Dashboard — {{ app_name }}{% endblock %}
 
-{% set max_class = by_class | map(attribute='count') | max if by_class else 0 %}
-{% set max_sev = by_severity | map(attribute='count') | max if by_severity else 0 %}
-{% set max_status = by_status | map(attribute='count') | max if by_status else 0 %}
+{# SRS Step 18 and FR lxiii-lxv: current detection with both models, agreement, waveform,
+   spectrogram, quality, severity and alert status; recent detections; the critical-event
+   timeline; manual-review items; category statistics; and, for administrators, totals,
+   average confidence, disagreements, poor-quality recordings and detection trends. #}
 
 {% block content %}
 <header class="page-head">
   <div class="page-head__main">
-    <div class="breadcrumb"><span>Home</span></div>
-    <h1 class="page-title">{{ page_title or 'Operational dashboard' }}</h1>
-    <p class="page-sub">What the system has heard, raised and queued — the last 24 hours and 7 days at a glance.</p>
+    <h1 class="page-title">{{ page_title or 'Dashboard' }}</h1>
+    <p class="page-sub">{{ 'All users' if scope_all else 'Your recordings' }} · events, alerts and the review queue at a glance.</p>
   </div>
   <div class="page-head__actions">
-    <a class="btn" href="{{ url_for('main.analytics') }}">{{ ui.icon('chart', 14) }} <span>Analytics</span></a>
-    <a class="btn" href="{{ url_for('main.events') }}">{{ ui.icon('list', 14) }} <span>All events</span></a>
+    {% if current_user.can('live_session') %}<a class="btn" href="{{ url_for('main.live') }}">{{ ui.icon('mic', 16) }} Live monitor</a>{% endif %}
+    {% if current_user.can('upload_audio') %}<a class="btn btn--primary" href="{{ url_for('main.upload') }}">{{ ui.icon('upload', 16) }} Upload audio</a>{% endif %}
   </div>
 </header>
 
-<div class="summary-grid" data-testid="dashboard-totals">
-  <div class="summary-cell">
-    <span class="summary-label">Events · 24 h</span>
-    <span class="summary-value mono">{{ totals.events_24h }}</span>
+{% if admin and admin.anomalies %}
+<section class="banner banner--high" role="alert" aria-labelledby="anomaly-title">
+  <span class="banner__icon" aria-hidden="true">{{ ui.icon('warn', 20) }}</span>
+  <div class="banner__body">
+    <h2 class="banner__title" id="anomaly-title">{{ admin.anomalies | length }} operational anomal{{ 'y' if admin.anomalies | length == 1 else 'ies' }}</h2>
+    <ul class="anomaly-list">
+      {% for a in admin.anomalies %}
+      <li data-testid="anomaly-{{ a.kind }}">{{ ui.severity_chip(a.severity) }} {{ a.message }}</li>
+      {% endfor %}
+    </ul>
   </div>
-  <div class="summary-cell">
-    <span class="summary-label">Events · 7 d</span>
-    <span class="summary-value mono">{{ totals.events_7d }}</span>
+</section>
+{% endif %}
+
+<div class="kpis" data-testid="dashboard-totals">
+  <a class="kpi" href="{{ url_for('main.events') }}">
+    <span class="kpi__icon kpi__icon--accent" aria-hidden="true">{{ ui.icon('list', 18) }}</span>
+    <span class="kpi__body">
+      <span class="kpi__label">Events · 24 h</span>
+      <span class="kpi__value">{{ totals.events_24h }}</span>
+      <span class="kpi__note">{{ totals.events_7d }} in 7 days · {{ totals.events_total }} in total</span>
+    </span>
+  </a>
+  <a class="kpi{{ ' kpi--danger' if totals.open_alerts else '' }}" href="{{ url_for('main.alerts') }}">
+    <span class="kpi__icon kpi__icon--danger" aria-hidden="true">{{ ui.icon('bell', 18) }}</span>
+    <span class="kpi__body">
+      <span class="kpi__label">Open alerts</span>
+      <span class="kpi__value">{{ totals.open_alerts }}</span>
+      <span class="kpi__note">need an operator</span>
+    </span>
+  </a>
+  <a class="kpi{{ ' kpi--warn' if totals.awaiting_review else '' }}" href="{{ url_for('main.reviews') }}">
+    <span class="kpi__icon kpi__icon--warn" aria-hidden="true">{{ ui.icon('clipboard', 18) }}</span>
+    <span class="kpi__body">
+      <span class="kpi__label">Awaiting manual review</span>
+      <span class="kpi__value">{{ totals.awaiting_review }}</span>
+      <span class="kpi__note">uncertain or conflicting</span>
+    </span>
+  </a>
+  <div class="kpi{{ ' kpi--danger' if totals.critical_7d else '' }}">
+    <span class="kpi__icon kpi__icon--danger" aria-hidden="true">{{ ui.icon('alert', 18) }}</span>
+    <span class="kpi__body">
+      <span class="kpi__label">Critical severity · 7 d</span>
+      <span class="kpi__value">{{ totals.critical_7d }}</span>
+      <span class="kpi__note" title="{{ critical_classes | join(', ') }}">{{ critical_classes | length }} critical categories</span>
+    </span>
   </div>
-  <div class="summary-cell">
-    <span class="summary-label">Events · all time</span>
-    <span class="summary-value mono">{{ totals.events_total }}</span>
-  </div>
-  <div class="summary-cell">
-    <span class="summary-label">Open alerts</span>
-    <span class="summary-value mono {{ 'metric--warn' if totals.open_alerts else '' }}">{{ totals.open_alerts }}</span>
-    <span class="summary-note"><a href="{{ url_for('main.alerts') }}">go to console</a></span>
-  </div>
-  <div class="summary-cell">
-    <span class="summary-label">Awaiting manual review</span>
-    <span class="summary-value mono {{ 'metric--warn' if totals.awaiting_review else '' }}">{{ totals.awaiting_review }}</span>
-    <span class="summary-note"><a href="{{ url_for('main.reviews') }}">go to queue</a></span>
-  </div>
-  <div class="summary-cell">
-    <span class="summary-label">Critical severity · 7 d</span>
-    <span class="summary-value mono {{ 'metric--danger' if totals.critical_7d else '' }}">{{ totals.critical_7d }}</span>
-    <span class="summary-note">critical categories: {{ critical_classes | join(', ') }}</span>
+  <div class="kpi{{ ' kpi--warn' if totals.quality_warnings_7d else '' }}">
+    <span class="kpi__icon kpi__icon--warn" aria-hidden="true">{{ ui.icon('volume', 18) }}</span>
+    <span class="kpi__body">
+      <span class="kpi__label">Quality warnings · 7 d</span>
+      <span class="kpi__value">{{ totals.quality_warnings_7d }}</span>
+      <span class="kpi__note">rated Poor or Unusable</span>
+    </span>
   </div>
 </div>
 
-<div class="grid grid--split">
-  <section class="panel">
+<div class="dash-grid">
+  {# ---- the current detection: both models, agreement, quality, severity, alert, audio ---- #}
+  <section class="panel dash-grid__main" aria-labelledby="latest-title">
     <div class="panel__head">
-      <h2 class="panel__title">{{ ui.icon('chart', 14) }} Events by sound class</h2>
-      <p class="panel__note">last 7 days</p>
+      <h2 class="panel__title" id="latest-title">{{ ui.icon('waves', 16) }} Latest detection</h2>
+      {% if latest %}
+      <p class="panel__note">
+        <a class="mono" href="{{ url_for('main.event_detail', event_id=latest.id) }}">Event {{ latest.id }}</a>
+        · {{ latest.source }} · {{ latest.created_at.strftime('%d %b %H:%M') }} UTC
+      </p>
+      {% endif %}
     </div>
     <div class="panel__body">
-      {% if by_class %}
-      <div class="bars">
-        {% for item in by_class | sort(attribute='count', reverse=true) %}
-        <div class="bar-row" data-testid="class-bar-{{ item.class }}">
-          <span class="chip__text">{{ item.class }}</span>
-          <span class="bar-row__track"><span class="bar-row__fill" data-bar-width="{{ (item.count / max_class * 100) | round(1) }}"></span></span>
-          <span class="bar-row__value">{{ item.count }}</span>
+      {% if latest %}
+      <div class="verdict-head">
+        <div class="verdict-head__class">
+          <span class="verdict-head__label">Final decision</span>
+          <span class="verdict-head__value">{{ latest.final_class or 'Undecided' }}</span>
+          <span class="verdict-head__file" title="{{ latest.filename }}">{{ latest.filename }}</span>
         </div>
-        {% endfor %}
+        <dl class="facts">
+          <div><dt>Agreement</dt><dd>{{ ui.consistency_chip(latest.consistency) }}</dd></div>
+          <div><dt>Quality</dt><dd>{{ ui.quality_chip(latest.quality) }}</dd></div>
+          <div><dt>Severity</dt><dd>{{ ui.severity_chip(latest.severity) }}</dd></div>
+          <div><dt>Alert</dt><dd>{% if latest.alert_status %}<span class="tag">{{ latest.alert_status }}</span>{% else %}<span class="muted">none raised</span>{% endif %}</dd></div>
+          <div><dt>Status</dt><dd>{{ ui.status_chip(latest.status) }}</dd></div>
+        </dl>
       </div>
+      <div class="model-pair">
+        <div class="model-pair__col model-pair__col--python">
+          <p class="model-pair__name"><span class="dot dot--python" aria-hidden="true"></span>Python model <span class="muted">top 3</span></p>
+          {% if latest.python %}{{ charts.score_bars(latest.python, 'python') }}{% else %}<p class="muted">No scores stored.</p>{% endif %}
+        </div>
+        <div class="model-pair__col model-pair__col--gtm">
+          <p class="model-pair__name"><span class="dot dot--gtm" aria-hidden="true"></span>Teachable Machine <span class="muted">top 3</span></p>
+          {% if latest.gtm %}{{ charts.score_bars(latest.gtm, 'gtm') }}{% else %}<p class="muted">No scores stored.</p>{% endif %}
+        </div>
+      </div>
+      <p class="model-pair__diff">
+        Top-confidence difference <strong class="mono">{{ '%.3f' % latest.difference if latest.difference is not none else '—' }}</strong>
+        {% if latest.review %} · <a href="{{ url_for('main.reviews') }}">routed to manual review</a>{% endif %}
+      </p>
+      {% if latest.has_audio %}{{ player_ui.player(latest.id, compact=True) }}{% endif %}
       {% else %}
-      {{ ui.empty_state('No events yet', 'Once uploads or live sessions produce events, the per-class mix appears here.') }}
+      {{ ui.empty_state('Nothing analysed yet', 'Upload a recording or start a live session; the latest result appears here with both models side by side.', action_text='Upload audio', action_href=url_for('main.upload')) }}
       {% endif %}
     </div>
   </section>
 
-  <section class="panel">
-    <div class="panel__head">
-      <h2 class="panel__title">{{ ui.icon('alert', 14) }} Events by severity</h2>
-      <p class="panel__note">last 7 days · scale: {{ severity_scale | join(' → ') }}</p>
-    </div>
-    <div class="panel__body">
-      {% if by_severity %}
-      <div class="bars">
-        {% for item in by_severity | sort(attribute='count', reverse=true) %}
-        <div class="bar-row" data-testid="severity-bar-{{ item.severity }}">
-          <span>{{ ui.severity_chip(item.severity) }}</span>
-          <span class="bar-row__track"><span class="bar-row__fill" data-bar-width="{{ (item.count / max_sev * 100) | round(1) }}"></span></span>
-          <span class="bar-row__value">{{ item.count }}</span>
+  <div class="dash-grid__side">
+    <section class="panel" aria-labelledby="models-title">
+      <div class="panel__head">
+        <h2 class="panel__title" id="models-title">{{ ui.icon('cpu', 16) }} Models in service</h2>
+        <a class="panel__link" href="{{ url_for('models.list') }}">Details</a>
+      </div>
+      <div class="panel__body">
+        {% for m in in_service %}
+        <div class="model-chip model-chip--{{ 'python' if m.name == 'Python model' else 'gtm' }}">
+          <span class="model-chip__name">{{ m.name }}</span>
+          <span class="model-chip__meta">{{ m.version }}{% if m.test_accuracy is not none %} · test accuracy {{ '%.1f' % (m.test_accuracy * 100) }}%{% endif %}</span>
         </div>
+        {% else %}
+        <p class="muted">No model version is marked active. See <a href="{{ url_for('models.list') }}">Models</a>.</p>
         {% endfor %}
       </div>
-      {% else %}
-      {{ ui.empty_state('No events yet', 'Severity counts appear as soon as events are recorded.') }}
-      {% endif %}
-    </div>
-  </section>
+    </section>
+
+    <section class="panel" aria-labelledby="queue-title">
+      <div class="panel__head">
+        <h2 class="panel__title" id="queue-title">{{ ui.icon('clipboard', 16) }} Manual review</h2>
+        <a class="panel__link" href="{{ url_for('main.reviews') }}">Open queue</a>
+      </div>
+      <div class="panel__body panel__body--flush">
+        {% if review_items %}
+        <ul class="mini-list">
+          {% for r in review_items %}
+          <li class="mini-list__item">
+            <a href="{{ url_for('main.event_detail', event_id=r.id) }}">{{ r['class'] or 'Undecided' }}</a>
+            {{ ui.severity_chip(r.severity) }}
+            <span class="mini-list__meta" title="{{ r.reason | review_reason }}">{{ (r.reason | review_reason or 'needs a decision') | truncate(90) }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="mini-empty">Nothing waiting for review.</p>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="timeline-title">
+      <div class="panel__head">
+        <h2 class="panel__title" id="timeline-title">{{ ui.icon('alert', 16) }} Critical-event timeline</h2>
+        <p class="panel__note">High and Critical · 7 days</p>
+      </div>
+      <div class="panel__body">
+        {% if timeline %}
+        <ol class="timeline">
+          {% for t in timeline %}
+          <li class="timeline__item timeline__item--{{ t.severity | lower }}">
+            <time class="mono" datetime="{{ t.at.isoformat() }}Z">{{ t.at.strftime('%d %b %H:%M') }}</time>
+            <a href="{{ url_for('main.event_detail', event_id=t.id) }}">{{ t['class'] }}</a>
+            {{ ui.severity_chip(t.severity) }}
+            {% if t.review %}<span class="muted">awaiting review</span>{% endif %}
+          </li>
+          {% endfor %}
+        </ol>
+        {% else %}
+        <p class="mini-empty">No high or critical events this week.</p>
+        {% endif %}
+      </div>
+    </section>
+  </div>
 </div>
 
-<section class="panel">
+{% if admin %}
+<section class="panel" aria-labelledby="admin-title">
   <div class="panel__head">
-    <h2 class="panel__title">{{ ui.icon('grid', 14) }} Event pipeline by status</h2>
-    <p class="panel__note">all time</p>
+    <h2 class="panel__title" id="admin-title">{{ ui.icon('chart', 16) }} Administrator overview</h2>
+    <p class="panel__note">last 7 days unless stated</p>
   </div>
   <div class="panel__body">
-    {% if by_status %}
-    <div class="bars">
-      {% for item in by_status %}
-      <div class="bar-row" data-testid="status-bar-{{ item.status }}">
-        <span>{{ ui.status_chip(item.status) }}</span>
-        <span class="bar-row__track"><span class="bar-row__fill" data-bar-width="{{ (item.count / max_status * 100) | round(1) }}"></span></span>
-        <span class="bar-row__value">{{ item.count }}</span>
-      </div>
-      {% endfor %}
+    <div class="stat-row">
+      <div class="stat"><span class="stat__label">Average top-class confidence</span>
+        <span class="stat__value">{{ ui.confidence(admin.average_confidence) if admin.average_confidence is not none else '—' }}</span>
+        <span class="stat__note">Python model; an estimate, not proof of correctness</span></div>
+      <div class="stat"><span class="stat__label">Model disagreements</span>
+        <span class="stat__value">{{ admin.disagreements_7d }}</span>
+        <span class="stat__note">the two models named different classes</span></div>
+      <div class="stat"><span class="stat__label">Poor-quality recordings</span>
+        <span class="stat__value">{{ admin.poor_quality_7d }}</span>
+        <span class="stat__note">rated Poor or Unusable</span></div>
+      <div class="stat"><span class="stat__label">Critical alerts</span>
+        <span class="stat__value{{ ' stat__value--danger' if admin.critical_alerts_7d else '' }}">{{ admin.critical_alerts_7d }}</span>
+        <span class="stat__note">raised by Critical rules</span></div>
     </div>
-    {% else %}
-    {{ ui.empty_state('No events yet', 'Status mix appears as the pipeline processes audio.') }}
+    <h3 class="panel__subtitle">Detection trend · 14 days</h3>
+    <div data-testid="trend">{{ charts.columns(admin.trend, aria_label='Events per day for the last 14 days') }}</div>
+    {% if admin.anomalies is not none and not admin.anomalies %}
+    <p class="muted small">No operational anomalies in the last hour (failed uploads, model failures,
+      low-confidence spikes, critical-alert bursts, duplicates, failed sign-ins).</p>
     {% endif %}
   </div>
 </section>
+{% endif %}
+
+<div class="grid grid--3col">
+  <section class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">{{ ui.icon('chart', 16) }} Events by sound category</h2>
+      <p class="panel__note">7 days</p>
+    </div>
+    <div class="panel__body">
+      {% if by_class %}
+      {{ charts.hbars(by_class | sort(attribute='count', reverse=true), 'class', critical=critical_classes) }}
+      {% else %}
+      <p class="mini-empty">No events in the last 7 days.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">{{ ui.icon('alert', 16) }} Events by severity</h2>
+      <p class="panel__note">7 days</p>
+    </div>
+    <div class="panel__body">
+      {% if by_severity %}
+      {% set counts = {} %}{% for item in by_severity %}{% set _ = counts.update({item.severity: item.count}) %}{% endfor %}
+      {% set segs = [] %}{% for level in severity_scale %}{% set _ = segs.append({'key': level | lower, 'label': level, 'count': counts.get(level, 0)}) %}{% endfor %}
+      {{ charts.donut(segs, by_severity | sum(attribute='count'), 'events', aria_label='Events by severity, last 7 days') }}
+      {% else %}
+      <p class="mini-empty">No events in the last 7 days.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">{{ ui.icon('grid', 16) }} Event status</h2>
+      <p class="panel__note">all time</p>
+    </div>
+    <div class="panel__body">
+      {% if by_status %}
+      {{ charts.hbars(by_status, 'status', tone='neutral') }}
+      {% else %}
+      <p class="mini-empty">No events yet.</p>
+      {% endif %}
+    </div>
+  </section>
+</div>
+
+<section class="panel" aria-labelledby="recent-title">
+  <div class="panel__head">
+    <h2 class="panel__title" id="recent-title">{{ ui.icon('list', 16) }} Recent {{ 'detections' if scope_all else 'uploads' }}</h2>
+    <a class="panel__link" href="{{ url_for('main.events') }}">All events</a>
+  </div>
+  <div class="panel__body panel__body--flush">
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr>
+          <th scope="col">Event</th><th scope="col">Recording</th><th scope="col">Detected</th>
+          <th scope="col">Quality</th><th scope="col">Severity</th><th scope="col">Models</th><th scope="col">Status</th>
+        </tr></thead>
+        <tbody>
+          {% for r in recent %}
+          <tr data-testid="recent-{{ r.id }}">
+            <td><a class="mono" href="{{ url_for('main.event_detail', event_id=r.id) }}">{{ r.id }}</a></td>
+            <td class="cell-clip" title="{{ r.filename }}">{{ r.filename }}</td>
+            <td><div class="row">{{ ui.class_chip(r.predicted_class, critical=r.predicted_class in critical_classes) }} {{ ui.confidence(r.confidence) }}</div></td>
+            <td>{{ ui.quality_chip(r.quality) }}</td>
+            <td>{{ ui.severity_chip(r.severity) }}</td>
+            <td>{{ ui.consistency_chip(r.consistency) }}</td>
+            <td>{{ ui.status_chip(r.status) }}</td>
+          </tr>
+          {% else %}
+          <tr class="table-empty"><td colspan="7"><p class="mini-empty">Nothing analysed yet.</p></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+{% if latest and latest.has_audio %}<script src="{{ url_for('static', filename='js/event.js') }}" defer></script>{% endif %}
 {% endblock %}

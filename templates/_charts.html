@@ -1,0 +1,86 @@
+{# Server-rendered SVG charts. Sizes are SVG attributes and colours are CSS classes, so they work
+   under the style-src 'self' CSP without inline styles or JavaScript. #}
+
+{% macro columns(points, label_key='day', value_key='count', aria_label='') -%}
+{% set n = points | length %}
+{% set peak = (points | map(attribute=value_key) | max) if n else 0 %}
+{% set top = peak if peak > 0 else 1 %}
+{% set w = 36 %}{% set h = 120 %}{% set pad = 18 %}
+<figure class="chart chart--columns">
+  <svg viewBox="0 0 {{ n * w }} {{ h + pad }}" role="img" aria-label="{{ aria_label }}" preserveAspectRatio="xMidYMid meet">
+    <line class="chart__grid" x1="0" x2="{{ n * w }}" y1="{{ h }}" y2="{{ h }}"></line>
+    <line class="chart__grid chart__grid--soft" x1="0" x2="{{ n * w }}" y1="{{ h / 2 }}" y2="{{ h / 2 }}"></line>
+    {% for p in points %}
+      {% set v = p[value_key] %}
+      {% set bh = ((v / top) * (h - 14)) if v else 0 %}
+      <g class="chart__col{{ ' chart__col--empty' if not v else '' }}">
+        <title>{{ p[label_key] }}: {{ v }}</title>
+        <rect x="{{ loop.index0 * w + 7 }}" y="{{ h - bh }}" width="{{ w - 14 }}" height="{{ bh if bh > 0 else 1 }}" rx="3"></rect>
+        {% if v %}<text class="chart__value" x="{{ loop.index0 * w + w / 2 }}" y="{{ h - bh - 4 }}" text-anchor="middle">{{ v }}</text>{% endif %}
+        {% if loop.index0 % 2 == 0 or loop.last %}
+        <text class="chart__label" x="{{ loop.index0 * w + w / 2 }}" y="{{ h + pad - 4 }}" text-anchor="middle">{{ p[label_key][5:] if p[label_key] is string and p[label_key] | length == 10 else p[label_key] }}</text>
+        {% endif %}
+      </g>
+    {% endfor %}
+  </svg>
+</figure>
+{%- endmacro %}
+
+{% macro donut(segments, center_value, center_label, aria_label='') -%}
+{# segments: [{"key": css suffix, "label": text, "count": n}] #}
+{% set total = segments | sum(attribute='count') %}
+<figure class="chart chart--donut">
+  <svg viewBox="0 0 42 42" role="img" aria-label="{{ aria_label }}">
+    <circle class="donut__ring" cx="21" cy="21" r="15.915" fill="none" stroke-width="5"></circle>
+    {% set ns = namespace(offset=25) %}
+    {% for seg in segments if seg.count %}
+      {% set pct = seg.count / total * 100 %}
+      <circle class="donut__seg donut__seg--{{ seg.key }}" cx="21" cy="21" r="15.915" fill="none" stroke-width="5"
+              stroke-dasharray="{{ '%.3f' % pct }} {{ '%.3f' % (100 - pct) }}" stroke-dashoffset="{{ '%.3f' % ns.offset }}">
+        <title>{{ seg.label }}: {{ seg.count }}</title>
+      </circle>
+      {% set ns.offset = ns.offset - pct %}
+    {% endfor %}
+    <text class="donut__value" x="21" y="21.5" text-anchor="middle">{{ center_value }}</text>
+    <text class="donut__label" x="21" y="26.5" text-anchor="middle">{{ center_label }}</text>
+  </svg>
+  <figcaption class="chart__legend">
+    {% for seg in segments %}
+    <span class="chart__legend-item"><span class="swatch swatch--{{ seg.key }}" aria-hidden="true"></span>{{ seg.label }} <strong>{{ seg.count }}</strong></span>
+    {% endfor %}
+  </figcaption>
+</figure>
+{%- endmacro %}
+
+{% macro hbars(items, label_key, value_key='count', tone='accent', critical=[]) -%}
+{% set peak = (items | map(attribute=value_key) | max) if items else 0 %}
+<ul class="hbars">
+  {% for item in items %}
+  {% set pct = (item[value_key] / peak * 100) if peak else 0 %}
+  <li class="hbars__row">
+    <span class="hbars__label">{% if item[label_key] in critical %}<span class="hbars__critical" title="Critical category" aria-label="critical">◆</span>{% endif %}{{ item[label_key] }}</span>
+    <svg class="hbars__track" viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true">
+      <rect class="hbars__bg" width="100" height="8" rx="4"></rect>
+      <rect class="hbars__fill hbars__fill--{{ tone }}" width="{{ '%.2f' % pct }}" height="8" rx="4"></rect>
+    </svg>
+    <span class="hbars__value">{{ item[value_key] }}</span>
+  </li>
+  {% endfor %}
+</ul>
+{%- endmacro %}
+
+{% macro score_bars(rows, model) -%}
+{# rows: [{"class": name, "confidence": 0..1}] for one model, best first. #}
+<ol class="scores scores--{{ model }}">
+  {% for r in rows %}
+  <li class="scores__row{{ ' scores__row--top' if loop.first else '' }}">
+    <span class="scores__class">{{ r['class'] }}</span>
+    <svg class="scores__track" viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true">
+      <rect class="scores__bg" width="100" height="6" rx="3"></rect>
+      <rect class="scores__fill" width="{{ '%.2f' % (r['confidence'] * 100) }}" height="6" rx="3"></rect>
+    </svg>
+    <span class="scores__value">{{ '%.1f' % (r['confidence'] * 100) }}%</span>
+  </li>
+  {% endfor %}
+</ol>
+{%- endmacro %}

@@ -1,26 +1,4 @@
-{# ==========================================================================
-   templates/base.html — the application shell.
-
-   Context keys this template relies on. They are sara's context-processor
-   contract, and the file fails loudly if they go missing, which is deliberate:
-     config (ConfigStore)   nav   severity_scale   severity_levels
-     class_names            critical_classes   role_labels   model_labels
-     quality_verdicts   consistency_statuses   alert_statuses
-     review_decisions   review_conditions   app_name   app_version   request_id
-     current_user (Flask-Login, with .can(capability) and .role)
-
-   Two rules worth stating out loud because they cause real bugs:
-
-   1. **Access is gated on `current_user.can('capability')`, never on a role
-      string.** Moving a capability between roles in src/auth.py must not need a
-      template edit. There is one helper (`_can`) and everything uses it.
-
-   2. **Nothing inline executes.** The app is served with
-      `script-src 'self'; style-src 'self'` (config/auth.json), so there are no
-      inline <script> bodies and no `style=` attributes anywhere in my templates.
-      Data crosses to the browser through `type="application/json"` blocks, which
-      CSP does not execute, and the browser reads them by id.
-   ========================================================================== #}
+{# Gate navigation by capability. Keep executable scripts and styles external for the CSP. #}
 {% import "_macros.html" as ui with context %}
 {% import "_presentation.html" as pres with context %}
 
@@ -30,9 +8,11 @@
 {{ 'true' if (current_user is defined and current_user and current_user.can and current_user.can(capability)) else 'false' }}
 {%- endmacro %}
 
-{% set _theme = 'light' if request.cookies.get('sst_theme') == 'light' else 'dark' %}
+{% set _theme_cookie = request.cookies.get('sst_theme', 'dark') %}
+{% set _theme = 'light' if _theme_cookie == 'light' else 'dark' %}
+{% set _motion = 'reduced' if request.cookies.get('sst_motion') == 'reduced' else 'auto' %}
 <!doctype html>
-<html lang="en" data-theme="{{ _theme }}">
+<html lang="en" data-theme="{{ _theme }}" data-motion="{{ _motion }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -50,52 +30,59 @@
 
   <div class="app">
 
+    {% set _signed_in = current_user is defined and current_user and current_user.is_authenticated %}
+    {% set _role = (role_labels.get(current_user.role, current_user.role) if role_labels is defined else current_user.role) if _signed_in else '' %}
     <header class="topbar">
-      <div class="topbar__brand">
+      <a class="topbar__brand" href="{{ url_for('main.dashboard') if _signed_in else url_for('auth.login') }}">
         <img class="topbar__logo" src="{{ url_for('static', filename='img/logo.svg') }}"
              alt="" width="28" height="28" aria-hidden="true">
         <span>
           <span class="topbar__title">{{ app_name | default('SonicSentinel AI') }}</span>
           <span class="topbar__sub">{% block brand_sub %}AcousticX Intelligence{% endblock %}</span>
         </span>
-      </div>
+      </a>
+
+      {% if _signed_in and _can('view_own_events') | trim == 'true' %}
+      <form class="topbar__search" method="get" action="{{ url_for('main.events') }}" role="search">
+        <span class="topbar__search-icon" aria-hidden="true">{{ ui.icon('search', 15) }}</span>
+        <label class="visually-hidden" for="topbar-q">Search events</label>
+        <input class="topbar__search-input" id="topbar-q" name="q" type="search"
+               placeholder="Search events by ID, file, class or location" autocomplete="off">
+      </form>
+      {% endif %}
 
       <div class="topbar__spacer"></div>
 
       <div class="topbar__actions">
         {% block topbar_actions %}{% endblock %}
 
-        <button type="button" class="btn btn--ghost btn--icon" data-theme-toggle
-                aria-pressed="{{ 'true' if _theme == 'light' else 'false' }}"
-                title="Switch between the dark console and the light theme">
-          <span aria-hidden="true" data-theme-icon>{{ ui.icon('sun', 16) if _theme == 'light' else ui.icon('moon', 16) }}</span>
-          <span class="visually-hidden">Toggle colour theme</span>
+        <button type="button" class="btn btn--icon btn--ghost" data-theme-toggle
+                aria-pressed="{{ 'true' if _theme == 'light' else 'false' }}" title="Switch between dark and light">
+          <span class="theme-icon theme-icon--dark" aria-hidden="true">{{ ui.icon('moon', 16) }}</span>
+          <span class="theme-icon theme-icon--light" aria-hidden="true">{{ ui.icon('sun', 16) }}</span>
+          <span class="visually-hidden">Light theme</span>
         </button>
 
-        {% if current_user is defined and current_user and current_user.is_authenticated %}
-          <a class="chip" href="{{ url_for('auth.profile') }}" title="Open your profile">
-            <span class="chip__glyph" aria-hidden="true">{{ ui.icon('user', 12) }}</span>
-            <span class="chip__text">{{ current_user.username }}</span>
+        {% if _signed_in %}
+          <a class="user-chip" href="{{ url_for('auth.profile') }}" title="Your profile">
+            <span class="user-chip__avatar" aria-hidden="true">{{ current_user.username[:1] | upper }}</span>
+            <span class="user-chip__text">
+              <span class="user-chip__name">{{ current_user.username }}</span>
+              <span class="user-chip__role">{{ _role }}</span>
+            </span>
           </a>
-          <span class="chip chip--role" title="Role: {{ role_labels.get(current_user.role, current_user.role) if role_labels is defined else current_user.role }}">
-            <span class="chip__glyph" aria-hidden="true">{{ ui.icon('shield', 12) }}</span>
-            <span class="chip__text">{{ role_labels.get(current_user.role, current_user.role) if role_labels is defined else current_user.role }}</span>
-          </span>
           <form method="post" action="{{ url_for('auth.logout') }}" class="logout-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn--sm">
-              {{ ui.icon('logout', 14) }} <span>Sign out</span>
+            <button type="submit" class="btn btn--icon btn--ghost" title="Sign out">
+              {{ ui.icon('logout', 16) }}<span class="visually-hidden">Sign out</span>
             </button>
           </form>
         {% endif %}
       </div>
     </header>
 
-    {# ------------------------------------------------------------------ nav
-       Rendered from pres.nav_entries() and gated item-by-item. An item the user
-       cannot open is not rendered at all — showing a door that answers 403 is
-       worse than showing no door.
-       ------------------------------------------------------------------ #}
+    {# Navigation is rendered from pres.nav_entries() and gated item by item: an item the
+       user cannot open is not rendered at all. #}
     <nav class="nav" aria-label="Main navigation">
       {% set entries = pres.nav_entries() | fromjson %}
       {% for group in entries %}
@@ -108,9 +95,9 @@
             <p class="nav__label">{{ group['group'] }}</p>
             {% for item in visible %}
               {% set here = request.endpoint == item['endpoint'] %}
-              <a class="nav__link" href="{{ url_for(item['endpoint']) }}"
+              <a class="nav__link" href="{{ url_for(item['endpoint']) }}" aria-label="{{ item['label'] }}" title="{{ item['label'] }}"
                  {% if here %}aria-current="page"{% endif %}>
-                <span aria-hidden="true">{{ ui.icon(item['icon'], 18) }}</span>
+                <span class="nav__icon" aria-hidden="true">{{ ui.icon(item['icon'], 18) }}</span>
                 <span>{{ item['label'] }}</span>
                 {% set badge = (nav.get('badges', {}).get(item['endpoint']) if nav is defined and nav else none) %}
                 {% if badge %}<span class="nav__badge" title="{{ badge }} waiting">{{ badge }}</span>{% endif %}
@@ -122,13 +109,13 @@
 
       <div class="nav__group push">
         <p class="nav__label">System</p>
-        {% if current_user is defined and current_user and current_user.is_authenticated %}
-          <a class="nav__link" href="{{ url_for('auth.profile') }}" {% if request.endpoint == 'auth.profile' %}aria-current="page"{% endif %}>
-            <span aria-hidden="true">{{ ui.icon('user', 18) }}</span><span>Your profile</span>
+        {% if _signed_in %}
+          <a class="nav__link" aria-label="Your profile" title="Your profile" href="{{ url_for('auth.profile') }}" {% if request.endpoint == 'auth.profile' %}aria-current="page"{% endif %}>
+            <span class="nav__icon" aria-hidden="true">{{ ui.icon('user', 18) }}</span><span>Your profile</span>
           </a>
         {% endif %}
-        <a class="nav__link" href="{{ url_for('health.health') }}" target="_blank" rel="noopener">
-          <span aria-hidden="true">{{ ui.icon('info', 18) }}</span><span>Service health</span>
+        <a class="nav__link" aria-label="Service health (opens in a new tab)" title="Service health" href="{{ url_for('health.health') }}" target="_blank" rel="noopener">
+          <span class="nav__icon" aria-hidden="true">{{ ui.icon('info', 18) }}</span><span>Service health</span>
           <span class="visually-hidden">(opens in a new tab)</span>
         </a>
       </div>
@@ -162,10 +149,8 @@
         <p class="field__hint">
           {{ app_name | default('SonicSentinel AI') }}
           {% if app_version %}v{{ app_version }}{% endif %}
-          · Predictions come from this project's own Python model and from a separately trained
-          Teachable Machine model, each predicting independently. The final decision is made by the
-          application's own rule engine, never by an external generative-AI service.
-          {% if request_id %}· Request <span class="mono">{{ request_id }}</span>{% endif %}
+          <span class="page-foot__separator">·</span> Predictions come from the project's own Python
+          model and a separately trained Teachable Machine model; decisions are made by the rule engine.
         </p>
       </footer>
     </main>

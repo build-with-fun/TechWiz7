@@ -1,59 +1,34 @@
-"""Acoustic feature extraction -- SRS Step 6, FR xx.
+"""Hand-made acoustic features (SRS Step 6, FR xx): 254 numbers per recording.
 
-Owner: taha (Audio DSP & feature engineering).
+The column order is locked by FEATURE_SCHEMA_VERSION and feature_columns(); a saved model
+is bundled with that list, so a reordered column is a load-time error rather than a
+silently wrong prediction (tests/test_feature_extraction.py checks they cannot drift).
+The STFT is computed once per signal and MFCC, chroma, centroid, bandwidth, roll-off and
+flatness are all derived from it.
 
-WHAT IS LOCKED
---------------
-``FEATURE_SCHEMA_VERSION`` plus :func:`feature_columns` are the contract with
-``bilal`` (classical model) and ``nadia`` (deep models).  ``feature_columns()`` returns the
-column order, and the extractor *always* produces values in exactly that order, so a model
-saved today still receives the right column in the right place after any refactor.  Change
-the order or the meaning of a column and the version must be bumped -- a test asserts the
-two cannot drift (``tests/test_feature_extraction.py``).
+These features feed the classical baseline (HistGradientBoosting). The served Python model
+uses CNN14 embeddings instead (embeddings.py). What each column means, since any of them
+may come up in a viva:
 
-WHY A SINGLE STFT
------------------
-A spectrogram is the expensive step; MFCC, chroma, spectral centroid, bandwidth, roll-off
-and flatness are all cheap reductions of it.  This module computes the STFT **once** per
-signal and derives the rest from it.  On this box that is the difference between meeting
-the SRS budget (30 s clip in 8 s, live window in 3 s) and not -- and the performance test
-in ``tests/test_audio_perf.py`` measures it rather than assuming it.
-
-WHAT EACH FEATURE MEANS ACOUSTICALLY
-------------------------------------
-Every column here can be explained in one sentence, because an evaluator may point at any
-of them and ask.  The full rationale, with the psychoacoustic justification, is in
-``documentation/features.md`` and ``documentation/perception/feature_rationale.md``:
-
-* ``melband_*_mean``     -- average log-energy in each of 128 mel bands: the spectral
-                            envelope, i.e. "what the sound is made of".
-* ``mfcc_*_mean/std``    -- the same envelope compressed into 20 decorrelated numbers:
-                            a compact timbre fingerprint (log of the mel filterbank).
-* ``dmfcc_*_*``          -- how fast that fingerprint is changing: separates a steady
-                            siren from a transient gunshot.
-* ``chroma_*``           -- energy per pitch class: harmonic content, which separates a
-                            tonal machine hum from broadband noise.
-* ``zcr_*``              -- rate of sign changes: high for fricatives and noise, low for
-                            tonal sounds; the cheapest voicing cue there is.
-* ``rms_*_db``           -- loudness over time, in dBFS: an alarm's loud section and a
-                            gunshot's impulse both sit here.
-* ``centroid_*``         -- spectral "brightness" in Hz: glass breaking is bright, machinery
-                            rumble is dark.
-* ``bandwidth_*``        -- how spread the spectrum is around the centroid.
-* ``rolloff_*``          -- frequency below which 85% of the energy lies.
-* ``flatness_*``         -- geometric/arithmetic mean ratio in [0,1]: ~0 for tonal, ~1 for
-                            white noise.  The single best noise-vs-tone discriminator.
-* ``onset_*``            -- strength and rate of energy onsets: activity and impulsiveness.
-* ``crest_factor_db``    -- peak minus RMS: an impulse (gunshot) has a large crest factor,
-                            a sustained alarm a small one.
-* ``tempo_bpm``          -- periodicity of the onset envelope: "where relevant" per FR xx,
-                            meaningful for rhythmic sources such as a vehicle engine.
+* melband_*_mean  -- average log-energy in each of 128 mel bands: the spectral envelope.
+* mfcc_*_mean/std -- that envelope compressed into 20 decorrelated numbers (timbre).
+* dmfcc_*         -- how fast the MFCCs change: separates a steady siren from a gunshot.
+* chroma_*        -- energy per pitch class: tonal machine hum versus broadband noise.
+* zcr_*           -- zero-crossing rate: high for noise and fricatives, low for tones.
+* rms_*_db        -- loudness over time in dBFS.
+* centroid_*      -- spectral brightness in Hz (glass is bright, rumble is dark).
+* bandwidth_*     -- spread of the spectrum around the centroid.
+* rolloff_*       -- frequency below which 85% of the energy lies.
+* flatness_*      -- 0 for a pure tone, 1 for white noise.
+* onset_*         -- strength and rate of energy onsets (impulsiveness).
+* crest_factor_db -- peak minus RMS: large for an impulse, small for a sustained alarm.
+* tempo_bpm       -- periodicity of the onset envelope, for rhythmic sources.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 import warnings
 
 import numpy as np
@@ -64,20 +39,17 @@ from audio_preprocessing.transforms import peak_dbfs, rms_dbfs, to_mono
 
 FEATURE_SCHEMA_VERSION = "audiofeat-1.0.0"
 
-# Statistics taken of every frame-wise series.  Kept to mean and spread: a mean says where
-# the sound sits, a standard deviation says how much it moves.  Higher moments were tried
-# and dropped -- on 3 s windows they add noise, not information.
+# Mean and spread of every frame-wise series. Higher moments added noise, not information, on 3 s
+# windows.
 FRAME_STATS = ("mean", "std")
 
 
 def _fc(cfg: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Feature config, reconciled with the audio block so segment length cannot diverge.
+    """Feature config reconciled with the audio block, so the segment length cannot diverge.
 
-    The audio block wins because it is the value the admin UI edits.  When the caller
-    passes a config that already carries its own ``_audio_block`` (that is what
-    ``config.feature_config(config_dir=...)`` attaches), *that* block wins -- otherwise a
-    pipeline built against a different config directory would silently segment at the
-    repository's length, which is exactly the divergence this function exists to prevent.
+    A config carrying its own ``_audio_block`` (from config.feature_config(config_dir=...))
+    takes precedence, so a pipeline built against another config directory segments at
+    that directory's length.
     """
     conf = dict(cfg) if cfg is not None else cfg_mod.feature_config()
     audio = conf.get("_audio_block")
@@ -89,11 +61,8 @@ def _fc(cfg: dict[str, Any] | None = None) -> dict[str, Any]:
 
 
 def mel_tensor_shape(cfg: dict[str, Any] | None = None) -> tuple[int, int]:
-    """The ``(n_mels, n_frames)`` shape of the log-mel tensor for one segment.
-
-    ``n_frames`` is derived, never written down: ``1 + n_samples // hop_length`` for a
-    centred STFT.  At 16 kHz, 3.0 s and hop 512 that is 94 -- but if an evaluator changes
-    the segment length the tensor follows instead of breaking.
+    """(n_mels, n_frames) for one segment; n_frames = 1 + n_samples // hop (94 at 3 s, 16 kHz, hop
+    512).
     """
     conf = _fc(cfg)
     n_samples = int(round(float(conf["segment_duration_sec"]) * int(conf["sample_rate"])))
@@ -101,17 +70,10 @@ def mel_tensor_shape(cfg: dict[str, Any] | None = None) -> tuple[int, int]:
     return int(conf["n_mels"]), int(n_frames)
 
 
-# --------------------------------------------------------------------------------------
 # Column names -- the locked schema
-# --------------------------------------------------------------------------------------
 
 def feature_columns(cfg: dict[str, Any] | None = None) -> list[str]:
-    """The feature vector's column names, in the exact order the extractor emits them.
-
-    This is the string list a saved model should be bundled with
-    (``save_bundle(feature_columns=feature_columns())``), so a mismatch is a load-time
-    error rather than a silently permuted prediction.
-    """
+    """Column names in the exact order the extractor emits them; bundle them with a saved model."""
     conf = _fc(cfg)
     n_mfcc = int(conf["n_mfcc"])
     n_chroma = int(conf["n_chroma"])
@@ -142,21 +104,13 @@ def n_features(cfg: dict[str, Any] | None = None) -> int:
     return len(feature_columns(cfg))
 
 
-# --------------------------------------------------------------------------------------
 # The extractor
-# --------------------------------------------------------------------------------------
 
 class FeatureExtractor:
-    """Turns a ``PreprocessedAudio`` (or a raw array) into the locked feature vector.
+    """Turns a PreprocessedAudio (or a raw array) into the locked feature vector.
 
-    Construct once per process; the config is captured at construction so the segment
-    length the admin UI sets is the one used for the tensor shape.
-
-    ``extract(source)``        -> ``np.ndarray (n_features,)``  -- one row per recording.
-    ``extract_matrix(source)`` -> ``np.ndarray (1, n_features)`` -- the shape a sklearn
-                                  estimator's ``predict`` expects.
-    ``extract_segments(p)``    -> ``np.ndarray (n_segments, n_features)`` -- the timeline
-                                  the per-segment decision is built from.
+    extract() gives one row per recording, extract_matrix() the (1, n) shape sklearn wants,
+    extract_segments() one row per segment.
     """
 
     def __init__(self, *, feature_config: dict[str, Any] | None = None, extractor_version: str | None = None) -> None:
@@ -165,9 +119,8 @@ class FeatureExtractor:
         self.extractor_version = extractor_version or FEATURE_SCHEMA_VERSION
         self.columns = feature_columns(self.config)
 
-    # -- introspection -----------------------------------------------------------------
     def describe(self) -> dict[str, Any]:
-        """Everything needed to reproduce this extractor's output, for the model bundle."""
+        """What a saved model bundle needs to reproduce this extractor's output."""
         return {
             "feature_version": self.feature_version,
             "extractor_version": self.extractor_version,
@@ -183,17 +136,12 @@ class FeatureExtractor:
             "config_source": self.config.get("_source"),
         }
 
-    # -- public API --------------------------------------------------------------------
     def extract(self, preprocessed_or_samples: Any, sample_rate: int | None = None) -> np.ndarray:
-        """One feature row for a whole recording.
+        """One feature row for a whole recording: the mean over its segments.
 
-        Aggregation is the **mean over the recording's segments**, not a single set of
-        statistics over the whole signal.  That matters: a 30 s upload and a 3 s training
-        clip then produce vectors with the same meaning and comparable scale, so a model
-        trained on 3 s clips does not see a systematically different distribution when a
-        user uploads a longer recording.  The tempo column is the exception -- it is
-        estimated once over the whole signal, because a 3 s window is too short for a
-        stable tempo and pretending otherwise would put noise in the column.
+        Averaging per-segment statistics keeps a 30 s upload on the same scale as a 3 s training
+        clip. Tempo is the exception, estimated over the whole signal because 3 s is too short
+        for a stable estimate.
         """
         y, sr, segments = _as_signal(preprocessed_or_samples, sample_rate)
         if y.size == 0:
@@ -209,17 +157,16 @@ class FeatureExtractor:
         matrix = np.vstack(rows)
         mean_vec = matrix.mean(axis=0)
 
-        # Overwrite the tempo column with the whole-recording estimate.
         tempo = estimate_tempo(y, sr, conf)
         mean_vec[int(self.columns.index("tempo_bpm"))] = tempo
         return np.ascontiguousarray(mean_vec, dtype=np.float32)
 
     def extract_matrix(self, preprocessed_or_samples: Any, sample_rate: int | None = None) -> np.ndarray:
-        """``extract`` as a 2-D row matrix -- what ``model.predict`` wants."""
+        """extract() as a (1, n_features) matrix."""
         return self.extract(preprocessed_or_samples, sample_rate).reshape(1, -1)
 
     def extract_segments(self, preprocessed_or_samples: Any, sample_rate: int | None = None) -> np.ndarray:
-        """One feature row per segment, in segment order (the per-segment timeline)."""
+        """One feature row per segment, in segment order."""
         y, sr, _ = _as_signal(preprocessed_or_samples, sample_rate)
         if y.size == 0:
             raise AudioRejected(UNREADABLE_FORMAT, "no samples to extract features from")
@@ -235,7 +182,7 @@ class FeatureExtractor:
         return np.ascontiguousarray(matrix, dtype=np.float32)
 
     def extract_from_file(self, path: str | Path, **preprocess_kwargs: Any) -> np.ndarray:
-        """Convenience path: file in, feature row out.  Preprocessing is config-driven."""
+        """File in, feature row out, with config-driven preprocessing."""
         from audio_preprocessing.pipeline import AudioPipeline, _import_contract
 
         _, PreprocessedAudio = _import_contract()
@@ -244,7 +191,6 @@ class FeatureExtractor:
             raise AudioRejected(UNREADABLE_FORMAT, pre.rejection_reason or "audio rejected", None)
         return self.extract(pre)
 
-    # -- internals ---------------------------------------------------------------------
     def _vector(self, y: np.ndarray, sr: int, conf: dict[str, Any], *, tempo_bpm: float | None) -> np.ndarray:
         blocks = _frame_blocks(y, sr, conf)
         values: list[float] = []
@@ -279,12 +225,9 @@ class FeatureExtractor:
         onset = blocks["onset"]
         duration = max(1e-6, y.size / float(sr))
         values += [float(onset.mean()), float(onset.max()), float(onset.size and blocks["n_onsets"]) / duration]
-        # Crest factor: peak minus RMS, in dB.  Its normal range is 3 dB (square) to ~20 dB
-        # (impulsive), and it is one of the few features that separates a Gunshot (high
-        # crest, very short transient in a quiet frame) from an Alarm or Siren (low crest,
-        # sustained).  On digital silence both terms are -inf and the difference is NaN --
-        # so it is floored to 0.0 with a note, because a feature vector that is NaN is
-        # rejected by the drift assertion below and would take the whole recording with it.
+        # Crest factor (peak minus RMS, dB): about 3 dB for a square wave, ~20 dB for an impulse.
+        # One of the few features separating a gunshot from a sustained alarm. On digital silence
+        # both terms are -inf, so it is floored to 0.0 rather than letting a NaN reject the row.
         crest_db = float(peak_dbfs(y) - rms_dbfs(y))
         if not np.isfinite(crest_db):
             crest_db = 0.0
@@ -304,12 +247,10 @@ class FeatureExtractor:
         return vec
 
 
-# --------------------------------------------------------------------------------------
 # Frame-level computation -- one STFT, everything else derived
-# --------------------------------------------------------------------------------------
 
 def _frame_blocks(y: np.ndarray, sr: int, conf: dict[str, Any]) -> dict[str, np.ndarray]:
-    """All frame-wise series for one signal.  The STFT is computed exactly once."""
+    """All frame-wise series for one signal, from a single STFT."""
     import librosa
 
     arr = to_mono(y)
@@ -331,19 +272,13 @@ def _frame_blocks(y: np.ndarray, sr: int, conf: dict[str, Any]) -> dict[str, np.
         S=power, sr=sr, n_fft=n_fft, hop_length=hop, win_length=n_fft,
         n_mels=n_mels, fmin=fmin, fmax=fmax, power=2.0,
     )
-    # Absolute log scale (ref=1.0, no top_db clipping) so the values are physical dB and
-    # remain comparable between recordings; a model can then rely on level, and a human
-    # can read a band energy off the plot without a per-file offset.
+    # Absolute dB (ref=1.0, no top_db) keeps band energies comparable between recordings.
     logmel = librosa.power_to_db(mel, ref=1.0, top_db=None)
 
     mfcc = librosa.feature.mfcc(S=logmel, n_mfcc=n_mfcc)
-    # librosa's default delta is a 9-frame Savitzky-Golay window.  A window shorter than
-    # ~0.5 s produces fewer than 9 analysis frames and the call dies with
-    # ParameterError "width=9 cannot exceed data.shape[axis]=3" -- a short upload or a
-    # truncated live window would take the whole pipeline down with it.  Shrink the
-    # window to the largest odd value the frame count supports (delta is symmetric, so an
-    # odd width keeps the centring the model was trained with); below 2 frames deltas are
-    # identically zero, which is the honest value for a signal with no time structure.
+    # librosa's delta uses a 9-frame window and raises on shorter input (a < 0.5 s window
+    # would crash the pipeline). Use the largest odd width the frame count allows; below 2
+    # frames the deltas are zero, which is the honest value.
     if bool(conf.get("include_delta_mfcc", True)):
         frames = int(mfcc.shape[1])
         width = min(9, frames if frames % 2 == 1 else max(0, frames - 1))
@@ -355,12 +290,8 @@ def _frame_blocks(y: np.ndarray, sr: int, conf: dict[str, Any]) -> dict[str, np.
     else:
         delta = np.zeros((1, mfcc.shape[1]), dtype=np.float32)
 
-    # Chroma needs a tonal estimate; on a signal with no spectral content (digital silence,
-    # pure broadband noise) librosa warns "Trying to estimate tuning from empty frequency
-    # set" and returns an all-zero chroma, which is the correct answer.  The warning is
-    # suppressed *for this call only*, rather than globally, so a genuine tuning warning
-    # elsewhere is still visible; a wall of warnings in the evaluator's console is how real
-    # problems get ignored.
+    # On a signal with no tonal content librosa warns and returns zero chroma, which is right.
+    # The warning is silenced for this call only so real tuning warnings stay visible.
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message=".*empty frequency set.*")
         chroma = librosa.feature.chroma_stft(
@@ -433,13 +364,7 @@ def _statistics(series: np.ndarray) -> dict[str, float]:
 
 
 def estimate_tempo(y: np.ndarray, sr: int, conf: dict[str, Any] | None = None) -> float:
-    """Tempo in BPM from the onset envelope (FR xx, "tempo where relevant").
-
-    A 3 s window is near librosa's minimum for a stable estimate, which is why the
-    whole-recording vector uses this function on the full signal rather than averaging
-    per-segment tempos.  Returns 0.0 when no periodicity is found -- an explicit "no
-    tempo", not a fabricated default.
-    """
+    """Tempo in BPM from the onset envelope; 0.0 means no periodicity was found."""
     import librosa
 
     conf = conf or _fc()
@@ -454,9 +379,7 @@ def estimate_tempo(y: np.ndarray, sr: int, conf: dict[str, Any] | None = None) -
     return value if np.isfinite(value) else 0.0
 
 
-# --------------------------------------------------------------------------------------
-# Log-mel tensor for the deep models (nadia) and the Teachable Machine frontend
-# --------------------------------------------------------------------------------------
+# Log-mel tensor for the deep models and the Teachable Machine frontend
 
 def segment_logmel(y: np.ndarray, sr: int, conf: dict[str, Any] | None = None) -> np.ndarray:
     """Log-mel (dB) of one segment, shaped exactly ``(n_mels, n_frames)`` from config."""
@@ -489,16 +412,10 @@ def segment_logmel(y: np.ndarray, sr: int, conf: dict[str, Any] | None = None) -
 def extract_mel_tensor(preprocessed_or_samples: Any, sample_rate: int | None = None, *,
                        segment_index: int | None = None,
                        feature_config: dict[str, Any] | None = None) -> np.ndarray:
-    """The log-mel tensor for one segment: ``(n_mels, n_frames)`` -- 128 x 94 at 3.0 s / 16 kHz.
+    """Log-mel tensor (dB, not normalised) for one segment: (n_mels, n_frames), 128 x 94 at 3 s.
 
-    ``segment_index=None`` selects the **loudest** segment by RMS (ties resolved to the
-    lowest index).  Loudest rather than first because a clip whose event starts two seconds
-    in would otherwise be scored on its leading room tone, and deterministic because two
-    runs of the same upload must give the same tensor.
-
-    Values are physical dB (``power_to_db(ref=1.0)``), **not** normalised: normalisation is
-    the model's decision, and keeping the tensor in dB keeps it readable as a spectrogram
-    plot and explainable to an evaluator.
+    ``segment_index=None`` takes the loudest segment (lowest index on ties), so a clip whose
+    event starts two seconds in is not scored on room tone.
     """
     y, sr, _ = _as_signal(preprocessed_or_samples, sample_rate)
     if y.size == 0:
@@ -511,12 +428,7 @@ def extract_mel_tensor(preprocessed_or_samples: Any, sample_rate: int | None = N
 
 def extract_mel_segments(preprocessed_or_samples: Any, sample_rate: int | None = None, *,
                          feature_config: dict[str, Any] | None = None) -> np.ndarray:
-    """Log-mel tensors for every segment: ``(n_segments, n_mels, n_frames)``.
-
-    This is what a CNN that pools over segments consumes, and what the spectrogram panel
-    draws.  Row *i* corresponds to ``PreprocessedAudio.segments[i]`` -- the timestamps and
-    the tensors cannot come apart.
-    """
+    """Log-mel tensors for every segment; row i matches PreprocessedAudio.segments[i]."""
     y, sr, segments = _as_signal(preprocessed_or_samples, sample_rate)
     if y.size == 0:
         raise AudioRejected(UNREADABLE_FORMAT, "no samples to build mel tensors from")
@@ -545,16 +457,13 @@ def _pick_segment(y: np.ndarray, sr: int, conf: dict[str, Any], segment_index: i
     return bounds[best_i]
 
 
-# --------------------------------------------------------------------------------------
 # Data for the UI panels
-# --------------------------------------------------------------------------------------
 
 def waveform_envelope(y: np.ndarray, sample_rate: int | None = None, n_points: int = 400) -> dict[str, list[float]]:
-    """Min/max envelope for the waveform panel: ``n_points`` buckets, peaks preserved.
+    """Min/max envelope for the waveform panel.
 
-    Peak-preserving min/max rather than averaging, because an averaged envelope hides
-    exactly the impulses (a gunshot, a glass break) the interface exists to show.  ``times``
-    are seconds when ``sample_rate`` is given, otherwise bucket indices.
+    Peak-preserving rather than averaged: averaging hides exactly the impulses (a gunshot, a
+    glass break) the panel exists to show.
     """
     arr = to_mono(y)
     if arr.size == 0:
@@ -602,18 +511,13 @@ def spectrogram_db(y: np.ndarray, sr: int, *, max_frames: int = 600,
     }
 
 
-# --------------------------------------------------------------------------------------
 # Helpers
-# --------------------------------------------------------------------------------------
 
 def _as_signal(source: Any, sample_rate: int | None = None) -> tuple[np.ndarray, int, list[tuple[float, float]]]:
-    """Accept a ``PreprocessedAudio``, a bare array, or any object with ``.samples``.
+    """Accept a PreprocessedAudio, a bare array, or anything with ``.samples``.
 
-    A scalar, a 0-d array or an empty array is refused rather than quietly becoming a
-    one-sample signal.  ``enumerate_segments(16000, 16000)`` -- someone passing a *count*
-    where the samples belong -- used to return a single 63-microsecond segment: a plausible
-    looking answer to a question nobody meant to ask.  This is the same class of silent bug
-    as a rate mismatch, so it raises.
+    A scalar or empty array raises instead of becoming a one-sample signal: passing a count
+    where samples belong used to return a plausible-looking 63-microsecond segment.
     """
     if sample_rate is not None:
         arr = np.asarray(source, dtype=np.float32)
@@ -640,9 +544,7 @@ def _as_signal(source: Any, sample_rate: int | None = None) -> tuple[np.ndarray,
     )
 
 
-# --------------------------------------------------------------------------------------
 # Module-level convenience
-# --------------------------------------------------------------------------------------
 
 def extract_features(preprocessed_or_samples: Any, sample_rate: int | None = None,
                      *, feature_config: dict[str, Any] | None = None) -> np.ndarray:

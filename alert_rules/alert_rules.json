@@ -1,6 +1,5 @@
 {
   "version": "1.0.0",
-  "owner": "sara",
   "srs_refs": [
     "FR xl (Repeated Event Confirmation)",
     "FR xli - FR l (per-category alert behaviour)",
@@ -20,10 +19,11 @@
 
   "how_this_file_is_meant_to_be_edited": "An administrator changes a NUMBER here and the next event is judged by the new number -- there is no restart and no code edit (SRS 1.8 integrity rule 5). The loader keys its cache on the file's modification time, so saving this file is enough. Run `python -m tools.show_alert_rules` to print what the loader actually resolved, which is the fastest way to prove a live edit took effect during a demonstration.",
 
-  "inheritance_note": "A value written as the string \"$thresholds.<dotted.path>\" is resolved at load time against config/thresholds.json. Numbers are therefore stated once, in lorena's file, and this file states only where a class DEVIATES from the global default. Editing config/thresholds.json changes every rule that inherits from it; writing a literal here overrides it for that one field.",
+  "inheritance_note": "A value written as the string \"$thresholds.<dotted.path>\" is resolved at load time against config/thresholds.json. Numbers are therefore stated once, in that file, and this file states only where a class DEVIATES from the global default. Editing config/thresholds.json changes every rule that inherits from it; writing a literal here overrides it for that one field.",
 
   "defaults": {
     "enabled": true,
+    "min_alert_severity": "Medium",
     "min_confidence": "$thresholds.confidence.min_confidence",
     "min_top_two_margin": "$thresholds.confidence.top_two_margin_min",
     "required_consecutive_detections": "$thresholds.repeat_detection.required_consecutive_detections",

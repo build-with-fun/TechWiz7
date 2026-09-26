@@ -1,25 +1,9 @@
-"""Pre-processing, decoding, validation and segmentation — tested step by step.
+"""Decoding, validation, preprocessing and segmentation (SRS Steps 3-4, FR viii-xv, xxii).
 
-Owner: taha.  SRS Step 3 (file validation), Step 4 (audio pre-processing), FR viii-xv,
-FR xii, FR xxii.
-
-WHY THESE TESTS ARE SHAPED THIS WAY
------------------------------------
-Every signal in this file is *synthesised* (a sine, a silence, a two-tone mix, a clipped
-square) and every assertion is on a number that can be reasoned about acoustically.  A
-fixture recording would make these tests depend on the dataset, and a test that only says
-"it ran" catches nothing: the failures that actually reach the UI are the quiet ones --
-a resampler that changes the duration, a mono downmix that sums instead of averages, a
-normaliser that clips, a trim that loses its time mapping, a segmenter whose segment
-length is a literal in the code instead of a config value.
-
-The one test that matters most for the competition is
-``test_segment_duration_comes_from_the_config_not_the_code``: an evaluator may change the
-segment duration live, and the app must follow.  It builds a temporary config directory,
-changes one key, and requires the segmentation AND the model input shape to move with it.
-
-Segment length is never written as a literal below.  It is read from the same config the
-pipeline reads, so this file cannot drift away from the running system.
+Every signal is synthesised (sine, silence, two-tone mix, clipped square) so each assertion
+is on a number with an acoustic meaning. Segment length is read from the same config the
+pipeline reads; test_segment_duration_comes_from_the_config_not_the_code checks that a live
+config change moves both the segmentation and the model input shape.
 """
 
 from __future__ import annotations
@@ -63,9 +47,7 @@ CONFIG_DIR = REPO_ROOT / "config"
 SR = int(cfg_mod.audio_config()["target_sample_rate"])
 
 
-# --------------------------------------------------------------------------------------
 # Synthetic material — deterministic, tiny, and explainable
-# --------------------------------------------------------------------------------------
 
 def sine(seconds: float, freq: float = 440.0, amplitude: float = 0.5, sr: int = SR) -> np.ndarray:
     """A pure tone.  Its peak and RMS are known analytically: peak=A, RMS=A/sqrt(2)."""
@@ -119,9 +101,7 @@ def temp_config(tmp_path: Path, **audio_overrides) -> Path:
     return directory
 
 
-# --------------------------------------------------------------------------------------
 # 1. Level arithmetic — the units everything else is judged in
-# --------------------------------------------------------------------------------------
 
 def test_peak_and_rms_dbfs_match_the_analytic_values():
     """A sine of amplitude 0.5 is -6.02 dBFS peak and -9.03 dBFS RMS (per definition).
@@ -139,9 +119,7 @@ def test_db_amplitude_round_trip():
         assert ap.transforms.amplitude_to_db(db_to_amplitude(db)) == pytest.approx(db, abs=1e-6)
 
 
-# --------------------------------------------------------------------------------------
 # 2. Channel handling and resampling
-# --------------------------------------------------------------------------------------
 
 def test_to_mono_averages_stereo_channels_rather_than_summing():
     """Averaging is the safe downmix: summing two full-scale channels clips at the addition.
@@ -179,9 +157,7 @@ def test_resample_is_a_no_op_at_the_same_rate():
     assert np.array_equal(resample(y, SR, SR), y)
 
 
-# --------------------------------------------------------------------------------------
 # 3. Amplitude normalisation (FR xi)
-# --------------------------------------------------------------------------------------
 
 def test_normalize_hits_the_target_peak_and_never_clips():
     y = sine(1.0, amplitude=0.02)
@@ -229,9 +205,7 @@ def test_normalize_gain_is_capped():
     assert peak_dbfs(out) == pytest.approx(-60.0, abs=0.5), "gain cap of 20 dB was exceeded"
 
 
-# --------------------------------------------------------------------------------------
 # 4. Conditioning filters
-# --------------------------------------------------------------------------------------
 
 def test_highpass_removes_dc_and_keeps_the_tone():
     y = (sine(1.0, freq=440.0) + 0.5).astype(np.float32)  # large DC offset
@@ -258,9 +232,7 @@ def test_preemphasis_is_off_by_default_and_deterministic_when_on():
     assert np.array_equal(preemphasis(y, 0.97), preemphasis(y, 0.97))
 
 
-# --------------------------------------------------------------------------------------
 # 5. Silence detection and trimming (FR xiv)
-# --------------------------------------------------------------------------------------
 
 def test_silence_mask_is_false_on_silence_and_true_on_a_tone():
     assert not silence_mask(silence(1.0), SR).any()
@@ -297,9 +269,7 @@ def test_trim_silence_never_returns_an_empty_signal():
     assert span[1] >= span[0]
 
 
-# --------------------------------------------------------------------------------------
 # 6. Noise reduction
-# --------------------------------------------------------------------------------------
 
 def test_reduce_noise_is_deterministic():
     """A learned denoiser would be a second undeclared model; a random one would make the
@@ -339,9 +309,7 @@ def test_reduce_noise_is_a_no_op_when_disabled_or_too_short():
                           sine(0.02))
 
 
-# --------------------------------------------------------------------------------------
 # 7. Segmentation and timestamps (FR xv)
-# --------------------------------------------------------------------------------------
 
 def test_segment_bounds_cover_every_sample():
     """"cover" mode must leave no region unanalysed — the SRS event-coverage requirement.
@@ -412,9 +380,7 @@ def test_segment_bounds_rejects_a_non_positive_segment_length():
         segment_bounds(SR, SR, 3.0, mode="diagonal")
 
 
-# --------------------------------------------------------------------------------------
 # 8. Padding / truncation
-# --------------------------------------------------------------------------------------
 
 def test_pad_or_truncate_returns_exactly_the_target_length():
     target = int(float(cfg_mod.audio_config()["segment_duration_sec"]) * SR)
@@ -438,9 +404,7 @@ def test_pad_or_truncate_center_keeps_the_signal_centred():
         pad_or_truncate(short, target, mode="random")
 
 
-# --------------------------------------------------------------------------------------
 # 9. File validation (SRS Step 3, FR viii) — every rejection has a reason code
-# --------------------------------------------------------------------------------------
 
 def test_validates_a_real_tone_and_reports_fr_x_metadata(tmp_path):
     path = write_wav(tmp_path / "tone.wav", sine(2.0))
@@ -529,9 +493,7 @@ def test_validating_samples_matches_validating_a_file(tmp_path):
     assert quiet["reason"] == SILENT
 
 
-# --------------------------------------------------------------------------------------
 # 10. Format conversion and decoding
-# --------------------------------------------------------------------------------------
 
 @pytest.mark.parametrize("target", ["mp3", "flac", "ogg", "m4a"])
 def test_convert_format_round_trips_through_the_target_codec(tmp_path, target):
@@ -568,9 +530,7 @@ def test_load_audio_rejects_an_unknown_format_instead_of_returning_zeros():
         ap.load_audio_bytes(b"not audio" * 10, filename="thing.wav")
 
 
-# --------------------------------------------------------------------------------------
 # 11. The whole pipeline, and the config-driven segment duration
-# --------------------------------------------------------------------------------------
 
 def test_pipeline_preprocesses_a_file_end_to_end(tmp_path):
     path = write_wav(tmp_path / "clip.wav", sine(1.5))
@@ -621,12 +581,8 @@ def test_pipeline_is_deterministic(tmp_path):
 
 
 def test_segment_duration_comes_from_the_config_not_the_code(tmp_path):
-    """THE LIVE-CHANGE TEST.
-
-    An evaluator may edit ``config/thresholds.json`` and expect the running app to follow.
-    This builds a temporary config directory with the segment duration changed and requires
-    three things to move together: the pipeline's segment length, the stored timestamps, and
-    the number of segments — with no code edit at all.
+    """Change the segment duration in a temporary config: segment length, timestamps and segment
+    count must all follow with no code edit.
     """
     original = float(cfg_mod.audio_config()["segment_duration_sec"])
     shorter = original / 2.0
@@ -683,7 +639,7 @@ def test_quality_meets_orders_the_verdicts():
     assert ap.quality_meets({"verdict": "Unusable"}, "Poor") is False
 
 
-def test_pipeline_describe_reports_the_frozen_contract_lorena_and_nadia_use():
+def test_pipeline_describe_reports_the_frozen_contract_the_trainers_use():
     described = ap.AudioPipeline().describe()
     assert described["target_sample_rate"] == SR
     assert described["target_channels"] == 1

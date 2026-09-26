@@ -1,0 +1,1104 @@
+{
+  "model_name": "classical_hist_gradient_boosting[learning_rate=0.1,max_depth=8,max_iter=400,max_leaf_nodes=31]+cw",
+  "model_version": "1.0.0",
+  "metrics": {
+    "model_name": "hist_gradient_boosting[learning_rate=0.1,max_depth=8,max_iter=400,max_leaf_nodes=31]+cw",
+    "model_version": "1.0.0",
+    "split": "test",
+    "n_records": 450,
+    "probe": false,
+    "probe_label": "",
+    "accuracy": 0.6977777777777778,
+    "macro_precision": 0.710751547234433,
+    "macro_recall": 0.6977777777777778,
+    "macro_f1": 0.6968120362385808,
+    "weighted_f1": 0.6968120362385808,
+    "critical_classes": [
+      "Gunshot",
+      "Glass Breaking",
+      "Panic Scream",
+      "Aggression",
+      "Person Asking for Help"
+    ],
+    "critical_recall": 0.8,
+    "critical_recall_by_class": {
+      "Glass Breaking": 0.7777777777777778,
+      "Gunshot": 0.9555555555555556,
+      "Panic Scream": 0.7777777777777778,
+      "Aggression": 0.4888888888888889,
+      "Person Asking for Help": 1.0
+    },
+    "top2_accuracy": 0.8444444444444444,
+    "per_class": [
+      {
+        "class_name": "Machinery Fault",
+        "index": 0,
+        "support": 45,
+        "predicted": 47,
+        "true_positive": 26,
+        "precision": 0.5531914893617021,
+        "recall": 0.5777777777777777,
+        "f1": 0.5652173913043478,
+        "is_critical": false
+      },
+      {
+        "class_name": "Glass Breaking",
+        "index": 1,
+        "support": 45,
+        "predicted": 54,
+        "true_positive": 35,
+        "precision": 0.6481481481481481,
+        "recall": 0.7777777777777778,
+        "f1": 0.707070707070707,
+        "is_critical": true
+      },
+      {
+        "class_name": "Alarm or Siren",
+        "index": 2,
+        "support": 45,
+        "predicted": 45,
+        "true_positive": 27,
+        "precision": 0.6,
+        "recall": 0.6,
+        "f1": 0.6,
+        "is_critical": false
+      },
+      {
+        "class_name": "Vehicle Horn",
+        "index": 3,
+        "support": 45,
+        "predicted": 31,
+        "true_positive": 27,
+        "precision": 0.8709677419354839,
+        "recall": 0.6,
+        "f1": 0.7105263157894737,
+        "is_critical": false
+      },
+      {
+        "class_name": "Animal Sound",
+        "index": 4,
+        "support": 45,
+        "predicted": 54,
+        "true_positive": 25,
+        "precision": 0.46296296296296297,
+        "recall": 0.5555555555555556,
+        "f1": 0.505050505050505,
+        "is_critical": false
+      },
+      {
+        "class_name": "Gunshot",
+        "index": 5,
+        "support": 45,
+        "predicted": 49,
+        "true_positive": 43,
+        "precision": 0.8775510204081632,
+        "recall": 0.9555555555555556,
+        "f1": 0.9148936170212767,
+        "is_critical": true
+      },
+      {
+        "class_name": "Panic Scream",
+        "index": 6,
+        "support": 45,
+        "predicted": 51,
+        "true_positive": 35,
+        "precision": 0.6862745098039216,
+        "recall": 0.7777777777777778,
+        "f1": 0.7291666666666667,
+        "is_critical": true
+      },
+      {
+        "class_name": "Aggression",
+        "index": 7,
+        "support": 45,
+        "predicted": 28,
+        "true_positive": 22,
+        "precision": 0.7857142857142857,
+        "recall": 0.4888888888888889,
+        "f1": 0.6027397260273972,
+        "is_critical": true
+      },
+      {
+        "class_name": "Person Asking for Help",
+        "index": 8,
+        "support": 45,
+        "predicted": 46,
+        "true_positive": 45,
+        "precision": 0.9782608695652174,
+        "recall": 1.0,
+        "f1": 0.989010989010989,
+        "is_critical": true
+      },
+      {
+        "class_name": "Background Noise",
+        "index": 9,
+        "support": 45,
+        "predicted": 45,
+        "true_positive": 29,
+        "precision": 0.6444444444444445,
+        "recall": 0.6444444444444445,
+        "f1": 0.6444444444444445,
+        "is_critical": false
+      }
+    ],
+    "confusion_matrix": [
+      [
+        26,
+        2,
+        1,
+        1,
+        7,
+        1,
+        0,
+        2,
+        0,
+        5
+      ],
+      [
+        2,
+        35,
+        3,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        3
+      ],
+      [
+        4,
+        7,
+        27,
+        1,
+        2,
+        0,
+        2,
+        1,
+        0,
+        1
+      ],
+      [
+        4,
+        1,
+        6,
+        27,
+        5,
+        0,
+        0,
+        1,
+        0,
+        1
+      ],
+      [
+        3,
+        1,
+        4,
+        2,
+        25,
+        0,
+        7,
+        0,
+        0,
+        3
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        43,
+        0,
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        2,
+        4,
+        0,
+        3,
+        0,
+        35,
+        1,
+        0,
+        0
+      ],
+      [
+        1,
+        1,
+        0,
+        0,
+        7,
+        3,
+        7,
+        22,
+        1,
+        3
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        45,
+        0
+      ],
+      [
+        6,
+        5,
+        0,
+        0,
+        5,
+        0,
+        0,
+        0,
+        0,
+        29
+      ]
+    ],
+    "class_names": [
+      "Machinery Fault",
+      "Glass Breaking",
+      "Alarm or Siren",
+      "Vehicle Horn",
+      "Animal Sound",
+      "Gunshot",
+      "Panic Scream",
+      "Aggression",
+      "Person Asking for Help",
+      "Background Noise"
+    ],
+    "severe_errors": [
+      {
+        "audio_id": "SS-AGG-0053",
+        "actual": "Aggression",
+        "predicted": "Background Noise",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-AGG-0057",
+        "actual": "Aggression",
+        "predicted": "Background Noise",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-AGG-0093",
+        "actual": "Aggression",
+        "predicted": "Machinery Fault",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-AGG-0097",
+        "actual": "Aggression",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-AGG-0503",
+        "actual": "Aggression",
+        "predicted": "Background Noise",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-AGG-0521",
+        "actual": "Aggression",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-AGG-0523",
+        "actual": "Aggression",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-AGG-0527",
+        "actual": "Aggression",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-AGG-0561",
+        "actual": "Aggression",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-AGG-0628",
+        "actual": "Aggression",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-AGG-0629",
+        "actual": "Aggression",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-GLA-0036",
+        "actual": "Glass Breaking",
+        "predicted": "Alarm or Siren",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-GLA-0056",
+        "actual": "Glass Breaking",
+        "predicted": "Alarm or Siren",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-GLA-0119",
+        "actual": "Glass Breaking",
+        "predicted": "Machinery Fault",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-GLA-0127",
+        "actual": "Glass Breaking",
+        "predicted": "Background Noise",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-GLA-0137",
+        "actual": "Glass Breaking",
+        "predicted": "Background Noise",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-GLA-0139",
+        "actual": "Glass Breaking",
+        "predicted": "Background Noise",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-GLA-0545",
+        "actual": "Glass Breaking",
+        "predicted": "Machinery Fault",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-GLA-0654",
+        "actual": "Glass Breaking",
+        "predicted": "Alarm or Siren",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-GUN-0030",
+        "actual": "Gunshot",
+        "predicted": "Machinery Fault",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-SCR-0008",
+        "actual": "Panic Scream",
+        "predicted": "Alarm or Siren",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-SCR-0062",
+        "actual": "Panic Scream",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-SCR-0081",
+        "actual": "Panic Scream",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-SCR-0550",
+        "actual": "Panic Scream",
+        "predicted": "Animal Sound",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-SCR-0555",
+        "actual": "Panic Scream",
+        "predicted": "Alarm or Siren",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-SCR-0650",
+        "actual": "Panic Scream",
+        "predicted": "Alarm or Siren",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-SCR-0671",
+        "actual": "Panic Scream",
+        "predicted": "Alarm or Siren",
+        "silent_miss": true,
+        "misattributed_alert": false
+      },
+      {
+        "audio_id": "SS-AGG-0019",
+        "actual": "Aggression",
+        "predicted": "Gunshot",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-AGG-0031",
+        "actual": "Aggression",
+        "predicted": "Gunshot",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-AGG-0058",
+        "actual": "Aggression",
+        "predicted": "Panic Scream",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-AGG-0064",
+        "actual": "Aggression",
+        "predicted": "Gunshot",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-AGG-0066",
+        "actual": "Aggression",
+        "predicted": "Glass Breaking",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-AGG-0507",
+        "actual": "Aggression",
+        "predicted": "Panic Scream",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-AGG-0528",
+        "actual": "Aggression",
+        "predicted": "Panic Scream",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-AGG-0551",
+        "actual": "Aggression",
+        "predicted": "Panic Scream",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-AGG-0588",
+        "actual": "Aggression",
+        "predicted": "Panic Scream",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-AGG-0589",
+        "actual": "Aggression",
+        "predicted": "Panic Scream",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-AGG-0592",
+        "actual": "Aggression",
+        "predicted": "Panic Scream",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-AGG-0654",
+        "actual": "Aggression",
+        "predicted": "Person Asking for Help",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-GLA-0023",
+        "actual": "Glass Breaking",
+        "predicted": "Gunshot",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-GLA-0077",
+        "actual": "Glass Breaking",
+        "predicted": "Gunshot",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-GUN-0106",
+        "actual": "Gunshot",
+        "predicted": "Aggression",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-SCR-0035",
+        "actual": "Panic Scream",
+        "predicted": "Glass Breaking",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-SCR-0047",
+        "actual": "Panic Scream",
+        "predicted": "Glass Breaking",
+        "silent_miss": false,
+        "misattributed_alert": true
+      },
+      {
+        "audio_id": "SS-SCR-0075",
+        "actual": "Panic Scream",
+        "predicted": "Aggression",
+        "silent_miss": false,
+        "misattributed_alert": true
+      }
+    ],
+    "config_snapshot": {
+      "selection": {
+        "winner": "hist_gradient_boosting[learning_rate=0.1,max_depth=8,max_iter=400,max_leaf_nodes=31]+cw",
+        "params": {
+          "_candidate": "hist_gradient_boosting",
+          "max_iter": 400,
+          "learning_rate": 0.1,
+          "max_leaf_nodes": 31,
+          "max_depth": 8,
+          "_weighted": true
+        },
+        "seed": 0,
+        "criterion": "macro_f1",
+        "rationale": "selected hist_gradient_boosting[learning_rate=0.1,max_depth=8,max_iter=400,max_leaf_nodes=31]+cw on validation macro_f1=0.7590 (val accuracy 0.7600, critical recall 0.8133) out of 28 trials; test split not used for selection. no candidate met the critical-recall floor of 0.85; selecting the best available on macro-F1 and flagging this in the report",
+        "n_trials": 28,
+        "trials": [
+          {
+            "candidate": "svm_rbf[C=1.0,gamma=scale]",
+            "params": {
+              "_candidate": "svm_rbf",
+              "C": 1.0,
+              "gamma": "scale"
+            },
+            "seed": 0,
+            "val_macro_f1": 0.6179122751739026,
+            "val_accuracy": 0.6444444444444445,
+            "val_critical_recall": 0.72,
+            "fit_seconds": 1.419,
+            "score_seconds": 0.189,
+            "note": ""
+          },
+          {
+            "candidate": "svm_rbf[C=1.0,gamma=scale]+cw",
+            "params": {
+              "_candidate": "svm_rbf",
+              "C": 1.0,
+              "gamma": "scale",
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.6179122751739026,
+            "val_accuracy": 0.6444444444444445,
+            "val_critical_recall": 0.72,
+            "fit_seconds": 1.32,
+            "score_seconds": 0.193,
+            "note": ""
+          },
+          {
+            "candidate": "svm_rbf[C=10.0,gamma=scale]",
+            "params": {
+              "_candidate": "svm_rbf",
+              "C": 10.0,
+              "gamma": "scale"
+            },
+            "seed": 0,
+            "val_macro_f1": 0.6281884143700762,
+            "val_accuracy": 0.6555555555555556,
+            "val_critical_recall": 0.6933333333333334,
+            "fit_seconds": 1.331,
+            "score_seconds": 0.179,
+            "note": ""
+          },
+          {
+            "candidate": "svm_rbf[C=10.0,gamma=scale]+cw",
+            "params": {
+              "_candidate": "svm_rbf",
+              "C": 10.0,
+              "gamma": "scale",
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.6281884143700762,
+            "val_accuracy": 0.6555555555555556,
+            "val_critical_recall": 0.6933333333333334,
+            "fit_seconds": 1.304,
+            "score_seconds": 0.168,
+            "note": ""
+          },
+          {
+            "candidate": "svm_rbf[C=100.0,gamma=scale]",
+            "params": {
+              "_candidate": "svm_rbf",
+              "C": 100.0,
+              "gamma": "scale"
+            },
+            "seed": 0,
+            "val_macro_f1": 0.6334804232320844,
+            "val_accuracy": 0.6622222222222223,
+            "val_critical_recall": 0.6977777777777778,
+            "fit_seconds": 1.371,
+            "score_seconds": 0.182,
+            "note": ""
+          },
+          {
+            "candidate": "svm_rbf[C=100.0,gamma=scale]+cw",
+            "params": {
+              "_candidate": "svm_rbf",
+              "C": 100.0,
+              "gamma": "scale",
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.6334804232320844,
+            "val_accuracy": 0.6622222222222223,
+            "val_critical_recall": 0.6977777777777778,
+            "fit_seconds": 1.351,
+            "score_seconds": 0.172,
+            "note": ""
+          },
+          {
+            "candidate": "random_forest[min_samples_leaf=1,n_estimators=500]",
+            "params": {
+              "_candidate": "random_forest",
+              "n_estimators": 500,
+              "max_depth": null,
+              "min_samples_leaf": 1
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7050540762816341,
+            "val_accuracy": 0.7066666666666667,
+            "val_critical_recall": 0.7955555555555556,
+            "fit_seconds": 2.129,
+            "score_seconds": 0.117,
+            "note": ""
+          },
+          {
+            "candidate": "random_forest[min_samples_leaf=1,n_estimators=500]+cw",
+            "params": {
+              "_candidate": "random_forest",
+              "n_estimators": 500,
+              "max_depth": null,
+              "min_samples_leaf": 1,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7050540762816341,
+            "val_accuracy": 0.7066666666666667,
+            "val_critical_recall": 0.7955555555555556,
+            "fit_seconds": 2.039,
+            "score_seconds": 0.116,
+            "note": ""
+          },
+          {
+            "candidate": "random_forest[min_samples_leaf=2,n_estimators=500]",
+            "params": {
+              "_candidate": "random_forest",
+              "n_estimators": 500,
+              "max_depth": null,
+              "min_samples_leaf": 2
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7012710736282848,
+            "val_accuracy": 0.7044444444444444,
+            "val_critical_recall": 0.7733333333333333,
+            "fit_seconds": 2.024,
+            "score_seconds": 0.107,
+            "note": ""
+          },
+          {
+            "candidate": "random_forest[min_samples_leaf=2,n_estimators=500]+cw",
+            "params": {
+              "_candidate": "random_forest",
+              "n_estimators": 500,
+              "max_depth": null,
+              "min_samples_leaf": 2,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7012710736282848,
+            "val_accuracy": 0.7044444444444444,
+            "val_critical_recall": 0.7733333333333333,
+            "fit_seconds": 1.942,
+            "score_seconds": 0.118,
+            "note": ""
+          },
+          {
+            "candidate": "random_forest[max_depth=20,min_samples_leaf=1,n_estimators=500]",
+            "params": {
+              "_candidate": "random_forest",
+              "n_estimators": 500,
+              "max_depth": 20,
+              "min_samples_leaf": 1
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7094098934694648,
+            "val_accuracy": 0.7111111111111111,
+            "val_critical_recall": 0.7955555555555556,
+            "fit_seconds": 1.939,
+            "score_seconds": 0.118,
+            "note": ""
+          },
+          {
+            "candidate": "random_forest[max_depth=20,min_samples_leaf=1,n_estimators=500]+cw",
+            "params": {
+              "_candidate": "random_forest",
+              "n_estimators": 500,
+              "max_depth": 20,
+              "min_samples_leaf": 1,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7094098934694648,
+            "val_accuracy": 0.7111111111111111,
+            "val_critical_recall": 0.7955555555555556,
+            "fit_seconds": 2.003,
+            "score_seconds": 0.106,
+            "note": ""
+          },
+          {
+            "candidate": "random_forest[max_depth=20,min_samples_leaf=2,n_estimators=500]",
+            "params": {
+              "_candidate": "random_forest",
+              "n_estimators": 500,
+              "max_depth": 20,
+              "min_samples_leaf": 2
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7028653508588182,
+            "val_accuracy": 0.7066666666666667,
+            "val_critical_recall": 0.768888888888889,
+            "fit_seconds": 1.853,
+            "score_seconds": 0.107,
+            "note": ""
+          },
+          {
+            "candidate": "random_forest[max_depth=20,min_samples_leaf=2,n_estimators=500]+cw",
+            "params": {
+              "_candidate": "random_forest",
+              "n_estimators": 500,
+              "max_depth": 20,
+              "min_samples_leaf": 2,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7028653508588182,
+            "val_accuracy": 0.7066666666666667,
+            "val_critical_recall": 0.768888888888889,
+            "fit_seconds": 1.891,
+            "score_seconds": 0.117,
+            "note": ""
+          },
+          {
+            "candidate": "extra_trees[min_samples_leaf=1,n_estimators=500]",
+            "params": {
+              "_candidate": "extra_trees",
+              "n_estimators": 500,
+              "min_samples_leaf": 1
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7030315007198171,
+            "val_accuracy": 0.7066666666666667,
+            "val_critical_recall": 0.7955555555555556,
+            "fit_seconds": 1.065,
+            "score_seconds": 0.118,
+            "note": ""
+          },
+          {
+            "candidate": "extra_trees[min_samples_leaf=1,n_estimators=500]+cw",
+            "params": {
+              "_candidate": "extra_trees",
+              "n_estimators": 500,
+              "min_samples_leaf": 1,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7030315007198171,
+            "val_accuracy": 0.7066666666666667,
+            "val_critical_recall": 0.7955555555555556,
+            "fit_seconds": 1.078,
+            "score_seconds": 0.116,
+            "note": ""
+          },
+          {
+            "candidate": "extra_trees[min_samples_leaf=2,n_estimators=500]",
+            "params": {
+              "_candidate": "extra_trees",
+              "n_estimators": 500,
+              "min_samples_leaf": 2
+            },
+            "seed": 0,
+            "val_macro_f1": 0.6888173386748656,
+            "val_accuracy": 0.6933333333333334,
+            "val_critical_recall": 0.7777777777777778,
+            "fit_seconds": 0.982,
+            "score_seconds": 0.117,
+            "note": ""
+          },
+          {
+            "candidate": "extra_trees[min_samples_leaf=2,n_estimators=500]+cw",
+            "params": {
+              "_candidate": "extra_trees",
+              "n_estimators": 500,
+              "min_samples_leaf": 2,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.6888173386748656,
+            "val_accuracy": 0.6933333333333334,
+            "val_critical_recall": 0.7777777777777778,
+            "fit_seconds": 0.978,
+            "score_seconds": 0.117,
+            "note": ""
+          },
+          {
+            "candidate": "gradient_boosting[learning_rate=0.1,max_depth=3,n_estimators=200]",
+            "params": {
+              "_candidate": "gradient_boosting",
+              "n_estimators": 200,
+              "learning_rate": 0.1,
+              "max_depth": 3
+            },
+            "seed": 0,
+            "val_macro_f1": 0.6895244047183283,
+            "val_accuracy": 0.6888888888888889,
+            "val_critical_recall": 0.7288888888888889,
+            "fit_seconds": 216.59,
+            "score_seconds": 0.013,
+            "note": ""
+          },
+          {
+            "candidate": "gradient_boosting[learning_rate=0.1,max_depth=3,n_estimators=200]+cw",
+            "params": {
+              "_candidate": "gradient_boosting",
+              "n_estimators": 200,
+              "learning_rate": 0.1,
+              "max_depth": 3,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.6895244047183283,
+            "val_accuracy": 0.6888888888888889,
+            "val_critical_recall": 0.7288888888888889,
+            "fit_seconds": 219.379,
+            "score_seconds": 0.013,
+            "note": ""
+          },
+          {
+            "candidate": "gradient_boosting[learning_rate=0.1,max_depth=5,n_estimators=200]",
+            "params": {
+              "_candidate": "gradient_boosting",
+              "n_estimators": 200,
+              "learning_rate": 0.1,
+              "max_depth": 5
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7217304034519841,
+            "val_accuracy": 0.72,
+            "val_critical_recall": 0.7422222222222222,
+            "fit_seconds": 343.114,
+            "score_seconds": 0.022,
+            "note": ""
+          },
+          {
+            "candidate": "gradient_boosting[learning_rate=0.1,max_depth=5,n_estimators=200]+cw",
+            "params": {
+              "_candidate": "gradient_boosting",
+              "n_estimators": 200,
+              "learning_rate": 0.1,
+              "max_depth": 5,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7217304034519841,
+            "val_accuracy": 0.72,
+            "val_critical_recall": 0.7422222222222222,
+            "fit_seconds": 343.219,
+            "score_seconds": 0.023,
+            "note": ""
+          },
+          {
+            "candidate": "xgboost[learning_rate=0.1,max_depth=4,n_estimators=300]",
+            "params": {
+              "_candidate": "xgboost",
+              "n_estimators": 300,
+              "learning_rate": 0.1,
+              "max_depth": 4
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7179232336973539,
+            "val_accuracy": 0.7177777777777777,
+            "val_critical_recall": 0.768888888888889,
+            "fit_seconds": 26.14,
+            "score_seconds": 0.006,
+            "note": ""
+          },
+          {
+            "candidate": "xgboost[learning_rate=0.1,max_depth=4,n_estimators=300]+cw",
+            "params": {
+              "_candidate": "xgboost",
+              "n_estimators": 300,
+              "learning_rate": 0.1,
+              "max_depth": 4,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7179232336973539,
+            "val_accuracy": 0.7177777777777777,
+            "val_critical_recall": 0.768888888888889,
+            "fit_seconds": 22.784,
+            "score_seconds": 0.008,
+            "note": ""
+          },
+          {
+            "candidate": "xgboost[learning_rate=0.1,max_depth=6,n_estimators=300]",
+            "params": {
+              "_candidate": "xgboost",
+              "n_estimators": 300,
+              "learning_rate": 0.1,
+              "max_depth": 6
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7176175231781039,
+            "val_accuracy": 0.72,
+            "val_critical_recall": 0.7866666666666667,
+            "fit_seconds": 28.52,
+            "score_seconds": 0.011,
+            "note": ""
+          },
+          {
+            "candidate": "xgboost[learning_rate=0.1,max_depth=6,n_estimators=300]+cw",
+            "params": {
+              "_candidate": "xgboost",
+              "n_estimators": 300,
+              "learning_rate": 0.1,
+              "max_depth": 6,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7176175231781039,
+            "val_accuracy": 0.72,
+            "val_critical_recall": 0.7866666666666667,
+            "fit_seconds": 29.536,
+            "score_seconds": 0.007,
+            "note": ""
+          },
+          {
+            "candidate": "hist_gradient_boosting[learning_rate=0.1,max_depth=8,max_iter=400,max_leaf_nodes=31]",
+            "params": {
+              "_candidate": "hist_gradient_boosting",
+              "max_iter": 400,
+              "learning_rate": 0.1,
+              "max_leaf_nodes": 31,
+              "max_depth": 8
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7590143495318344,
+            "val_accuracy": 0.76,
+            "val_critical_recall": 0.8133333333333332,
+            "fit_seconds": 10.341,
+            "score_seconds": 0.057,
+            "note": ""
+          },
+          {
+            "candidate": "hist_gradient_boosting[learning_rate=0.1,max_depth=8,max_iter=400,max_leaf_nodes=31]+cw",
+            "params": {
+              "_candidate": "hist_gradient_boosting",
+              "max_iter": 400,
+              "learning_rate": 0.1,
+              "max_leaf_nodes": 31,
+              "max_depth": 8,
+              "_weighted": true
+            },
+            "seed": 0,
+            "val_macro_f1": 0.7590143495318344,
+            "val_accuracy": 0.76,
+            "val_critical_recall": 0.8133333333333332,
+            "fit_seconds": 10.272,
+            "score_seconds": 0.073,
+            "note": ""
+          }
+        ]
+      },
+      "fitted_on": "train+val",
+      "critical_recall_floor": 0.85
+    }
+  },
+  "algorithm": "hist_gradient_boosting[learning_rate=0.1,max_depth=8,max_iter=400,max_leaf_nodes=31]+cw",
+  "spec_notes": "Histogram gradient boosting (sklearn's LightGBM): the strongest classical family on this feature set. Critical-class weighting travels as row weights via the shim, because HGB validates class_weight against its encoded labels.",
+  "class_weights": {
+    "Machinery Fault": 1.0,
+    "Glass Breaking": 2.0,
+    "Alarm or Siren": 1.0,
+    "Vehicle Horn": 1.0,
+    "Animal Sound": 1.0,
+    "Gunshot": 2.0,
+    "Panic Scream": 2.0,
+    "Aggression": 2.0,
+    "Person Asking for Help": 2.0,
+    "Background Noise": 1.0
+  },
+  "fitted_on": "train+val",
+  "n_features": 254,
+  "function": "python_models.classical",
+  "feature_importances": {},
+  "cv": {
+    "folds": 5,
+    "macro_f1_mean": 0.7452037446865891,
+    "macro_f1_std": 0.01418953771355765,
+    "macro_f1_scores": [
+      0.7393869352832427,
+      0.7399174976105661,
+      0.7548491089699924,
+      0.7639533670842441,
+      0.7279118144849002
+    ],
+    "accuracy_mean": 0.7466666666666667,
+    "critical_recall_mean": 0.8123809523809523,
+    "seed": 0
+  }
+}

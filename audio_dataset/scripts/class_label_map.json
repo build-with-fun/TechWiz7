@@ -1,6 +1,5 @@
 {
   "schema_version": "1.0.0",
-  "author": "omar",
   "purpose": "Maps the 10 mandatory SonicSentinel classes to FSD50K ground-truth labels and sets how many REAL field recordings to source per class. Data, not logic: changing a target here changes the corpus, nothing is hard-coded in the fetch script.",
   "corpus": {
     "name": "FSD50K",
@@ -45,7 +44,7 @@
     "Glass Breaking": {
       "real_target": 150,
       "labels": ["Glass", "Shatter", "Crushing", "Crack"],
-      "label_note": "Shatter/Crushing are the shatter-and-ring-down events the class requires (amina's rule: a bare crack with no ring-down is not Glass Breaking)."
+      "label_note": "Shatter/Crushing are the shatter-and-ring-down events the class requires (the psychoacoustics notes' rule: a bare crack with no ring-down is not Glass Breaking)."
     },
     "Alarm or Siren": {
       "real_target": 130,
@@ -65,17 +64,17 @@
     "Gunshot": {
       "real_target": 150,
       "labels": ["Gunshot_and_gunfire", "Machine_gun", "Artillery_fire", "Cap_gun", "Fusillade"],
-      "label_note": "Explosion/Fireworks deliberately EXCLUDED: the SRS lists Fireworks and Explosion as separate optional classes, and amina's P01/P02 say absorbing them into Gunshot destroys the only feature that separates them (the crackling multi-pop tail)."
+      "label_note": "Explosion/Fireworks deliberately EXCLUDED: the SRS lists Fireworks and Explosion as separate optional classes, and psychoacoustics notes P01/P02 say absorbing them into Gunshot destroys the only feature that separates them (the crackling multi-pop tail)."
     },
     "Panic Scream": {
       "real_target": 100,
       "labels": ["Screaming", "Yell"],
-      "label_note": "'Shout' is deliberately left to Aggression: amina P04 says scream vs shout is the phonation-mode boundary and must not be smeared by sourcing."
+      "label_note": "'Shout' is deliberately left to Aggression: psychoacoustics note P04 says scream vs shout is the phonation-mode boundary and must not be smeared by sourcing."
     },
     "Aggression": {
       "real_target": 100,
       "labels": ["Shout", "Growling", "Slam", "Thump_and_thud", "Bang"],
-      "label_note": "Aggression is a label-definition class (amina P05). Sourced as raised-voice/hostile-vocal plus the physical impacts of a violent conflict. Stated as a known limitation in the report."
+      "label_note": "Aggression is a label-definition class (psychoacoustics note P05). Sourced as raised-voice/hostile-vocal plus the physical impacts of a violent conflict. Stated as a known limitation in the report."
     },
     "Person Asking for Help": {
       "real_target": 0,

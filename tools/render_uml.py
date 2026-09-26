@@ -1,281 +1,637 @@
 #!/usr/bin/env python3
 """Render the five SRS-mandated UML diagrams as PNGs into diagrams/.
 
-Pure matplotlib (no plantuml/java dependency), deterministic layout. Diagrams:
-DFD (context + level-1), use case, activity, sequence (upload flow), decision flow
-(alert state machine).
+Every diagram is laid out on a fixed grid with straight arrows; ``label_spot`` keeps edge
+labels off the boxes. ``--check`` verifies structurally that no two boxes overlap, every
+edge stays clear of the boxes it does not connect, and all five PNGs exist.
+
+Pure matplotlib, no plantuml/java/graphviz binary required.
 """
 from __future__ import annotations
+
+import math
+import sys
+from dataclasses import dataclass
 
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.patches import FancyArrowPatch, Circle, Ellipse, Rectangle, Polygon
+from matplotlib.patches import Circle, Ellipse, FancyArrowPatch, Polygon, Rectangle
 
 REPO_ROOT = __import__("pathlib").Path(__file__).resolve().parents[1]
 OUT = REPO_ROOT / "diagrams"
-OUT.mkdir(exist_ok=True)
 
 INK = "#1f2933"
 ACCENT = "#0b5cad"
 SOFT = "#eef3f8"
 WARN = "#b34700"
+STORE_BG = "#f7f3ea"
+ACTOR_LINE = "#42526b"
+EDGES = []   # routed polylines of the current diagram, for --check
 
 
-def _save(fig, name: str) -> None:
-    fig.savefig(OUT / name, dpi=160, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
-    print("wrote", OUT / name)
+# ------------------------------------------------------------------ geometry
+@dataclass
+class Box:
+    """Axis-aligned node with named ports used for edge attachment."""
+    cx: float
+    cy: float
+    w: float
+    h: float
+    name: str = ""
+
+    @property
+    def x0(self):
+        return self.cx - self.w / 2
+
+    @property
+    def x1(self):
+        return self.cx + self.w / 2
+
+    @property
+    def y0(self):
+        return self.cy - self.h / 2
+
+    @property
+    def y1(self):
+        return self.cy + self.h / 2
+
+    def port(self, side: str):
+        return {"E": (self.x1, self.cy), "W": (self.x0, self.cy),
+                "N": (self.cx, self.y1), "S": (self.cx, self.y0)}[side]
+
+    def facing(self, other: "Box"):
+        """Port of this box that best faces another box's centre."""
+        dx, dy = other.cx - self.cx, other.cy - self.cy
+        return "E" if dx >= 0 else "W" if abs(dx) > abs(dy) else ("N" if dy >= 0 else "S")
+
+    def contains(self, x: float, y: float, pad: float = 0.0) -> bool:
+        return (self.x0 - pad <= x <= self.x1 + pad
+                and self.y0 - pad <= y <= self.y1 + pad)
 
 
-def arrow(fig, ax, xy_from, xy_to, label: str = "", rad: float = 0.0, style: str = "-|>") -> None:
-    ax.add_patch(FancyArrowPatch(xy_from, xy_to, arrowstyle=style, mutation_scale=14,
-                                 color=INK, lw=1.2,
-                                 connectionstyle=f"arc3,rad={rad}", zorder=1))
-    if label:
-        mx, my = (xy_from[0] + xy_to[0]) / 2, (xy_from[1] + xy_to[1]) / 2
-        ax.text(mx, my + 0.12, label, ha="center", va="bottom", fontsize=7.5, color=INK)
+def overlap(a: Box, b: Box, pad: float = 0.0) -> bool:
+    return not (a.x1 + pad <= b.x0 or b.x1 + pad <= a.x0
+                or a.y1 + pad <= b.y0 or b.y1 + pad <= a.y0)
 
 
-# ---------------------------------------------------------------- DFD context
-def dfd() -> None:
-    fig, ax = plt.subplots(figsize=(11, 6.5))
-    ax.set_xlim(0, 12); ax.set_ylim(0, 8); ax.axis("off")
-    ax.set_title("Data Flow Diagram — context and level 1", fontsize=12, weight="bold")
-
-    def ext(x, y, label):  # external entity: rectangle
-        ax.add_patch(Rectangle((x - 1.0, y - 0.45), 2.0, 0.9, fc="white", ec=INK, lw=1.4))
-        ax.text(x, y, label, ha="center", va="center", fontsize=9)
-
-    def proc(x, y, label):  # process: rounded box
-        ax.add_patch(Ellipse((x, y), 2.6, 1.15, fc=SOFT, ec=ACCENT, lw=1.6))
-        ax.text(x, y, label, ha="center", va="center", fontsize=8.5, color=ACCENT, weight="bold")
-
-    def store(x, y, label):  # data store: open-ended rectangle
-        ax.add_patch(Rectangle((x - 1.3, y - 0.4), 2.6, 0.8, fc="white", ec=INK, lw=1.2))
-        ax.plot([x - 1.3, x - 0.75], [y - 0.4, y - 0.4], color="white", lw=2)
-        ax.text(x, y, label, ha="center", va="center", fontsize=8)
-
-    ext(1.6, 6.8, "User")
-    ext(1.6, 4.6, "Reviewer")
-    ext(1.6, 2.2, "Security\nOperator")
-    ext(10.4, 6.8, "Admin")
-
-    proc(5.2, 6.8, "P1 Audio Ingestion\n& Preprocessing")
-    proc(8.3, 5.6, "P2 Dual-Model\nInference")
-    proc(5.2, 3.4, "P3 Comparison\n& Consistency")
-    proc(8.3, 2.0, "P4 Alerting &\nEscalation")
-    proc(2.9, 5.2, "P5 Manual\nReview")
-
-    store(6.9, 6.9, "D1 Audio Files")
-    store(11.0, 3.2, "D2 Events")
-    store(3.4, 1.0, "D3 Alerts")
-    store(8.0, 7.6, "D4 Model Bundles\n(Python + GTM)")
-
-    arrow(fig, ax, (2.6, 6.8), (4.2, 6.9), "clip upload")
-    arrow(fig, ax, (6.2, 6.6), (7.4, 5.6), "clean samples")
-    arrow(fig, ax, (9.3, 4.9), (6.2, 3.7), "both predictions")
-    arrow(fig, ax, (4.3, 3.3), (2.4, 4.2), "verdicts")
-    arrow(fig, ax, (6.2, 3.1), (7.3, 2.2), "event + consistency")
-    arrow(fig, ax, (8.3, 2.6), (2.6, 4.7), "critical event", rad=-0.25)
-    arrow(fig, ax, (2.6, 2.2), (7.3, 2.0), "ack / dismiss / escalate")
-    arrow(fig, ax, (9.4, 6.8), (9.0, 3.3), "retention & config", rad=-0.25)
-    arrow(fig, ax, (6.9, 6.6), (5.6, 6.9), "", rad=0.1, style="<|-|>")
-    arrow(fig, ax, (11.0, 3.6), (9.6, 4.6), "", rad=0.1, style="<|-|>")
-    _save(fig, "dfd.png")
-
-
-# ------------------------------------------------------------ use case
-def use_case() -> None:
-    fig, ax = plt.subplots(figsize=(11, 7))
-    ax.set_xlim(0, 12); ax.set_ylim(0, 9); ax.axis("off")
-    ax.set_title("Use Case Diagram", fontsize=12, weight="bold")
-
-    actors = {"Normal User": 1.4, "Audio Reviewer": 1.4, "Security Operator": 1.4, "Administrator": 1.4}
-    ys = {"Normal User": 7.6, "Audio Reviewer": 5.6, "Security Operator": 3.4, "Administrator": 1.2}
-
-    cases = {
-        "Upload Audio Clip": (5.6, 7.9),
-        "View Prediction & Spectrogram": (6.0, 6.9),
-        "View Model Comparison": (6.2, 6.0),
-        "Decide Manual Review": (6.0, 5.1),
-        "Acknowledge / Dismiss Alert": (6.3, 4.1),
-        "Escalate Alert": (6.1, 3.3),
-        "Live Microphone Monitoring": (6.5, 2.4),
-        "Manage Users & Config": (8.9, 1.4),
-        "Run Retention Purge": (9.0, 0.6),
-        "Export Reports (CSV/XLSX)": (9.3, 6.8),
-    }
-
-    ax.add_patch(Rectangle((4.4, 0.05), 6.6, 8.5, fc="none", ec=INK, ls="--", lw=1.2))
-    for name, (x, y) in cases.items():
-        ax.add_patch(Ellipse((x, y), 3.6 if x < 8 else 2.9, 0.78, fc=SOFT, ec=ACCENT, lw=1.3))
-        ax.text(x, y, name, ha="center", va="center", fontsize=7.6, color=ACCENT)
-
-    ax.add_patch(Circle((1.4, 7.6), 0.22, fc="white", ec=INK)); ax.plot([1.4, 1.4], [7.38, 6.85], color=INK)
-    ax.plot([1.05, 1.75], [7.05, 7.05], color=INK); ax.plot([1.4, 1.4], [7.05, 6.7], color=INK)
-    ax.plot([1.4, 1.15], [6.7, 6.3], color=INK); ax.plot([1.4, 1.65], [6.7, 6.7], color=INK)
-    ax.text(1.4, 6.35, "Normal User", ha="center", fontsize=8)
-
-    links = {
-        "Normal User": ["Upload Audio Clip", "View Prediction & Spectrogram",
-                        "View Model Comparison", "Live Microphone Monitoring"],
-        "Audio Reviewer": ["Decide Manual Review"],
-        "Security Operator": ["Acknowledge / Dismiss Alert", "Escalate Alert"],
-        "Administrator": ["Manage Users & Config", "Run Retention Purge", "Export Reports (CSV/XLSX)"],
-    }
-    for a, ys_ in links.items():
-        y = ys.get(a, 1.2)
-        for c in ys_:
-            tgt = cases.get(c)
-            if tgt is None:
-                tgt = (8.9, 1.4) if c.startswith("Manage") else (9.0, 6.0)
-            arrow(fig, ax, (1.75, y), (tgt[0] - 1.6, tgt[1]), rad=0.06)
-    _save(fig, "use_case.png")
-
-
-# ------------------------------------------------------------ activity
-def activity() -> None:
-    fig, ax = plt.subplots(figsize=(9, 12))
-    ax.set_xlim(0, 10); ax.set_ylim(0, 16); ax.axis("off")
-    ax.set_title("Activity Diagram — clip evaluation end to end", fontsize=12, weight="bold")
-
-    def node(x, y, w, h, label, kind="action"):
-        if kind == "start":
-            ax.add_patch(Circle((x, y), 0.18, fc=INK, ec=INK))
-        elif kind == "end":
-            ax.add_patch(Circle((x, y), 0.22, fc="none", ec=INK, lw=1.6))
-            ax.add_patch(Circle((x, y), 0.13, fc=INK, ec=INK))
-        elif kind == "decision":
-            ax.add_patch(Polygon([(x, y + 0.55), (x + 1.05, y), (x, y - 0.55), (x - 1.05, y)],
-                                 fc="#fff7e6", ec=WARN, lw=1.4))
-            ax.text(x, y, label, ha="center", va="center", fontsize=7.4)
+def seg_clear_box(p, q, b, pad=0.02):
+    """True if segment p-q stays outside box b (Liang-Barsky on padded rect)."""
+    x0, x1, y0, y1 = b.x0 - pad, b.x1 + pad, b.y0 - pad, b.y1 + pad
+    dx, dy = q[0] - p[0], q[1] - p[1]
+    tmin, tmax = 0.0, 1.0
+    for p_val, d, lo, hi in ((p[0], dx, x0, x1), (p[1], dy, y0, y1)):
+        if abs(d) < 1e-12:
+            if p_val < lo or p_val > hi:
+                return True
         else:
-            ax.add_patch(Rectangle((x - w / 2, y - h / 2), w, h, fc=SOFT, ec=ACCENT, lw=1.3, joinstyle="round"))
-            ax.text(x, y, label, ha="center", va="center", fontsize=8)
+            t1, t2 = (lo - p_val) / d, (hi - p_val) / d
+            if t1 > t2:
+                t1, t2 = t2, t1
+            tmin = max(tmin, t1)
+            tmax = min(tmax, t2)
+            if tmin >= tmax:
+                return True
+    return False
 
-    X = 5
-    node(X, 15.3, 0, 0, "", "start")
-    seq = [
-        (14.4, "Receive upload / live window"),
-        (13.5, "Validate content (magic bytes,\nduration, sample rate)"),
-        (12.6, "Preprocess: decode, resample\nto 16 kHz mono"),
-        (11.6, "Audio quality verdict\n(Good / Acceptable / Poor / Unusable)"),
-        (10.5, "Extract features\n(audiofeat-1.0.0)"),
+
+def path_clear(pts, boxes, pad=0.02):
+    """Every segment of a routed path must miss every box."""
+    for b in boxes:
+        for p, q in zip(pts, pts[1:]):
+            if not seg_clear_box(p, q, b, pad):
+                return False
+    return True
+
+
+def label_spot(pts, boxes, w_label=1.9, h_label=0.34):
+    """Find a label anchor that does not overlap any node box."""
+    for k in range(len(pts) - 1):
+        (x0, y0), (x1, y1) = pts[k], pts[k + 1]
+        mx, my = (x0 + x1) / 2, (y0 + y1) / 2
+        dx, dy = x1 - x0, y1 - y0
+        L = math.hypot(dx, dy) or 1.0
+        ox, oy = -dy / L * 0.17, dx / L * 0.17
+        for px, py in ((mx + ox, my + oy), (mx - ox, my - oy),
+                       (mx, my + 0.15), (mx, my - 0.15)):
+            cand = Box(px, py, w_label, h_label)
+            if not any(overlap(cand, b, pad=0.04) for b in boxes):
+                return (px, py)
+    cx = (pts[0][0] + pts[-1][0]) / 2
+    return (cx, (pts[0][1] + pts[-1][1]) / 2 + 0.18)
+
+
+# ------------------------------------------------------------------ drawing
+def edge(ax, pts, label="", boxes=(), color=INK, lw=1.2, rad=0.0, fs=7.6,
+        dashed=False, arrow="-|>"):
+    """Draw a routed orthogonal path with an arrowhead and safe label."""
+    if len(pts) >= 2:
+        EDGES.append(list(pts))
+        ax.plot([p[0] for p in pts], [p[1] for p in pts],
+                color=color, lw=lw, solid_capstyle="round", zorder=2,
+                ls=(0, (4, 3)) if dashed else "-")
+        ax.add_patch(FancyArrowPatch(pts[-2], pts[-1], arrowstyle=arrow,
+                                     mutation_scale=13, color=color, lw=lw, zorder=3))
+    if label:
+        spot = label_spot(pts, boxes) if len(pts) >= 2 else ((pts[0][0], pts[0][1] + 0.15))
+        ax.text(spot[0], spot[1], label, ha="center", va="center", fontsize=fs,
+                color=INK, zorder=6,
+                bbox=dict(boxstyle="round,pad=0.18", fc="white", ec="none", alpha=0.92))
+
+
+def straight(ax, a, b, label="", boxes=(), color=INK, lw=1.2, fs=7.6):
+    edge(ax, [a, b], label, boxes, color, lw, fs=fs)
+
+
+def title(ax, text, sub=""):
+    ax.set_title(text, fontsize=12.5, weight="bold", color=INK, pad=24)
+    if sub:
+        ax.text(0.5, 1.005, sub, transform=ax.transAxes, ha="center", va="bottom",
+                fontsize=7.6, color="#7b8794")
+
+
+def save(fig, name):
+    OUT.mkdir(exist_ok=True)
+    fig.savefig(OUT / name, dpi=200, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+    print(f"  wrote {OUT / name}")
+
+
+# --------------------------------------------------------------------- DFD
+def dfd():
+    """Level-1 data flow: entities left, processes in the middle, stores right.
+
+    Redrawn on 26 Sep with a fixed grid so that every flow is a straight horizontal or
+    vertical arrow; the routed version overlapped labels and crossed its own lines.
+    """
+    fig, ax = plt.subplots(figsize=(14.5, 11.5))
+    W, H = 17.0, 13.2
+    ax.set_xlim(0, W), ax.set_ylim(0.6, H)
+    ax.axis("off")
+    title(ax, "Data Flow Diagram — level 1",
+          "Rectangles: people outside the system · blue: processes · beige: data stores")
+
+    def entity(cx, cy, label):
+        b = Box(cx, cy, 2.9, 1.0, label)
+        ax.add_patch(Rectangle((b.x0, b.y0), b.w, b.h, fc="white", ec=INK, lw=2.0, zorder=4))
+        ax.text(cx, cy, label, ha="center", va="center", fontsize=9, zorder=5)
+        return b
+
+    def process(cx, cy, label):
+        b = Box(cx, cy, 4.4, 1.15, label)
+        ax.add_patch(FancyBboxRaw(b, SOFT, ACCENT))
+        ax.text(cx, cy, label, ha="center", va="center", fontsize=8.8, color=ACCENT,
+                weight="bold", zorder=5)
+        return b
+
+    def store(cx, cy, key, label, h=1.0):
+        b = Box(cx, cy, 3.6, h, label)
+        ax.add_patch(Rectangle((b.x0, b.y0), b.w, b.h, fc=STORE_BG, ec=INK, lw=1.3, zorder=4))
+        ax.plot([b.x0 + 0.55, b.x0 + 0.55], [b.y0, b.y1], color=INK, lw=1.0, zorder=5)
+        ax.text(b.x0 + 0.27, cy, key, ha="center", va="center", fontsize=8.5, weight="bold", zorder=5)
+        ax.text(b.x0 + 0.55 + (b.w - 0.55) / 2, cy, label, ha="center", va="center",
+                fontsize=8.4, zorder=5)
+        return b
+
+    XE, XP, XS = 2.0, 8.4, 14.6
+    user = entity(XE, 11.6, "User / operator")
+    admin = entity(XE, 7.2, "Administrator")
+    security = entity(XE, 4.6, "Security operator")
+    reviewer = entity(XE, 2.2, "Audio reviewer")
+
+    p1 = process(XP, 11.6, "P1  Validate &\npreprocess audio")
+    p2 = process(XP, 9.4, "P2  Score with both\nmodels (independently)")
+    p3 = process(XP, 7.2, "P3  Compare, rules,\nreview routing")
+    p4 = process(XP, 4.6, "P4  Alert handling")
+    p5 = process(XP, 2.2, "P5  Manual review")
+
+    d1 = store(XS, 11.6, "D1", "Audio files")
+    d4 = store(XS, 9.4, "D4", "Model bundles\n(Python + TM)")
+    d2 = store(XS, 7.2, "D2", "Events, scores,\nmodel versions")
+    d3 = store(XS, 3.4, "D3", "Alerts, reviews,\naudit log", h=3.4)
+    boxes = [user, admin, security, reviewer, p1, p2, p3, p4, p5, d1, d4, d2, d3]
+
+    def h_pair(left, right, to_right, to_left):
+        """Two horizontal flows between side-by-side nodes, one each way."""
+        y_hi, y_lo = left.cy + 0.22, left.cy - 0.22
+        if to_right:
+            straight(ax, (left.x1, y_hi), (right.x0, y_hi), to_right, boxes)
+        if to_left:
+            straight(ax, (right.x0, y_lo), (left.x1, y_lo), to_left, boxes)
+
+    def one(a, b, label, y=None):
+        y = a.cy if y is None else y
+        if a.cx < b.cx:
+            straight(ax, (a.x1, y), (b.x0, y), label, boxes)
+        else:
+            straight(ax, (a.x0, y), (b.x1, y), label, boxes)
+
+    h_pair(user, p1, "clip or 2 s window", "result, event page")
+    one(p1, d1, "stored original")
+    straight(ax, (p1.cx, p1.y0), (p2.cx, p2.y1), "16 kHz mono samples", boxes)
+    one(d4, p2, "loaded at start-up")
+    straight(ax, (p2.cx, p2.y0), (p3.cx, p3.y1), "two score lists", boxes)
+    one(admin, p3, "thresholds, alert rules")
+    one(p3, d2, "event record")
+    straight(ax, (p3.cx - 1.2, p3.y0), (p4.cx - 1.2, p4.y1), "confirmed alert", boxes)
+    h_pair(security, p4, "ack / dismiss / escalate", "open alerts")
+    one(p4, d3, "alert state + audit")
+    # Review items bypass alert handling: a straight line to the right of P4.
+    xr = p4.x1 + 0.45
+    ax.plot([p3.x1 - 0.3, p3.x1 - 0.3, xr], [p3.y0, p3.y0 - 0.35, p3.y0 - 0.35], color=INK, lw=1.2, zorder=2)
+    # The line passes under the P4 -> D3 arrow; the gap marks a crossing, not a join.
+    gap = 0.14
+    ax.plot([xr, xr], [p3.y0 - 0.35, p4.cy + gap], color=INK, lw=1.2, zorder=2)
+    ax.plot([xr, xr], [p4.cy - gap, p5.cy + 0.25], color=INK, lw=1.2, zorder=2)
+    straight(ax, (xr, p5.cy + 0.25), (p5.x1, p5.cy + 0.25), "", boxes)
+    ax.text(xr + 0.12, (p4.y0 + p5.y1) / 2, "uncertain event", fontsize=7.6, va="center", zorder=6,
+            bbox=dict(boxstyle="round,pad=0.18", fc="white", ec="none", alpha=0.92))
+    h_pair(reviewer, p5, "decision, comment", "audio + both models")
+    one(p5, d3, "decision (model output kept)", y=p5.cy - 0.25)
+    save(fig, "dfd.png")
+    return boxes
+
+
+def FancyBbox(b, fc=SOFT, ec=ACCENT):
+    return FancyBboxRaw(b, fc, ec)
+
+
+def FancyBboxRaw(b, fc, ec):
+    return Rectangle((b.x0, b.y0), b.w, b.h, fc=fc, ec=ec, lw=1.5,
+                     joinstyle="round", zorder=4)
+
+
+# --------------------------------------------------------------- use case
+def use_case():
+    """Five SRS roles and what each may do, taken from ROLE_CAPABILITIES in src/auth.py.
+
+    Redrawn on 26 Sep: the earlier version put the use cases outside the system
+    boundary, on top of the actors, and showed only four of the five roles.
+    """
+    groups = [
+        ("Normal user", ["Register, sign in, edit profile", "Upload audio (one or a batch)",
+                         "Live microphone monitoring", "View own events: playback,\nwaveform, spectrogram, both models"]),
+        ("Audio reviewer", ["Search all events, analytics,\nreports", "Review queue: confirm or\ncorrect the class, comment"]),
+        ("Security operator", ["Acknowledge, dismiss or\nescalate alerts", "Alert history"]),
+        ("Maintenance operator", ["Edit thresholds and\nalert rules", "Register / activate\nmodel versions"]),
+        ("Administrator", ["Manage users and roles", "Export CSV / Excel",
+                           "Read the audit trail", "Configure and run retention"]),
     ]
-    for y, label in seq:
-        node(X, y, 4.6, 1.0, label)
-        arrow(fig, ax, (X, y + 1.1), (X, y + 0.62))
+    n_cases = sum(len(c) for _, c in groups)
+    step, gap = 1.05, 0.55
+    H = n_cases * step + gap * (len(groups) - 1) + 2.4
+    W = 14.0
+    fig, ax = plt.subplots(figsize=(11.5, H * 0.72))
+    ax.set_xlim(0, W), ax.set_ylim(0, H)
+    ax.axis("off")
+    title(ax, "Use Case Diagram",
+          "Every role can also do everything a normal user can; the administrator can do everything")
+    ax.add_patch(Rectangle((4.0, 0.3), W - 4.3, H - 1.3, fill=False, ec=INK, lw=1.4,
+                           ls=(0, (5, 4)), zorder=1))
+    ax.text(4.2, H - 1.25, "SonicSentinel AI", fontsize=9.5, weight="bold", va="top", color=INK)
 
-    node(X, 9.3, 0, 0, "quality\nusable?", "decision")
-    arrow(fig, ax, (X, 10.0), (X, 9.85))
-    node(X + 3.4, 9.3, 2.9, 0.95, "Quarantine clip;\nrecord unusable event")
-    arrow(fig, ax, (X + 1.05, 9.3), (X + 1.95, 9.3), "no")
-    arrow(fig, ax, (X, 8.75), (X, 8.35), "yes")
-
-    node(X, 7.8, 4.4, 1.05, "Python model inference\n(class + confidences)")
-    arrow(fig, ax, (X, 8.35), (X, 8.32))
-    node(X, 6.6, 4.4, 1.05, "GTM model inference\n(independent frontend)")
-    arrow(fig, ax, (X, 7.27), (X, 7.12))
-    node(X, 5.4, 4.6, 1.05, "Compare: class match,\n|conf diff|, margins")
-    arrow(fig, ax, (X, 6.07), (X, 5.92))
-
-    node(X, 4.2, 0, 0, "critical class\n& rules met?", "decision")
-    arrow(fig, ax, (X, 4.87), (X, 4.75))
-    node(X - 3.1, 4.2, 2.8, 0.95, "Raise alert\n(Open state)")
-    node(X + 3.1, 4.2, 3.0, 0.95, "Record event only;\nqueue manual review")
-    arrow(fig, ax, (X - 1.05, 4.2), (X - 1.7, 4.2), "yes")
-    arrow(fig, ax, (X + 1.05, 4.2), (X + 1.6, 4.2), "no")
-    arrow(fig, ax, (X - 3.1, 3.72), (X - 3.1, 3.1))
-    arrow(fig, ax, (X + 3.1, 3.72), (X, 3.3), rad=0.1)
-
-    node(X, 2.9, 4.0, 1.0, "Persist event, comparison\nand audit trail")
-    node(X, 1.9, 4.2, 0.95, "Notify / display in dashboard")
-    arrow(fig, ax, (X, 2.4), (X, 2.37))
-    node(X, 0.7, 0, 0, "", "end")
-    arrow(fig, ax, (X, 1.42), (X, 0.92))
-    _save(fig, "activity.png")
+    boxes = []
+    y = H - 2.0
+    for actor, cases in groups:
+        top = y
+        centres = []
+        for case in cases:
+            e = Box(9.0, y, 5.6, 0.86, case)
+            ax.add_patch(Ellipse((e.cx, e.cy), e.w, e.h, fc=SOFT, ec=ACCENT, lw=1.4, zorder=4))
+            ax.text(e.cx, e.cy, case, ha="center", va="center", fontsize=7.8, color=INK, zorder=5)
+            boxes.append(e)
+            centres.append(e)
+            y -= step
+        ay = (top + y + step) / 2
+        stick(ax, 1.6, ay)
+        ax.text(1.6, ay - 0.62, actor, ha="center", va="top", fontsize=8.6, weight="bold", color=INK)
+        for e in centres:
+            ex, ey = ellipse_boundary(e, 1.9, ay)
+            ax.plot([1.9, ex], [ay, ey], color=ACTOR_LINE, lw=1.0, zorder=2)
+        y -= gap
+    save(fig, "use_case.png")
+    return boxes
 
 
-# ------------------------------------------------------------ sequence
-def sequence() -> None:
-    fig, ax = plt.subplots(figsize=(12, 8))
-    ax.set_xlim(0, 14); ax.set_ylim(0, 11); ax.axis("off")
-    ax.set_title("Sequence Diagram — upload → dual inference → comparison → alert", fontsize=12, weight="bold")
+def stick(ax, x, y, s=0.26):
+    """UML stick figure centred at (x, y)."""
+    ax.add_patch(Circle((x, y + 0.52), s, fc="white", ec=INK, lw=1.4, zorder=4))
+    ax.plot([x, x], [y + 0.52 - s, y - 0.02], color=INK, lw=1.4, zorder=4)
+    ax.plot([x - 0.3, x + 0.3], [y + 0.26, y + 0.26], color=INK, lw=1.4, zorder=4)
+    ax.plot([x, x - 0.26], [y - 0.02, y - 0.5], color=INK, lw=1.4, zorder=4)
+    ax.plot([x, x + 0.26], [y - 0.02, y - 0.5], color=INK, lw=1.4, zorder=4)
 
-    lanes = {"User": 1.5, "Web App": 4.3, "Preproc\nService": 6.9, "Python\nModel": 9.2, "GTM\nModel": 11.4, "DB +\nAlerts": 13.0}
-    key = lambda s: {"Preproc Service": "Preproc\nService", "Python Model": "Python\nModel",
-                     "GTM Model": "GTM\nModel", "DB + Alerts": "DB +\nAlerts"}.get(s, s)
-    for name, x in lanes.items():
-        ax.add_patch(Rectangle((x - 0.9, 10.1), 1.8, 0.5, fc=SOFT, ec=ACCENT, lw=1.2))
-        ax.text(x, 10.35, name, ha="center", va="center", fontsize=8, color=ACCENT, weight="bold")
-        ax.plot([x, x], [0.4, 10.1], color="#9aa5b1", lw=1, ls=":")
+
+def ellipse_boundary(e: Box, px, py):
+    """Point on ellipse `e` nearest the ray from its centre toward (px, py)."""
+    dx, dy = px - e.cx, py - e.cy
+    a, b = e.w / 2, e.h / 2
+    denom = math.hypot(dx / a, dy / b) or 1.0
+    t = 1.0 / denom
+    return e.cx + dx * t, e.cy + dy * t
+
+
+# ---------------------------------------------------------------- activity
+def activity():
+    fig, ax = plt.subplots(figsize=(10.4, 16.4))
+    W, H = 11.6, 19.4
+    ax.set_xlim(-0.2, W), ax.set_ylim(0.8, H)
+    ax.axis("off")
+    title(ax, "Activity Diagram — clip evaluation, end to end",
+          "Filled circle = start · ring = end · diamond = decision")
+
+    X = 5.4
+    nodes = {}
+
+    def act(key, x, y, label, w=4.9, h=1.05):
+        b = Box(x, y, w, h, label)
+        nodes[key] = b
+        ax.add_patch(FancyBboxRaw(b, SOFT, ACCENT))
+        ax.text(x, y, label, ha="center", va="center", fontsize=8.4, zorder=5)
+        return b
+
+    def dec(key, x, y, label, w=2.5, h=1.3):
+        b = Box(x, y, w, h, label)
+        nodes[key] = b
+        ax.add_patch(Polygon([(x, y + h / 2), (x + w / 2, y), (x, y - h / 2), (x - w / 2, y)],
+                             fc="#fff7e6", ec=WARN, lw=1.4, zorder=4))
+        ax.text(x, y, label, ha="center", va="center", fontsize=7.5, zorder=5)
+        return b
+
+    boxes = []
+    top = 18.5
+    ax.add_patch(Circle((X, top), 0.2, fc=INK, ec=INK, zorder=4))
+    nodes["start"] = Box(X, top, 0.42, 0.42, "start")
+    boxes.append(nodes["start"])
+
+    # Order follows AudioPipeline._run and AnalysisPipeline.analyse (corrected 26 Sep:
+    # the usable check happens before any model runs, and the Python model now uses
+    # CNN14 embeddings rather than the 254 hand-made features).
+    flow = ["receive", "validate", "quality"]
+    labels = {
+        "receive": "Receive upload / 2 s live window",
+        "validate": "Decode and validate\n(format, size, duration, integrity)",
+        "quality": "Audio quality verdict\n(Good / Acceptable / Poor / Unusable)",
+        "preprocess": "Preprocess: high-pass, denoise, trim,\nnormalise, 16 kHz mono",
+        "py": "Python model: CNN14 embedding -> MLP\n(scores for all ten classes)",
+        "gtm": "Teachable Machine: loudest 1 s -> browser FFT\n(never sees the Python output)",
+        "compare": "Compare both models; send to manual review\nif they disagree or confidence/quality is low",
+    }
+    ys = {"receive": 16.3, "validate": 15.1, "quality": 13.9, "preprocess": 10.9,
+          "py": 9.7, "gtm": 8.5, "compare": 7.3}
+    SIDE = X + 3.9
+    for k in flow:
+        act(k, X, ys[k], labels[k])
+        boxes.append(nodes[k])
+
+    d1 = dec("d1", X, 12.4, "usable?", w=2.2, h=1.3)
+    boxes.append(d1)
+    q = act("quarantine", SIDE, 12.4, "Refuse with the reason;\nnothing is classified", w=3.2, h=1.0)
+    boxes.append(q)
+    for k in ("preprocess", "py", "gtm", "compare"):
+        act(k, X, ys[k], labels[k], w=5.6)
+        boxes.append(nodes[k])
+
+    d2 = dec("d2", X, 5.6, "alert rule met?\n(class, agreement,\nN windows)", w=3.0, h=1.7)
+    boxes.append(d2)
+    alert = act("alert", X - 3.9, 5.6, "Raise alert\n(Open state)", w=3.0, h=1.0)
+    review = act("review", SIDE, 5.6, "Store the event\nwithout an alert", w=3.2, h=1.0)
+    boxes += [alert, review]
+
+    persist = act("persist", X, 3.8, "Persist audio, both score lists,\nversions and audit trail", w=5.2, h=1.0)
+    notify = act("notify", X, 2.6, "Show on dashboard, event page, live monitor", w=5.2, h=0.9)
+    boxes += [persist, notify]
+
+    end_y = 1.4
+    ax.add_patch(Circle((X, end_y), 0.24, fc="white", ec=INK, lw=1.7, zorder=4))
+    ax.add_patch(Circle((X, end_y), 0.14, fc=INK, ec=INK, zorder=4))
+    nodes["end"] = Box(X, end_y, 0.5, 0.5, "end")
+    boxes.append(nodes["end"])
+
+    chain = ["start"] + flow + ["d1"]
+    for a, b in zip(chain, chain[1:]):
+        A, B = nodes[a], nodes[b]
+        straight(ax, A.port("S"), B.port("N"), boxes=boxes)
+    straight(ax, d1.port("E"), q.port("W"), "no", boxes=boxes)
+    straight(ax, d1.port("S"), nodes["preprocess"].port("N"), "yes", boxes=boxes)
+    for a, b in (("preprocess", "py"), ("py", "gtm"), ("gtm", "compare"), ("compare", "d2")):
+        straight(ax, nodes[a].port("S"), nodes[b].port("N"), boxes=boxes)
+
+    straight(ax, d2.port("W"), alert.port("E"), "yes", boxes=boxes)
+    straight(ax, d2.port("E"), review.port("W"), "no", boxes=boxes)
+    straight(ax, alert.port("S"), (alert.cx, persist.cy), boxes=boxes)
+    ax.plot([alert.cx, X - 2.6], [persist.cy, persist.cy], color=INK, lw=1.2, zorder=2)
+    ax.plot([review.cx, review.cx], [review.y0, persist.cy], color=INK, lw=1.2, zorder=2)
+    ax.plot([review.cx, X + 2.6], [persist.cy, persist.cy], color=INK, lw=1.2, zorder=2)
+    straight(ax, persist.port("S"), notify.port("N"), boxes=boxes)
+    straight(ax, notify.port("S"), (X, end_y + 0.26), boxes=boxes)
+    save(fig, "activity.png")
+    return boxes
+
+
+# ---------------------------------------------------------------- sequence
+def sequence():
+    fig, ax = plt.subplots(figsize=(13.2, 9.0))
+    W, H = 15.8, 11.2
+    ax.set_xlim(-0.2, W), ax.set_ylim(-0.2, H)
+    ax.axis("off")
+    title(ax, "Sequence Diagram — upload → dual inference → comparison → alert",
+          "Dotted lifelines · numbered messages top to bottom · GTM never sees Python output")
+
+    lanes = [("User", 1.5), ("Web App", 4.7), ("Preproc\nService", 7.7),
+             ("Python\nModel", 10.3), ("GTM\nModel", 12.6), ("DB +\nAlerts", 14.6)]
+    key = {k: k for k, _ in lanes}
+    key.update({"Preproc Service": "Preproc\nService", "Python Model": "Python\nModel",
+                "GTM Model": "GTM\nModel", "DB + Alerts": "DB +\nAlerts"})
+    pos = {n: x for n, x in lanes}
+
+    heads = {n: Box(x, H - 0.75, 1.5, 0.62, n) for n, x in lanes}
+    for n, x in lanes:
+        ax.add_patch(FancyBboxRaw(heads[n], SOFT, ACCENT))
+        ax.text(x, H - 0.75, n, ha="center", va="center", fontsize=8.2,
+                color=ACCENT, weight="bold", zorder=5)
+        ax.plot([x, x], [0.45, H - 1.06], color="#9aa5b1", lw=1.0, ls=(0, (2, 3)), zorder=1)
 
     msgs = [
-        ("User", "Web App", 9.6, "1. POST /api/audio (clip)"),
-        ("Web App", "Preproc Service", 8.9, "2. decode + resample 16k"),
-        ("Preproc Service", "Web App", 8.8, "3. samples + quality verdict"),
-        ("Web App", "Python Model", 7.9, "4. predict_proba(features)"),
-        ("Python Model", "Web App", 7.1, "5. class + per-class confidence"),
-        ("Web App", "GTM Model", 6.3, "6. predict(samples)  [no python output]"),
-        ("GTM Model", "Web App", 5.5, "7. gtm_class + confidences"),
-        ("Web App", "Web App", 4.7, "8. consistency verdict"),
-        ("Web App", "DB + Alerts", 3.7, "9. persist event + comparison"),
-        ("DB + Alerts", "Web App", 2.9, "10. alert_id (if critical)"),
-        ("Web App", "User", 1.9, "11. JSON result / redirect"),
+        ("User", "Web App", 9.6, "1. POST /api/audio/upload (clip)"),
+        ("Web App", "Preproc Service", 8.8, "2. decode + resample to 16 kHz"),
+        ("Preproc Service", "Web App", 8.0, "3. samples + quality verdict"),
+        ("Web App", "Python Model", 7.1, "4. CNN14 embedding -> predict_proba"),
+        ("Python Model", "Web App", 6.3, "5. class + per-class confidence"),
+        ("Web App", "GTM Model", 5.4, "6. predict(samples)  [no Python output]"),
+        ("GTM Model", "Web App", 4.6, "7. gtm_class + confidences"),
+        ("Web App", "Web App", 3.8, "8. consistency verdict"),
+        ("Web App", "DB + Alerts", 3.0, "9. persist event + comparison"),
+        ("DB + Alerts", "Web App", 2.2, "10. alert_id (if critical)"),
+        ("Web App", "User", 1.4, "11. JSON result / redirect"),
     ]
+    boxes = list(heads.values())
     for src, dst, y, label in msgs:
-        xs = lanes[key(src)]; xd = lanes[key(dst)]
         if src == dst:
-            ax.annotate("", xy=(xs + 0.55, y), xytext=(xs, y),
-                        arrowprops=dict(arrowstyle="-|>", color=INK))
-            ax.text(xs + 0.7, y, label, fontsize=7.4, va="center")
+            x = pos[key[src]]
+            ax.annotate("", xy=(x + 0.85, y - 0.16), xytext=(x, y - 0.16),
+                        arrowprops=dict(arrowstyle="-|>", color=INK, lw=1.2))
+            ax.text(x + 0.95, y - 0.16, label, fontsize=7.5, va="center", ha="left")
         else:
-            arrow(fig, ax, (xs, y), (xd, y))
-            ax.text((xs + xd) / 2, y + 0.12, label, ha="center", fontsize=7.4)
-    _save(fig, "sequence_upload.png")
+            xs, xd = pos[key[src]], pos[key[dst]]
+            straight(ax, (xs, y), (xd, y), boxes=boxes)
+            mx = (xs + xd) / 2
+            side = 1 if xd >= xs else -1
+            ax.text(mx, y + 0.15, label, ha="center", va="bottom", fontsize=7.5,
+                    bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.9))
+            _ = side
+
+    ax.text(0.2, 0.25, "Note: both models receive the same preprocessed samples and nothing else; the consistency "
+                       "verdict is computed only after both have answered.",
+            fontsize=7.2, color="#7b8794", style="italic")
+    save(fig, "sequence_upload.png")
+    return boxes
 
 
-# ------------------------------------------------------------ decision flow
-def decision_flow() -> None:
-    fig, ax = plt.subplots(figsize=(11, 7.5))
-    ax.set_xlim(0, 14); ax.set_ylim(0, 10); ax.axis("off")
-    ax.set_title("Decision Flow — alert lifecycle & comparison verdicts", fontsize=12, weight="bold")
+# ---------------------------------------------------------- decision flow
+def decision_flow():
+    """The decision path of AnalysisPipeline.analyse(), top to bottom.
 
-    def dnode(x, y, label, kind="state"):
-        if kind == "state":
-            ax.add_patch(Rectangle((x - 1.35, y - 0.5), 2.7, 1.0, fc=SOFT, ec=ACCENT, lw=1.4))
-            ax.text(x, y, label, ha="center", va="center", fontsize=8.4, color=ACCENT, weight="bold")
-        else:
-            ax.add_patch(Polygon([(x, y + 0.6), (x + 1.15, y), (x, y - 0.6), (x - 1.15, y)],
-                                 fc="#fff7e6", ec=WARN, lw=1.4))
-            ax.text(x, y, label, ha="center", va="center", fontsize=7.6)
+    Redrawn on 26 Sep: the earlier version showed an auto-acknowledge step, a timeout
+    and a feedback-to-dataset arrow that the app does not have, and its routed edges
+    crossed. This one only uses straight arrows, and every box matches a step in
+    src/services/pipeline.py or src/api/alerts_api.py.
+    """
+    fig, ax = plt.subplots(figsize=(12.5, 13.5))
+    W, H = 14.0, 15.2
+    ax.set_xlim(0, W), ax.set_ylim(0, H)
+    ax.axis("off")
+    title(ax, "Decision flow for one clip or live window",
+          "Every box is a step in src/services/pipeline.py; the bottom row is the alert lifecycle")
 
-    dnode(2.2, 8.6, "Event recorded\n(from upload/live)")
-    dnode(2.2, 6.4, "Alert Open", "state")
-    dnode(6.6, 9.0, "Acknowledged", "state")
-    dnode(6.6, 7.2, "Dismissed\n(reason required)", "state")
-    dnode(2.2, 5.2, "Escalated", "state")
-    dnode(6.8, 4.6, "Closed", "state")
-    dnode(10.8, 8.6, "Manual Review\nQueued", "state")
-    dnode(10.8, 6.4, "Confirmed /\nOverridden", "state")
+    def state(cx, cy, label, w=5.6, h=0.95, fc=SOFT, ec=ACCENT):
+        b = Box(cx, cy, w, h, label)
+        ax.add_patch(FancyBboxRaw(b, fc, ec))
+        ax.text(cx, cy, label, ha="center", va="center", fontsize=8.0,
+                color=INK, zorder=5)
+        return b
 
-    arrow(fig, ax, (3.55, 8.5), (5.25, 8.95), "acknowledge", rad=-0.08)
-    arrow(fig, ax, (3.55, 8.35), (5.3, 7.35), "dismiss", rad=0.08)
-    arrow(fig, ax, (2.2, 8.1), (2.2, 5.7), "escalate")
-    arrow(fig, ax, (3.0, 4.9), (5.6, 4.75), "escalate dismissed→closed", rad=0.05)
-    arrow(fig, ax, (6.6, 8.6), (6.8, 5.1), "timeout / closure", rad=-0.1)
-    arrow(fig, ax, (7.95, 7.2), (9.6, 8.2), "model disagreement\nor manual rule", rad=0.15)
-    arrow(fig, ax, (10.8, 8.1), (10.8, 7.0), "reviewer decides")
+    def dec(cx, cy, label, w=5.6, h=1.5):
+        b = Box(cx, cy, w, h, label)
+        ax.add_patch(Polygon([(cx, cy + h / 2), (cx + w / 2, cy), (cx, cy - h / 2),
+                              (cx - w / 2, cy)], fc="#fff7e6", ec=WARN, lw=1.4, zorder=4))
+        ax.text(cx, cy, label, ha="center", va="center", fontsize=7.6, zorder=5)
+        return b
 
-    dnode(10.8, 4.2, "Strong /\nAcceptable / Weak\nMatch", "state")
-    dnode(10.8, 2.2, "Model Disagreement /\nUncertain Result", "state")
-    arrow(fig, ax, (10.8, 5.9), (10.8, 4.8), "class agrees,\nsmall conf diff")
-    arrow(fig, ax, (11.9, 5.6), (11.3, 2.9), "class differs or\nlarge conf diff", rad=0.12)
-    arrow(fig, ax, (9.6, 4.0), (3.5, 8.35), "auto-acknowledge path", rad=0.35, style="-|>")
-    _save(fig, "decision_flow.png")
+    X, SIDE = 4.6, 11.0
+    received = state(X, 14.3, "Audio received: an upload, or a 2 s live window")
+    usable = dec(X, 12.75, "Decodes, at least 0.5 s long,\nquality not Unusable?")
+    rejected = state(SIDE, 12.75, "Refused with the reason\n(422, audited as a failed upload)",
+                     w=4.4, fc="#fdecec", ec="#b72f43")
+    models = state(X, 11.2, "Python model and Teachable Machine each score\n"
+                            "the same preprocessed audio (neither sees the other)", h=1.1)
+    compare = state(X, 9.8, "Compare: same class?  |Python top - TM top|,\n"
+                            "top-two margin, overlap -> consistency status", h=1.1)
+    review = dec(X, 8.25, "Any review condition? disagreement, low confidence,\n"
+                          "small margin, poor quality, overlap, near-duplicate")
+    queue = state(SIDE, 8.25, "Manual-review queue\n(original model output kept)", w=4.4)
+    severity = state(X, 6.75, "Severity from the class rule\n(Informational ... Critical)")
+    confirm = dec(X, 5.2, "Alertable class, models agree, quality OK,\n"
+                          "N consecutive windows reached?")
+    stored = state(SIDE, 5.2, "Stored as an event,\nno alert", w=4.4)
+    alert = state(X, 3.65, "Alert raised once, with the recommended action", w=5.6)
+    opened = state(X, 2.2, "Open", w=2.2, h=0.8)
+    acked = state(1.4, 0.7, "Acknowledged", w=2.4, h=0.8)
+    escal = state(X, 0.7, "Escalated", w=2.2, h=0.8)
+    dismissed = state(8.4, 0.7, "Dismissed\n(reason required)", w=2.9, h=0.8)
+
+    boxes = [received, usable, rejected, models, compare, review, queue, severity,
+             confirm, stored, alert, opened, acked, escal, dismissed]
+
+    def down(a, b, label=""):
+        straight(ax, (a.cx, a.y0), (b.cx, b.y1), label, boxes)
+
+    def right(a, b, label):
+        straight(ax, (a.x1, a.cy), (b.x0, b.cy), label, boxes)
+
+    down(received, usable)
+    right(usable, rejected, "no")
+    down(usable, models, "yes")
+    down(models, compare)
+    down(compare, review)
+    right(review, queue, "yes")
+    down(review, severity, "either way")
+    down(severity, confirm)
+    right(confirm, stored, "no")
+    down(confirm, alert, "yes")
+    down(alert, opened)
+    straight(ax, (opened.x0, opened.cy), (acked.cx, acked.y1), "acknowledge", boxes)
+    down(opened, escal, "escalate")
+    straight(ax, (opened.x1, opened.cy), (dismissed.cx, dismissed.y1), "dismiss", boxes)
+    straight(ax, (acked.x1, acked.cy), (escal.x0, escal.cy), "", boxes)
+    ax.text(2.55, 0.05, "Acknowledged or escalated alerts can still be dismissed later.",
+            fontsize=7.2, color="#52606d")
+    save(fig, "decision_flow.png")
+    return boxes
+
+
+# -------------------------------------------------------------------- check
+def check(boxes_by_diag, edges_by_diag=None):
+    import os
+    ok = True
+    print("\n-- structural check --")
+    for name, boxes in boxes_by_diag.items():
+        bad = []
+        for i in range(len(boxes)):
+            for j in range(i + 1, len(boxes)):
+                if overlap(boxes[i], boxes[j], pad=0.02):
+                    bad.append((boxes[i].name, boxes[j].name))
+        if bad:
+            ok = False
+        edges = (edges_by_diag or {}).get(name, [])
+        # an edge may only touch the boxes it terminates at; every interior
+        # segment must clear every other node (segment-rect intersection).
+        bad_e = []
+        for pts in edges:
+            ends = [b for b in boxes
+                    if any(b.contains(p[0], p[1], pad=0.04) for p in (pts[0], pts[-1]))]
+            for b in boxes:
+                if b in ends:
+                    continue
+                if not path_clear(pts, [b]):
+                    bad_e.append(b.name)
+                    break
+        if bad_e:
+            ok = False
+        n_status = "ok" if not bad else f"OVERLAP {bad}"
+        e_status = "ok" if not bad_e else f"EDGE-THROUGH-NODE {bad_e}"
+        print(f"  {name:<14} {len(boxes):>2} nodes / {len(edges):>2} edges  "
+              f"{n_status}  {e_status}")
+
+    missing = [f for f in ("dfd.png", "use_case.png", "activity.png",
+                           "sequence_upload.png", "decision_flow.png")
+               if not (OUT / f).exists()]
+    if missing:
+        ok = False
+        print("  MISSING:", missing)
+    else:
+        for f in sorted(os.listdir(OUT)):
+            if f.endswith(".png"):
+                print(f"  {OUT / f}")
+    print("  result:", "PASS" if ok else "FAIL")
+    return ok
+
+
+def main():
+    args = sys.argv[1:]
+    OUT.mkdir(exist_ok=True)
+    print("rendering diagrams ->", OUT)
+    names = ["dfd", "use_case", "activity", "sequence", "decision_flow"]
+    drawers = [dfd, use_case, activity, sequence, decision_flow]
+    got, edges = {}, {}
+    for nm, fn in zip(names, drawers):
+        EDGES.clear()
+        got[nm] = fn()
+        edges[nm] = list(EDGES)
+    if "--check" in args:
+        return 0 if check(got, edges) else 1
+    return 0
 
 
 if __name__ == "__main__":
-    dfd(); use_case(); activity(); sequence(); decision_flow()
-    print("all diagrams rendered to", OUT)
+    raise SystemExit(main())

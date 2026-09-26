@@ -1,14 +1,8 @@
 #!/usr/bin/env python3
-"""One-off trim of surplus originals so every class has EXACTLY 300 originals.
+"""One-off trim (already applied) to exactly 300 originals per class.
 
-Surplus arose because topup_synthetic.py under-counted existing originals while
-the fsd_dev acquisition was still adding clips. Priority when trimming:
-drop surplus SYNTHETIC clips first, then surplus dev-acquired clips.
-Also resolves the 13 SS-GLA-0700..0712 filename collisions between
-acquired_rows.csv (dev clips) and synthetic_topup_rows.csv.
-
-Dropped wavs are MOVED to <repo>/data/dataset_overflow/ (outside the verifier's
-scan roots) so nothing is destroyed.
+Synthetic surplus goes first, then surplus dev-acquired clips; this also resolved 13
+SS-GLA-0700..0712 filename collisions. Dropped files move to data/dataset_overflow/.
 """
 from __future__ import annotations
 
@@ -53,8 +47,7 @@ def move_clip(rel_filename: str) -> None:
 def main() -> None:
     rows = {n: load(n) for n in MANIFESTS}
 
-    # 1) Drop ALL synthetic glass clips (67) — their filenames collide with dev
-    #    clips and glass has the biggest overage.
+    # 1) Drop all 67 synthetic glass clips (their filenames collide with dev clips).
     keep_top = []
     for r in rows["top"]:
         if r["class_label"] == "Glass Breaking":
@@ -62,8 +55,7 @@ def main() -> None:
             continue
         keep_top.append(r)
 
-    # 2) Trim synthetic Aggression 45 -> 40 (drop highest 5 ids) and
-    #    synthetic Panic 47 -> 24 (drop highest 23 ids).
+    # 2) Synthetic Aggression 45 -> 40 and Panic 47 -> 24 (highest ids first).
     for label, target in (("Aggression", 40), ("Panic Scream", 24)):
         sel = sorted(
             (r for r in keep_top if r["class_label"] == label),
@@ -73,8 +65,7 @@ def main() -> None:
             move_clip(r["filename"])
             keep_top.remove(r)
 
-    # 3) Trim acq dev glass by 51 (drop highest dev ids) — this also removes
-    #    the colliding SS-GLA-0700..0712 dev clips.
+    # 3) Trim dev glass by 51, highest ids first; removes the colliding 0700..0712 clips.
     acq_glass_dev = sorted(
         (
             r

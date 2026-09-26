@@ -28,15 +28,15 @@
   </div>
 </header>
 
-<section class="panel">
-  <div class="panel__head">
+<details class="panel panel--collapsible" {% if filters.is_filtered or problems %}open{% endif %}>
+  <summary class="panel__head">
     <h2 class="panel__title">{{ ui.icon('filter', 14) }} Search &amp; filters</h2>
-    <p class="panel__note">{{ filter_summary }}</p>
-  </div>
+    <p class="panel__note">{{ filter_summary }} <span class="panel__toggle" aria-hidden="true"></span></p>
+  </summary>
   <div class="panel__body">
     {{ ui.filter_form(filter_fields, filters.to_dict(), problems, reset_href=url_for('main.events')) }}
   </div>
-</section>
+</details>
 
 <section class="panel">
   <div class="panel__head">
@@ -80,7 +80,7 @@
             <td>{{ ui.consistency_chip(event.consistency_status) }}</td>
             <td class="num">{{ ui.percent(event.confidence_difference) }}</td>
             <td>{{ ui.quality_chip(event.quality_verdict) }}</td>
-            <td>{{ event.created_at }}</td>
+            <td>{{ event.created_at | when }}</td>
             <td>{{ ui.status_chip(event.status) }}</td>
           </tr>
           {% else %}

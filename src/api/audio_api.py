@@ -1,36 +1,24 @@
-"""``/api/audio`` -- upload and retrieval of audio evidence.
+"""Audio upload and download.
 
-Owner: sara.
-
-The single busiest endpoint in the application: ``POST /api/audio/upload`` is where an
-operator's clip becomes an event. The contract (``documentation/api_contract.md`` §3.3) fixes
-the order of the steps, and the order matters as much as the steps:
-
-1. size and type, before anything is decoded;
-2. decode, and refuse what cannot be decoded or is too short;
-3. sha256 of the bytes -- an exact duplicate is a ``409`` unless the caller asks for it;
-4. near-duplicate by perceptual fingerprint, which is *not* a refusal, it is a link;
-5. the pipeline decides, and its result is persisted by the ``persist`` callback.
-
-Steps 3 and 4 are the reason this endpoint exists as more than a pass-through: ``409`` on a
-duplicate and ``422`` on unusable audio are normal outcomes, and they are surfaced as
-structured errors so the console renders them inline instead of as a red screen.
+POST /api/audio/upload checks size and type before decoding, refuses an exact duplicate
+(SHA-256) with 409 unless allow_duplicate is set, lets the pipeline analyse the clip, and
+persists the result. Unusable audio is a 422 naming the reason; a near-duplicate is linked,
+not refused.
 """
 
 from __future__ import annotations
 
-import datetime as dt
 import hashlib
 import logging
 from pathlib import Path
 
-from flask import Blueprint, current_app, jsonify, request, send_file
+from flask import Blueprint, current_app, request, send_file
 from sqlalchemy import select
 
 from src.auth import capability_required, client_ip, current_user
 from src.db import session_scope
 from src.errors import ApiError, current_request_id, validation_error
-from src.models import AudioFile, Event
+from src.models import AudioFile
 from src.services.config import get_store
 
 bp = Blueprint("audio_api", __name__, url_prefix="/api/audio")
@@ -40,9 +28,7 @@ _LOGGER = logging.getLogger(__name__)
 # The contract's size gate applies to the whole request body, not to a decoded buffer.
 _MAX_BODY_BYTES = 64 * 1024 * 1024
 
-# Decoding is the expensive part, so the type check is done on the suffix first and the
-# decoder has the final word anyway. '.webm' is here because the browser's MediaRecorder
-# produces it for a live session, not because it is a preferred archive format.
+# The suffix check is cheap; the decoder has the final word. .webm is for live recordings.
 _ACCEPTED_SUFFIXES = frozenset({".wav", ".wave", ".flac", ".mp3", ".ogg", ".oga", ".webm", ".m4a"})
 
 _MIME_BY_SUFFIX = {
@@ -62,10 +48,8 @@ def _sha256_of(raw: bytes) -> str:
 
 
 def _suffix_of(filename: str | None, mimetype: str | None) -> str:
-    """Prefer the declared mimetype, fall back to the name, and be honest about neither.
-
-    A caller can send any mimetype it likes; the suffix is what the stored file is named
-    after, so a lie here would write a .wav header on a .mp3 body and break playback later.
+    """File suffix from the declared mimetype, else the name. The stored file is named with it, so a
+    wrong one would break playback.
     """
     if mimetype:
         for suffix, mime in _MIME_BY_SUFFIX.items():
@@ -81,11 +65,8 @@ def _suffix_of(filename: str | None, mimetype: str | None) -> str:
 @bp.post("/upload")
 @capability_required("upload_audio")
 def upload():
-    """Accept an audio clip and return the event the pipeline produced for it.
-
-    ``201`` is the full ``Event`` (contract §3.1). A duplicate is ``409 duplicate_audio``
-    unless ``?allow_duplicate=true`` is set, and unusable audio is ``422`` -- both are
-    normal outcomes and both name the existing resource or the reason.
+    """Analyse an uploaded clip: 201 with the Event, 409 for a known duplicate, 422 for unusable
+    audio.
     """
     from src.services.persistence import make_persistence_callback
     from src.services.pipeline import ModelsUnavailable, PipelineError, get_pipeline
@@ -103,8 +84,8 @@ def upload():
         raise validation_error(
             "source must be one of: upload, microphone", source=source
         )
-    # FR lxxix: a recording from the microphone needs an explicit acknowledgement that the
-    # subject consented. The setting is stored on the file row, so it is auditable later.
+    # FR lxxix: a microphone recording needs an explicit consent acknowledgement, stored on the file
+    # row.
     consent_ack = (request.form.get("consent_ack", "") or "").strip().lower() in {"1", "true", "yes"}
     if source == "microphone" and not consent_ack:
         raise validation_error(
@@ -129,8 +110,8 @@ def upload():
                 select(AudioFile).where(AudioFile.sha256 == digest)
             ).scalar_one_or_none()
         if existing is not None:
-            # FR lxxiii: the bytes are already known. Name the first event so the operator
-            # can decide whether this is a re-upload of the same evidence or a real repeat.
+            # FR lxxiii: name the first event so the operator can tell a re-upload from a real
+            # repeat.
             raise ApiError(
                 "duplicate_audio",
                 f"These bytes are already stored as {existing.audio_id}. "
@@ -141,26 +122,17 @@ def upload():
     try:
         pipeline = get_pipeline()
     except PipelineError as exc:
-        # Every "cannot analyse" start-up failure descends from PipelineError, and
-        # get_pipeline() raises the *base* class when nothing was ever loaded. Guarding
-        # on ModelsUnavailable alone let that base class escape to the catch-all handler
-        # and become a 500 internal_error, contradicting the documented 503
-        # (README: "upload and live classification return a clear unavailable response").
-        # live_api.py already degrades correctly; this brings upload in line.
+        # get_pipeline() raises the base PipelineError when nothing was loaded; catching only
+        # ModelsUnavailable let it become a 500 instead of the documented 503.
         if isinstance(exc, ModelsUnavailable):
-            # Names the missing artifact on purpose -- a pathless "not found" costs the
-            # next person twenty minutes.
+            # Name the missing artifact; a pathless 'not found' wastes the next person's time.
             raise ApiError("pipeline_unavailable", str(exc)) from exc
-        # The pipeline was never initialised. That is an internal wiring detail, so answer
-        # with the standard user-facing sentence rather than the app-factory instructions.
+        # Never initialised: an internal wiring detail, so use the standard user-facing sentence.
         raise ApiError("pipeline_unavailable") from exc
     storage = current_app.config["SST_STORAGE"]
     actor = current_user._get_current_object() if hasattr(current_user, "_get_current_object") else current_user
 
-    # The pipeline owns steps 5-10 of the contract: preprocess, features, quality, both
-    # models independently, comparison, severity, alert, review. Persistence is the
-    # callback it calls at the end, bound to this request's actor and id so every row
-    # written for this upload is attributable to it.
+    # The pipeline does the analysis; persistence is its callback, bound to this request's actor.
     persist = make_persistence_callback(
         storage=storage,
         actor=actor,
@@ -170,7 +142,7 @@ def upload():
     factory = current_app.config["SST_SESSION_FACTORY"]
     with session_scope(factory) as session:
         candidates = session.execute(
-            select(AudioFile.audio_id, AudioFile.perceptual_fingerprint)
+            select(AudioFile.audio_id, AudioFile.perceptual_fingerprint, AudioFile.stored_path)
             .where(AudioFile.perceptual_fingerprint.is_not(None))
             .order_by(AudioFile.created_at.desc())
             .limit(500)
@@ -188,8 +160,9 @@ def upload():
                 "client_ip": client_ip(),
                 "content_type": request.files.get("file", None)
                 and request.files["file"].mimetype,
-                "near_duplicate_candidates": [(audio_id, fingerprint)
-                                              for audio_id, fingerprint in candidates],
+                "near_duplicate_candidates": [
+                    (audio_id, fingerprint, storage.resolve(stored) if stored else None)
+                    for audio_id, fingerprint, stored in candidates],
             },
             persist=persist,
         )
@@ -209,16 +182,24 @@ def upload():
         _LOGGER.error("analysis could not be stored for request %s: %s",
                       current_request_id(), (record.get("stored") or {}).get("error"))
         raise ApiError("storage_error", "The analysis finished, but the result could not be saved. Try again.")
+    # The pipeline record never embeds the actor, and the response builder only has the
+    # ConfigStore, so attach it here where the request's user is still in scope. Without this
+    # an event stored with created_by_id=2 reports created_by=null in the upload response.
+    if record.get("created_by") is None:
+        actor_obj = (current_user._get_current_object()
+                     if hasattr(current_user, "_get_current_object") else current_user)
+        if actor_obj is not None and getattr(actor_obj, "id", None):
+            record["created_by"] = {
+                "id": actor_obj.id, "username": actor_obj.username, "role": actor_obj.role,
+            }
     return {"data": _response_for(record, store)}, 201
 
 
 @bp.get("/<int:audio_pk>/download")
 @capability_required("download_any_audio")
 def download(audio_pk: int):
-    """Stream the stored bytes of one audio file. Reviewer and above.
-
-    The stored path is relative to the storage root and is resolved through the layout, so
-    a path stored as ``../../etc/passwd`` can never be served.
+    """Download a stored file (reviewer and above). Paths resolve inside the storage root, so ../../
+    cannot escape.
     """
     factory = current_app.config["SST_SESSION_FACTORY"]
     with session_scope(factory) as session:
@@ -245,17 +226,10 @@ def download(audio_pk: int):
         )
 
 
-# --------------------------------------------------------------------------------------
 # Internals
-# --------------------------------------------------------------------------------------
 
 def _request_body() -> bytes:
-    """The uploaded bytes, after the size gate.
-
-    Reads the part directly rather than through ``request.files`` first: the size gate has
-    to fire before the whole body is buffered into memory, and Flask's multipart parser
-    will happily buffer a 4 GB upload before handing it to the view.
-    """
+    """The uploaded bytes, size-checked before Flask's multipart parser can buffer a huge body."""
     if request.content_length is not None and request.content_length > _MAX_BODY_BYTES:
         raise ApiError(
             "payload_too_large",
@@ -287,8 +261,7 @@ def _response_for(record: dict, store) -> dict:
                       (record.get("error") or {}).get("stage"), current_request_id())
         raise ApiError("model_unavailable", "The models could not analyse this clip. Try again shortly.")
     if status == "rejected":
-        # FR xxxvii's unusable verdict and an undecodable clip both stop here. The caller
-        # gets a 422 naming the reason, not a 201 with an empty event.
+        # Unusable or undecodable: a 422 naming the reason, not a 201 with an empty event.
         rejection = record.get("rejection") or {}
         quality = record.get("quality") or {}
         code = "quality_unusable" if quality.get("verdict") == "Unusable" else "quality_rejected"

@@ -1,0 +1,11 @@
+{
+  "sample_rate": 44100,
+  "window_sec": 1.0,
+  "n_mels": 232,
+  "n_frames": 43,
+  "normalize_mode": "zscore",
+  "model_input_shape": [43, 232, 1],
+  "frontend_kind": "browser_fft",
+  "frontend_id": "browser-fft-2048-43x232-zscore-v1",
+  "source": "Teachable Machine audio export 2026-09-25; input shape confirmed from model.json and training ZIP generator"
+}

@@ -1,15 +1,7 @@
-"""Explicit, explainable rejection of audio.
+"""Explicit rejection of unusable audio (SRS Step 3, FR viii, lxxvii).
 
-Owner: taha.  SRS Step 3 (file validation), FR viii, xii, xiii, lxxvii (error handling).
-
-The module's one rule: **never silently drop unreadable audio.**  A file the pipeline
-cannot use is rejected with a machine-readable reason code and a human-readable message,
-because SRS Step 3 requires that "silent, damaged, unsupported, excessively short, or
-unusable recordings must be rejected with appropriate messages", and a silently skipped
-file in a batch upload is indistinguishable from a file that was never queued.
-
-The reason codes are stable strings rather than enum members so they survive JSON
-round-trips into the database, the audit trail and the API error payload.
+Unreadable audio is never dropped silently: it is rejected with a stable reason code (a plain
+string, so it survives JSON, the database and the API) and a readable message.
 """
 
 from __future__ import annotations
@@ -17,9 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-# --------------------------------------------------------------------------------------
 # Reason codes
-# --------------------------------------------------------------------------------------
 
 UNREADABLE_FORMAT = "unreadable_format"
 """The container/codec could not be decoded at all (damaged or unknown)."""
@@ -85,11 +75,7 @@ class RejectionInfo:
 
 
 class AudioRejected(Exception):
-    """Raised when audio genuinely cannot be used.
-
-    Carries :class:`RejectionInfo` so the API layer can render the exact message and the
-    test suite can assert on the reason code rather than on prose.
-    """
+    """Audio that cannot be used, carrying RejectionInfo (reason code, detail, measurements)."""
 
     def __init__(self, reason: str, detail: str = "", metrics: dict[str, Any] | None = None):
         self.info = RejectionInfo(reason=reason, detail=detail, metrics=metrics)
@@ -111,11 +97,7 @@ class AudioDecodeError(AudioRejected):
 
 
 def message_for(reason: str, **fmt: Any) -> str:
-    """Human-readable text for a reason code, with template values filled in.
-
-    Kept as a function (not a dict lookup at the call site) so the wording lives in one
-    place and an unknown code degrades to the code itself rather than to an empty string.
-    """
+    """Readable text for a reason code; an unknown code falls back to the code itself."""
     template = REASON_DESCRIPTIONS.get(reason)
     if template is None:
         return f"Audio rejected: {reason}"

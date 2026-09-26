@@ -1,23 +1,9 @@
-"""``/api/reviews`` -- the manual-review slice (FR lvii-lxi).
+"""Manual-review API (FR lvii-lxi).
 
-Owner: sara.
-
-The queue, the per-event context, the decision, the history. The decision endpoint is the
-one the integrity rules really live on:
-
-* **The original model output is immutable.** ``original_python_class``/``confidence`` and
-  ``original_gtm_class``/``confidence`` were snapshotted when the row was queued; a decision
-  never rewrites them (FR lxi). An override says "the human disagreed", not "the event was
-  always X" -- the comparison analytics depend on that.
-* **One decision per event.** A second decision on a decided event is ``409
-  invalid_state_transition``, not a silent overwrite.
-* **Comments are mandatory for override and reject** -- a bare "override" without a reason
-  is exactly the behaviour the audit trail exists to catch.
-
-The console posts ``decision=confirm`` by review id (plain form post, CSP-safe); scripts
-follow the contract's event-addressed path. Both are served: ``/reviews/<id>/decision``
-resolves the review row, then defers to the same decision core as
-``/reviews/event/<event_id>/decision``.
+The original model outputs, copied onto the review row when it was queued, are never
+rewritten by a decision (FR lxi). An event can be decided once; a second decision is a 409.
+Overrides and rejections need a comment. Decisions can be addressed by review id (the
+console's forms) or by event id; both use the same decision code.
 """
 
 from __future__ import annotations
@@ -42,9 +28,6 @@ _DEFAULT_PAGE_SIZE = 50
 _MAX_PAGE_SIZE = 200
 
 
-# ---------------------------------------------------------------------------------------
-# helpers
-# ---------------------------------------------------------------------------------------
 
 
 def _payload() -> dict:
@@ -124,11 +107,7 @@ def _load_review(session, review_id: int) -> Review:
 
 
 def _load_review_for_event(session, event_id: int) -> Review:
-    """The decision target: the newest open item for the event, else its decided one.
-
-    The contract addresses reviews by event; the queue addresses them by row id. Both must
-    land on the same row, and the newest row is the one whose decision is pending.
-    """
+    """The decision target for an event: its newest open review, else its decided one."""
     review = session.execute(
         select(Review)
         .where(Review.event_id == event_id)
@@ -168,9 +147,8 @@ def _audit_decision(session, review: Review, before: dict, event: Event | None) 
 
 
 def _apply_decision(review: Review, body: dict) -> dict:
-    """Validate and apply the decision. Raises ``ApiError``; mutates ``review`` in place.
-
-    Called inside the session so the write and its audit commit together.
+    """Validate and apply a decision to ``review`` inside the caller's session, so write and audit
+    commit together.
     """
     decision = (body.get("decision") or "").strip().lower()
     if decision not in _DECISIONS:
@@ -230,16 +208,12 @@ def _apply_decision(review: Review, body: dict) -> dict:
             "final_severity": review.final_severity}
 
 
-# ---------------------------------------------------------------------------------------
-# reads
-# ---------------------------------------------------------------------------------------
 
 
 @bp.get("/reviews/queue")
 @capability_required("review_queue")
 def queue():
     """FR lvii: the prioritised queue, each item carrying its reason."""
-    store = get_store()
     try:
         page = max(1, int(request.args.get("page", 1)))
         per_page = int(request.args.get("per_page", _DEFAULT_PAGE_SIZE))
@@ -308,9 +282,6 @@ def event_context(event_id: int):
     return jsonify({"data": data})
 
 
-# ---------------------------------------------------------------------------------------
-# writes
-# ---------------------------------------------------------------------------------------
 
 
 @bp.post("/reviews/<int:review_id>/decision")

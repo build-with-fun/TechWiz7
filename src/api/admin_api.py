@@ -1,19 +1,8 @@
-"""``/api/admin`` -- configuration, users, audit, monitoring, retention (FR lxxv-lxxx).
+"""Administration API: configuration, users, audit, monitoring and retention (FR lxxv-lxxx).
 
-Owner: sara.
-
-This is the slice where a mistake damages the app *at runtime*: a bad threshold JSON stops
-every future upload. The write path is therefore deliberately conservative:
-
-1. the caller must hold ``edit_config`` (or ``manage_users``/``read_audit`` for its slice);
-2. the new document is written to a temp file next to the real one;
-3. ``ConfigStore.validate()`` runs over the *proposed* on-disk state -- the same validator
-   boot runs, so a config the app will not start with cannot be written;
-4. only on a clean validate is the temp file swapped in, the store's cache invalidated,
-   and the change audited with before/after.
-
-Config writes are audited even when they *fail* validation (outcome ``failure``), because
-an attempted bad edit is itself something the audit trail should show (FR lxxvi).
+A config edit is written to a temporary file and run through the same validator the app uses
+at startup; only a clean result replaces the real file. Edits are audited with before and
+after, including rejected ones.
 """
 
 from __future__ import annotations
@@ -32,7 +21,7 @@ from sqlalchemy import func, or_, select, update
 from src.auth import capability_required, client_ip, current_user, hash_password
 from src.db import record_audit, session_scope
 from src.errors import ApiError, current_request_id, not_found, validation_error
-from src.models import ROLES, ROLE_LABELS, AuditRecord, Review, User, utcnow
+from src.models import ROLES, AuditRecord, Review, User, utcnow
 from src.services.config import get_store
 
 bp = Blueprint("admin_api", __name__)
@@ -55,9 +44,6 @@ EDITABLE_FILES: dict[str, str] = {
 }
 
 
-# ---------------------------------------------------------------------------------------
-# configuration
-# ---------------------------------------------------------------------------------------
 
 
 @bp.get("/config")
@@ -172,9 +158,6 @@ def config_history():
     return _audit_response(extra_clauses=[AuditRecord.action == "config_edited"])
 
 
-# ---------------------------------------------------------------------------------------
-# users
-# ---------------------------------------------------------------------------------------
 
 
 def _user_to_dict(user: User) -> dict:
@@ -315,9 +298,7 @@ def patch_user(user_id: int):
     return jsonify({"data": data, "meta": {"outcome": "updated"}})
 
 
-# ---------------------------------------------------------------------------------------
 # audit trail, monitoring, retention
-# ---------------------------------------------------------------------------------------
 
 
 def _audit_response(extra_clauses=None):
@@ -394,56 +375,25 @@ def audit_trail():
 @bp.get("/monitoring/anomalies")
 @capability_required("read_audit")
 def monitoring_anomalies():
-    """FR lxxviii: in-app health signals -- error rate, disk use, queue depth, pipeline.
-
-    Computed from data the app already has (the audit table, the DB file, the configured
-    retention floor) rather than an external monitor, so an anomaly is visible even with
-    the network gone -- which is exactly when the monitoring matters.
+    """FR lxxviii anomaly checks (from src/services/monitoring.py, which the dashboard also uses)
+    plus disk space.
     """
-    anomalies: list[dict] = []
+    from src.services.monitoring import compute_anomalies
+
     with session_scope(current_app.config["SST_SESSION_FACTORY"]) as session:
-        hour_ago = utcnow().replace(microsecond=0) - __import__("datetime").timedelta(hours=1)
-        failed = session.execute(
-            select(func.count(AuditRecord.id)).where(
-                AuditRecord.timestamp >= hour_ago, AuditRecord.outcome == "failure"
-            )
-        ).scalar() or 0
-        total_actions = session.execute(
-            select(func.count(AuditRecord.id)).where(AuditRecord.timestamp >= hour_ago)
-        ).scalar() or 0
-        queue_depth = session.execute(
-            select(func.count(Review.id)).where(Review.status == "Pending Review")
-        ).scalar() or 0
-    error_rate = failed / total_actions if total_actions else 0.0
-    if total_actions and error_rate > 0.20:
-        anomalies.append(
-            {"kind": "error_rate", "value": round(error_rate, 4),
-             "threshold": 0.20,
-             "message": f"{failed}/{total_actions} audited actions failed in the last hour."}
-        )
-    if queue_depth > 100:
-        anomalies.append(
-            {"kind": "queue_depth", "value": queue_depth, "threshold": 100,
-             "message": "Manual-review queue depth above 100 pending items."}
-        )
+        result = compute_anomalies(session, get_store().thresholds())
     try:
         db_path = Path(current_app.config["SST_DB_PATH"])
-        usage = shutil.disk_usage(db_path.parent)
-        free_gb = usage.free / (1024 ** 3)
+        free_gb = shutil.disk_usage(db_path.parent).free / (1024 ** 3)
+        result["observed"]["disk_free_gb"] = round(free_gb, 3)
         if free_gb < 1.0:
-            anomalies.append(
-                {"kind": "disk_free", "value": round(free_gb, 3), "threshold": 1.0,
-                 "message": f"Only {free_gb:.2f} GB free where the database lives."}
-            )
+            result["anomalies"].append(
+                {"kind": "disk_free", "severity": "High", "value": round(free_gb, 3),
+                 "threshold": 1.0, "message": f"Only {free_gb:.2f} GB free where the database lives."})
     except Exception:  # pragma: no cover - disk check must never fail the endpoint
         _LOGGER.debug("disk check skipped", exc_info=True)
-    return jsonify(
-        {
-            "data": {"anomalies": anomalies},
-            "meta": {"error_rate": round(error_rate, 4),
-                     "actions_last_hour": total_actions, "queue_depth": queue_depth},
-        }
-    )
+    return jsonify({"data": {"anomalies": result["anomalies"]},
+                    "meta": {k: v for k, v in result.items() if k != "anomalies"}})
 
 
 @bp.post("/retention/preview")

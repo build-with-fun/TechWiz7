@@ -1,26 +1,19 @@
 #!/usr/bin/env python3
-"""
-SonicSentinel AI — independent split/manifest auditor.
+"""Independent auditor for the split and manifest: a separate implementation from
+build_split.py that reads only the frozen artifacts and the files on disk.
 
-Owner: lorena.  Run this to prove the split is honest. It is deliberately written as a
-SEPARATE implementation from build_split.py: it re-derives nothing from the builder's
-internal state, it reads the frozen artifacts and the files on disk and checks them against
-the SRS. An auditor that reuses the code it audits proves nothing.
+  --check-manifest    structure, licences, legal classes
+  --check-split       split.json is consistent, exhaustive and stratified
+  --check-files       every listed file exists and no file is unlisted
+  --check-leakage     no lineage crosses a split boundary
+  --check-duplicates  no two rows share a sha256
 
-Checks
-  --check-manifest  manifest.csv is structurally valid, licences present, classes legal
-  --check-split     split.json is internally consistent, exhaustive and stratified
-  --check-files     every manifest filename exists on disk; no file on disk is unlisted
-  --check-leakage   no parent/segment/augmented lineage crosses a split boundary
-  --check-duplicates no two rows share a sha256
-
-Exit code 0 = all requested checks passed. Anything else is a real problem.
+Exit code 0 means every requested check passed.
 """
 
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import sys
 from collections import Counter, defaultdict
@@ -152,7 +145,6 @@ def check_split(records: list[dict[str, str]], split: dict, classes: dict) -> li
 def check_leakage(records: list[dict[str, str]], split: dict) -> list[tuple[bool, str]]:
     results: list[tuple[bool, str]] = []
     assignments = split["assignments"]
-    by_id = {r["audio_id"]: r for r in records}
     violations = []
 
     for rec in records:

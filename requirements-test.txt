@@ -1,3 +1,1 @@
-# The deep-model experiment tests import PyTorch; the Flask runtime does not.
-# The verified local environment uses the CPU build of this version.
-torch==2.14.0
+# PyTorch is now in requirements.txt (the served model needs it).

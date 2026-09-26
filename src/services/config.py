@@ -1,43 +1,13 @@
-"""Live-editable configuration for the SonicSentinel backend.
+"""Live-editable configuration: config/*.json and alert_rules/*.json.
 
-Why this module exists
-----------------------
-The SRS is explicit that thresholds and alert rules are **administrator-editable
-at runtime** (FR xxxv, FR xxxvi, FR liii, FR lxxx) and the integrity rules state
-that a change must take effect without editing code (SRS 1.8, rule 5). Evaluators
-are expected to ask for a threshold to be changed *during* the demonstration and
-then watch the behaviour change.
+The SRS expects thresholds and alert rules to be changed by an administrator at runtime,
+without a code edit or restart (FR xxxv, xxxvi, liii, lxxx; SRS 1.8 rule 5). Files are
+cached on modification time, so saving a file is enough. "$thresholds.a.b" references
+let a number live in one place. Loading validates cross-file invariants (class names,
+severities, references) and raises ConfigError rather than quietly disabling an alert.
 
-So nothing in the backend may read a threshold from a literal. Every module reads
-it from here, and this module:
-
-* loads ``config/*.json`` and ``alert_rules/*.json`` from disk;
-* caches on the file's modification time, re-reading the moment it changes, so a
-  save is enough -- no restart, no reload endpoint required (one exists anyway,
-  for convenience);
-* resolves ``"$thresholds.<dotted.path>"`` references so a number is stated once,
-  in ``config/thresholds.json``, and the rule files only record deviations;
-* validates on load: an unknown class name, a missing class rule, an unknown
-  severity name or a bad reference raises :class:`ConfigError` instead of quietly
-  disabling an alert. A configuration mistake must be loud at boot, never silent
-  at 3am.
-
-Usage
------
-::
-
-    from src.services.config import ConfigStore
-    store = ConfigStore()                 # repo config/ + alert_rules/
-    store.thresholds()["confidence"]["min_confidence"]
-    store.rule_for_class("Gunshot")["severity"]
-    store.severity_of("Glass Breaking")   # -> "High"
-
-Tests point the store at a temporary directory (constructor argument or
-``SST_CONFIG_DIR`` / ``SST_ALERT_RULES_DIR``) to prove that editing a JSON file
-changes behaviour.
-
-SRS references: FR xxxv, FR xxxvi, FR liii, FR lxxx, SRS 1.8 rule 5,
-SRS 1.10 deliverable 7.
+Tests point the store at a temporary directory (constructor or SST_CONFIG_DIR /
+SST_ALERT_RULES_DIR) to prove an edit changes behaviour.
 """
 
 from __future__ import annotations
@@ -56,8 +26,7 @@ DEFAULT_ALERT_RULES_DIR = REPO_ROOT / "alert_rules"
 
 REFERENCE_PREFIX = "$thresholds."
 
-#: Keys every effective alert rule must carry after the ``defaults`` block is
-#: merged into it. A missing key is a load-time error, not a runtime surprise.
+#: Keys every effective alert rule must have once the defaults are merged in.
 REQUIRED_RULE_KEYS = (
     "class",
     "severity",
@@ -72,10 +41,8 @@ REQUIRED_RULE_KEYS = (
 
 
 class ConfigError(RuntimeError):
-    """Raised when a configuration file is missing, malformed or contradictory.
-
-    Deliberately not a subclass of ``ValueError``: the app factory catches this
-    to fail startup with a readable message, and tests assert on it.
+    """A configuration file is missing, malformed or contradictory. Not a ValueError, so startup can
+    catch it specifically.
     """
 
 
@@ -118,10 +85,8 @@ def _dig(data: Mapping[str, Any], dotted: str, *, origin: str) -> Any:
 
 
 def resolve_references(value: Any, thresholds: Mapping[str, Any], *, origin: str) -> Any:
-    """Replace ``"$thresholds.a.b"`` strings with the value from thresholds.json.
-
-    Walks lists and dicts. Any other string is returned untouched, so a severity
-    name or a path is never mistaken for a reference.
+    """Replace "$thresholds.a.b" strings with values from thresholds.json; other strings are left
+    alone.
     """
     if isinstance(value, str):
         if value.startswith(REFERENCE_PREFIX):
@@ -137,11 +102,8 @@ def resolve_references(value: Any, thresholds: Mapping[str, Any], *, origin: str
 
 @dataclass(frozen=True)
 class ConfigSnapshot:
-    """What judged one event.
-
-    Stored alongside every prediction so a result can always be explained in the
-    terms that were in force when it was produced -- the same reasoning as FR lxxv
-    (model version tracking), applied to the rules that consumed the model output.
+    """The configuration that judged one event, stored with it so the result stays explainable after
+    an edit.
     """
 
     thresholds_version: str
@@ -180,14 +142,12 @@ class ConfigStore:
         self._cache: dict[str, tuple[tuple[float, int], dict]] = {}
         self._hashes: dict[str, tuple[float, str]] = {}
 
-    # ------------------------------------------------------------------ paths
     def _config_path(self, name: str) -> Path:
         return self.config_dir / f"{name}.json"
 
     def _rules_path(self, name: str) -> Path:
         return self.alert_rules_dir / f"{name}.json"
 
-    # ----------------------------------------------------------------- caching
     def _load(self, path: Path) -> dict:
         token = _file_token(path)
         key = str(path)
@@ -212,9 +172,8 @@ class ConfigStore:
             self._hashes[key] = (token[0], digest)
         return digest
 
-    # ------------------------------------------------------------- raw access
     def thresholds(self) -> dict:
-        """``config/thresholds.json`` -- owned by lorena, read by everyone."""
+        """``config/thresholds.json`` -- read by every module."""
         return self._load(self._config_path("thresholds"))
 
     def classes_config(self) -> dict:
@@ -222,20 +181,11 @@ class ConfigStore:
         return self._load(self._config_path("classes"))
 
     def auth_config(self) -> dict:
-        """``config/auth.json`` -- sessions, login lockout, rate limits, headers.
-
-        Owned by sara and read by ``src/app.py``/``src/auth.py``. Kept in a config file
-        because the lockout window and the session lifetime are things an administrator
-        is expected to change without editing code (SRS §1.8 integrity rule 5).
-        """
+        """config/auth.json: sessions, login lockout, rate limits, security headers."""
         return self._load(self._config_path("auth"))
 
     def auth_setting(self, dotted: str, default: Any = None) -> Any:
-        """One value out of ``config/auth.json``, by dotted path, with a default.
-
-        Returns ``default`` for a missing key rather than raising: an app setting that is
-        absent should fall back to the documented default, not stop the console booting.
-        """
+        """One value from config/auth.json by dotted path; a missing key returns ``default``."""
         node: Any = self.auth_config()
         for part in dotted.split("."):
             if isinstance(node, Mapping) and part in node:
@@ -257,11 +207,10 @@ class ConfigStore:
         return {c["name"]: c.get("code", "") for c in self.classes_config().get("classes", [])}
 
     def critical_classes(self) -> list[str]:
-        """Critical categories, with the FR liii administrator override applied.
+        """Critical categories with the FR liii override applied.
 
-        An EMPTY ``critical_categories.override`` means "inherit classes.json".
-        A non-empty override REPLACES the inherited list, and is validated against
-        the known class names so a typo cannot silently drop a critical alert.
+        An empty override inherits classes.json; a non-empty one replaces it and is checked
+        against the class names, so a typo cannot silently drop a critical alert.
         """
         inherited = list(self.classes_config().get("critical_classes", []))
         rules = self.alert_rules()
@@ -279,7 +228,6 @@ class ConfigStore:
     def is_critical(self, class_name: str) -> bool:
         return class_name in set(self.critical_classes())
 
-    # ------------------------------------------------------------ alert rules
     def alert_rules(self) -> dict:
         """``alert_rules/alert_rules.json`` with threshold references resolved."""
         raw = self._load(self._rules_path("alert_rules"))
@@ -330,10 +278,7 @@ class ConfigStore:
         return self._load(self._rules_path("severity_levels"))
 
     def display_severity(self, recorded: str) -> str:
-        """Map a recorded severity onto the active scale for display and filtering.
-
-        The stored value is never rewritten; only the presented name changes when
-        an administrator switches to the four-level scale of FR lii.
+        """Map a stored severity onto the active scale for display; the stored value never changes.
         """
         if recorded in self.severity_scale():
             return recorded
@@ -348,7 +293,7 @@ class ConfigStore:
         )
 
     def severity_rank(self, recorded: str) -> int:
-        """Rank on the *five-level* scale, used to order critical events."""
+        """Rank on the five-level scale, used to order events."""
         for level in self.severity_levels().get("levels", []):
             if level.get("name") == recorded:
                 return int(level.get("rank", 0))
@@ -367,7 +312,6 @@ class ConfigStore:
             )
         return order.index(quality) >= order.index(minimum)
 
-    # --------------------------------------------------------- manual review
     def manual_review(self) -> dict:
         raw = self._load(self._rules_path("manual_review_conditions"))
         thresholds = self.thresholds()
@@ -381,7 +325,6 @@ class ConfigStore:
     def review_condition_ids(self) -> list[str]:
         return [c["id"] for c in self.review_conditions()]
 
-    # ------------------------------------------------------------- retention
     def retention(self) -> dict:
         return self._load(self._rules_path("retention"))
 
@@ -393,7 +336,6 @@ class ConfigStore:
             raise ConfigError(f"alert_rules/retention.json has no default for '{key}'")
         return defaults[key]
 
-    # -------------------------------------------------------------- snapshot
     def snapshot(self) -> ConfigSnapshot:
         """A record of exactly which configuration judged an event."""
         files = {
@@ -414,12 +356,9 @@ class ConfigStore:
             content_hashes=hashes,
         )
 
-    # ------------------------------------------------------------ validation
     def validate(self) -> list[str]:
-        """Check every cross-file invariant. Returns the list of problems found.
-
-        Called by the app factory (which raises) and by the test suite (which
-        asserts the list is empty). Split out so ``--check`` tooling can print it.
+        """Check every cross-file invariant and return the problems found (the app factory raises on
+        any).
         """
         problems: list[str] = []
 
@@ -428,8 +367,7 @@ class ConfigStore:
         except ConfigError as exc:
             return [str(exc)]
 
-        # config/auth.json -- the web layer's own settings. A malformed one would only be
-        # discovered at the first login, which is the worst possible moment to find it.
+        # A malformed auth.json would otherwise only surface at the first login.
         try:
             auth = self.auth_config()
         except ConfigError as exc:

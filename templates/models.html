@@ -67,7 +67,7 @@
                 {{ ui.number(metrics.get('critical_macro_recall'), 4) }}
               {%- else -%}—{% endif %}
             </td>
-            <td>{{ version.registered_at }}</td>
+            <td>{{ version.registered_at | when }}</td>
             <td>
               {% if version.is_active %}
               <span class="chip chip--quality-good"><span class="chip__glyph" aria-hidden="true">●</span><span class="chip__text">Registry active</span></span>

@@ -1,21 +1,9 @@
-"""``/api/alerts`` -- the alert console's API slice (FR liii-lvi).
+"""Alert console API (FR liii-lvi): list, detail, history, acknowledge, dismiss, escalate.
 
-Owner: sara (following the events_api slice's conventions).
-
-Read paths are the filterable list, one alert with its rule, and the history view (FR lvi).
-The write paths are acknowledge, dismiss and escalate. Two rules from the contract shape
-all of them:
-
-* **A status transition is explicit, never implied.** Acknowledging does not resolve;
-  dismissing records *why* (``resolution_note`` + ``is_false_alarm``); escalating records
-  *to what severity*. An evaluator asking "who acknowledged this, and when" reads the
-  answer from the row, not from a chat log.
-* **Every transition is audited with before/after**, because FR lxxvi names
-  acknowledgements, dismissals and escalations explicitly.
-
-Form POSTs (the console's no-JS buttons) get a redirect back to the console; JSON callers
-get the JSON envelope. The same handler serves both -- what differs is only the response
-shape, never the transition rules.
+Transitions are explicit: acknowledging does not resolve, dismissing records why
+(resolution_note, is_false_alarm), escalating records the new severity. Every transition is
+audited with before and after. Form posts get a redirect back to the console, JSON callers
+the JSON envelope; the rules are the same.
 """
 
 from __future__ import annotations
@@ -24,11 +12,12 @@ import logging
 
 from flask import Blueprint, current_app, flash, jsonify, redirect, request, url_for
 from sqlalchemy import func, select
+from sqlalchemy.orm import joinedload
 
 from src.auth import capability_required, client_ip, current_user
 from src.db import record_audit, session_scope
 from src.errors import ApiError, current_request_id, not_found, validation_error
-from src.models import ALERT_STATUSES, Alert, Event, utcnow
+from src.models import ALERT_STATUSES, Alert, utcnow
 from src.services.config import get_store
 
 bp = Blueprint("alerts_api", __name__)
@@ -39,17 +28,10 @@ _DEFAULT_PAGE_SIZE = 50
 _MAX_PAGE_SIZE = 200
 
 
-# ---------------------------------------------------------------------------------------
-# helpers
-# ---------------------------------------------------------------------------------------
 
 
 def _payload() -> dict:
-    """Read a write payload from JSON or a form post, without caring which came.
-
-    The console's buttons are plain form posts (CSP: no inline JS); scripts send JSON.
-    Both carry the same fields, so both run through the same validation below.
-    """
+    """Read a write payload from JSON or a form post; both go through the same validation."""
     if request.is_json:
         body = request.get_json(silent=True)
         return body if isinstance(body, dict) else {}
@@ -142,9 +124,6 @@ def _audit_transition(
     )
 
 
-# ---------------------------------------------------------------------------------------
-# reads
-# ---------------------------------------------------------------------------------------
 
 
 @bp.get("/alerts")
@@ -224,6 +203,8 @@ def alert_history():
     with session_scope(current_app.config["SST_SESSION_FACTORY"]) as session:
         statement = (
             select(Alert)
+            # _alert_to_dict reads alert.event after the session closes, so load it now.
+            .options(joinedload(Alert.event))
             .where(Alert.status != "Open")
             .order_by(Alert.created_at.desc(), Alert.id.desc())
             .limit(limit)
@@ -258,9 +239,6 @@ def get_alert(alert_id: int):
     return jsonify({"data": data})
 
 
-# ---------------------------------------------------------------------------------------
-# writes
-# ---------------------------------------------------------------------------------------
 
 
 @bp.post("/alerts/<int:alert_id>/acknowledge")
@@ -304,21 +282,14 @@ def escalate(alert_id: int):
 
 
 def _redirect_with_error(alert_id: int, error: ApiError):
-    """Send a failed form post back to the console with a flash, not a raw JSON 409.
-
-    A double-clicked button (or a second operator beating you to a dismissal) must not
-    look like the console is broken; the reason is shown on the page it returns to.
-    """
+    """Send a failed form post back to the console with a flash message instead of a raw 409."""
     flash(f"Alert #{alert_id}: {error.message}", "error")
     return redirect(_back_href("main.alerts", status="Open"), code=303)
 
 
 def _transition(alert_id: int, action: str, **changes) -> "jsonify | redirect":
-    """Apply one status transition with its audit row; render for JSON or form callers.
-
-    One implementation for all three actions because the guard is the same shape:
-    only ``Open`` alerts may move (an acknowledged alert must not be re-dismissed into
-    ambiguity), and the audit row must show the before and after side by side.
+    """Apply one transition with its audit row. Dismissed and Closed are final; anything else
+    may still be acknowledged, escalated or dismissed.
     """
     if action not in {"acknowledge", "dismiss", "escalate"}:  # pragma: no cover
         raise ApiError("bad_request", f"Unknown alert action {action!r}.")
@@ -333,23 +304,7 @@ def _transition(alert_id: int, action: str, **changes) -> "jsonify | redirect":
             "escalated_to_severity": alert.escalated_to_severity,
             "is_false_alarm": bool(alert.is_false_alarm),
         }
-        if alert.status == "Open":
-            if action == "acknowledge":
-                alert.status = "Acknowledged"
-                alert.acknowledged_by_id = user.id
-                alert.acknowledged_at = now
-            elif action == "dismiss":
-                alert.status = "Dismissed"
-                alert.resolved_by_id = user.id
-                alert.resolved_at = now
-                alert.resolution_note = changes["resolution_note"]
-                alert.is_false_alarm = changes["is_false_alarm"]
-            else:
-                alert.status = "Escalated"
-                alert.escalated_to_severity = changes["escalated_to_severity"]
-                if changes.get("note"):
-                    alert.resolution_note = changes["note"]
-        elif alert.status in {"Dismissed", "Closed"}:
+        if alert.status in {"Dismissed", "Closed"}:
             error = ApiError(
                 "invalid_state_transition",
                 f"Alert #{alert.id} is {alert.status}; it cannot be {action}ed.",
@@ -357,8 +312,24 @@ def _transition(alert_id: int, action: str, **changes) -> "jsonify | redirect":
             if _wants_html():
                 return _redirect_with_error(alert.id, error)
             raise error
-        # Acknowledged / Escalated alerts may still be dismissed later; acknowledging an
-        # already-acknowledged alert is a deliberate no-op rather than an error.
+        # Until 26 Sep only Open alerts changed; later actions returned 200 and did nothing.
+        if action == "acknowledge":
+            if alert.acknowledged_by_id is None:
+                alert.acknowledged_by_id = user.id
+                alert.acknowledged_at = now
+            if alert.status == "Open":
+                alert.status = "Acknowledged"
+        elif action == "dismiss":
+            alert.status = "Dismissed"
+            alert.resolved_by_id = user.id
+            alert.resolved_at = now
+            alert.resolution_note = changes["resolution_note"]
+            alert.is_false_alarm = changes["is_false_alarm"]
+        else:
+            alert.status = "Escalated"
+            alert.escalated_to_severity = changes["escalated_to_severity"]
+            if changes.get("note"):
+                alert.resolution_note = changes["note"]
         after = {
             "status": alert.status,
             "acknowledged_by_id": alert.acknowledged_by_id,
