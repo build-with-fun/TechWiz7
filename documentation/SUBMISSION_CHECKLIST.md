@@ -21,7 +21,7 @@ done by code).
 | Alert rules | ✔ | `alert_rules/` |
 | Model comparison report | ✔ | `reports/MODEL_COMPARISON.md`, `reports/model_comparison.csv` |
 | Installation / execution instructions | ✔ | `README.md` |
-| Deployment URL | 👤 | deploy (Render/Railway) or state "local execution only" with the README steps |
+| Deployment URL | ✔ kit · 👤 deploy | `deploy/huggingface/` + `scripts/deploy_hf_space.sh` (free CPU Space; Render's free 512 MB cannot hold the AST model). 👤 create the Space, add `SST_SECRET_KEY`, run the script, then run `tools/uptime_probe.py` for NFR 5 |
 | Demonstration video (MP4) | 👤 | record using `DEMO_GUIDE.md` |
 | Technical blog (≥ 2,000 words) | ✔ draft | `documentation/blog.md`; 👤 publish and link |
 | AI_USAGE.md | ✔ draft | 👤 each member adds what they reviewed and changed, and signs |
@@ -37,11 +37,11 @@ done by code).
 
 ## Before you zip / push
 
-- [x] `pytest -q` green; paste the result into `TEST_PLAN.md` — 492 passed, 1 skipped, 0 failed
+- [x] `pytest -q` green; paste the result into `TEST_PLAN.md` — 497 passed, 0 failed (27 Sep)
 - [x] `python tools/render_uml.py --check` PASS
-- [x] `grep -rn "{{" README.md PROJECT_REPORT.md documentation/` finds no unfilled placeholders
-- [ ] No secrets: `.env` is not committed; `git grep -n "SECRET_KEY="` shows only `.env.example`
-- [ ] Fresh clone: follow `README.md` from scratch in a new folder and upload one sample clip
+- [x] `grep -rn "{{" README.md PROJECT_REPORT.md TEST_PLAN.md documentation/` finds no unfilled placeholders
+- [x] No secrets: `.env` is not committed; `git grep -n "SECRET_KEY="` shows only `.env.example` and a `...` placeholder in the Dockerfile comment (27 Sep)
+- [ ] Fresh clone: follow `README.md` from scratch in a new folder and upload one sample clip (27 Sep: `requirements.txt` was missing `transformers`, now fixed; a clean install is still untested)
 - [ ] Record the video; export 1080p MP4 named per the portal's rule
 - [ ] Share links (report, blog, video, dataset) set to "anyone with the link can view"
 

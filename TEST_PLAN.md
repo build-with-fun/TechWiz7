@@ -7,7 +7,11 @@ date they were observed; anything not yet run says so.
 
 | Date | Command | Result |
 |---|---|---|
-| 26 Sep | `pytest -q -k "not deep_models"` | {{PYTEST_LATEST}} |
+| 27 Sep | `pytest -q` (full suite, deep-model tests included) | **497 passed**, 0 failed, 196 s |
+| 27 Sep | `tools/browser_acceptance.py` (Chrome, fake microphone, isolated database) | **35/35 checks passed** (`reports/browser_acceptance.json`, `screenshots/acceptance/`) |
+| 27 Sep | `tools/benchmark_scale.py` (20,000 events, gunicorn 1 × 8 threads) | pass line met: p95 of reads 0.37 s at 10 users, 0.60 s at 20, no errors (`reports/scale.json`) |
+| 27 Sep | `tools/evaluate_gtm.py --split test` (200-epoch TM export) | 0.511 accuracy, 0.492 macro-F1, 0.600 critical recall |
+| 27 Sep | `tools/build_comparison_report.py` (both served models, 450 test recordings) | 450 scored, 0 failed (`reports/MODEL_COMPARISON.md`) |
 | 26 Sep | `pytest -q -k "not deep_models"` (before the final fixes) | 456 passed, 1 skipped, 27 deselected, 79 s |
 | 26 Sep | `tools/render_uml.py --check` | PASS (5 diagrams, no overlaps, no edge through a node) |
 | 25 Sep | `pytest -q` including deep-model tests (needs network for MobileNet weights) | 449 passed |
@@ -27,7 +31,7 @@ environment limit, not a pass.
 | Security | `test_csrf.py`, role checks (export 403 for non-admins), lockout and audit tests in `test_database.py` |
 | Database | `test_database.py` (every role, overrides keep model output, 20,000-event search speed), `test_persistence.py` |
 | Audio format | `test_audio_download_and_history.py` (every accepted format), MP3 round trip in `tools/robustness_probe.py` |
-| Microphone | live-window payload test; ☐ browser test with a real or fake microphone device |
+| Microphone | live-window payload test; `tools/browser_acceptance.py` with Chrome's fake microphone: consent, Available/Active/Paused/Disconnected/Permission denied, windows from both models, live alert |
 | Silence / clipping / noise | `test_audio_preprocessing.py`, quality tests, `test_augmentation.py::test_add_noise_hits_the_requested_snr` |
 | Preprocessing | `test_audio_preprocessing.py` |
 | Feature extraction | `test_feature_extraction.py`, `test_transfer_model.py` |
@@ -57,9 +61,9 @@ environment limit, not a pass.
 
 ## Manual checks still to do before the video
 
-- ☐ Upload each format (WAV, MP3, FLAC, OGG, M4A) through the browser.
-- ☐ Batch upload with one bad file among good ones.
-- ☐ Live monitor with a real microphone: Active, Paused, unplug (Disconnected), browser block
-  (Permission denied), and three windows of a played gunshot raising one alert.
+- ✔ Upload each format (WAV, MP3, FLAC, OGG, M4A) through the browser — automated, 27 Sep.
+- ✔ Batch upload with bad files among good ones — automated, 27 Sep.
+- ✔ Live monitor states and the three-window alert with Chrome's fake microphone — automated, 27 Sep.
+- ☐ The same live run once with a real microphone on the demo laptop (unplug for Disconnected).
 - ☐ Keyboard-only pass through login, upload, event page and review.
 - ☐ Firefox and Edge (only Chrome has been checked).
