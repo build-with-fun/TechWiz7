@@ -43,7 +43,7 @@ sudo apt install ffmpeg                       # Windows: winget install ffmpeg
 python3.12 -m venv .venv
 .venv/bin/pip install torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu
 .venv/bin/pip install -r requirements.txt
-.venv/bin/python tools/fetch_pretrained.py    # CNN14 weights, 358 MB, checksum-verified
+.venv/bin/python tools/fetch_pretrained.py --ast   # AST weights for the served model, ~350 MB
 cp .env.example .env                          # then set SST_SECRET_KEY
 .venv/bin/python database/init_db.py          # SQLite schema + demo accounts + model versions
 ```
@@ -149,7 +149,7 @@ the team; `DATA_ATTRIBUTION.md` lists every source and licence.
 
 | Symptom | Fix |
 |---|---|
-| `/api/health/ready` is 503 | a model is missing: run `tools/fetch_pretrained.py`; check `gtm_model/gtm_model.h5` exists |
+| `/api/health/ready` is 503 | a model is missing: run `tools/fetch_pretrained.py --ast`; check `gtm_model/gtm_model.h5` exists |
 | MP3/M4A upload refused as unreadable | FFmpeg is not on `PATH` |
 | First analysis takes ~5 s | CNN14 loads on first use; later clips take well under a second |
 | "Permission denied" on the live page | allow the microphone in the browser's site settings; use `localhost` or HTTPS |

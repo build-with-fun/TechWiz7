@@ -22,11 +22,16 @@ scikit-learn==1.9.1
 xgboost==3.4.1
 joblib==1.6.0
 
-# --- transfer-learning model (CNN14 embeddings) ---
-# The served Python model runs PANNs CNN14 in PyTorch. On Linux install the CPU wheel to
-# avoid a 2 GB CUDA download:
+# --- transfer-learning model (AST embeddings; CNN14 for the earlier candidates) ---
+# The served Python model runs the Audio Spectrogram Transformer through Hugging Face
+# transformers on PyTorch. On Linux install the CPU wheel to avoid a 2 GB CUDA download:
 #   pip install torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu
+# The AST weights (~350 MB) are fetched once with `python tools/fetch_pretrained.py --ast`.
 torch==2.14.0
+transformers==5.17.0
+huggingface_hub==1.33.0
+safetensors==0.8.0
+tokenizers==0.23.2
 
 # --- web app ---
 Flask==3.1.3
