@@ -34,7 +34,7 @@ services:
 from src.db import create_engine_for, default_db_path, init_db
 init_db(create_engine_for(default_db_path()))
 print('db initialised')"
-    startCommand: gunicorn -w 2 --timeout 120 -b 0.0.0.0:$PORT "src.app:create_app()"
+    startCommand: gunicorn -w 1 --threads 4 --timeout 120 -b 0.0.0.0:$PORT "src.app:create_app()"
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.7"

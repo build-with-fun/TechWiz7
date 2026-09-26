@@ -349,10 +349,14 @@ def build_query(filters: Filters, store):
             return statement.where(Event.id < 0)
         conditions.append(Event.created_by_id == filters.viewer_id)
 
+    # Text matches use LIKE, not ILIKE: the store is SQLite, whose LIKE is already
+    # case-insensitive for ASCII and whose lower() folds nothing beyond ASCII, so ILIKE's
+    # lower() on every row returned the same matches at almost twice the cost (free-text
+    # search over 20,000 events: 18.5 ms -> 10.3 ms per scan, reports/scale.json).
     if filters.audio_id:
-        conditions.append(AudioFile.audio_id.ilike(f"%{filters.audio_id}%"))
+        conditions.append(AudioFile.audio_id.like(f"%{filters.audio_id}%"))
     if filters.filename:
-        conditions.append(AudioFile.filename.ilike(f"%{filters.filename}%"))
+        conditions.append(AudioFile.filename.like(f"%{filters.filename}%"))
     if filters.sound_class:
         conditions.append(Event.predicted_class == filters.sound_class)
     if filters.severity:
@@ -392,12 +396,12 @@ def build_query(filters: Filters, store):
         conditions.append(
             or_(
                 Event.created_by_id.in_(
-                    select(User.id).where(User.username.ilike(f"%{filters.user}%"))
+                    select(User.id).where(User.username.like(f"%{filters.user}%"))
                 ),
                 Event.id.in_(
                     select(Review.event_id).where(
                         Review.decided_by_id.in_(
-                            select(User.id).where(User.username.ilike(f"%{filters.user}%"))
+                            select(User.id).where(User.username.like(f"%{filters.user}%"))
                         )
                     )
                 ),
@@ -416,12 +420,12 @@ def build_query(filters: Filters, store):
         needle = f"%{filters.q}%"
         conditions.append(
             or_(
-                AudioFile.audio_id.ilike(needle),
-                AudioFile.filename.ilike(needle),
-                Event.predicted_class.ilike(needle),
-                Event.final_class.ilike(needle),
-                Event.location.ilike(needle),
-                Event.review_reason.ilike(needle),
+                AudioFile.audio_id.like(needle),
+                AudioFile.filename.like(needle),
+                Event.predicted_class.like(needle),
+                Event.final_class.like(needle),
+                Event.location.like(needle),
+                Event.review_reason.like(needle),
             )
         )
 

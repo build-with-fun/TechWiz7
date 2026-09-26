@@ -4,7 +4,7 @@
 
 The run builds a throwaway database (``database/init_db.py`` plus 20,000 synthetic events
 spread over 60 days, every class, severity, status, quality and source), serves it with
-gunicorn exactly as the deployment kit does, and sends real HTTP requests from signed-in
+gunicorn as the README recommends (one worker, eight threads), and sends real HTTP requests from signed-in
 users: the events list, each search filter, the Events, Dashboard and Analytics pages, the
 dashboard APIs and the CSV export. It then repeats the four-client 30-second upload test
 from ``tools/benchmark_latency.py`` against the same server. The demo database is never
@@ -42,7 +42,7 @@ sys.path.insert(0, str(ROOT))
 N_EVENTS = 20_000
 LEVELS = (1, 10, 20)
 ROUNDS = 3
-WORKERS, THREADS = 2, 4
+WORKERS, THREADS = 1, 8  # one worker: live-window streaks are per process
 READ_P95_LIMIT_S = 1.0
 LOGIN_SPACING_S = 3.5
 EXPORT_LIMIT_S = 10.0
@@ -288,7 +288,9 @@ def main() -> None:
     db_path = tmp / "scale.db"
     env = {**os.environ, "SST_DB_PATH": str(db_path), "SST_STORAGE_DIR": str(tmp / "storage"),
            "SST_PRODUCTION": "0", "SST_LOAD_MODELS": "1",
-           "SST_TORCH_THREADS": str(max(1, (os.cpu_count() or 2) // WORKERS))}
+           # One PyTorch thread per physical core: 8 threads on this 4-core, 8-thread laptop
+           # made a 30 s upload 40 % slower than 4 did.
+           "SST_TORCH_THREADS": str(max(1, (os.cpu_count() or 2) // 2))}
     subprocess.run([sys.executable, "database/init_db.py"], cwd=ROOT, env=env, check=True,
                    stdout=subprocess.DEVNULL)
     print("seeding 20,000 synthetic events ...", flush=True)
@@ -344,7 +346,7 @@ def main() -> None:
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "machine": {"cpu_threads": os.cpu_count(), "platform": platform.platform(),
                     "python": platform.python_version()},
-        "server": f"gunicorn -w {WORKERS} --threads {THREADS} (same as scripts/deploy_render.sh)",
+        "server": f"gunicorn -w {WORKERS} --threads {THREADS} (the README's multi-user command)",
         "database": {"engine": "SQLite", **seeded,
                      "note": "synthetic rows, location 'scale-test'; no audio files behind them"},
         "pass_line": {"read_p95_s_at_10_users": READ_P95_LIMIT_S, "errors": 0,

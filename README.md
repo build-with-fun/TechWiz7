@@ -91,12 +91,15 @@ deployment):
 Anyone can register at `/register` as a normal user; an administrator assigns other roles
 under Admin → Users.
 
-**Several users at once**: serve with gunicorn instead of the development server. Each
-worker loads its own copy of both models, so size `-w` to the machine's memory and cores:
+**Several users at once**: serve with gunicorn instead of the development server. Keep
+**one worker** and add threads: the live page's "N windows in a row" counter lives in the
+worker's memory, so a second worker could receive half of a session's windows and never see
+the streak. One worker also holds a single copy of both models. Set `SST_TORCH_THREADS` to the number of
+physical cores.
 
 ```bash
 set -a; . ./.env; set +a
-SST_TORCH_THREADS=4 .venv/bin/gunicorn -w 2 --threads 4 --timeout 300 -b 127.0.0.1:5055 "src.app:create_app()"
+SST_TORCH_THREADS=4 .venv/bin/gunicorn -w 1 --threads 8 --timeout 300 -b 127.0.0.1:5055 "src.app:create_app()"
 ```
 
 `tools/benchmark_scale.py` measures this setup with 20,000 events and up to 20 users

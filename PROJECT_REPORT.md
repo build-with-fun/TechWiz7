@@ -259,6 +259,14 @@ separately as a cold start so it is not mistaken for steady-state latency; the a
 both models at start-up (`AnalysisPipeline.warm()`), so this cost is paid at boot rather
 than in the first user request.
 
+Scale (NFR 2, `tools/benchmark_scale.py`, `reports/scale.json`): 20,000 synthetic events,
+gunicorn with one worker and 8 threads, real HTTP from signed-in users. The 95th-percentile
+response of all page and API reads was 0.065 s for one user, 0.37 s for 10 and 0.60 s for 20,
+with no errors and no endpoint above 0.76 s; the largest export the app allows (9,334 rows)
+took 1.6 s. Under the same server a 30 s upload took 4.8 s median; four at once took 17.5 s
+median, which is the CPU limit of this laptop. One worker is deliberate: the live page's
+"N windows in a row" counter lives in the worker's memory.
+
 ## 11. Security and privacy
 
 Hashed passwords with lockout after 5 failures; server-side role checks on every route; CSRF
@@ -274,16 +282,20 @@ published on purpose for evaluators and must be replaced before any public deplo
 
 ## 12. Limitations and future work
 
-- SRS-4: the served Python model reaches **0.891** test accuracy (target 0.85, met), macro
-  F1 0.892 (target 0.80, met) and 0.907 critical recall (target 0.85, met); Aggression
-  (0.84) and Panic Scream (0.82) are individually below 0.85 even though the mean clears
-  it, and those two remain the honest weak point. The TM model is below target: see §8.2.
+- SRS-4: the served Python model reaches **0.891** test accuracy (target 0.85, met) and macro
+  F1 0.892 (target 0.80, met). The SRS asks for 85 % recall per critical class: Help, Gunshot
+  and Glass meet it; Aggression (0.84) and Panic Scream (0.82) do not, although the five
+  average 0.907. A Day 5 retrain with augmented copies did not beat the served model on
+  validation. The TM model is below all three targets (0.511 / 0.492 / 0.600): see §8.2.
 - Proxy labels for Aggression and Machinery Fault; synthetic-only help phrases.
 - No "Unknown" class: out-of-set sounds are forced into the nearest class and rely on review.
 - Browser/server parity of the TM frontend not measured.
-- Single-process repeated-detection state; not load-tested; not deployed; no uptime figure.
+- Repeated-detection state lives in one process, so the app runs as a single gunicorn worker
+  with threads; four simultaneous 30 s uploads take 17.5 s. Not yet deployed, so no uptime
+  figure: the Hugging Face Space kit (`deploy/huggingface/`) and `tools/uptime_probe.py` are
+  ready and need the team's account.
 - Trimmed re-uploads are recognised as near-duplicates only about 22 % of the time.
 
 Next: record consented, purpose-made clips for the weak classes; add an "Unknown" class trained
 on out-of-set sounds; fine-tune CNN14 on a GPU; move repeated-detection state to the database for
-multiple workers; deploy with monitoring to measure availability.
+multiple workers; deploy the Space and run the uptime probe through the evaluation window.

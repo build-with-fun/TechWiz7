@@ -96,25 +96,38 @@ Written down before the runs below started, so that validation decides and test 
   unsupported file was told to send "WebM" audio, which the SRS does not list, and not M4A,
   which it does; fixed.
 - **NFR 2, measured** (`tools/benchmark_scale.py` → `reports/scale.json`): 20,000 synthetic
-  events in a scratch SQLite database, served by gunicorn with 2 workers × 4 threads, real
-  HTTP from signed-in users. Pass line written in the script before the first run: p95 ≤ 1 s
-  for every page and API read at 10 users, no errors, largest allowed export ≤ 10 s.
+  events in a scratch SQLite database, served by gunicorn with **one worker and 8 threads**,
+  real HTTP from signed-in users. Pass line written in the script before the first run: p95
+  ≤ 1 s for every page and API read at 10 users, no errors, largest allowed export ≤ 10 s.
 
   | Users at once | p95, all reads | Slowest endpoint (p95) | Errors |
   |---:|---:|---|---:|
-  | 1 | 0.076 s | dashboard page 0.093 s | 0 |
-  | 10 | 0.387 s | free-text search 0.668 s | 0 |
-  | 20 | 0.648 s | free-text search 1.337 s | 0 |
+  | 1 | 0.065 s | events filtered by class 0.189 s | 0 |
+  | 10 | 0.372 s | analytics page 0.674 s | 0 |
+  | 20 | 0.597 s | analytics page 0.756 s | 0 |
 
-  Export: all 20,000 rows is refused in 0.04 s (the app caps exports at 10,000 rows and says
-  so); the largest allowed export, 9,334 rows, took 1.98 s. 30-second uploads: median 5.72 s
-  one at a time; four at once, median 15.6 s and p95 25.1 s — CPU-bound on this 8-thread
-  laptop, so simultaneous long uploads remain the real limit (NFR 1 is met for one at a time).
-  Free-text search is the slowest read because it matches six columns with `%text%`, which no
-  index can serve; an earlier run that stopped at the 20-user sign-in measured it at 1.04 s
-  p95 with 10 users, so it sits close to the line. Two harness faults were fixed on the way:
-  it signed in again for every load level and tripped the app's own login rate limit (20 per
-  minute per address), and it expected an all-rows export to succeed.
+  Export: all 20,000 rows is refused in 0.02 s (the app caps exports at 10,000 rows and says
+  so); the largest allowed export, 9,334 rows, took 1.61 s. 30-second uploads: median 4.79 s
+  one at a time; four at once, median 17.5 s and p95 20.5 s — CPU-bound on this laptop, so
+  simultaneous long uploads remain the real limit (NFR 1 holds for one at a time).
+
+  How it got there, in order:
+  1. The first runs used 2 workers × 4 threads, the Render kit's setting (10 users: free-text
+     search p95 0.67 s, once 1.04 s). Then the live page's streak counter (`RepeatTracker`)
+     turned out to live in worker memory: with two workers, one session's windows can land on
+     different processes and "3 in a row" may never be seen. The README, the Render kit and
+     the benchmark now use one worker with threads (the Space image already did).
+  2. One worker with 8 PyTorch threads failed the line (free-text search 1.35 s at 10 users)
+     and slowed a 30 s upload to 8.15 s: 8 threads oversubscribe the 4 physical cores.
+     `SST_TORCH_THREADS` is now the physical core count.
+  3. Free-text search used ILIKE, which SQLite runs as `lower(x) LIKE lower(?)` on six columns
+     of every row. SQLite's LIKE is already case-insensitive for ASCII and its `lower()` folds
+     nothing else, so plain LIKE returns the same rows: 18.5 → 10.3 ms per scan of 20,000
+     events. A test now checks that search ignores case.
+
+  Two harness faults were also fixed: it signed in again for every load level and tripped the
+  app's own login rate limit (20 per minute per address), and it expected an all-rows export
+  to succeed.
 
 ---
 

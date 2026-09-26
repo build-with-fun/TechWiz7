@@ -408,6 +408,17 @@ def test_severity_filter_narrows_the_list(app, factory, viewer):
     assert page["data"][0]["severity"] == "High"
 
 
+def test_free_text_search_ignores_case(app, factory, viewer):
+    """Search matches with LIKE, relying on SQLite's case-insensitive LIKE for ASCII."""
+    _seed_event(factory, viewer, predicted="Glass Breaking")
+    _seed_event(factory, viewer, predicted="Gunshot")
+
+    for query in ("glass", "GLASS", "Glass Br"):
+        page = _client(app, viewer).get(f"/api/events?q={query}").get_json()
+        assert page["meta"]["total"] == 1, query
+        assert page["data"][0]["predicted_class"] == "Glass Breaking"
+
+
 def test_an_unknown_severity_is_a_422_not_a_silent_match(app, viewer):
     resp = _client(app, viewer).get("/api/events?severity=Catastrophic")
     assert resp.status_code == 422
