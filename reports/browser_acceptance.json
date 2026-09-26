@@ -1,0 +1,259 @@
+{
+  "generated_at": "2026-09-26T23:14:28.084844+00:00",
+  "base": "isolated scratch database",
+  "browser": "Google Chrome (headless), fake microphone playing sample_audio/person_asking_for_help.wav",
+  "duration_s": 68.4,
+  "passed": 35,
+  "failed": 0,
+  "checks": [
+    {
+      "fr": "i",
+      "check": "admin signs in through the form",
+      "passed": true,
+      "detail": "http://127.0.0.1:50507/dashboard"
+    },
+    {
+      "fr": "ii",
+      "check": "administrator (admin): pages match the permission matrix",
+      "passed": true,
+      "detail": "9 pages checked",
+      "screenshot": "screenshots/acceptance/role_admin_dashboard.png"
+    },
+    {
+      "fr": "i",
+      "check": "evaluator signs in through the form",
+      "passed": true,
+      "detail": "http://127.0.0.1:50507/dashboard"
+    },
+    {
+      "fr": "ii",
+      "check": "administrator (evaluator): pages match the permission matrix",
+      "passed": true,
+      "detail": "9 pages checked",
+      "screenshot": "screenshots/acceptance/role_evaluator_dashboard.png"
+    },
+    {
+      "fr": "i",
+      "check": "reviewer signs in through the form",
+      "passed": true,
+      "detail": "http://127.0.0.1:50507/dashboard"
+    },
+    {
+      "fr": "ii",
+      "check": "audio_reviewer (reviewer): pages match the permission matrix",
+      "passed": true,
+      "detail": "9 pages checked",
+      "screenshot": "screenshots/acceptance/role_reviewer_dashboard.png"
+    },
+    {
+      "fr": "i",
+      "check": "operator signs in through the form",
+      "passed": true,
+      "detail": "http://127.0.0.1:50507/dashboard"
+    },
+    {
+      "fr": "ii",
+      "check": "security_operator (operator): pages match the permission matrix",
+      "passed": true,
+      "detail": "9 pages checked",
+      "screenshot": "screenshots/acceptance/role_operator_dashboard.png"
+    },
+    {
+      "fr": "i",
+      "check": "maintenance signs in through the form",
+      "passed": true,
+      "detail": "http://127.0.0.1:50507/dashboard"
+    },
+    {
+      "fr": "ii",
+      "check": "maintenance_operator (maintenance): pages match the permission matrix",
+      "passed": true,
+      "detail": "9 pages checked",
+      "screenshot": "screenshots/acceptance/role_maintenance_dashboard.png"
+    },
+    {
+      "fr": "i",
+      "check": "user signs in through the form",
+      "passed": true,
+      "detail": "http://127.0.0.1:50507/events"
+    },
+    {
+      "fr": "ii",
+      "check": "normal_user (user): pages match the permission matrix",
+      "passed": true,
+      "detail": "9 pages checked",
+      "screenshot": "screenshots/acceptance/role_user_dashboard.png"
+    },
+    {
+      "fr": "iv",
+      "check": "WAV upload analysed by both models",
+      "passed": true,
+      "detail": "acceptance_gunshot.wav",
+      "screenshot": "screenshots/acceptance/upload_wav.png"
+    },
+    {
+      "fr": "iv",
+      "check": "MP3 upload analysed by both models",
+      "passed": true,
+      "detail": "acceptance_glass_breaking.mp3",
+      "screenshot": "screenshots/acceptance/upload_mp3.png"
+    },
+    {
+      "fr": "iv",
+      "check": "FLAC upload analysed by both models",
+      "passed": true,
+      "detail": "acceptance_alarm_or_siren.flac",
+      "screenshot": "screenshots/acceptance/upload_flac.png"
+    },
+    {
+      "fr": "iv",
+      "check": "OGG upload analysed by both models",
+      "passed": true,
+      "detail": "acceptance_vehicle_horn.ogg",
+      "screenshot": "screenshots/acceptance/upload_ogg.png"
+    },
+    {
+      "fr": "iv",
+      "check": "M4A upload analysed by both models",
+      "passed": true,
+      "detail": "acceptance_animal_sound.m4a",
+      "screenshot": "screenshots/acceptance/upload_m4a.png"
+    },
+    {
+      "fr": "v",
+      "check": "batch of 4: two analysed, two refused with a reason",
+      "passed": true,
+      "detail": "panic_scream.wav: result | silence.wav: Audio quality Unusable: silence, excessive noise. | invalid.notaudio: This file type is not supported. Send WAV, MP3, FLAC, OGG or M4A audio. | machinery_fault.wav: result",
+      "screenshot": "screenshots/acceptance/upload_batch.png"
+    },
+    {
+      "fr": "li",
+      "check": "an uncertain event is marked Manual Review Required",
+      "passed": true,
+      "detail": "event 7: Uncertain Result",
+      "screenshot": "screenshots/acceptance/manual_review_event.png"
+    },
+    {
+      "fr": "ix",
+      "check": "play by keyboard",
+      "passed": true,
+      "detail": "time 0:01.1"
+    },
+    {
+      "fr": "ix",
+      "check": "pause by keyboard",
+      "passed": true,
+      "detail": "paused at 1.27 s"
+    },
+    {
+      "fr": "ix",
+      "check": "seek by keyboard",
+      "passed": true,
+      "detail": "1.27 s -> 4.60 s"
+    },
+    {
+      "fr": "ix",
+      "check": "volume by keyboard",
+      "passed": true,
+      "detail": "0.80 -> 0.77"
+    },
+    {
+      "fr": "ix",
+      "check": "replay restarts from 0:00 and plays",
+      "passed": true,
+      "detail": "time 0:00.3",
+      "screenshot": "screenshots/acceptance/player.png"
+    },
+    {
+      "fr": "vii",
+      "check": "microphone shows Available before consent",
+      "passed": true,
+      "detail": "Available"
+    },
+    {
+      "fr": "lxxix",
+      "check": "nothing is captured before consent",
+      "passed": true,
+      "detail": "getUserMedia calls before consent: 0"
+    },
+    {
+      "fr": "lxxix",
+      "check": "the start button stays disabled until consent",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "fr": "vi",
+      "check": "consent opens a session and the microphone becomes Active",
+      "passed": true,
+      "detail": "state Active, title '\u25cf Live monitoring \u00b7 SonicSentinel AI'"
+    },
+    {
+      "fr": "lxiv",
+      "check": "live windows are classified by both models",
+      "passed": true,
+      "detail": "3 windows; Python Person Asking for Help, TM Person Asking for Help",
+      "screenshot": "screenshots/acceptance/live_active.png"
+    },
+    {
+      "fr": "liv",
+      "check": "a critical sound repeated across windows raises the live alert banner",
+      "passed": true,
+      "detail": "Critical: Person Asking for Help\nconfirmed in 3 consecutive windows. Treat as a safety emergency. Dispatch a responder to the reported location and confirm the ",
+      "screenshot": "screenshots/acceptance/live_alert.png"
+    },
+    {
+      "fr": "vii",
+      "check": "Pause shows Paused",
+      "passed": true,
+      "detail": "Paused",
+      "screenshot": "screenshots/acceptance/live_paused.png"
+    },
+    {
+      "fr": "vii",
+      "check": "Resume returns to Active",
+      "passed": true,
+      "detail": "Active"
+    },
+    {
+      "fr": "vii",
+      "check": "a lost device shows Disconnected and stops monitoring",
+      "passed": true,
+      "detail": "Disconnected",
+      "screenshot": "screenshots/acceptance/live_disconnected.png"
+    },
+    {
+      "fr": "vii",
+      "check": "a refused permission shows Permission denied",
+      "passed": true,
+      "detail": "Permission denied",
+      "screenshot": "screenshots/acceptance/live_permission_denied.png"
+    },
+    {
+      "fr": "-",
+      "check": "no uncaught script errors on any page",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "console_errors": [
+    "role:reviewer: Failed to load resource: the server responded with a status of 403 (FORBIDDEN)",
+    "role:reviewer: Failed to load resource: the server responded with a status of 404 (NOT FOUND)",
+    "role:reviewer: Failed to load resource: the server responded with a status of 403 (FORBIDDEN)",
+    "role:reviewer: Failed to load resource: the server responded with a status of 403 (FORBIDDEN)",
+    "role:operator: Failed to load resource: the server responded with a status of 403 (FORBIDDEN)",
+    "role:operator: Failed to load resource: the server responded with a status of 403 (FORBIDDEN)",
+    "role:operator: Failed to load resource: the server responded with a status of 403 (FORBIDDEN)",
+    "role:maintenance: Failed to load resource: the server responded with a status of 403 (FORBIDDEN)",
+    "role:maintenance: Failed to load resource: the server responded with a status of 403 (FORBIDDEN)",
+    "role:maintenance: Failed to load resource: the server responded with a status of 403 (FORBIDDEN)",
+    "role:user: Failed to load resource: the server responded with a status of 403 (FORBIDDEN)",
+    "role:user: Failed to load resource: the server responded with a status of 403 (FORBIDDEN)",
+    "role:user: Failed to load resource: the server responded with a status of 403 (FORBIDDEN)",
+    "role:user: Failed to load resource: the server responded with a status of 403 (FORBIDDEN)",
+    "role:user: Failed to load resource: the server responded with a status of 403 (FORBIDDEN)",
+    "upload: Failed to load resource: the server responded with a status of 415 (UNSUPPORTED MEDIA TYPE)",
+    "upload: Failed to load resource: the server responded with a status of 422 (UNPROCESSABLE ENTITY)"
+  ],
+  "page_errors": []
+}

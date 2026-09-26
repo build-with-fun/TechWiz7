@@ -7,6 +7,14 @@ model failures, code changes, tests performed. Newest first.
 
 ## Day 5 — 2026-09-27
 
+### Commit history, stated as it is
+SRS §1.8 asks for meaningful commits on all five competition days. The Git history has
+commits on 24, 25 and 27 September only. Day 1 (23 Sep) work — reading the SRS, acquiring the
+corpus, the first feature extractor and app skeleton, described below — was done before the
+repository's first commit (24 Sep 14:08). Day 4 (26 Sep) work was committed at 01:30 on
+27 Sep as `2174c4e`. No commit has been backdated and none will be; this entry and the
+per-day sections below are the record for the two days without commits.
+
 ### Selection rules, fixed before any new model was scored
 Written down before the runs below started, so that validation decides and test only reports.
 
@@ -78,6 +86,35 @@ Written down before the runs below started, so that validation decides and test 
   random start and internal split); one run per setting was all the time allowed. The
   search stopped at 200 epochs because the gain had shrunk to 0.01 and no setting comes
   near the 0.85 target. `init_db.py` registered the new version as active.
+- **Browser acceptance (FR ii, iv, v, vi, vii, ix, li, liv, lxiv, lxxix).** New
+  `tools/browser_acceptance.py` starts its own copy of the app on a scratch database and drives
+  system Chrome, with a fake microphone playing `sample_audio/person_asking_for_help.wav` for
+  the live page: all six accounts through the login form against the permission matrix, one
+  upload per format, a mixed batch, the player by keyboard, the "Manual Review Required" label,
+  consent, all five microphone states and the live alert after three windows.
+  `reports/browser_acceptance.json`, `screenshots/acceptance/`. It found one wrong message: an
+  unsupported file was told to send "WebM" audio, which the SRS does not list, and not M4A,
+  which it does; fixed.
+- **NFR 2, measured** (`tools/benchmark_scale.py` → `reports/scale.json`): 20,000 synthetic
+  events in a scratch SQLite database, served by gunicorn with 2 workers × 4 threads, real
+  HTTP from signed-in users. Pass line written in the script before the first run: p95 ≤ 1 s
+  for every page and API read at 10 users, no errors, largest allowed export ≤ 10 s.
+
+  | Users at once | p95, all reads | Slowest endpoint (p95) | Errors |
+  |---:|---:|---|---:|
+  | 1 | 0.076 s | dashboard page 0.093 s | 0 |
+  | 10 | 0.387 s | free-text search 0.668 s | 0 |
+  | 20 | 0.648 s | free-text search 1.337 s | 0 |
+
+  Export: all 20,000 rows is refused in 0.04 s (the app caps exports at 10,000 rows and says
+  so); the largest allowed export, 9,334 rows, took 1.98 s. 30-second uploads: median 5.72 s
+  one at a time; four at once, median 15.6 s and p95 25.1 s — CPU-bound on this 8-thread
+  laptop, so simultaneous long uploads remain the real limit (NFR 1 is met for one at a time).
+  Free-text search is the slowest read because it matches six columns with `%text%`, which no
+  index can serve; an earlier run that stopped at the 20-user sign-in measured it at 1.04 s
+  p95 with 10 users, so it sits close to the line. Two harness faults were fixed on the way:
+  it signed in again for every load level and tripped the app's own login rate limit (20 per
+  minute per address), and it expected an all-rows export to succeed.
 
 ---
 
