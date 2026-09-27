@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-09-26T23:14:28.084844+00:00",
+  "generated_at": "2026-09-27T02:15:10.333324+00:00",
   "base": "isolated scratch database",
   "browser": "Google Chrome (headless), fake microphone playing sample_audio/person_asking_for_help.wav",
-  "duration_s": 68.4,
+  "duration_s": 94.2,
   "passed": 35,
   "failed": 0,
   "checks": [
@@ -10,7 +10,7 @@
       "fr": "i",
       "check": "admin signs in through the form",
       "passed": true,
-      "detail": "http://127.0.0.1:50507/dashboard"
+      "detail": "http://127.0.0.1:44101/dashboard"
     },
     {
       "fr": "ii",
@@ -23,7 +23,7 @@
       "fr": "i",
       "check": "evaluator signs in through the form",
       "passed": true,
-      "detail": "http://127.0.0.1:50507/dashboard"
+      "detail": "http://127.0.0.1:44101/dashboard"
     },
     {
       "fr": "ii",
@@ -36,7 +36,7 @@
       "fr": "i",
       "check": "reviewer signs in through the form",
       "passed": true,
-      "detail": "http://127.0.0.1:50507/dashboard"
+      "detail": "http://127.0.0.1:44101/dashboard"
     },
     {
       "fr": "ii",
@@ -49,7 +49,7 @@
       "fr": "i",
       "check": "operator signs in through the form",
       "passed": true,
-      "detail": "http://127.0.0.1:50507/dashboard"
+      "detail": "http://127.0.0.1:44101/dashboard"
     },
     {
       "fr": "ii",
@@ -62,7 +62,7 @@
       "fr": "i",
       "check": "maintenance signs in through the form",
       "passed": true,
-      "detail": "http://127.0.0.1:50507/dashboard"
+      "detail": "http://127.0.0.1:44101/dashboard"
     },
     {
       "fr": "ii",
@@ -75,7 +75,7 @@
       "fr": "i",
       "check": "user signs in through the form",
       "passed": true,
-      "detail": "http://127.0.0.1:50507/events"
+      "detail": "http://127.0.0.1:44101/events"
     },
     {
       "fr": "ii",
@@ -143,13 +143,13 @@
       "fr": "ix",
       "check": "pause by keyboard",
       "passed": true,
-      "detail": "paused at 1.27 s"
+      "detail": "paused at 1.30 s"
     },
     {
       "fr": "ix",
       "check": "seek by keyboard",
       "passed": true,
-      "detail": "1.27 s -> 4.60 s"
+      "detail": "1.30 s -> 4.60 s"
     },
     {
       "fr": "ix",
@@ -161,7 +161,7 @@
       "fr": "ix",
       "check": "replay restarts from 0:00 and plays",
       "passed": true,
-      "detail": "time 0:00.3",
+      "detail": "time 0:00.8",
       "screenshot": "screenshots/acceptance/player.png"
     },
     {

@@ -128,6 +128,19 @@ Written down before the runs below started, so that validation decides and test 
   Two harness faults were also fixed: it signed in again for every load level and tripped the
   app's own login rate limit (20 per minute per address), and it expected an all-rows export
   to succeed.
+- **Interface redesign.** A public product page now sits at `/` for signed-out visitors
+  (signed-in users still go to their home page): a sky-blue hero with tilted product cards, a
+  stats band, the console on desktop and phone, how it works, the ten classes with a waveform
+  each, the two models' held-out results against the SRS targets (read from the metrics files at
+  request time), and who uses it. The console itself moved to the Geist typeface (self-hosted,
+  OFL, because the CSP allows no font CDN), a light default theme with an ink sidebar and a
+  rebuilt dark theme, a drawer menu below 1025 px in place of the sideways-scrolling strip, and
+  tables that turn into stacked cards on phones (column names copied onto the cells by
+  `core.js`). Chips show a colour dot next to the word instead of glyph strings, and no longer
+  truncate class names. Sign-in and sign-up are a full-screen split: the same sky on the left,
+  the form on the right. Every `id` and `data-*` hook the scripts and tests use is unchanged:
+  `pytest` 497 passed, `tools/check_ui.py` passed at 320/390/768/1440 px with no overflow,
+  `tools/browser_acceptance.py` 35/35.
 
 ---
 
