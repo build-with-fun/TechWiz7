@@ -21,7 +21,7 @@ done by code).
 | Alert rules | ✔ | `alert_rules/` |
 | Model comparison report | ✔ | `reports/MODEL_COMPARISON.md`, `reports/model_comparison.csv` |
 | Installation / execution instructions | ✔ | `README.md` |
-| Deployment URL | ✔ kit · 👤 deploy | `deploy/huggingface/` + `scripts/deploy_hf_space.sh` (free CPU Space; Render's free 512 MB cannot hold the AST model). 👤 create the Space, add `SST_SECRET_KEY`, run the script, then run `tools/uptime_probe.py` for NFR 5 |
+| Deployment URL | ✔ | <https://shelf-starlight-subfloor.ngrok-free.dev/login> (laptop + ngrok, 27 Sep). 👤 keep the laptop on, both terminals open, and `tools/uptime_probe.py` running until judging ends; then `--summary` for NFR 5 |
 | Demonstration video (MP4) | 👤 | record using `DEMO_GUIDE.md` |
 | Technical blog (≥ 2,000 words) | ✔ draft | `documentation/blog.md`; 👤 publish and link |
 | AI_USAGE.md | ✔ draft | 👤 each member adds what they reviewed and changed, and signs |

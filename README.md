@@ -10,6 +10,12 @@ audio quality, applies alert rules, and sends anything uncertain to a human revi
 It is an Aptech TechWiz 7 (NextWave AI and ML) competition prototype for supervised
 operators. **It is not a certified emergency-response or law-enforcement system.**
 
+**Live application:** <https://shelf-starlight-subfloor.ngrok-free.dev/login> — evaluator
+login `evaluator` / `Eval#Sonic2026` (all accounts are listed under [Run](#run)). It is served
+from the team's machine through an ngrok tunnel during the evaluation period; the first visit
+shows ngrok's notice page, click **Visit Site** once. If it is unreachable, the local
+instructions below run the same application.
+
 ## Results on unseen recordings
 
 Frozen test split: 450 original recordings (45 per class) that no model trained on or was
@@ -105,7 +111,13 @@ SST_TORCH_THREADS=4 .venv/bin/gunicorn -w 1 --threads 8 --timeout 300 -b 127.0.0
 `tools/benchmark_scale.py` measures this setup with 20,000 events and up to 20 users
 (`reports/scale.json`).
 
-**Hosted deployment** (Hugging Face Docker Space, free CPU tier): create a Docker Space,
+**Public URL from your own machine** (how the live link above is served): start the app with
+gunicorn as above in production mode (`SST_PRODUCTION=1`, `SST_SECRET_KEY` set,
+`SST_TRUSTED_PROXY_HOPS=1`), then `ngrok http 5055` (free account; it prints the address).
+Keep both running and the machine awake, e.g. `systemd-inhibit --what=sleep:idle ngrok http 5055`.
+
+**Hosted deployment** (Hugging Face Docker Space; since July 2026 creating one needs a paid
+PRO account): create a Docker Space,
 add the secret `SST_SECRET_KEY`, then `HF_TOKEN=hf_... scripts/deploy_hf_space.sh
 <owner>/<space>`. Details in `deploy/huggingface/SPACE.md`. To record availability (NFR 5),
 leave `tools/uptime_probe.py https://<owner>-<space>.hf.space` running through the
