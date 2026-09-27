@@ -1,0 +1,23 @@
+{# The brand side of the sign-in and sign-up pages. Decorative; the form is on the other side. #}
+{% macro panel(pill, title, sub, steps, active=1) %}
+<aside class="auth__panel" aria-label="About SonicSentinel">
+  <div class="auth__sky" aria-hidden="true"><span class="auth__cloud auth__cloud--a"></span><span class="auth__cloud auth__cloud--b"></span><span class="auth__cloud auth__cloud--c"></span></div>
+  <a class="auth__brand" href="{{ url_for('main.index') }}">
+    <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="" width="26" height="26">
+    <span>SonicSentinel</span>
+  </a>
+  <div class="auth__pitch">
+    <span class="auth__pill">{{ pill }}</span>
+    <h2 class="auth__headline">{{ title }}</h2>
+    <p class="auth__sub">{{ sub }}</p>
+    <ol class="auth__steps">
+      {% for step in steps %}
+        <li class="auth__step{{ ' is-active' if loop.index == active }}">
+          <span class="auth__step-n">{{ loop.index }}</span>
+          <span class="auth__step-text">{{ step }}</span>
+        </li>
+      {% endfor %}
+    </ol>
+  </div>
+</aside>
+{% endmacro %}

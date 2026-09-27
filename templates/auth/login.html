@@ -1,6 +1,7 @@
 {# The form posts to the HTML session route; login.js only adds client-side feedback. #}
 {% extends "base.html" %}
 {% import "_macros.html" as ui %}
+{% from "auth/_panel.html" import panel with context %}
 
 {% block title %}Sign in · {{ app_name }}{% endblock %}
 {% block page_id %}login{% endblock %}
@@ -8,62 +9,69 @@
 {% block body_class %}page-auth{% endblock %}
 
 {% block content %}
-<div class="auth-shell">
-  <div class="auth-card" data-testid="login-card">
-    <div class="auth-card__brand">
-      <img class="auth-card__logo" src="{{ url_for('static', filename='img/logo.svg') }}"
-           alt="" width="36" height="36" aria-hidden="true">
-      <div>
-        <h1 class="auth-card__title">{{ app_name }}</h1>
-        <p class="auth-card__sub">Sound-event classification and review</p>
+<div class="auth">
+  <div class="auth__frame">
+    {{ panel("Operator console",
+             "Welcome back",
+             "Pick up where the last shift left off: new detections, open alerts and the review queue.",
+             ["Sign in with your account", "Upload a clip or listen live", "Act on what both models found"],
+             active=1) }}
+
+    <section class="auth__form-side" aria-labelledby="auth-title">
+      <div class="auth-card" data-testid="login-card">
+        <h1 class="auth-card__title" id="auth-title">Sign in</h1>
+        <p class="auth-card__sub">Use your SonicSentinel account.</p>
+
+        {% if switch %}
+          <p class="callout">You are signed in. Sign in as someone else to see the console from
+            another role, or sign out using the header.</p>
+        {% endif %}
+
+        {% if error %}
+          <div class="banner banner--error" role="alert" data-testid="login-error">
+            <span class="banner__icon" aria-hidden="true">{{ ui.icon('warn', 20) }}</span>
+            <div class="banner__body">
+              <p class="banner__text">{{ error }}</p>
+            </div>
+          </div>
+        {% endif %}
+
+        <form class="auth-form stack" method="post" action="{{ url_for('auth.session_login') }}"
+              data-login-form novalidate>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="next" value="{{ next }}">
+
+          <div class="field">
+            <label class="field__label" for="username">Username</label>
+            <input class="input" id="username" name="username" type="text" autocomplete="username"
+                   spellcheck="false" autocapitalize="off" required placeholder="e.g. operator"
+                   {% if error %}aria-invalid="true"{% endif %}>
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="password">Password</label>
+            <input class="input" id="password" name="password" type="password"
+                   autocomplete="current-password" required
+                   {% if error %}aria-invalid="true"{% endif %}>
+          </div>
+
+          <label class="checkline auth-form__remember" for="remember">
+            <input type="checkbox" id="remember" name="remember" value="1">
+            <span>Keep me signed in on this device</span>
+          </label>
+
+          <button class="btn btn--primary auth-form__submit" type="submit" data-login-submit>
+            Sign in
+          </button>
+        </form>
+
+        <p class="auth-card__switch">New here? <a href="{{ url_for('auth.register') }}">Create an account</a></p>
+        <p class="auth-card__or"><span>or</span></p>
+        <a class="btn auth-card__secondary" href="{{ url_for('main.index') }}">Back to the home page</a>
+        <p class="auth-card__footer">Demo accounts for evaluators are listed in the project README.
+          An administrator grants reviewer and operator access.</p>
       </div>
-    </div>
-
-    {% if switch %}
-      <p class="callout">You are signed in. Sign in as someone else to see the console from
-        another role, or sign out using the header.</p>
-    {% endif %}
-
-    {% if error %}
-      <div class="banner banner--error" role="alert" data-testid="login-error">
-        <span class="banner__icon" aria-hidden="true">{{ ui.icon('warn', 20) }}</span>
-        <div class="banner__body">
-          <p class="banner__text">{{ error }}</p>
-        </div>
-      </div>
-    {% endif %}
-
-    <form class="auth-form stack" method="post" action="{{ url_for('auth.session_login') }}"
-          data-login-form novalidate>
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <input type="hidden" name="next" value="{{ next }}">
-
-      <div class="field">
-        <label class="field__label" for="username">Username</label>
-        <input class="input" id="username" name="username" type="text" autocomplete="username"
-               spellcheck="false" autocapitalize="off" required
-               {% if error %}aria-invalid="true"{% endif %}>
-      </div>
-
-      <div class="field">
-        <label class="field__label" for="password">Password</label>
-        <input class="input" id="password" name="password" type="password"
-               autocomplete="current-password" required
-               {% if error %}aria-invalid="true"{% endif %}>
-      </div>
-
-      <div class="row row--between">
-        <label class="checkline" for="remember">
-          <input type="checkbox" id="remember" name="remember" value="1">
-          <span>Keep me signed in on this device</span>
-        </label>
-        <button class="btn btn--primary" type="submit" data-login-submit>
-          Sign in
-        </button>
-      </div>
-    </form>
-
-    <p class="auth-card__footer">New here? <a href="{{ url_for('auth.register') }}">Create a personal account</a>. An administrator can assign review or operator access.</p>
+    </section>
   </div>
 </div>
 {% endblock %}

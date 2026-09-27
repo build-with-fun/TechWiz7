@@ -8,8 +8,8 @@
 {{ 'true' if (current_user is defined and current_user and current_user.can and current_user.can(capability)) else 'false' }}
 {%- endmacro %}
 
-{% set _theme_cookie = request.cookies.get('sst_theme', 'dark') %}
-{% set _theme = 'light' if _theme_cookie == 'light' else 'dark' %}
+{% set _theme_cookie = request.cookies.get('sst_theme', 'light') %}
+{% set _theme = 'dark' if _theme_cookie == 'dark' else 'light' %}
 {% set _motion = 'reduced' if request.cookies.get('sst_motion') == 'reduced' else 'auto' %}
 <!doctype html>
 <html lang="en" data-theme="{{ _theme }}" data-motion="{{ _motion }}">
@@ -21,9 +21,11 @@
   <title>{% block title %}{{ app_name | default('SonicSentinel AI') }}{% endblock %}</title>
   <meta name="description" content="{% block description %}SonicSentinel AI — real-time sound event detection with a dual-model consistency check. Every prediction is shown from the project's own Python model and from a separately trained Teachable Machine model so the two can be compared on the same clip.{% endblock %}">
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo.svg') }}">
+  <link rel="preload" href="{{ url_for('static', filename='fonts/geist-latin-wght-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/product.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design.css') }}">
 </head>
 <body data-page="{% block page_id %}page{% endblock %}">
   <a class="skip-link" href="#main">Skip to main content</a>
@@ -33,7 +35,17 @@
     {% set _signed_in = current_user is defined and current_user and current_user.is_authenticated %}
     {% set _role = (role_labels.get(current_user.role, current_user.role) if role_labels is defined else current_user.role) if _signed_in else '' %}
     <header class="topbar">
-      <a class="topbar__brand" href="{{ url_for('main.dashboard') if _signed_in else url_for('auth.login') }}">
+      {% if _signed_in %}
+      <button type="button" class="btn btn--icon btn--ghost nav-toggle" data-nav-toggle
+              aria-controls="app-nav" aria-expanded="false">
+        <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false">
+          <path d="M4 7h16M4 12h16M4 17h10"/>
+        </svg>
+        <span class="visually-hidden">Open menu</span>
+      </button>
+      {% endif %}
+      <a class="topbar__brand" href="{{ url_for('main.dashboard') if _signed_in else url_for('main.index') }}">
         <img class="topbar__logo" src="{{ url_for('static', filename='img/logo.svg') }}"
              alt="" width="28" height="28" aria-hidden="true">
         <span>
@@ -83,7 +95,19 @@
 
     {# Navigation is rendered from pres.nav_entries() and gated item by item: an item the
        user cannot open is not rendered at all. #}
-    <nav class="nav" aria-label="Main navigation">
+    <nav class="nav" id="app-nav" aria-label="Main navigation">
+      <div class="nav__head">
+        <a class="nav__brand" href="{{ url_for('main.dashboard') if _signed_in else url_for('main.index') }}">
+          <img class="nav__logo" src="{{ url_for('static', filename='img/logo.svg') }}" alt="" width="26" height="26">
+          <span class="nav__brand-text">
+            <span class="nav__brand-title">{{ app_name | default('SonicSentinel AI') }}</span>
+            <span class="nav__brand-sub">AcousticX Intelligence</span>
+          </span>
+        </a>
+        <button type="button" class="btn btn--icon btn--ghost nav__close" data-nav-close>
+          {{ ui.icon('x', 18) }}<span class="visually-hidden">Close menu</span>
+        </button>
+      </div>
       {% set entries = pres.nav_entries() | fromjson %}
       {% for group in entries %}
         {% set visible = [] %}
@@ -120,6 +144,7 @@
         </a>
       </div>
     </nav>
+    <div class="nav-scrim" data-nav-scrim hidden></div>
 
     <main class="main" id="main" tabindex="-1">
       {# ------------------------------------------------------------------

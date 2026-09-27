@@ -488,11 +488,11 @@
 
   function currentTheme() {
     var theme = document.documentElement.getAttribute('data-theme');
-    return THEMES.indexOf(theme) >= 0 ? theme : 'dark';
+    return THEMES.indexOf(theme) >= 0 ? theme : 'light';
   }
 
   function setTheme(theme) {
-    var next = THEMES.indexOf(theme) >= 0 ? theme : 'dark';
+    var next = THEMES.indexOf(theme) >= 0 ? theme : 'light';
     document.documentElement.setAttribute('data-theme', next);
     // The server reads the same cookie, avoiding a flash of the default theme.
     document.cookie = 'sst_theme=' + next + '; path=/; max-age=31536000; SameSite=Lax' +
@@ -524,6 +524,61 @@
     });
   }
 
+  /* ------------------------------------------------------------ navigation - */
+
+  /* Below 1025px the sidebar is an off-canvas drawer. The toggle keeps
+     aria-expanded in step; Escape, the scrim and the close button all shut it,
+     and focus goes back to the toggle so keyboard users are not stranded. */
+  function initNav() {
+    var app = document.querySelector('.app');
+    var nav = byId('app-nav');
+    var toggle = document.querySelector('[data-nav-toggle]');
+    var scrim = document.querySelector('[data-nav-scrim]');
+    if (!app || !nav || !toggle) return;
+
+    function isOpen() { return app.getAttribute('data-nav-open') === 'true'; }
+    function setOpen(open) {
+      app.setAttribute('data-nav-open', open ? 'true' : 'false');
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (scrim) scrim.hidden = !open;
+      document.documentElement.classList.toggle('is-nav-open', open);
+      if (open) {
+        var first = nav.querySelector('a[href]');
+        if (first) first.focus();
+      } else if (document.activeElement && nav.contains(document.activeElement)) {
+        toggle.focus();
+      }
+    }
+
+    toggle.addEventListener('click', function () { setOpen(!isOpen()); });
+    qsa('[data-nav-close]').forEach(function (button) {
+      button.addEventListener('click', function () { setOpen(false); });
+    });
+    if (scrim) scrim.addEventListener('click', function () { setOpen(false); });
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && isOpen()) setOpen(false);
+    });
+    var wide = window.matchMedia('(min-width: 1025px)');
+    var onWide = function (event) { if (event.matches && isOpen()) setOpen(false); };
+    if (wide.addEventListener) wide.addEventListener('change', onWide);
+  }
+
+  /* On phones every table.data becomes a stack of cards (design.css). Each cell
+     needs its column name for that, so the header text is copied onto the cells
+     here instead of being repeated in every template. */
+  function initTableLabels(root) {
+    qsa('table.data', root || document).forEach(function (table) {
+      var heads = qsa('thead th', table).map(function (th) {
+        return th.textContent.replace(/\s+/g, ' ').trim();
+      });
+      qsa('tbody tr', table).forEach(function (row) {
+        Array.prototype.forEach.call(row.children, function (cell, index) {
+          if (!cell.hasAttribute('data-label') && heads[index]) cell.setAttribute('data-label', heads[index]);
+        });
+      });
+    });
+  }
+
   /* ------------------------------------------------------------ delegated - */
 
   /* Retry buttons that the server-rendered error blocks emit. Delegated so a
@@ -544,10 +599,8 @@
     initDelegates();
     initBars();
     initThemeToggle();
-    if (window.matchMedia('(max-width: 720px)').matches) {
-      var activeNav = document.querySelector('.nav__link[aria-current="page"]');
-      if (activeNav) activeNav.scrollIntoView({ block: 'nearest', inline: 'center' });
-    }
+    initNav();
+    initTableLabels();
   });
 
   /* ------------------------------------------------------------------ API - */
@@ -575,6 +628,7 @@
   SST.byId = byId;
   SST.qsa = qsa;
   SST.initBars = initBars;
+  SST.initTableLabels = initTableLabels;
   SST.on = on;
   SST.dispatch = dispatch;
   SST.region = region;

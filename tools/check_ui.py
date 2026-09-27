@@ -76,15 +76,16 @@ def main() -> int:
                     page.locator("[data-theme-toggle]").click()
 
                 visit("/login")
-                assert page.locator("html").get_attribute("data-theme") == "dark"
-                capture("login-dark")
-                toggle_theme()
                 assert page.locator("html").get_attribute("data-theme") == "light"
                 assert page.locator("[data-theme-toggle]").get_attribute("aria-pressed") == "true"
-                page.reload(wait_until="networkidle")
-                assert page.locator("html").get_attribute("data-theme") == "light"
-                assert 'data-theme="light"' in context.request.get(origin + "/login").text()
                 capture("login-light")
+                toggle_theme()
+                assert page.locator("html").get_attribute("data-theme") == "dark"
+                assert page.locator("[data-theme-toggle]").get_attribute("aria-pressed") == "false"
+                page.reload(wait_until="networkidle")
+                assert page.locator("html").get_attribute("data-theme") == "dark"
+                assert 'data-theme="dark"' in context.request.get(origin + "/login").text()
+                capture("login-dark")
                 toggle_theme()
                 page.keyboard.press("Tab")
                 report["checks"].append("Dark/light toggle persists in the cookie and server-rendered HTML")

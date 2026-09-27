@@ -1,87 +1,93 @@
-/* Design tokens: a dark and a light theme. Severity token names are also referenced by alert_rules/. */
+/* Design tokens. Light is the default theme; dark is a parallel palette, not an inversion.
+   Colour is reserved for status, severity and the two models; the neutral ramp does the rest.
+   Severity token names are also referenced by alert_rules/. */
 @font-face {
-  font-family: "Inter";
-  src: url("../fonts/inter-latin-wght-normal.woff2") format("woff2");
+  font-family: "Geist";
+  src: url("../fonts/geist-latin-wght-normal.woff2") format("woff2");
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
 }
+@font-face {
+  font-family: "Geist Mono";
+  src: url("../fonts/geist-mono-latin-wght-normal.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
-  /* Neutral slate surfaces; colour is reserved for status, severity and the two models. */
-  --bg-canvas:        #0f1216;
-  --bg-surface:       #161a20;
-  --bg-surface-2:     #1c2129;
-  --bg-elevated:      #222833;
-  --bg-inset:         #0c0f13;
+  /* --- surfaces --------------------------------------------------------- */
+  --bg-canvas:        #f5f7fa;
+  --bg-surface:       #ffffff;
+  --bg-surface-2:     #f2f4f7;
+  --bg-elevated:      #ffffff;
+  --bg-inset:         #eef1f5;
 
-  --border:           #2b323d;
-  --border-strong:    #3b4451;
-  --border-subtle:    #222831;
+  --border:           #e2e6ec;
+  --border-strong:    #c8cfd9;
+  --border-subtle:    #edf0f4;
 
-  --text:             #e7eaef;
-  --text-muted:       #aab2be;
-  --text-subtle:      #8e97a5;
-  --text-inverse:     #0f1216;
+  /* --- text --------------------------------------------------------------- */
+  --text:             #0e1726;
+  --text-muted:       #465467;
+  --text-subtle:      #5f6c7e;
+  --text-inverse:     #ffffff;
 
-  --accent:           #8b93ff;
-  --accent-strong:    #a5abff;
-  --accent-dim:       #23264a;
-  --accent-contrast:  #0b0d24;
+  /* --- accent: one blue, used for actions and focus only ------------------ */
+  --accent:           #2458e6;
+  --accent-strong:    #1b46c4;
+  --accent-dim:       #eaf0ff;
+  --accent-contrast:  #ffffff;
 
-  --ok:               #34d399;
-  --ok-dim:           #0f3b2e;
-  --warn:             #fbbf24;
-  --warn-dim:         #42320a;
-  --danger:           #f87171;
-  --danger-dim:       #451c1c;
+  /* --- status ------------------------------------------------------------ */
+  --ok:               #067647;
+  --ok-dim:           #dcfae6;
+  --warn:             #b54708;
+  --warn-dim:         #fef0c7;
+  --danger:           #d92d20;
+  --danger-dim:       #fee4e2;
 
-  /* Status colors stay independent of the selected decorative palette. */
-  --severity-informational: #64748b;
-  --severity-low:           #0ea5e9;
-  --severity-medium:        #f59e0b;
-  --severity-high:          #f97316;
-  --severity-critical:      #dc2626;
+  --severity-informational: #667085;
+  --severity-low:           #0086c9;
+  --severity-medium:        #dc6803;
+  --severity-high:          #e04f16;
+  --severity-critical:      #d92d20;
 
-  --sev-informational-bg: #1c2839;
-  --sev-informational-fg: #b6c2d4;
-  --sev-informational-bd: #64748b;
+  --sev-informational-bg: #f2f4f7;  --sev-informational-fg: #344054;  --sev-informational-bd: #d0d5dd;
+  --sev-low-bg:           #e0f2fe;  --sev-low-fg:           #026aa2;  --sev-low-bd:           #b9e6fe;
+  --sev-medium-bg:        #fef0c7;  --sev-medium-fg:        #93370d;  --sev-medium-bd:        #fedf89;
+  --sev-high-bg:          #ffead5;  --sev-high-fg:          #9c2a10;  --sev-high-bd:          #fddcab;
+  --sev-critical-bg:      #fee4e2;  --sev-critical-fg:      #b42318;  --sev-critical-bd:      #fecdca;
 
-  --sev-low-bg:           #082c40;
-  --sev-low-fg:           #7dd3fc;
-  --sev-low-bd:           #0ea5e9;
+  --consistency-strong:       #067647;
+  --consistency-acceptable:   #3b7c0f;
+  --consistency-weak:         #b54708;
+  --consistency-disagreement: #d92d20;
+  --consistency-uncertain:    #475467;
 
-  --sev-medium-bg:        #3d2c05;
-  --sev-medium-fg:        #fcd34d;
-  --sev-medium-bd:        #f59e0b;
-
-  --sev-high-bg:          #431f07;
-  --sev-high-fg:          #fdba74;
-  --sev-high-bd:          #f97316;
-
-  --sev-critical-bg:      #4a1212;
-  --sev-critical-fg:      #fca5a5;
-  --sev-critical-bd:      #dc2626;
-
-  /* --- consistency status ramp (text + glyph always accompany these) ----- */
-  --consistency-strong:      #34d399;
-  --consistency-acceptable:  #a3e635;
-  --consistency-weak:        #fbbf24;
-  --consistency-disagreement:#f87171;
-  --consistency-uncertain:   #94a3b8;
-
-  /* --- audio quality ramp ------------------------------------------------ */
-  --quality-good:       #34d399;
-  --quality-acceptable: #a3e635;
-  --quality-poor:       #fbbf24;
-  --quality-unusable:   #94a3b8;
+  --quality-good:       #067647;
+  --quality-acceptable: #3b7c0f;
+  --quality-poor:       #b54708;
+  --quality-unusable:   #475467;
 
   /* --- model identity: each model keeps one hue everywhere --------------- */
-  --model-python: #22d3ee;
-  --model-gtm:    #e879f9;
+  --model-python: #0891b2;
+  --model-gtm:    #c026d3;
 
-  /* --- space scale (4px base) ------------------------------------------- */
+  /* --- navigation rail: ink in both themes ------------------------------- */
+  --nav-bg:          #0b1220;
+  --nav-border:      #182235;
+  --nav-text:        #c3cbd8;
+  --nav-text-strong: #ffffff;
+  --nav-muted:       #8391a7;
+  --nav-hover:       #151f33;
+  --nav-active:      #1d2b48;
+  --nav-accent:      #7ea4ff;
+
+  /* --- space scale (4px base, 8pt rhythm) -------------------------------- */
   --sp-0: 0;
   --sp-1: 0.25rem;
   --sp-2: 0.5rem;
@@ -92,17 +98,17 @@
   --sp-7: 3rem;
   --sp-8: 4rem;
 
-  /* --- radius ----------------------------------------------------------- */
-  --r-1: 4px;
+  /* --- radius ------------------------------------------------------------- */
+  --r-1: 6px;
   --r-2: 8px;
-  --r-3: 10px;
-  --r-4: 14px;
+  --r-3: 12px;
+  --r-4: 16px;
   --r-round: 999px;
 
-  /* --- type scale ------------------------------------------------------- */
-  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+  /* --- type ---------------------------------------------------------------- */
+  --font-sans: "Geist", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
                Arial, "Noto Sans", sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
                "Liberation Mono", monospace;
 
   --fs-xs:   0.75rem;
@@ -122,26 +128,28 @@
   --fw-semi:   600;
   --fw-bold:   700;
 
-  /* --- elevation -------------------------------------------------------- */
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-2: 0 4px 16px rgba(0, 0, 0, 0.45);
-  --shadow-3: 0 12px 40px rgba(0, 0, 0, 0.55);
+  /* --- elevation ---------------------------------------------------------- */
+  --shadow-1: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-2: 0 4px 12px -2px rgba(16, 24, 40, 0.08), 0 2px 4px -2px rgba(16, 24, 40, 0.04);
+  --shadow-3: 0 20px 48px -12px rgba(16, 24, 40, 0.22);
 
-  /* --- focus: never removed, only restyled ------------------------------ */
+  /* --- focus: never removed, only restyled -------------------------------- */
   --focus-ring-color: var(--accent);
   --focus-ring: 0 0 0 2px var(--bg-canvas), 0 0 0 4px var(--focus-ring-color);
   --focus-ring-inset: inset 0 0 0 2px var(--focus-ring-color);
 
-  /* --- motion: reduced-motion is honoured at the bottom of this file ----- */
-  --t-fast: 120ms;
-  --t-base: 200ms;
-  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  /* --- motion ------------------------------------------------------------- */
+  --t-fast: 140ms;
+  --t-base: 220ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
 
-  /* --- fixed geometry --------------------------------------------------- */
-  --topbar-h: 4.5rem;
-  --nav-w: 14.5rem;
+  /* --- fixed geometry ----------------------------------------------------- */
+  --topbar-h: 4rem;
+  --nav-w: 15.5rem;
   --nav-w-collapsed: 4.5rem;
-  --content-max: 104rem;
+  --content-max: 92rem;
+
+  /* legacy aliases kept for older rules */
   --signal: var(--accent);
   --third: var(--text-subtle);
   --button-from: var(--accent);
@@ -153,62 +161,73 @@
   --button-gradient: var(--accent);
 }
 
-:root[data-theme="light"] {
-  color-scheme: light;
+:root[data-theme="dark"] {
+  color-scheme: dark;
 
-  --bg-canvas:     #f4f5f7;
-  --bg-surface:    #ffffff;
-  --bg-surface-2:  #f0f2f5;
-  --bg-elevated:   #ffffff;
-  --bg-inset:      #eceff3;
+  --bg-canvas:     #0a0e16;
+  --bg-surface:    #111723;
+  --bg-surface-2:  #172031;
+  --bg-elevated:   #1b2537;
+  --bg-inset:      #0c111b;
 
-  --border:        #d5dae1;
-  --border-strong: #b7bfca;
-  --border-subtle: #e4e7ec;
+  --border:        #232e42;
+  --border-strong: #35435d;
+  --border-subtle: #1b2436;
 
-  --text:          #151a21;
-  --text-muted:    #465160;
-  --text-subtle:   #5a6573;
-  --text-inverse:  #ffffff;
+  --text:          #e8ecf3;
+  --text-muted:    #b0bacb;
+  --text-subtle:   #8a97ad;
+  --text-inverse:  #0a0e16;
 
-  --accent:        #4f46e5;
-  --accent-strong: #4338ca;
-  --accent-dim:    #eef0ff;
-  --accent-contrast: #ffffff;
+  --accent:          #6f9dff;
+  --accent-strong:   #96b8ff;
+  --accent-dim:      #172646;
+  --accent-contrast: #06101f;
 
-  --ok: #13764f;
-  --warn: #866000;
-  --danger: #b72f43;
-  --model-python: #0e7490;
-  --model-gtm: #a21caf;
-  --consistency-strong: #13764f;
-  --consistency-acceptable: #4e6d10;
-  --consistency-weak: #866000;
-  --consistency-disagreement: #b72f43;
-  --consistency-uncertain: #526276;
-  --quality-good: #13764f;
-  --quality-acceptable: #4e6d10;
-  --quality-poor: #866000;
-  --quality-unusable: #526276;
-  --ok-dim:     #d7f5e7;
-  --warn-dim:   #fdf0cd;
-  --danger-dim: #fde2e2;
+  --ok:         #47cd89;
+  --ok-dim:     #0d2e20;
+  --warn:       #fdb022;
+  --warn-dim:   #3a2a0c;
+  --danger:     #f97066;
+  --danger-dim: #3d1714;
 
-  --sev-informational-bg: #e4e9f0;  --sev-informational-fg: #3a4757;
-  --sev-low-bg:           #dbeeff;  --sev-low-fg:           #05496e;
-  --sev-medium-bg:        #fdf0cd;  --sev-medium-fg:        #6b4406;
-  --sev-high-bg:         #ffe3cd;   --sev-high-fg:          #7c2d05;
-  --sev-critical-bg:     #fddede;   --sev-critical-fg:      #7f1d1d;
+  --severity-informational: #8a97ad;
+  --severity-low:           #36bffa;
+  --severity-medium:        #fdb022;
+  --severity-high:          #fd853a;
+  --severity-critical:      #f97066;
 
-  --focus-ring-color: #4f46e5;
-  --shadow-1: 0 1px 2px rgba(16, 26, 43, 0.06), 0 1px 3px rgba(16, 26, 43, 0.05);
-  --shadow-2: 0 4px 16px rgba(16, 26, 43, 0.10);
-  --shadow-3: 0 12px 40px rgba(16, 26, 43, 0.18);
+  --sev-informational-bg: #1b2436;  --sev-informational-fg: #c3cbd8;  --sev-informational-bd: #35435d;
+  --sev-low-bg:           #0b2a3d;  --sev-low-fg:           #7cd4fd;  --sev-low-bd:           #0b4a6f;
+  --sev-medium-bg:        #3a2a0c;  --sev-medium-fg:        #fec84b;  --sev-medium-bd:        #6b4a0a;
+  --sev-high-bg:          #3d1d0c;  --sev-high-fg:          #fdb275;  --sev-high-bd:          #772917;
+  --sev-critical-bg:      #3d1714;  --sev-critical-fg:      #fda29b;  --sev-critical-bd:      #7a271a;
+
+  --consistency-strong:       #47cd89;
+  --consistency-acceptable:   #a6ef67;
+  --consistency-weak:         #fdb022;
+  --consistency-disagreement: #f97066;
+  --consistency-uncertain:    #a4b0c4;
+
+  --quality-good:       #47cd89;
+  --quality-acceptable: #a6ef67;
+  --quality-poor:       #fdb022;
+  --quality-unusable:   #a4b0c4;
+
+  --model-python: #22d3ee;
+  --model-gtm:    #e879f9;
+
+  --nav-bg:          #070b12;
+  --nav-border:      #161f30;
+  --nav-hover:       #111a2b;
+  --nav-active:      #18243d;
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 6px 16px -4px rgba(0, 0, 0, 0.5);
+  --shadow-3: 0 24px 56px -12px rgba(0, 0, 0, 0.65);
 }
 
-/* Windows high-contrast / forced-colors: hand the palette to the OS. Complex
-   fills are dropped rather than fought; the browser's own colours are more
-   accessible than ours in this mode. */
+/* Windows high-contrast / forced-colors: hand the palette to the OS. */
 @media (forced-colors: active) {
   :root {
     --border: CanvasText;

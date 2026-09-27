@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-09-26T12:55:50.401717+00:00",
+  "checked_at": "2026-09-27T02:11:12.460904+00:00",
   "scope": "Chromium; isolated seeded database; model inference disabled",
   "checks": [
     "Dark/light toggle persists in the cookie and server-rendered HTML",
@@ -8,6 +8,13 @@
   ],
   "layouts": [
     {
+      "path": "/dashboard",
+      "width": 320,
+      "scrollWidth": 320,
+      "brokenImages": 0,
+      "unnamedLinks": 0
+    },
+    {
       "path": "/live",
       "width": 320,
       "scrollWidth": 320,
@@ -23,13 +30,6 @@
     },
     {
       "path": "/events",
-      "width": 320,
-      "scrollWidth": 320,
-      "brokenImages": 0,
-      "unnamedLinks": 0
-    },
-    {
-      "path": "/dashboard",
       "width": 320,
       "scrollWidth": 320,
       "brokenImages": 0,
@@ -95,6 +95,13 @@
       "scrollWidth": 320
     },
     {
+      "path": "/dashboard",
+      "width": 390,
+      "scrollWidth": 390,
+      "brokenImages": 0,
+      "unnamedLinks": 0
+    },
+    {
       "path": "/live",
       "width": 390,
       "scrollWidth": 390,
@@ -110,13 +117,6 @@
     },
     {
       "path": "/events",
-      "width": 390,
-      "scrollWidth": 390,
-      "brokenImages": 0,
-      "unnamedLinks": 0
-    },
-    {
-      "path": "/dashboard",
       "width": 390,
       "scrollWidth": 390,
       "brokenImages": 0,
@@ -182,6 +182,13 @@
       "scrollWidth": 390
     },
     {
+      "path": "/dashboard",
+      "width": 768,
+      "scrollWidth": 768,
+      "brokenImages": 0,
+      "unnamedLinks": 0
+    },
+    {
       "path": "/live",
       "width": 768,
       "scrollWidth": 768,
@@ -197,13 +204,6 @@
     },
     {
       "path": "/events",
-      "width": 768,
-      "scrollWidth": 768,
-      "brokenImages": 0,
-      "unnamedLinks": 0
-    },
-    {
-      "path": "/dashboard",
       "width": 768,
       "scrollWidth": 768,
       "brokenImages": 0,
@@ -269,6 +269,13 @@
       "scrollWidth": 768
     },
     {
+      "path": "/dashboard",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "brokenImages": 0,
+      "unnamedLinks": 0
+    },
+    {
       "path": "/live",
       "width": 1440,
       "scrollWidth": 1440,
@@ -284,13 +291,6 @@
     },
     {
       "path": "/events",
-      "width": 1440,
-      "scrollWidth": 1440,
-      "brokenImages": 0,
-      "unnamedLinks": 0
-    },
-    {
-      "path": "/dashboard",
       "width": 1440,
       "scrollWidth": 1440,
       "brokenImages": 0,
