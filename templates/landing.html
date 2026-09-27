@@ -1,0 +1,353 @@
+{# Public product page at "/". Signed-in users never see it (they are sent to their home).
+   Every style lives in static/css/landing.css: the CSP allows no inline styles. Bar lengths
+   are SVG attributes, which the CSP permits. #}
+{% import "_macros.html" as ui with context %}
+{% set py = metrics.python if metrics else none %}
+{% set tm = metrics.gtm if metrics else none %}
+{% set repo = "https://github.com/build-with-fun/TechWiz7" %}
+{# A rough amplitude outline per class, 0..1, drawn as a small waveform on each class tile. #}
+{% set shapes = {
+  "Machinery Fault":        [0.45,0.5,0.48,0.52,0.47,0.5,0.49,0.53,0.46,0.5,0.51,0.48,0.5,0.47,0.52,0.49],
+  "Glass Breaking":         [0.1,0.95,0.3,0.8,0.15,0.7,0.9,0.2,0.6,0.35,0.5,0.15,0.3,0.1,0.2,0.08],
+  "Alarm or Siren":         [0.3,0.5,0.7,0.85,0.7,0.5,0.3,0.5,0.7,0.85,0.7,0.5,0.3,0.5,0.7,0.85],
+  "Vehicle Horn":           [0.08,0.1,0.85,0.9,0.88,0.9,0.87,0.9,0.86,0.1,0.08,0.85,0.9,0.88,0.1,0.06],
+  "Animal Sound":           [0.1,0.6,0.75,0.3,0.08,0.1,0.55,0.8,0.35,0.1,0.06,0.5,0.7,0.25,0.08,0.05],
+  "Gunshot":                [0.05,0.06,1,0.7,0.45,0.3,0.2,0.14,0.1,0.07,0.05,0.04,0.04,0.03,0.03,0.02],
+  "Panic Scream":           [0.15,0.3,0.5,0.7,0.85,0.95,0.9,0.92,0.88,0.9,0.85,0.7,0.5,0.3,0.15,0.08],
+  "Aggression":             [0.3,0.8,0.4,0.9,0.2,0.75,0.95,0.35,0.6,0.85,0.25,0.7,0.4,0.8,0.3,0.5],
+  "Person Asking for Help": [0.08,0.5,0.65,0.3,0.1,0.55,0.7,0.6,0.15,0.08,0.45,0.6,0.25,0.1,0.5,0.2],
+  "Background Noise":       [0.18,0.22,0.16,0.2,0.24,0.17,0.21,0.19,0.23,0.16,0.2,0.18,0.22,0.17,0.21,0.19]
+} %}
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <title>SonicSentinel AI — hear what matters</title>
+  <meta name="description" content="SonicSentinel AI listens to uploaded recordings and a consented microphone, classifies ten sound events with two independently trained models, and sends anything uncertain to a person.">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo.svg') }}">
+  <link rel="preload" href="{{ url_for('static', filename='fonts/geist-latin-wght-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
+</head>
+<body class="lp">
+  <a class="lp-skip" href="#top">Skip to content</a>
+
+  <header class="lp-nav-wrap">
+    <nav class="lp-nav" aria-label="Main">
+      <a class="lp-brand" href="{{ url_for('main.index') }}">
+        <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="" width="22" height="22">
+        <span>SonicSentinel</span>
+      </a>
+      <div class="lp-nav__links">
+        <a href="#console">Console</a>
+        <a href="#how">How it works</a>
+        <a href="#classes">Sound classes</a>
+        <a href="#models">Models</a>
+      </div>
+      <a class="lp-nav__signin" href="{{ url_for('auth.login') }}">Sign in</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    {# ------------------------------------------------------------------ hero #}
+    <section class="lp-hero" aria-labelledby="lp-title">
+      <div class="lp-sky" aria-hidden="true"><span class="lp-cloud lp-cloud--a"></span><span class="lp-cloud lp-cloud--b"></span><span class="lp-cloud lp-cloud--c"></span><span class="lp-cloud lp-cloud--d"></span></div>
+
+      <h1 class="lp-title" id="lp-title">Hear what matters,<br><span class="lp-title__fade">before it escalates</span></h1>
+
+      <div class="lp-cards" aria-hidden="true">
+        <div class="lp-card lp-card--a">
+          <p class="lp-card__label">{{ ui.icon('mic', 13) }} Live · Loading dock</p>
+          <p class="lp-card__title">Glass breaking</p>
+          <div class="lp-wave">{% for _ in range(28) %}<span></span>{% endfor %}</div>
+          <span class="lp-card__button">{{ ui.icon('bell', 13) }} Acknowledge alert</span>
+        </div>
+        <div class="lp-card lp-card--b">
+          <span class="lp-pill lp-pill--critical">Critical</span>
+          <p class="lp-card__big">3 in a row</p>
+          <p class="lp-card__meta">windows confirmed · 22:14</p>
+        </div>
+        <div class="lp-card lp-card--dark lp-card--c">
+          <p class="lp-card__label">Two models, one clip</p>
+          <div class="lp-vs">
+            <div><span class="lp-dot lp-dot--py"></span>Python<strong>91%</strong></div>
+            <div><span class="lp-dot lp-dot--tm"></span>Teachable Machine<strong>88%</strong></div>
+          </div>
+          <p class="lp-card__foot">Strong match · Gunshot</p>
+        </div>
+        <div class="lp-card lp-card--d">
+          <p class="lp-card__label">Review queue</p>
+          <p class="lp-card__title">Person asking for help</p>
+          <p class="lp-card__meta">Models disagree → a reviewer decides</p>
+          <span class="lp-card__button">Open queue {{ ui.icon('external', 12) }}</span>
+        </div>
+      </div>
+
+      <p class="lp-lede">Upload a recording or listen through a consented microphone. Two separately
+        trained models classify every clip, and anything they disagree on goes to a person.</p>
+      <div class="lp-cta">
+        <a class="lp-btn lp-btn--solid" href="{{ url_for('auth.login') }}">Open the console</a>
+        <a class="lp-btn lp-btn--clear" href="#how">See how it works</a>
+      </div>
+    </section>
+
+    {# ------------------------------------------------------------ at a glance #}
+    <section class="lp-stats" aria-label="At a glance">
+      <div><strong>10</strong><span>sound classes, five of them critical</span></div>
+      <div><strong>2</strong><span>models trained separately, compared on every clip</span></div>
+      <div><strong>450</strong><span>unseen recordings behind every number on this page</span></div>
+      <div><strong>3</strong><span>matching windows in a row before a live alert</span></div>
+    </section>
+
+    {# ---------------------------------------------------------------- console #}
+    <section class="lp-section lp-showcase" id="console" aria-labelledby="console-title">
+      <div class="lp-wrap">
+        <div class="lp-head lp-head--center">
+          <p class="lp-kicker">The console</p>
+          <h2 class="lp-h2" id="console-title">What happened, and what needs a decision</h2>
+          <p class="lp-sub">The console puts the latest detection, the alert and review queues and the evidence in one
+            place. It works the same on a phone at the door as on the control-room screen.</p>
+        </div>
+        <div class="lp-stage">
+          <figure class="lp-frame">
+            <div class="lp-frame__bar" aria-hidden="true"><span></span><span></span><span></span><em>sonicsentinel · dashboard</em></div>
+            <img src="{{ url_for('static', filename='img/landing/console.webp') }}" width="1440" height="900" loading="lazy"
+                 alt="The SonicSentinel dashboard: counts of events, open alerts and reviews, the latest detection with both models' scores, and the manual review queue.">
+          </figure>
+          <figure class="lp-phone">
+            <img src="{{ url_for('static', filename='img/landing/console-phone.webp') }}" width="390" height="844" loading="lazy"
+                 alt="The same dashboard on a phone, with the menu folded into the top bar.">
+          </figure>
+        </div>
+        <ul class="lp-features">
+          <li>
+            <span class="lp-feature__icon">{{ ui.icon('cpu', 18) }}</span>
+            <h3>Both opinions, side by side</h3>
+            <p>Python and Teachable Machine each give a class, a confidence and a top three, with the gap between them.</p>
+          </li>
+          <li>
+            <span class="lp-feature__icon">{{ ui.icon('clipboard', 18) }}</span>
+            <h3>Queues that say why</h3>
+            <p>Every item held back for review lists its reason: disagreement, low confidence, poor audio or an overlap.</p>
+          </li>
+          <li>
+            <span class="lp-feature__icon">{{ ui.icon('spectrogram', 18) }}</span>
+            <h3>Evidence on every event</h3>
+            <p>Waveform, spectrogram and playback sit next to the verdict, so a reviewer can hear what the models heard.</p>
+          </li>
+          <li>
+            <span class="lp-feature__icon">{{ ui.icon('mic', 18) }}</span>
+            <h3>Live, with consent first</h3>
+            <p>Nothing is captured until the consent box is ticked, and the microphone state is always on screen.</p>
+          </li>
+          <li>
+            <span class="lp-feature__icon">{{ ui.icon('bell', 18) }}</span>
+            <h3>Alerts that wait for proof</h3>
+            <p>Critical classes need matching windows in a row before an alert is raised, then go to an operator.</p>
+          </li>
+          <li>
+            <span class="lp-feature__icon">{{ ui.icon('download', 18) }}</span>
+            <h3>Reports and a full audit trail</h3>
+            <p>Download an event report, export CSV or Excel, and see who uploaded, reviewed or changed what.</p>
+          </li>
+        </ul>
+        </div>
+      </div>
+    </section>
+
+    {# ----------------------------------------------------------- how it works #}
+    <section class="lp-section lp-section--tint" id="how" aria-labelledby="how-title">
+      <div class="lp-wrap lp-split">
+        <div class="lp-split__intro">
+          <p class="lp-kicker">How it works</p>
+          <h2 class="lp-h2" id="how-title">From a sound to a decision, in four checks</h2>
+          <p class="lp-sub">No step trusts the one before it blindly. Bad audio is stopped early, and a
+            prediction is only acted on when two independent models and the rules agree.</p>
+          <a class="lp-textlink" href="{{ url_for('auth.login') }}">Try it with a sample clip →</a>
+        </div>
+        <ol class="lp-timeline">
+          <li>
+            <span class="lp-timeline__icon">{{ ui.icon('upload', 18) }}</span>
+            <div>
+              <h3>Capture</h3>
+              <p>Upload a file, or monitor a microphone in two-second windows once consent is ticked.</p>
+              <ul class="lp-tags"><li>WAV</li><li>MP3</li><li>FLAC</li><li>OGG</li><li>M4A</li><li>Live mic</li></ul>
+            </div>
+          </li>
+          <li>
+            <span class="lp-timeline__icon">{{ ui.icon('waves', 18) }}</span>
+            <div>
+              <h3>Check the audio</h3>
+              <p>Silence, clipping and background noise are measured first. Unusable audio is refused with the reason.</p>
+              <ul class="lp-tags"><li>Good</li><li>Acceptable</li><li>Poor → review</li><li>Unusable → refused</li></ul>
+            </div>
+          </li>
+          <li>
+            <span class="lp-timeline__icon">{{ ui.icon('cpu', 18) }}</span>
+            <div>
+              <h3>Classify twice</h3>
+              <p>Our Python model and a Teachable Machine model each score all ten classes. Neither sees the other's answer.</p>
+              <ul class="lp-tags"><li>AST embeddings</li><li>Teachable Machine audio</li><li>Top three each</li></ul>
+            </div>
+          </li>
+          <li>
+            <span class="lp-timeline__icon">{{ ui.icon('shield', 18) }}</span>
+            <div>
+              <h3>Decide</h3>
+              <p>Agreement, the confidence gap and audio quality set the verdict. Critical sounds raise alerts; uncertain ones go to a reviewer.</p>
+              <ul class="lp-tags"><li>Strong match</li><li>Disagreement</li><li>Uncertain</li><li>Alert</li></ul>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    {# ---------------------------------------------------------- sound classes #}
+    <section class="lp-section lp-dark" id="classes" aria-labelledby="classes-title">
+      <div class="lp-wrap">
+        <div class="lp-head">
+          <p class="lp-kicker">Sound classes</p>
+          <h2 class="lp-h2" id="classes-title">Ten sounds. Five of them can't wait.</h2>
+        </div>
+        <ul class="lp-classes">
+          {% for name in class_names %}
+            {% set critical = name in critical_classes %}
+            {% set shape = shapes.get(name, [0.5] * 16) %}
+            <li class="lp-class{{ ' lp-class--critical' if critical }}">
+              <svg class="lp-class__wave" viewBox="0 0 64 24" aria-hidden="true" focusable="false">
+                {% for v in shape %}<rect x="{{ loop.index0 * 4 }}" y="{{ '%.1f' | format(12 - v * 11) }}" width="2.4" height="{{ '%.1f' | format(v * 22 + 0.6) }}" rx="1.2"/>{% endfor %}
+              </svg>
+              <span class="lp-class__name">{{ name }}</span>
+              <span class="lp-class__tag">{{ 'Critical' if critical else 'Monitored' }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+        <p class="lp-note">A critical sound has to show up in three windows in a row before the live page raises an
+          alert, so a single slammed door does not wake anyone up.</p>
+      </div>
+    </section>
+
+    {# ----------------------------------------------------------------- models #}
+    <section class="lp-section" id="models" aria-labelledby="models-title">
+      <div class="lp-wrap lp-split lp-split--models">
+        <div class="lp-split__intro">
+          <p class="lp-kicker">Models</p>
+          <h2 class="lp-h2" id="models-title">Measured on recordings they never heard</h2>
+          <p class="lp-sub">450 held-out test recordings, 45 per class. The Teachable Machine model is the weaker
+            of the two, so the app never averages the pair: a disagreement or a low-confidence answer goes to
+            manual review.</p>
+          <ul class="lp-legend">
+            <li><span class="lp-dot lp-dot--py"></span>Python · AST embeddings + logistic regression</li>
+            <li><span class="lp-dot lp-dot--tm"></span>Google Teachable Machine audio model</li>
+            <li><span class="lp-legend__target"></span>SRS target</li>
+          </ul>
+        </div>
+        <div class="lp-compare">
+          {% for key, label, target in (('accuracy', 'Accuracy', 0.85), ('macro_f1', 'Macro F1', 0.80), ('critical_recall', 'Critical-class recall', 0.85)) %}
+            {% set pv = py[key] if py else 0 %}
+            {% set tv = tm[key] if tm else 0 %}
+            <div class="lp-metric">
+              <div class="lp-metric__head">
+                <h3>{{ label }}</h3>
+                <span>target {{ '%.0f' | format(target * 100) if key != 'macro_f1' else '%.2f' | format(target) }}{{ '%' if key != 'macro_f1' }}</span>
+              </div>
+              <svg class="lp-metric__bars" viewBox="0 0 100 26" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                <rect class="lp-metric__track" x="0" y="2" width="100" height="9" rx="4.5"/>
+                <rect class="lp-metric__py" x="0" y="2" width="{{ '%.1f' | format(pv * 100) }}" height="9" rx="4.5"/>
+                <rect class="lp-metric__track" x="0" y="15" width="100" height="9" rx="4.5"/>
+                <rect class="lp-metric__tm" x="0" y="15" width="{{ '%.1f' | format(tv * 100) }}" height="9" rx="4.5"/>
+                <line class="lp-metric__target" x1="{{ target * 100 }}" x2="{{ target * 100 }}" y1="0" y2="26"/>
+              </svg>
+              <dl class="lp-metric__values">
+                <div><dt>Python</dt><dd>{{ ('%.1f%%' | format(pv * 100)) if key != 'macro_f1' else ('%.2f' | format(pv)) }}</dd></div>
+                <div><dt>Teachable Machine</dt><dd>{{ ('%.1f%%' | format(tv * 100)) if key != 'macro_f1' else ('%.2f' | format(tv)) }}</dd></div>
+              </dl>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    {# ------------------------------------------------------------------ roles #}
+    <section class="lp-section lp-section--tint" aria-labelledby="roles-title">
+      <div class="lp-wrap">
+        <div class="lp-head lp-head--center">
+          <p class="lp-kicker">Who uses it</p>
+          <h2 class="lp-h2" id="roles-title">Built for the people who respond</h2>
+        </div>
+        <div class="lp-bento">
+          <article class="lp-tile lp-tile--wide">
+            <span class="lp-tile__icon">{{ ui.icon('bell', 18) }}</span>
+            <h3>Security operators</h3>
+            <p>See alerts as they happen, then acknowledge, dismiss with a reason, or escalate. Each action records who and when.</p>
+            <div class="lp-alerts" aria-hidden="true">
+              <div class="lp-alert lp-alert--critical"><span>Gunshot</span><em>Critical · north gate</em><b>Escalate</b></div>
+              <div class="lp-alert"><span>Glass breaking</span><em>High · lobby</em><b>Acknowledged</b></div>
+              <div class="lp-alert"><span>Alarm or siren</span><em>Medium · car park</em><b>Dismissed</b></div>
+            </div>
+          </article>
+          <article class="lp-tile">
+            <span class="lp-tile__icon">{{ ui.icon('clipboard', 18) }}</span>
+            <h3>Audio reviewers</h3>
+            <p>Listen, confirm or correct the class, and comment. The models' original answer is always kept.</p>
+          </article>
+          <article class="lp-tile">
+            <span class="lp-tile__icon">{{ ui.icon('sliders', 18) }}</span>
+            <h3>Maintenance staff</h3>
+            <p>Follow machinery-fault events and tune thresholds and alert rules without touching code.</p>
+          </article>
+          <article class="lp-tile lp-tile--wide lp-tile--ink">
+            <span class="lp-tile__icon">{{ ui.icon('users', 18) }}</span>
+            <h3>Administrators</h3>
+            <p>Manage users and roles, retention, and CSV or Excel exports. Logins, uploads, reviews and configuration changes all land in the audit trail.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    {# ------------------------------------------------------------------ final #}
+    <section class="lp-final" aria-labelledby="final-title">
+      <div class="lp-sky" aria-hidden="true"><span class="lp-cloud lp-cloud--a"></span><span class="lp-cloud lp-cloud--b"></span></div>
+      <h2 class="lp-h2" id="final-title">Try it with the evaluator account</h2>
+      <p>Credentials for every role are listed in the project README.</p>
+      <div class="lp-cta">
+        <a class="lp-btn lp-btn--solid" href="{{ url_for('auth.login') }}">Sign in</a>
+        <a class="lp-btn lp-btn--clear" href="{{ repo }}" rel="noopener">View on GitHub</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="lp-footer">
+    <div class="lp-footer__grid">
+      <div class="lp-footer__brand">
+        <a class="lp-brand lp-brand--dark" href="{{ url_for('main.index') }}">
+          <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="" width="22" height="22">
+          <span>SonicSentinel AI</span>
+        </a>
+        <p>Sound-event detection with a second opinion built in. Aptech TechWiz 7 · NextWave AI and ML.</p>
+      </div>
+      <nav aria-label="Product">
+        <h3>Product</h3>
+        <a href="#console">Console</a>
+        <a href="#how">How it works</a>
+        <a href="#classes">Sound classes</a>
+        <a href="#models">Models</a>
+      </nav>
+      <nav aria-label="Project">
+        <h3>Project</h3>
+        <a href="{{ repo }}" rel="noopener">Source code</a>
+        <a href="{{ repo }}/blob/main/PROJECT_REPORT.md" rel="noopener">Project report</a>
+        <a href="https://dev.to/buildwithfun/ai-voice-analysis-13oh" rel="noopener">Technical blog</a>
+      </nav>
+      <nav aria-label="Account">
+        <h3>Account</h3>
+        <a href="{{ url_for('auth.login') }}">Sign in</a>
+        <a href="{{ url_for('auth.register') }}">Create an account</a>
+      </nav>
+    </div>
+    <p class="lp-footer__note">A prototype for supervised operators. It is not a certified emergency-response or law-enforcement system.</p>
+  </footer>
+</body>
+</html>

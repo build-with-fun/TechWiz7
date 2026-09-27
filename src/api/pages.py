@@ -324,11 +324,35 @@ def _home_for(user) -> str:
 
 
 
+def _landing_metrics() -> dict:
+    """Held-out test results of the two served models, read from their metrics files so the
+    public page can never state a number the evaluation did not produce."""
+    import json
+
+    from src.db import REPO_ROOT
+
+    out: dict = {}
+    sources = (
+        ("python", REPO_ROOT / "python_models" / "best" / "model_meta.json",
+         lambda d: d.get("metrics", {}), "critical_recall"),
+        ("gtm", REPO_ROOT / "gtm_model" / "gtm_metrics.json", lambda d: d, "critical_macro_recall"),
+    )
+    for key, path, pick, critical_key in sources:
+        try:
+            doc = pick(json.loads(path.read_text(encoding="utf-8")))
+            out[key] = {"accuracy": float(doc["accuracy"]), "macro_f1": float(doc["macro_f1"]),
+                        "critical_recall": float(doc[critical_key])}
+        except (OSError, ValueError, KeyError, TypeError):
+            out[key] = None
+    return out
+
+
 @main_bp.get("/")
-@login_required
 def index():
-    """The landing page, chosen by what the role can do."""
-    return redirect(_home_for(current_user))
+    """Signed-in users go to the home their role allows; everyone else sees the product page."""
+    if current_user.is_authenticated:
+        return redirect(_home_for(current_user))
+    return _render("landing.html", metrics=_landing_metrics())
 
 
 @main_bp.get("/upload")
