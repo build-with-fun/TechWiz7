@@ -20,26 +20,26 @@
   color-scheme: light;
 
   /* --- surfaces --------------------------------------------------------- */
-  --bg-canvas:        #f5f7fa;
+  --bg-canvas:        #f4f7fe;
   --bg-surface:       #ffffff;
-  --bg-surface-2:     #f2f4f7;
+  --bg-surface-2:     #f4f7fe;
   --bg-elevated:      #ffffff;
-  --bg-inset:         #eef1f5;
+  --bg-inset:         #eef2fb;
 
-  --border:           #e2e6ec;
-  --border-strong:    #c8cfd9;
-  --border-subtle:    #edf0f4;
+  --border:           #e3e8f4;
+  --border-strong:    #cdd5e6;
+  --border-subtle:    #edf1f9;
 
   /* --- text --------------------------------------------------------------- */
-  --text:             #0e1726;
-  --text-muted:       #465467;
-  --text-subtle:      #5f6c7e;
+  --text:             #1b2559;
+  --text-muted:       #4a5578;
+  --text-subtle:      #68759a;
   --text-inverse:     #ffffff;
 
   /* --- accent: one blue, used for actions and focus only ------------------ */
-  --accent:           #2458e6;
-  --accent-strong:    #1b46c4;
-  --accent-dim:       #eaf0ff;
+  --accent:           #4361ee;
+  --accent-strong:    #3450d6;
+  --accent-dim:       #eef1ff;
   --accent-contrast:  #ffffff;
 
   /* --- status ------------------------------------------------------------ */
@@ -79,13 +79,13 @@
 
   /* --- navigation rail ---------------------------------------------------- */
   --nav-bg:          #ffffff;
-  --nav-border:      #e6e9ef;
-  --nav-text:        #465467;
-  --nav-text-strong: #0e1726;
-  --nav-muted:       #7a8699;
-  --nav-hover:       #f2f5fa;
-  --nav-active:      #eaf0ff;
-  --nav-accent:      #2458e6;
+  --nav-border:      transparent;
+  --nav-text:        #68759a;
+  --nav-text-strong: #1b2559;
+  --nav-muted:       #68759a;
+  --nav-hover:       #f4f7fe;
+  --nav-active:      transparent;
+  --nav-accent:      #4361ee;
 
   /* --- space scale (4px base, 8pt rhythm) -------------------------------- */
   --sp-0: 0;

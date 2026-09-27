@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-09-27T02:28:37.314868+00:00",
+  "checked_at": "2026-09-27T02:42:48.837646+00:00",
   "scope": "Chromium; isolated seeded database; model inference disabled",
   "checks": [
     "Dark/light toggle persists in the cookie and server-rendered HTML",

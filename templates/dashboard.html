@@ -15,42 +15,17 @@
 {% set _name = current_user.display_name or current_user.username %}
 {% set _alerts = totals.open_alerts or 0 %}
 {% set _queue = totals.awaiting_review or 0 %}
-<section class="dash-hero" aria-labelledby="dash-title">
-  <div class="dash-hero__sky" aria-hidden="true"><span class="dash-hero__cloud dash-hero__cloud--a"></span><span class="dash-hero__cloud dash-hero__cloud--b"></span><span class="dash-hero__cloud dash-hero__cloud--c"></span></div>
-  <div class="dash-hero__main">
-    <p class="dash-hero__eyebrow">{{ page_title or 'Dashboard' }} · {{ 'All users' if scope_all else 'Your recordings' }}</p>
-    <h1 class="dash-hero__title" id="dash-title">Welcome back, {{ _name }}</h1>
-    <p class="dash-hero__summary">
-      {%- if _alerts and _queue -%}
-        {{ _alerts }} open alert{{ '' if _alerts == 1 else 's' }} need{{ 's' if _alerts == 1 else '' }} an operator, and {{ '{:,}'.format(_queue) }} recording{{ '' if _queue == 1 else 's' }} {{ 'is' if _queue == 1 else 'are' }} waiting for review.
-      {%- elif _alerts -%}
-        {{ _alerts }} open alert{{ '' if _alerts == 1 else 's' }} need{{ 's' if _alerts == 1 else '' }} an operator. The review queue is clear.
-      {%- elif _queue -%}
-        No open alerts. {{ '{:,}'.format(_queue) }} recording{{ '' if _queue == 1 else 's' }} {{ 'is' if _queue == 1 else 'are' }} waiting for review.
-      {%- else -%}
-        All clear: no open alerts and nothing waiting for review.
-      {%- endif -%}
-    </p>
-    <div class="dash-hero__actions">
-      {% if current_user.can('upload_audio') %}<a class="dash-hero__btn dash-hero__btn--solid" href="{{ url_for('main.upload') }}">{{ ui.icon('upload', 16) }} Upload audio</a>{% endif %}
-      {% if current_user.can('live_session') %}<a class="dash-hero__btn" href="{{ url_for('main.live') }}">{{ ui.icon('mic', 16) }} Live monitor</a>{% endif %}
-      {% if _alerts and current_user.can('view_alerts') %}<a class="dash-hero__btn" href="{{ url_for('main.alerts') }}">{{ ui.icon('bell', 16) }} Open alerts</a>{% endif %}
-    </div>
+{% set _sev_icon = {'critical': 'alert', 'high': 'alert', 'medium': 'bell', 'low': 'waves', 'informational': 'waves'} %}
+<header class="dash-greet">
+  <div class="dash-greet__text">
+    <p class="dash-greet__hi">Hi {{ _name }},</p>
+    <h1 class="dash-greet__title">Welcome to SonicSentinel</h1>
   </div>
-  <div class="dash-hero__status" aria-label="Models in service">
-    <p class="dash-hero__status-title"><span class="dash-hero__live" aria-hidden="true"></span>{{ 'Both models in service' if in_service | length >= 2 else 'Model status' }}</p>
-    {% for m in in_service %}
-      <div class="dash-hero__model">
-        <span class="dash-hero__model-dot dash-hero__model-dot--{{ 'python' if m.name == 'Python model' else 'gtm' }}" aria-hidden="true"></span>
-        <span class="dash-hero__model-name">{{ m.name }}</span>
-        {% if m.test_accuracy is not none %}<span class="dash-hero__model-acc">{{ '%.1f' % (m.test_accuracy * 100) }}%</span>{% endif %}
-      </div>
-    {% else %}
-      <p class="dash-hero__model">No model version is active.</p>
-    {% endfor %}
-    <p class="dash-hero__status-note">Test accuracy on 450 unseen recordings</p>
+  <div class="dash-greet__actions">
+    {% if current_user.can('live_session') %}<a class="btn" href="{{ url_for('main.live') }}">{{ ui.icon('mic', 16) }} Live monitor</a>{% endif %}
+    {% if current_user.can('upload_audio') %}<a class="btn btn--primary" href="{{ url_for('main.upload') }}">{{ ui.icon('upload', 16) }} Upload audio</a>{% endif %}
   </div>
-</section>
+</header>
 
 {% if admin and admin.anomalies %}
 <section class="banner banner--high" role="alert" aria-labelledby="anomaly-title">
@@ -66,47 +41,153 @@
 </section>
 {% endif %}
 
-<div class="kpis" data-testid="dashboard-totals">
-  <a class="kpi" href="{{ url_for('main.events') }}">
-    <span class="kpi__icon kpi__icon--accent" aria-hidden="true">{{ ui.icon('list', 18) }}</span>
-    <span class="kpi__body">
-      <span class="kpi__label">Events · 24 h</span>
-      <span class="kpi__value">{{ totals.events_24h }}</span>
-      <span class="kpi__note">{{ totals.events_7d }} in 7 days · {{ totals.events_total }} in total</span>
-    </span>
-  </a>
-  <a class="kpi{{ ' kpi--danger' if totals.open_alerts else '' }}" href="{{ url_for('main.alerts') }}">
-    <span class="kpi__icon kpi__icon--danger" aria-hidden="true">{{ ui.icon('bell', 18) }}</span>
-    <span class="kpi__body">
-      <span class="kpi__label">Open alerts</span>
-      <span class="kpi__value">{{ totals.open_alerts }}</span>
-      <span class="kpi__note">need an operator</span>
-    </span>
-  </a>
-  <a class="kpi{{ ' kpi--warn' if totals.awaiting_review else '' }}" href="{{ url_for('main.reviews') }}">
-    <span class="kpi__icon kpi__icon--warn" aria-hidden="true">{{ ui.icon('clipboard', 18) }}</span>
-    <span class="kpi__body">
-      <span class="kpi__label">Awaiting manual review</span>
-      <span class="kpi__value">{{ totals.awaiting_review }}</span>
-      <span class="kpi__note">uncertain or conflicting</span>
-    </span>
-  </a>
-  <div class="kpi{{ ' kpi--danger' if totals.critical_7d else '' }}">
-    <span class="kpi__icon kpi__icon--danger" aria-hidden="true">{{ ui.icon('alert', 18) }}</span>
-    <span class="kpi__body">
-      <span class="kpi__label">Critical severity · 7 d</span>
-      <span class="kpi__value">{{ totals.critical_7d }}</span>
-      <span class="kpi__note" title="{{ critical_classes | join(', ') }}">{{ critical_classes | length }} critical categories</span>
-    </span>
+<div class="dash-overview">
+  <div class="dash-overview__main">
+    <div class="dash-stats" data-testid="dashboard-totals">
+      <a class="dash-stat" href="{{ url_for('main.events') }}">
+        <span class="dash-stat__icon dash-stat__icon--blue" aria-hidden="true">{{ ui.icon('waves', 18) }}</span>
+        <span class="dash-stat__label">Events in the last 24 h</span>
+        <span class="dash-stat__value">{{ '{:,}'.format(totals.events_24h) }}</span>
+        <span class="dash-stat__note">{{ '{:,}'.format(totals.events_7d) }} this week · {{ '{:,}'.format(totals.events_total) }} in total</span>
+      </a>
+      <div class="dash-stat">
+        <span class="dash-stat__icon dash-stat__icon--red" aria-hidden="true">{{ ui.icon('alert', 18) }}</span>
+        <span class="dash-stat__label">Critical severity · 7 days</span>
+        <span class="dash-stat__value">{{ '{:,}'.format(totals.critical_7d) }}</span>
+        <span class="dash-stat__note" title="{{ critical_classes | join(', ') }}">across {{ critical_classes | length }} critical classes</span>
+      </div>
+      <div class="dash-stat">
+        <span class="dash-stat__icon dash-stat__icon--amber" aria-hidden="true">{{ ui.icon('volume', 18) }}</span>
+        <span class="dash-stat__label">Quality warnings · 7 days</span>
+        <span class="dash-stat__value">{{ '{:,}'.format(totals.quality_warnings_7d) }}</span>
+        <span class="dash-stat__note">rated Poor or Unusable</span>
+      </div>
+    </div>
+
+    <section class="dash-feature" aria-labelledby="feature-title">
+      <div class="dash-feature__text">
+        <h2 class="dash-feature__title" id="feature-title">
+          {%- if _alerts -%}{{ _alerts }} open alert{{ '' if _alerts == 1 else 's' }} need{{ 's' if _alerts == 1 else '' }} an operator
+          {%- elif _queue -%}No open alerts right now
+          {%- else -%}All clear{%- endif -%}
+        </h2>
+        <p class="dash-feature__body">
+          {%- if _queue -%}{{ '{:,}'.format(_queue) }} recording{{ '' if _queue == 1 else 's' }} {{ 'is' if _queue == 1 else 'are' }} waiting for a reviewer: the two models disagreed, were unsure, or the audio was poor.
+          {%- else -%}Nothing is waiting for review. New uploads and live windows appear here as soon as both models have scored them.{%- endif -%}
+        </p>
+        <div class="dash-feature__actions">
+          {% if _alerts and current_user.can('view_alerts') %}<a class="btn btn--primary" href="{{ url_for('main.alerts') }}">{{ ui.icon('bell', 16) }} Open alerts</a>{% endif %}
+          {% if current_user.can('review_queue') %}<a class="btn" href="{{ url_for('main.reviews') }}">Review queue</a>
+          {% elif not _alerts %}<a class="btn btn--primary" href="{{ url_for('main.upload') }}">{{ ui.icon('upload', 16) }} Upload audio</a>{% endif %}
+        </div>
+      </div>
+      {% if latest %}
+      <a class="dash-card-visual" href="{{ url_for('main.event_detail', event_id=latest.id) }}" aria-label="Latest detection: {{ latest.final_class or 'Undecided' }}, event {{ latest.id }}">
+        <span class="dash-card-visual__top"><span>Latest detection</span><span class="dash-card-visual__rings" aria-hidden="true"><i></i><i></i></span></span>
+        <span class="dash-card-visual__class">{{ latest.final_class or 'Undecided' }}</span>
+        <span class="dash-card-visual__scores">
+          {% set py_top = latest.python[0].confidence if latest.python else none %}
+          {% set tm_top = latest.gtm[0].confidence if latest.gtm else none %}
+          <span>Python {{ ('%.0f%%' % (py_top * 100)) if py_top is not none else '—' }}</span>
+          <span>TM {{ ('%.0f%%' % (tm_top * 100)) if tm_top is not none else '—' }}</span>
+        </span>
+        <span class="dash-card-visual__foot"><span>Event {{ latest.id }}</span><span>{{ latest.created_at.strftime('%d %b · %H:%M') }}</span></span>
+      </a>
+      {% endif %}
+    </section>
+
+    <div class="dash-lists">
+      <section class="dash-list" aria-labelledby="recent-list-title">
+        <div class="dash-list__head">
+          <h2 id="recent-list-title">Recent detections</h2>
+          <a href="{{ url_for('main.events') }}">See all</a>
+        </div>
+        {% if recent %}
+        <ul>
+          {% for r in recent[:4] %}
+          {% set sev = (r.severity or 'informational') | lower %}
+          <li class="dash-item">
+            <span class="dash-item__icon dash-item__icon--{{ sev }}" aria-hidden="true">{{ ui.icon(_sev_icon.get(sev, 'waves'), 16) }}</span>
+            <span class="dash-item__main">
+              <a href="{{ url_for('main.event_detail', event_id=r.id) }}">{{ r.predicted_class or 'Undecided' }}</a>
+              <span class="dash-item__meta">{{ r.created_at.strftime('%d %b, %H:%M') }}</span>
+            </span>
+            <span class="dash-item__pill dash-item__pill--{{ sev }}">{{ r.severity or '—' }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="mini-empty">Nothing analysed yet.</p>
+        {% endif %}
+      </section>
+      <section class="dash-list" aria-labelledby="queue-list-title">
+        <div class="dash-list__head">
+          <h2 id="queue-list-title">Waiting for review</h2>
+          {% if current_user.can('review_queue') %}<a href="{{ url_for('main.reviews') }}">Open queue</a>{% endif %}
+        </div>
+        {% if review_items %}
+        <ul>
+          {% for r in review_items[:4] %}
+          {% set sev = (r.severity or 'informational') | lower %}
+          <li class="dash-item">
+            <span class="dash-item__icon dash-item__icon--review" aria-hidden="true">{{ ui.icon('clipboard', 16) }}</span>
+            <span class="dash-item__main">
+              <a href="{{ url_for('main.event_detail', event_id=r.id) }}">{{ r['class'] or 'Undecided' }}</a>
+              <span class="dash-item__meta" title="{{ r.reason | review_reason }}">{{ (r.reason | review_reason or 'needs a decision') | truncate(46) }}</span>
+            </span>
+            <span class="dash-item__pill dash-item__pill--{{ sev }}">{{ r.severity or '—' }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="mini-empty">Nothing waiting for review.</p>
+        {% endif %}
+      </section>
+    </div>
   </div>
-  <div class="kpi{{ ' kpi--warn' if totals.quality_warnings_7d else '' }}">
-    <span class="kpi__icon kpi__icon--warn" aria-hidden="true">{{ ui.icon('volume', 18) }}</span>
-    <span class="kpi__body">
-      <span class="kpi__label">Quality warnings · 7 d</span>
-      <span class="kpi__value">{{ totals.quality_warnings_7d }}</span>
-      <span class="kpi__note">rated Poor or Unusable</span>
-    </span>
-  </div>
+
+  <aside class="dash-overview__side">
+    <section class="dash-chart" aria-labelledby="activity-title">
+      <p class="dash-chart__label" id="activity-title">Detections · last 14 days</p>
+      <p class="dash-chart__value">{{ '{:,}'.format(activity.total) }}</p>
+      {% set c = activity.chart %}
+      {% if c.line %}
+      <svg class="dash-chart__svg" viewBox="0 0 {{ c.width }} {{ c.height }}" role="img"
+           aria-label="Events per day for the last 14 days, peak {{ c.peak.value }} on {{ activity.days[c.peak.index].strftime('%d %b') }}">
+        <defs>
+          <linearGradient id="dash-area" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0" class="dash-chart__stop-top"/><stop offset="1" class="dash-chart__stop-bottom"/>
+          </linearGradient>
+        </defs>
+        <path class="dash-chart__area" d="{{ c.area }}" fill="url(#dash-area)"/>
+        <path class="dash-chart__line" d="{{ c.line }}"/>
+        <line class="dash-chart__guide" x1="{{ '%.1f' % c.peak.x }}" x2="{{ '%.1f' % c.peak.x }}" y1="{{ '%.1f' % c.peak.y }}" y2="{{ c.height }}"/>
+        <circle class="dash-chart__halo" cx="{{ '%.1f' % c.peak.x }}" cy="{{ '%.1f' % c.peak.y }}" r="7"/>
+        <circle class="dash-chart__dot" cx="{{ '%.1f' % c.peak.x }}" cy="{{ '%.1f' % c.peak.y }}" r="3.5"/>
+      </svg>
+      <div class="dash-chart__axis" aria-hidden="true">
+        {% for d in activity.days %}{% if loop.index0 % 3 == 1 or loop.last %}<span class="{{ 'is-peak' if loop.index0 == c.peak.index }}">{{ d.strftime('%d %b') }}</span>{% endif %}{% endfor %}
+      </div>
+      <p class="dash-chart__peak">Busiest day: <strong>{{ activity.days[c.peak.index].strftime('%d %b') }}</strong> with {{ c.peak.value }} event{{ '' if c.peak.value == 1 else 's' }}</p>
+      {% endif %}
+    </section>
+
+    <section class="dash-ring" aria-labelledby="ring-title">
+      <div class="dash-ring__stack" aria-hidden="true"><span></span><span></span></div>
+      <div class="dash-ring__card">
+        <div class="dash-ring__text">
+          <p class="dash-ring__label" id="ring-title">Reviews completed</p>
+          <p class="dash-ring__value">{{ '{:,}'.format(review_progress.done) }} <span>of {{ '{:,}'.format(review_progress.total) }}</span></p>
+        </div>
+        {% set pct = review_progress.pct %}
+        <svg class="dash-ring__svg" viewBox="0 0 42 42" role="img" aria-label="{{ pct }} percent of flagged events reviewed">
+          <circle class="dash-ring__track" cx="21" cy="21" r="15.9155"/>
+          <circle class="dash-ring__fill" cx="21" cy="21" r="15.9155" stroke-dasharray="{{ pct }} {{ 100 - pct }}" stroke-dashoffset="25"/>
+          <text class="dash-ring__pct" x="21" y="23.2" text-anchor="middle">{{ pct }}%</text>
+        </svg>
+      </div>
+    </section>
+  </aside>
 </div>
 
 <div class="dash-grid">
@@ -173,28 +254,6 @@
         {% else %}
         <p class="muted">No model version is marked active. See <a href="{{ url_for('models.list') }}">Models</a>.</p>
         {% endfor %}
-      </div>
-    </section>
-
-    <section class="panel" aria-labelledby="queue-title">
-      <div class="panel__head">
-        <h2 class="panel__title" id="queue-title">{{ ui.icon('clipboard', 16) }} Manual review</h2>
-        <a class="panel__link" href="{{ url_for('main.reviews') }}">Open queue</a>
-      </div>
-      <div class="panel__body panel__body--flush">
-        {% if review_items %}
-        <ul class="mini-list">
-          {% for r in review_items %}
-          <li class="mini-list__item">
-            <a href="{{ url_for('main.event_detail', event_id=r.id) }}">{{ r['class'] or 'Undecided' }}</a>
-            {{ ui.severity_chip(r.severity) }}
-            <span class="mini-list__meta" title="{{ r.reason | review_reason }}">{{ (r.reason | review_reason or 'needs a decision') | truncate(90) }}</span>
-          </li>
-          {% endfor %}
-        </ul>
-        {% else %}
-        <p class="mini-empty">Nothing waiting for review.</p>
-        {% endif %}
       </div>
     </section>
 

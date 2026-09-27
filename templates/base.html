@@ -143,6 +143,12 @@
           <span class="visually-hidden">(opens in a new tab)</span>
         </a>
       </div>
+      {% if _signed_in and _can('live_session') | trim == 'true' and request.endpoint != 'main.live' %}
+      <div class="nav__promo">
+        <p class="nav__promo-title">Hear it as it happens</p>
+        <a class="btn btn--sm" href="{{ url_for('main.live') }}">Start monitoring</a>
+      </div>
+      {% endif %}
     </nav>
     <div class="nav-scrim" data-nav-scrim hidden></div>
 

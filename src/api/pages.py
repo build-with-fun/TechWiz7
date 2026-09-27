@@ -544,6 +544,33 @@ def reviews():
     )
 
 
+def _smooth_chart(values: list[int], width: float = 320.0, height: float = 150.0,
+                  pad: float = 14.0) -> dict:
+    """SVG geometry for a smooth line (Catmull-Rom as cubic Beziers) and the area under it.
+    Drawn server-side because the CSP allows no inline scripts or styles."""
+    n = len(values)
+    top = max(values + [1])
+    xs = [pad + i * (width - 2 * pad) / max(n - 1, 1) for i in range(n)]
+    ys = [height - pad - (v / top) * (height - 2 * pad) for v in values]
+    points = list(zip(xs, ys))
+    if not points:
+        return {"line": "", "area": "", "points": [], "peak": None}
+    line = f"M{points[0][0]:.1f},{points[0][1]:.1f}"
+    for i in range(n - 1):
+        p0 = points[i - 1] if i > 0 else points[i]
+        p1, p2 = points[i], points[i + 1]
+        p3 = points[i + 2] if i + 2 < n else p2
+        c1 = (p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6)
+        c2 = (p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6)
+        line += (f" C{c1[0]:.1f},{max(c1[1], pad / 2):.1f} {c2[0]:.1f},{max(c2[1], pad / 2):.1f}"
+                 f" {p2[0]:.1f},{p2[1]:.1f}")
+    area = f"{line} L{xs[-1]:.1f},{height:.1f} L{xs[0]:.1f},{height:.1f} Z"
+    peak = max(range(n), key=lambda i: values[i])
+    return {"line": line, "area": area, "points": [{"x": x, "y": y} for x, y in points],
+            "peak": {"x": xs[peak], "y": ys[peak], "value": values[peak], "index": peak},
+            "width": width, "height": height}
+
+
 @main_bp.get("/dashboard")
 @capability_required("view_own_events")
 def dashboard():
@@ -631,6 +658,19 @@ def dashboard():
         timeline = [{"id": e.id, "at": e.created_at, "class": e.predicted_class,
                      "severity": e.severity, "status": e.status,
                      "review": e.requires_manual_review} for e in timeline_rows]
+        day_col = func.date(Event.created_at)
+        activity_rows = dict(session.execute(scoped(
+            select(day_col, func.count(Event.id)).where(Event.created_at >= fortnight_ago)
+            .group_by(day_col))).all())
+        activity_days = [(fortnight_ago + dt.timedelta(days=offset)).date() for offset in range(14)]
+        activity_counts = [int(activity_rows.get(d.isoformat(), 0)) for d in activity_days]
+        activity = {"days": activity_days, "counts": activity_counts, "total": sum(activity_counts),
+                    "chart": _smooth_chart(activity_counts)}
+        status_counts = {status: int(n) for status, n in by_status}
+        finished = status_counts.get("Reviewed", 0) + status_counts.get("Closed", 0)
+        needing = finished + totals["awaiting_review"]
+        review_progress = {"done": finished, "total": needing,
+                           "pct": round(100 * finished / needing) if needing else 100}
         in_service = []
         for row in session.execute(select(ModelVersion).where(ModelVersion.is_active.is_(True))
                                    .order_by(ModelVersion.model_name)).scalars():
@@ -665,6 +705,8 @@ def dashboard():
             }
     return _render(
         "dashboard.html",
+        activity=activity,
+        review_progress=review_progress,
         totals=totals,
         in_service=in_service,
         latest=latest,
