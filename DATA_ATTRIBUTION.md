@@ -1,28 +1,25 @@
-# Audio source and attribution record
+# Audio sources and attribution
 
-The local `audio_dataset/manifest.csv` is the per-clip attribution record. Each of its
-3,000 rows includes an audio ID, source, author, licence identifier, split, and SHA-256
-hash. The 2,625 externally sourced rows also have a source URL and licence URL; the
-375 procedurally generated rows identify their generating script in `source` and have
-no external URL. This document summarizes the manifest; it does not replace its
-per-record credits.
+`audio_dataset/manifest.csv` is the per-clip attribution record. Each of its 3,000 rows
+has an audio ID, source, author, licence, split and SHA-256 hash. The 2,625 clips from
+outside sources also have a source URL and licence URL. The 375 generated clips name the
+script that made them in `source` and have no URL. This page is a summary; the manifest
+holds the actual credits.
 
-| Licence identifier in manifest | Clip count |
+| Licence in manifest | Clips |
 |---|---:|
 | `CC-BY-4.0` | 1,539 |
 | `CC0-1.0` | 893 |
 | `CC-BY-3.0` | 532 |
 | `Sampling+-1.0` | 36 |
 
-The manifest names recordings from ESC-50, UrbanSound8K, FSD50K/Freesound and local
-procedural synthesis. The `author`, `source_url`, `licence` and `licence_url` fields
-must travel with any audio redistributed for judging. In particular, the 36 rows
-marked `Sampling+-1.0` need a clip-by-clip permission review before the corpus or a
-sample bundle is published. No legal clearance or permission from original recorders
-is established by this repository.
+The recordings come from ESC-50, UrbanSound8K, FSD50K/Freesound and our own generated
+audio. If any audio is shared for judging, its `author`, `source_url`, `licence` and
+`licence_url` must go with it. The 36 `Sampling+-1.0` clips need to be checked one by one
+before the dataset or a sample bundle is published. This repository doesn't establish any
+legal clearance or permission from the original recordists.
 
-The source audio and generated Teachable Machine import ZIPs are intentionally
-ignored by Git. The exported model weights are present, but their presence does not
-grant permission to redistribute the training clips. If the competition requires
-the audio corpus, first prepare an authorized bundle with matching attribution and
-check its hashes against `audio_dataset/manifest.csv`.
+The audio and the Teachable Machine import ZIPs are not in Git. The exported model weights
+are, but that doesn't give permission to redistribute the training clips. The dataset is
+shared separately on Google Drive (see the README); check the files against
+`audio_dataset/manifest.csv` with `audio_dataset/scripts/verify_dataset.py`.

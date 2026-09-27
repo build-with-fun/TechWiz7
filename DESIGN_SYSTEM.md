@@ -1,64 +1,68 @@
 # Interface design system
 
 SonicSentinel is an operations console. People use it to check what was heard, act on
-alerts and decide review cases, so the interface is quiet on purpose. Colour is kept for
-things that mean something: severity, audio quality, agreement between the models, and the
-two models' identities. Everything else is neutral.
+alerts and decide review cases, so the interface stays quiet. Colour is kept for things
+that mean something: severity, audio quality, agreement between the models, and each
+model's identity. Everything else is neutral.
 
 ## Themes
 
-Two themes, dark (default) and light, switched with the sun/moon button in the header. The
-choice is stored in the `sst_theme` cookie (`dark` or `light`; anything else falls back to
-dark), and the server renders it, so pages do not flash on load. It is a browser preference,
-not an account setting.
+Light is the default, with a dark theme on the sun/moon button in the top bar. The choice
+is saved in the `sst_theme_v2` cookie (`light` or `dark`) and applied on the server, so the
+page doesn't flash on load. It is a browser setting, not an account setting.
 
-All values live in `static/css/tokens.css`:
+All values are in `static/css/tokens.css`:
 
-| Token group | Dark | Light | Used for |
+| Token group | Light | Dark | Used for |
 |---|---|---|---|
-| Surfaces | `#0f1216` canvas, `#161a20` panels | `#f4f5f7` canvas, `#ffffff` panels | page, panels, inputs |
-| Text | `#e7eaef` / `#aab2be` / `#8e97a5` | `#151a21` / `#465160` / `#5a6573` | primary, secondary, tertiary |
-| Accent | `#6cb2ff` | `#1f68c9` | primary button, links, focus, active nav |
-| Severity | informational → critical ramp | same hues, darker text | alert and event badges |
-| Models | Python `#38bdf8`, TM `#c084fc` | darker variants | model cards, chips, bars |
+| Surfaces | `#f4f7fe` canvas, `#ffffff` panels | `#0a0e16` canvas, `#111723` panels | page, panels, inputs |
+| Text | `#1b2559` / `#4a5578` / `#68759a` | `#e8ecf3` / `#b0bacb` / `#8a97ad` | primary, secondary, tertiary |
+| Accent | `#4361ee` | `#6f9dff` | primary button, links, focus, active nav |
+| Severity | grey, blue, orange, red ramp | lighter versions of the same hues | alert and event badges |
+| Models | Python `#0891b2`, TM `#c026d3` | Python `#22d3ee`, TM `#e879f9` | model cards, chips, bars |
 
-Severity, quality and consistency colours never appear alone: every badge also carries its
-text label and a glyph.
+Type is Geist and Geist Mono, served from `static/fonts/`.
+
+Severity, quality and agreement colours never appear on their own: every badge also has
+its text label.
 
 ## Layout and components
 
-- Sticky top bar and a left navigation rail on desktop; icon-only rail on tablets; a
-  horizontal scrolling nav under the top bar on phones.
-- The dashboard opens with a status strip: which model versions are in service, their
-  measured test accuracy, and the two main actions (upload, live monitor). The metrics,
-  charts and timeline below come from the database.
-- Panels, metric tiles, tables and forms share one surface style: a 1px border, 8–10px
-  radius, no gradients, no glass, no glow. Numbers use tabular figures.
-- One primary (filled) button per area; everything else is an outline or ghost button.
-- Sign-in and registration are a single centred card.
+- On desktop there is a white navigation rail with a blue pill on the active item. Below
+  1025px it becomes a drawer opened from the top bar, and below 721px tables turn into
+  stacked cards.
+- The dashboard opens with a greeting, the upload and live-monitor buttons, and event
+  totals. The latest detection, charts and timeline below it all come from the database.
+- Cards, tiles, tables and forms share one surface style: white, rounded, a soft shadow,
+  no gradients. Numbers use tabular figures.
+- One filled primary button per area; the rest are outline or ghost buttons.
+- The console shares its buttons, cards and colours with the public page at `/`.
 
-`static/css/app.css` holds the base components and responsive shell; `static/css/product.css`
-holds the page components. Both take every colour, size and radius from the tokens.
+`static/css/app.css` has the base components, `product.css` the page components, and
+`design.css` the current look (loaded last). `landing.css` is only for the public page. All
+of them take colours, sizes and radii from the tokens.
 
 ## Motion
 
-Motion is feedback only: hover and focus colour changes, bar fills, the pulsing dot while the
-microphone is live, the upload spinner. There are no decorative or entrance animations.
-The operating system's reduced-motion setting removes all of it.
+Pages fade in on load, sections reveal on scroll on the public page, numbers count up, the
+dashboard chart draws itself, and cards lift slightly on hover. The pulsing dot while the
+microphone is live and the upload spinner are the only motion that carries meaning. The
+operating system's reduced-motion setting turns all of it off, and every animated element
+ends in its final state, so nothing is hidden.
 
 ## Accessibility
 
 - Visible focus ring on every interactive element (`--focus-ring`).
-- Text contrast is at least 4.5:1 for body text in both themes.
-- Status is never colour-only (text + glyph on every badge).
+- Body text contrast of at least 4.5:1 in both themes.
+- Status is never shown by colour alone.
 - Live regions announce upload progress, live-window results and toasts.
-- Forced-colours mode hands the palette to the operating system.
+- Forced-colours mode uses the operating system's palette.
 
-## Verification
+## Checking it
 
-`.venv/bin/python tools/check_ui.py` (needs Playwright and Google Chrome) runs the real Flask
-UI against a temporary seeded database with model loading off. It checks the theme toggle and
-its persistence, signs in through the real form, visits every navigation route at 320, 390,
-768 and 1440 px for horizontal overflow, broken images and unnamed links, and saves
-screenshots to `screenshots/ui/` plus a report in `reports/ui_review.json`. It is not a full
-accessibility audit, and Safari, Firefox and a physical microphone still need a manual pass.
+`.venv/bin/python tools/check_ui.py` (needs Playwright and Google Chrome) runs the app
+against a temporary database with the models off. It checks the theme toggle, signs in
+through the real form, opens every page at 320, 390, 768 and 1440 px looking for horizontal
+overflow, broken images and unlabelled links, and saves screenshots to `screenshots/ui/`
+and a report to `reports/ui_review.json`. It is not a full accessibility audit; Safari,
+Firefox and a real microphone still need a manual check.

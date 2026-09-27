@@ -1,9 +1,9 @@
 # Demo guide and video script
 
-The SRS (§1.10 item 13) asks for an MP4 showing 29 specific things. This is the shot list
-that covers all of them in about nine minutes, plus the checks to do before recording.
-Record at 1080p. Narrate what is happening and say plainly when a result is wrong or
-uncertain; the jury will test with unseen audio anyway.
+The SRS (§1.10 item 13) asks for an MP4 showing 29 specific things. This shot list covers
+them in about nine minutes, plus the checks to do before recording. Record at 1080p.
+Explain what is happening, and say so when a result is wrong or uncertain; the jury will
+test with their own audio anyway.
 
 ## Before recording
 
@@ -36,9 +36,9 @@ uncertain; the jury will test with unseen audio anyway.
 | Time | Screen | Show | SRS items covered |
 |---|---|---|---|
 | 0:00–0:30 | Title slide | Project, team, "a prototype for supervised operators, not an emergency system" | |
-| 0:30–1:00 | `/login` → dashboard (evaluator) | Sign in; dashboard tiles, recent detections, critical timeline, anomalies panel | Login, Dashboard |
+| 0:30–1:00 | `/login`, then dashboard (evaluator) | Sign in; dashboard tiles, recent detections, critical timeline, anomalies panel | Login, Dashboard |
 | 1:00–1:40 | Upload | Upload `invalid.notaudio` (refused), `silence.wav` (refused: silent), then `clipped_loud_tone.wav` (clipping warning) | File validation, Audio quality |
-| 1:40–2:30 | Upload → batch | Select all ten `sample_audio/<class>.wav` at once; per-file results | Audio upload, Every sound class |
+| 1:40–2:30 | Upload, batch | Select all ten `sample_audio/<class>.wav` at once; per-file results | Audio upload, Every sound class |
 | 2:30–3:40 | Event page for one clip | Metadata (format, rate, channels, bit depth, size), preprocessing steps, play/pause/replay/seek/volume, waveform, spectrogram | Metadata, Preprocessing, Waveform, Spectrogram |
 | 3:40–4:30 | Same event | Python class + confidence + top-3; TM class + confidence + top-3; consistency status; Δ = \|Python − TM\| | Python prediction/confidence, GTM prediction/confidence, Model comparison, Confidence difference |
 | 4:30–5:00 | Disagreement and low-confidence events | Both route to manual review; say why (status, reasons) | Model-disagreement case, Low-confidence case |
@@ -58,5 +58,5 @@ uncertain; the jury will test with unseen audio anyway.
   uploaded clip. Never replay an old session as if it were live.
 - **A clip behaves differently from rehearsal**: say so and open its event page; the
   comparison and review routing are still worth explaining.
-- **Slow first request**: CNN14 loads on first use (~5 s); upload one warm-up clip before
-  recording.
+- **Slow first request**: the AST model loads on first use, so upload one warm-up clip
+  before recording.

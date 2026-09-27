@@ -1,6 +1,6 @@
-# AI Tool Usage Declaration — SonicSentinel AI
+# AI tool usage declaration: SonicSentinel AI
 
-**Competition:** Aptech NextWave AI and ML — SonicSentinel AI
+**Competition:** Aptech NextWave AI and ML, SonicSentinel AI
 **SRS reference:** v1.0, deliverable 15, integrity rules §1.8
 **Declaration date:** 2026-09-26
 
@@ -29,9 +29,9 @@ defect for us to fix, or run hidden tests against this repository.
 
 | Member | Roll no. | Modules owned | Date | Signature |
 |---|---|---|---|---|
-| Ammar | — | Full pipeline, models, dataset, documentation | 2026-09-26 | pending |
-| Aimon | — | Web UI/UX, frontend | — | |
-| Khizr | — | Research, testing, recommendations, etc. | — | |
+| Ammar Ahmer | | Backend, model training and model making, documentation, deployment | 2026-09-26 | pending |
+| Aimon | | Frontend, testing, other support | | |
+| Khizr | | Suggestions, recordings, testing, implementation help | | |
 
 ## 4. Tools
 

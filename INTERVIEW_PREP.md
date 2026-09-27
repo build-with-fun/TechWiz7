@@ -1,25 +1,57 @@
 # Jury interview preparation
 
-Use these answers as a map to the actual repository. Show the recorded evidence when asked, and keep team-contribution answers tied to the team's own work log.
+Short answers that point to the actual code. Show the recorded evidence when you can, and
+answer questions about who did what from the team's own work log.
 
-**What problem does this solve?** It gives a site operator a traceable first assessment of an uploaded or consented live sound, with both model opinions, audio quality, rules and a human review path. It does not dispatch emergency services.
+**What problem does this solve?** It gives an operator a first look at an uploaded or live
+sound: what both models think, how good the audio is, which rule applies, and a way to get
+a human to review it. It does not call emergency services.
 
-**Why Flask, SQLite and plain JavaScript?** The app is a local/single-node prototype with server-rendered operations pages and modest event volume. Flask and SQLAlchemy keep the request-to-record path inspectable; SQLite avoids a separate database server for a live demo. Multiple workers and high-volume live capture would require a shared queue/state store and a server database.
+**Why Flask, SQLite and plain JavaScript?** It is a single-machine prototype with
+server-rendered pages and a modest number of events. Flask and SQLAlchemy keep the path from
+request to database row easy to follow, and SQLite means no separate database server for
+the demo. More workers or heavy live traffic would need a shared queue and a database server.
 
-**What is technically distinctive?** The two classifiers are separately trained and receive the same decoded audio independently. The comparison exposes disagreement and full class distributions instead of hiding them behind one label. Per-class rules and manual review connect model output to an operator action.
+**What is technically interesting?** Two separately trained models get the same decoded
+audio and never see each other's output. The comparison shows disagreements and both full
+score lists instead of hiding them behind one label. Per-class rules and manual review turn
+model output into an operator action.
 
-**How does the database work?** `audio_files` stores file provenance and a relative path; `events` stores the decision; `confidence_scores` keeps every model/class score; alerts, reviews, live windows, model versions and audit records link back to that event. See `DATABASE_SCHEMA.md` and `src/models.py`.
+**How does the database work?** `audio_files` stores where a file came from and its
+relative path, `events` stores the decision, and `confidence_scores` keeps every score from
+both models. Alerts, reviews, live windows, model versions and audit records all link back
+to the event. See `DATABASE_SCHEMA.md` and `src/models.py`.
 
-**How are data and API keys protected?** There is no paid classification API or frontend secret. Sessions use server-side role/capability checks and CSRF tokens; production mode requires a secret and secure cookies. Audio files live under a controlled storage root, outside static assets. Published demo accounts must be changed before public deployment.
+**How are data and keys protected?** There is no paid API and no secret in the frontend.
+Permissions are checked on the server, forms use CSRF tokens, and production mode needs a
+secret key and secure cookies. Audio is stored outside the static folder. The demo account
+passwords must be changed before a public deployment.
 
-**How are failures handled?** Invalid audio returns validation/quality errors, and absent model artifacts make analysis unavailable rather than inventing a second score. The UI shows unavailable and error states; alerts/reviews are written only for actual decisions. Tests cover the upload/live storage boundary.
+**How are failures handled?** Bad audio gets a validation or quality error. If a model is
+missing, analysis is unavailable instead of making up a second score. The UI has proper
+empty and error states, and alerts and reviews are only written for real decisions.
 
-**How is this different from a generic sound classifier?** It preserves both model distributions, comparison status, source evidence, configurable alert criteria, human decisions and an audit trail. The current measured model accuracy is below the SRS target, so the improvement is workflow transparency rather than a claim of superior detection.
+**How is this different from a generic sound classifier?** It keeps both models' scores,
+the comparison, the source audio, configurable alert rules, human decisions and an audit
+trail. The Python model reaches 0.891 test accuracy and 0.892 macro-F1, but Aggression
+(0.84) and Panic Scream (0.82) are below the 85% per-class recall target, and the Teachable
+Machine model is well below target (0.511 accuracy). So the strength is the transparent
+workflow, not a claim of better detection.
 
-**What trade-offs did you make?** A local SQLite/Flask architecture is easier to inspect and demo but does not prove 20,000-record concurrency or 99% uptime. The GTM transfer model was browser-trained on 32 distinct train parents per class; its measured server-path accuracy is 0.2778 on all 450 held-out clips. Browser/server feature parity remains unverified. These results rule out unsupervised safety use today.
+**What trade-offs did you make?** SQLite and a single Flask process are simple to inspect
+and demo. `tools/benchmark_scale.py` showed 20,000 events and 10 users at once staying under
+1 s at the 95th percentile (`reports/scale.json`), but 99% uptime has not been measured over
+a real evaluation period. The TM model was trained in the browser on 1,400 one-second
+windows for 200 epochs; larger sample sets stalled inside Teachable Machine. Browser/server
+spectrogram parity for TM is still unverified. None of this is ready for unsupervised
+safety use.
 
-**What would you improve?** First improve critical-class recall and test robustness on real site recordings, then complete GTM browser/server parity and performance measurements. Next, move live confirmation state into shared storage and establish an authorized dataset distribution.
+**What would you improve?** Better recall on Aggression and Panic Scream using real site
+recordings, confirm TM browser/server parity, move the live counter into shared storage,
+and sort out a properly licensed way to share the dataset.
 
-**Which team member built which part?** Answer from the team's own commit history and work log. The repository's owner comments and generated documents are not evidence of individual contribution; do not invent names or days.
+**Who built which part?** Answer from the commit history and your own work log. Generated
+documents are not evidence of who did what; don't make up names or dates.
 
-**How could it scale?** Keep the same API/data contracts, move SQLite to a server database, move live state and jobs to a shared queue, and load-test the actual throughput. No scaling benchmark has been recorded yet.
+**How could it scale?** Keep the same API and data model, move SQLite to a database server,
+put live state and jobs in a shared queue, and load-test again.

@@ -1,28 +1,56 @@
 # Architecture
 
-SonicSentinel is a single-node Flask application with server-rendered Jinja pages and small browser-side JavaScript modules. SQLite stores users, model versions, events, scores, alerts, reviews, live sessions and audit records. Audio bytes are stored under a separate filesystem root and referenced by relative path. JSON files in `config/` and `alert_rules/` govern thresholds, rule decisions and retention.
+SonicSentinel is a Flask app on a single machine. Pages are rendered on the server with
+Jinja, with a few small JavaScript files in the browser. SQLite holds users, model versions,
+events, scores, alerts, reviews, live sessions and audit records. Audio files are stored in
+a separate folder and the database keeps their relative paths. Thresholds, alert rules and
+retention are JSON files in `config/` and `alert_rules/`.
 
 ```mermaid
 flowchart LR
   B[Browser upload or consented microphone] --> A[Flask routes and session checks]
   A --> P[Decode, quality and segmentation]
-  P --> PY[CNN14 embedding and saved Python classifier]
-  P --> GTM[GTM browser-FFT frontend and exported model]
-  PY --> C[Independent score comparison]
+  P --> PY[AST embeddings and saved Python classifier]
+  P --> GTM[TM browser-FFT frontend and exported model]
+  PY --> C[Score comparison]
   GTM --> C
-  C --> R[Configurable rules and review routing]
+  C --> R[Alert rules and review routing]
   R --> DB[(SQLite events, scores, alerts, reviews, audit)]
-  R --> F[(Controlled audio storage)]
+  R --> F[(Audio storage)]
   DB --> UI[Dashboard, detail, search and reports]
   F --> UI
 ```
 
-`src/app.py` initializes the engine, session factory, configuration store and blueprints. `src/api/audio_api.py` and `src/api/live_api.py` handle transport/authorization and call `src/services/pipeline.py`. The pipeline invokes both predictors on the same decoded audio without passing either model's result to the other. `src/inference/consistency.py` compares their outputs. `src/services/persistence.py` writes the analysis, both class distributions, audio record, possible alert/review, and audit entry. Dashboard, event, report and export routes read those rows; they do not rerun inference.
+`src/app.py` sets up the database engine, sessions, config store and blueprints.
+`src/api/audio_api.py` and `src/api/live_api.py` handle the requests and permissions, then
+call `src/services/pipeline.py`. The pipeline runs both models on the same decoded audio,
+and neither model sees the other's result. `src/inference/consistency.py` compares the two
+outputs, and `src/services/persistence.py` saves the event, both score lists, the audio
+record, any alert or review, and an audit entry. Dashboards, event pages, reports and
+exports only read these rows; they never run the models again.
 
-The browser microphone sends WAV windows to `/api/live/sessions/<id>/windows` after an explicit consent acknowledgement. The server records each window and its event ID so a live result can be traced back to its source. Repeated detections use a rolling state and per-class rule counts. For a multi-worker deployment, that in-memory confirmation state would need to move to shared storage; the current design is intended for a single process/node demonstration.
+After the user gives consent, the live page sends WAV windows to
+`/api/live/sessions/<id>/windows`. Each window is stored with its event ID so a live
+result can be traced back. The "N detections in a row" counter is kept in memory, so the
+app runs as a single process (one gunicorn worker with threads). Running several workers
+would mean moving that state to shared storage.
 
-Session authentication uses Flask-Login with server-side capability checks and cookie CSRF tokens on state-changing requests. Production mode (`SST_PRODUCTION=1`) requires a configured secret and secure cookies; deploy behind HTTPS. Normal users see only their own event rows; reviewer, operator, maintenance and administrator capabilities gate wider actions. Files are resolved inside the configured storage root, so database paths cannot request arbitrary files. The seed credentials are for local demonstration only.
+Login uses Flask-Login. Permissions are checked on the server by capability, and
+state-changing requests need a CSRF token. With `SST_PRODUCTION=1` the app requires a real
+secret key and secure cookies, so run it behind HTTPS. Normal users only see their own
+events; reviewers, operators, maintenance staff and administrators get more. File paths
+from the database are resolved inside the storage folder, so they can't point anywhere
+else. The seeded accounts are for local demos only.
 
-The models are operational dependencies. A missing GTM export disables dual-model analysis instead of inventing a second prediction. `gtm_model/metadata.json` gives label order; the exported TF.js network is converted for server inference. Its preprocessing must match Teachable Machine's browser FFT, including shape and normalization. The adapter reports an explicit `frontend_verified` flag; that flag must remain false until browser/server agreement is measured. [GTM handoff](gtm_model/upload_package/README.md) records the import/export flow, and verification evidence belongs in `gtm_model/frontend_verification.json` and `gtm_model/gtm_metrics.json` only after actual measurement.
+Both models are required. If the TM export is missing, analysis is switched off rather
+than faking a second opinion. `gtm_model/metadata.json` has the label order, and the
+TF.js export is converted for use on the server. Its spectrogram has to match Teachable
+Machine's browser FFT exactly. The predictor has a `frontend_verified` flag that stays
+false until server and browser predictions have been compared on the same clips. The TM
+workflow is described in [the GTM handoff notes](gtm_model/upload_package/README.md).
 
-Retention is manual from the admin API. It previews eligible rows, respects flagged files and open alerts/pending reviews, removes eligible audio bytes, blanks their stored path, and deletes expired event rows. The batch size and days come from `alert_rules/retention.json`. There is no cron scheduler in the repository despite the suggested schedule in that policy file.
+Retention is run by hand through the admin API. It previews what would go, skips flagged
+files, open alerts and pending reviews, deletes eligible audio, clears the stored path and
+removes expired events. Batch size and retention periods are in
+`alert_rules/retention.json`. There is no scheduler in the repo, even though that file
+suggests a schedule.

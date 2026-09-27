@@ -40,7 +40,7 @@ apart are each model's top two classes, and does a second class also score highl
 hint of overlapping sounds)? From those we produce one of five statuses, from Strong
 Match to Uncertain Result.
 
-Independence is enforced in code, not by promise. The TM predictor's `predict` takes
+We enforce the independence in code. The TM predictor's `predict` takes
 preprocessed audio and nothing else, the two predictor modules cannot import each other,
 and `tests/test_model_independence.py` checks both properties plus the behavioural one:
 changing the Python result never changes the TM output.
@@ -91,7 +91,7 @@ We worried that the noise gate (strength 0.75) and trimming at 30 dB below the p
 cutting off the decay tails of gunshots and breaking glass; 165 clips come out shorter than
 half a second. So we tested a gentler setting on the validation split. Overall it was a tie,
 and it was *worse* on Gunshot and Glass, the classes it was meant to help, so we kept the
-original. A rejected hypothesis is still a result.
+original. It was still worth checking.
 
 ## 5. The Python model: from 254 numbers to a pretrained network
 
@@ -115,15 +115,16 @@ mean recall of the five critical classes, so the model cannot buy accuracy by mi
 gunshots.
 
 The first CNN14 candidate scored 0.840 accuracy and 0.862 critical recall on the test
-split — good, but one point short of the 0.85 accuracy target, so we went further. The
-Audio Spectrogram Transformer is the model that beat AudioSet's own benchmarks on exactly
-the spectrogram we already compute. Switching to its 2,063-d embedding (pooler output plus
-mean patch token plus its 527 AudioSet scores, averaged over 10.24 s chunks) with the same
-logistic-regression head, the same selection criterion and the same train-only protocol,
-gives **0.891 accuracy, 0.892 macro F1 and 0.907 mean critical recall**. That meets all
-three SRS targets. Per critical class: Help 1.00, Gunshot 0.96, Glass 0.91, Aggression
-0.84, Panic Scream 0.82 — the mean clears 0.85 while two classes individually do not, and
-those two are where we would spend the next dataset budget.
+split. That was good, but one point short of the 0.85 accuracy target, so we kept going.
+The Audio Spectrogram Transformer (AST) works on the same kind of spectrogram we already
+compute and does better than CNN14 on AudioSet. We switched to its 2,063-d embedding
+(pooler output plus the mean patch token plus its 527 AudioSet scores, averaged over
+10.24 s chunks) and kept the same logistic-regression head, the same selection criterion
+and the same train-only protocol. That gave **0.891 accuracy, 0.892 macro F1 and 0.907
+mean critical recall**, which meets the accuracy and macro-F1 targets. Per critical class:
+Help 1.00, Gunshot 0.96, Glass 0.91, Aggression 0.84, Panic Scream 0.82. So the mean is
+above 0.85 but two classes on their own are not, and those two are where we would spend
+the next round of data collection.
 
 ## 6. The Teachable Machine model, and a lesson in what "trained" means
 
@@ -185,30 +186,32 @@ picture usually shows two of those things at once.
 
 The hidden SRS test set may be noisy, echoey, quiet, recorded on another device, partial or
 overlapping. We simulated each of those on test recordings (`tools/robustness_probe.py`) and
-scored both models. The results are in `reports/ROBUSTNESS.md`; in short:
-the Python model holds 0.74 accuracy on clean probe clips and degrades gracefully — 0.62 under
-0 dB background noise, 0.55 at −30 dB volume, 0.53 at a simulated 20 m distance, 0.55 when two
-sounds overlap at −6 dB, and 0.68 through 0.8 s of echo. Critical-class recall is the number
-that matters for a safety product, and it holds up better than raw accuracy on the quiet
-conditions: 0.78 at −30 dB and 0.76 at 20 m. Background noise, distance and overlap — not the
-model itself — are the real limits on detection range, which is why we document a quiet,
-indoor, close-microphone operating envelope rather than promising open-field coverage.
+scored both models (this run used our previous CNN14 model). The results are in
+`reports/ROBUSTNESS.md`; in short:
+the Python model gets 0.74 accuracy on the clean probe clips and drops fairly slowly: 0.62
+with 0 dB background noise, 0.55 at −30 dB volume, 0.53 at a simulated 20 m distance, 0.55
+when two sounds overlap at −6 dB, and 0.68 with 0.8 s of echo. For a safety product
+critical-class recall matters most, and it holds up better than accuracy in the quiet
+conditions: 0.78 at −30 dB and 0.76 at 20 m. Background noise, distance and overlap limit
+the detection range more than the model does, which is why we describe the app as working
+best indoors, in fairly quiet places, with the microphone close, rather than promising it
+works across an open field.
 
 
 We also played sounds the models were never trained on: ESC-50 fireworks, door knocks,
 clapping, laughing, crying babies and church bells. There is no right answer for these; what
-matters is whether the app raises a confident critical alert. Of 240 such clips, 230 (95.8 %) were routed to the manual-review queue and only 10 became a
-confident critical alert without human confirmation. Crying babies were heard as Panic Scream
-(35 of 40) and church bells as Alarm or Siren (32 of 40) — the intended critical response to a
-sound in the same family — while door knocks and clapping were read as Aggression, a
-false-alarm risk worth watching. Nothing out-of-set was silently accepted as a dispatched
-critical alert.
+matters is whether the app raises a confident critical alert. Of 240 such clips, 230
+(95.8%) went to the manual-review queue and only 10 became a confident critical alert with
+no human check. Crying babies were heard as Panic Scream (35 of 40) and church bells as
+Alarm or Siren (32 of 40), which is a fair reaction to sounds that close. Door knocks and
+clapping were read as Aggression, though, and that could cause false alarms.
 
 
 On the clean test split the Python model's main false negatives are screams heard as
-Aggression (9 of 45) and quiet animal sounds heard as background noise. Its main false positives
-for critical classes come from the same voice confusion. 21 of 450 test predictions were wrong
-at confidence 0.9 or above, which is why the interface calls confidence an estimate.
+Aggression or Animal Sound (4 and 3 of 45) and quiet animal sounds heard as background noise.
+Its main false positives for critical classes come from the same voice confusion, plus a few
+machinery bangs heard as Aggression. 10 of 450 test predictions were wrong at confidence 0.9
+or above, which is why the interface calls confidence an estimate.
 
 ## 10. Real-time monitoring
 
@@ -218,11 +221,11 @@ microphone is open. Our first version recorded a window, sent it, waited for the
 only then recorded the next, so the microphone was deaf for every round trip. It now records
 continuously, cuts a two-second window on a timer, and sends windows one at a time through a
 small queue. If the server falls behind, the oldest waiting window is dropped and counted on
-screen, because for monitoring the newest audio matters most. Measured latency is in
-a 30 s upload is analysed well inside the SRS 8 s budget and a 2 s live window inside the
-3 s budget, measured end-to-end through the real HTTP routes with both real models; four
-clients uploading at once degrades latency only slightly, and the first request after startup
-pays a one-time CNN14 load cost that is reported separately as a cold start.
+screen, because for monitoring the newest audio matters most. Measured through the real HTTP
+routes with both models (`reports/performance.json`), a 30 s upload takes a median 7.15 s
+against the SRS budget of 8 s, and a 2 s live window 2.06 s against 3 s. With four clients
+uploading at once the median rises to 25.7 s, which is the limit of one CPU-only process, and
+the first request after start-up includes a one-time model load, which we report separately.
 
 ## 11. Security and privacy
 

@@ -33,10 +33,15 @@ The older 25 Sep WAV cut is withdrawn; see `audio_dataset/manifests/archive_spli
 
 The served model (27 Sep) was trained from `--max-per-class 140`: 1,400 samples, the most
 Teachable Machine would train here without stalling at "Preparing training data" (1,750 and
-2,100 stalled), with Advanced → Epochs set to 200 (`tools/train_gtm_browser.py --epochs 200`).
+2,100 stalled), with Advanced > Epochs set to 200 (`tools/train_gtm_browser.py --epochs 200`).
 On the test split it scores 0.511 accuracy, 0.492 macro-F1 and 0.600 critical-class recall
 (`gtm_model/gtm_metrics.json`), well below the SRS targets; `documentation/MODEL_EVALUATION.md`
 has the full history.
+
+Project link: <https://teachablemachine.withgoogle.com/train/audio/17pC3F6eg_sY_HHF8fY8aI2M73_B87UQ_> (open it after signing in to any Google account). Hosted model:
+<https://teachablemachine.withgoogle.com/models/56AmxJNhY/>. That project was a signed-in re-run with the same samples and settings, saved in
+`gtm_model/candidates/tm_linked_e200/`. It scored 0.531 on validation against the served
+export's 0.536, so the served export was kept.
 
 ## Train and export
 

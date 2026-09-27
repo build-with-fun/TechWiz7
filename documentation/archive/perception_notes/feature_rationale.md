@@ -1,209 +1,162 @@
-# Feature rationale: what each acoustic feature can and cannot detect
+# Feature rationale: what each acoustic feature can and can't detect
 
 > Archived design notes from 23 Sep, written while the corpus was still procedurally
-> generated. The reasoning about which classes are
-> confusable still holds; measured numbers refer to that earlier corpus.
+> generated. The reasoning about which classes get confused still holds; measured numbers
+> refer to that earlier corpus.
 
-Date: 2026-09-23
-Status: review of SRS Step 6 / FR xx feature list. Machine-readable parameter decisions are in
-`recommended_perceptual_params.json`; per-pair analysis is in `class_similarity_and_confusability.md`.
+Date: 2026-09-23. A review of the SRS Step 6 / FR xx feature list. Parameter choices are in
+`recommended_perceptual_params.json`; the class pairs are discussed in
+`class_similarity_and_confusability.md`.
 
-This document answers one question per feature: **does the feature carry the information the class
-needs, or is it a plausible-looking number that the classifier will learn a shortcut from?** A
-feature is justified here only if a normal-hearing listener demonstrably uses the same cue. Where a
-feature is in the SRS list but is weak for this task, that is said plainly rather than silently
-implemented.
-
-The governing principle, taken from the auditory system itself: the cochlea performs a
-non-uniform frequency analysis (narrow bandwidths at low frequencies, wide at high), it is phase-
-insensitive above roughly 4-5 kHz, it integrates energy over a few hundred milliseconds for
-loudness, and it strips fine temporal structure into a small number of envelope and modulation
-channels before the signal reaches cortex. Everything below is a consequence of that.
+For each feature the question is whether it carries information the class needs, or just
+gives the classifier something to overfit. We prefer features that match cues people
+actually use. The ear analyses frequency non-uniformly (fine at low frequencies, coarse at
+high ones), ignores phase above about 4-5 kHz, integrates loudness over a few hundred
+milliseconds, and reduces fine timing to a few envelope and modulation channels.
 
 ---
 
-## 1. Why the Mel scale and MFCCs are not arbitrary
+## 1. Mel scale and MFCCs
 
-The Mel scale is a perceptual, not physical, axis: listeners judge equal *musical* intervals as
-equal only when the frequency axis is warped so that equal distances represent equal critical-band
-spacing (Stevens, Volkmann & Newman 1937, *JASA* 8(3):185-190). It approximates the cochlea's
-frequency-place map, which is roughly logarithmic at low frequency and increasingly linear above
-1 kHz. The Bark scale is the psychoacoustic version of the same idea (Zwicker 1961; Traunmüller
-1990, *JASA* 88(1):97-100, gives the closest empirical fit).
+The Mel scale warps frequency so equal distances sound like equal pitch steps (Stevens,
+Volkmann & Newman 1937, *JASA* 8(3):185-190). It roughly follows the cochlea: close to
+logarithmic at low frequencies, closer to linear above 1 kHz. The Bark scale is the
+psychoacoustic version (Zwicker 1961; Traunmüller 1990, *JASA* 88(1):97-100).
 
-Consequences that matter to this project:
+- **Mel bins suit this task.** Machinery harmonics and speech formants need detail below
+  1 kHz. Broadband transients (gunshot, glass) differ mostly at high frequencies, which Mel
+  smooths out, so they need separate unsmoothed features (crest factor, high-frequency
+  energy ratio, spectral flux), not just MFCCs.
+- **MFCCs** compress each frame's log-mel spectrum into a few coefficients describing the
+  spectral envelope. They work well for harmonic and speech-like sounds but miss the fine
+  broadband detail that separates a gunshot from a door slam (the glass vs metal problem,
+  P06 in `class_confusability.json`).
+- **The number of coefficients matters.** Too few smooth away harmonics; too many encode
+  frame-specific detail that overfits. Use 20-40 including deltas, and always include delta
+  and delta-delta, since they capture how the spectrum moves.
 
-- **Mel-spaced bins are the right resolution for the spectral features.** Events whose identity is
-  in low-frequency structure (machinery harmonics, speech formants) need fine resolution below
-  1 kHz; broadband transients (gunshot, glass) are differentiated mostly by their high-frequency
-  distribution, which the Mel scale deliberately coarsens. That is a fair trade for a 10-class
-  classifier but it is why **broadband transients must be carried by a separate, unsmoothed feature
-  family** (crest factor, high-frequency energy ratio, spectral flux) rather than by MFCCs alone.
-- **MFCCs are a decorrelating transform on a smoothed log-Mel spectrum.** The DCT compresses each
-  frame to a handful of coefficients that behave roughly like a compact spectral-envelope
-  description. They are excellent for harmonic and speech-like sources and notoriously insensitive
-  to exactly the fine broadband detail that separates gunshot from a door slam - hence the
-  "glass vs metal impact" failure mode in `class_confusability.json` (P06) when only MFCC
-  statistics are used.
-- **Coefficient count is a real decision, not a default.** Too few cepstral coefficients and the
-  envelope is over-smoothed (harmonics lost); too many and the high coefficients encode
-  frame-specific detail that does not generalise and is the first thing a model overfits to.
-  Recommendation: n_mfcc in the 20-40 range *including the deltas*, and always include delta and
-  delta-delta, because the deltas are what encode motion through the spectrum (the modulation
-  information the class pairs depend on).
-
-**Verdict: keep MFCCs and Mel spectrogram, but never as the sole feature family for the four
-impulsive classes.**
+**Keep MFCCs and the mel spectrogram, but don't rely on them alone for the impulsive classes.**
 
 ---
 
-## 2. Onsets, transients and the classes that live there
+## 2. Onsets and transients
 
-Two of the ten classes are defined almost entirely by their impulse: **Gunshot** and **Glass
-Breaking**, and a third (Machinery Fault) is defined by *repeated* impulses.
+Gunshot and Glass Breaking are defined mostly by their impulse, and Machinery Fault by
+repeated impulses. What identifies an impulse is in the first tens of milliseconds:
 
-An impulsive event's identity is concentrated in the first tens of milliseconds:
+- rise time (gunshot about 0.5-2 ms, glass crack 5-20 ms, door slam 20-50 ms);
+- crest factor (gunshot and glass above 15-20 dB, a siren or hum 3-8 dB);
+- what happens after the onset: glass breaks into many short, non-harmonic modes; metal rings
+  on a few long harmonic modes; a gunshot's tail is room reverb of a low-frequency blast.
 
-- rise time (a gunshot's muzzle blast rises in about 0.5-2 ms; a glass crack in 5-20 ms; a door
-  slam in 20-50 ms),
-- peak-to-RMS ratio (crest factor: gunshot and glass sit above 15-20 dB; a siren or a hum sits at
-  3-8 dB),
-- and what happens *after* the onset, which is where the same-onset pairs separate:
-  glass shatters into many short non-harmonic modes; metal rings on a few long, high-Q,
-  harmonically related modes; a gunshot's tail is environment reverberation of a low-frequency
-  blast.
+So onset strength alone can't separate the impulsive classes. We suggest adding decay
+features: decay slope, onset density 150-800 ms after the first onset, high-frequency energy
+ratio, and roll-off measured on the decay only.
 
-This is why **onset strength alone cannot separate the impulsive classes**, and why the recommended
-feature set adds a decay-phase family (decay-envelope slope, onset density 150-800 ms after the
-first onset, high-frequency energy ratio, spectral roll-off measured on the decay only).
-
-- **Spectral flux** (frame-to-frame spectral change) is the right companion for onset strength: it
-  marks where the spectrum *changes*, which is how a listener hears a new event begin (Bregman
-  1990, *Auditory Scene Analysis*, MIT Press).
-- **Zero-crossing rate** is cheap and genuinely useful, but only in its proper role: it rises with
-  noisiness/high-frequency content and is therefore a good rough discriminator between tonal
-  (alarm, horn, hum) and noisy (glass shower, crowd) content. It is *not* a pitch or content
-  feature and should not be relied on for the speech classes.
+- **Spectral flux** (change from frame to frame) goes well with onset strength; it marks
+  where a new sound starts (Bregman 1990, *Auditory Scene Analysis*, MIT Press).
+- **Zero-crossing rate** is cheap and useful for telling tonal sounds (alarm, horn, hum)
+  from noisy ones (glass, crowd). It isn't a pitch or content feature.
 
 ---
 
-## 3. Temporal integration: why 1-3 s windows are defensible, and why 2 s is my recommendation
+## 3. Window length: why 2 s
 
-The SRS (Step 12, FR xv, NFR 1) says live windows such as 1-3 s and a prediction within 3 s.
+The SRS mentions live windows of 1-3 s and a result within 3 s.
 
-The perceptual literature does not give 1-3 s as a *loudness* integration window - loudness
-integrates over roughly 100-200 ms and saturates well before a second (Zwicker & Fastl,
-*Psychoacoustics*, 3rd ed., 2013). What 1-3 s does correspond to is the scale of an **auditory
-event**: listeners segment a continuous acoustic stream into discrete events on a timescale of
-roughly 1.5-2 s (Sridharan, Levitin, Chafe, Berger & Menon 2007, *Neuron* 55(3):521-532), and it
-also comfortably contains the full duration of the fastest critical classes rather than only their
-onsets (gunshot 0.2-0.8 s; glass shatter 0.3-1.5 s; scream 0.5-2 s).
+Loudness integrates over about 100-200 ms (Zwicker & Fastl, *Psychoacoustics*, 3rd ed.,
+2013), so 1-3 s isn't about loudness. It matches how people split continuous sound into
+events, roughly every 1.5-2 s (Sridharan, Levitin, Chafe, Berger & Menon 2007, *Neuron*
+55(3):521-532), and it fits the whole of the short critical sounds (gunshot 0.2-0.8 s, glass
+0.3-1.5 s, scream 0.5-2 s).
 
-**Recommendation: 2.0 s window with a 1.0 s hop (50% overlap), 3.0 s as the hard ceiling.** The
-full argument, including the latency arithmetic and the hop-size trap, is in
-`recommended_perceptual_params.json` under `live_window`. The short version:
+**Suggestion: 2.0 s windows with a 1.0 s hop, never more than 3.0 s.** Details are under
+`live_window` in `recommended_perceptual_params.json`.
 
-- **2.0 s not 3.0 s**, because the NFR's "within three seconds" is a latency promise. A 3.0 s
-  window consumes the entire budget before inference starts; 2.0 s + hop leaves a real inference
-  budget while still satisfying the NFR under any reading.
-- **1.0 s hop, not hop == duration**, because with a non-overlapping 2 s/2 s scheme a 0.3-0.6 s
-  event can fall inside exactly one window, making SRS Step 15's consecutive-detection requirement
-  structurally unsatisfiable - a Gunshot alert would never fire. This is the single most important
-  number in the live pipeline and it is not obvious from the spec.
+- 2.0 s rather than 3.0 s, because "within three seconds" is a latency target. A 3 s window
+  uses the whole budget before inference even starts.
+- A 1.0 s hop rather than no overlap, because with 2 s windows and a 2 s hop a short event
+  can land in just one window, so the consecutive-detection rule (Step 15) could never be met
+  and Gunshot would never alert.
 
 ---
 
-## 4. Amplitude: normalisation versus distance (the trap in Step 4)
+## 4. Normalisation vs distance
 
-The SRS requires amplitude normalisation. The SRS also requires the dataset to vary recording
-distance. These two pull in opposite directions, and the naive framing ("normalise, therefore
-distance cues are lost") is only half true.
+The SRS wants amplitude normalisation and also recordings at different distances, which
+pull in opposite directions.
 
-- Absolute sound pressure level is **not recoverable** from an uncalibrated file: capture gain,
-  microphone sensitivity and ADC gain are unknown and mixed into one number. So some normalisation
-  is mandatory for cross-device consistency. Correct.
-- But **peak normalisation destroys the crest factor**, and crest factor is one of the strongest
-  non-content cues in the whole system (impulsive vs sustained). RMS normalisation destroys it
-  even more thoroughly.
+- Absolute sound level can't be recovered from an uncalibrated file (gain and microphone
+  sensitivity are unknown), so some normalisation is needed.
+- But peak normalisation changes the crest factor, one of the most useful cues (impulsive vs
+  sustained), and RMS normalisation changes it even more.
 
-**The correct resolution - measure, then normalise:**
+**So measure first, then normalise:**
 
-1. Compute and persist level features *before* any normalisation: `rms_dbfs`, `peak_dbfs`,
-   `crest_factor_db`, `noise_floor_dbfs`, and a short-term loudness spread.
-2. Normalise the waveform that goes into the model (fixed target RMS with a peak limiter) so the
-   classifier is device-independent.
-3. Pass the *pre-normalisation* level features to the classifier as their own inputs.
+1. Before normalising, compute and keep `rms_dbfs`, `peak_dbfs`, `crest_factor_db`,
+   `noise_floor_dbfs` and short-term loudness spread.
+2. Normalise the waveform the model sees (target RMS with a peak limiter).
+3. Give the classifier the pre-normalisation level features as extra inputs.
 
-Distance itself is better approached through the cues a listener actually uses, all of which survive
-an uncalibrated capture: **direct-to-reverberant ratio**, **high-frequency attenuation above ~4 kHz**
-(air absorption increases with range), and **estimate of the reverberation decay**. A listener can
-tell a distant event from a close one with exactly these cues and no SPL reference; so can a model
-(Blauert, *Spatial Hearing*, MIT Press; Zahorik 2002, *JASA* 111(4):1832-1846). Whether this
-project extracts them is optional; claiming distance estimation without them would not be.
+For distance, use the cues a listener uses, which work without calibration:
+direct-to-reverberant ratio, high-frequency loss above about 4 kHz, and reverb decay
+(Blauert, *Spatial Hearing*, MIT Press; Zahorik 2002, *JASA* 111(4):1832-1846). These are
+optional, but don't claim distance estimation without them.
 
 ---
 
-## 5. Modulation and pitch: the features that decide the alarm/horn and scream/aggression pairs
+## 5. Modulation and pitch
 
-Two of the eight SRS Step-14 pairs are only separable in the *slow* modulation domain, at a
-timescale of one second - which is to say, at a timescale no single analysis frame can see.
+Two of the SRS Step 14 pairs can only be separated by slow modulation over about a second,
+which one frame can't see.
 
-- **Alarm or Siren vs Vehicle Horn** (P03): both are sustained tonal harmonic stacks in the same
-  few-hundred-Hz region, so their frame spectra overlap heavily. A siren sweeps or pulses at
-  roughly 0.5-4 Hz; a horn holds two steady tones. A frame-level classifier is blind to this by
-  construction; a modulation spectrum over the whole 2 s window sees it immediately. This is the
-  highest-value single feature addition available to the project.
-- **Panic Scream vs Aggression/shouting** (P04): both are loud human vocalisation by the same
-  speaker. The difference is phonation mode. When subglottal pressure is pushed past the point of
-  stable oscillation the voice breaks into subharmonics and biphonation, producing fast amplitude
-  modulation in the tens-of-Hz roughness range. Arnal, Flinker, Kleinschmidt, Giraud & Poeppel
-  (2015, *Current Biology* 25(15):2051-2056) showed screams carry a distinctive modulation
-  component in this range that makes them stand out against other loud sounds, including
-  perceptually. That is a measurable, non-obvious, decisive feature: compute the amplitude
-  modulation spectrum around 30-150 Hz, plus jitter/shimmer and harmonic-to-noise ratio.
+- **Alarm or Siren vs Vehicle Horn** (P03): both are steady tonal harmonics in the same
+  range. A siren sweeps or pulses at about 0.5-4 Hz; a horn holds two steady tones. A
+  modulation spectrum over the 2 s window shows this straight away. This is the most useful
+  single feature to add.
+- **Panic Scream vs Aggression** (P04): both are loud voices. When a voice is pushed hard it
+  breaks into subharmonics and gets fast amplitude modulation in the 30-150 Hz "roughness"
+  range. Arnal, Flinker, Kleinschmidt, Giraud & Poeppel (2015, *Current Biology*
+  25(15):2051-2056) showed screams stand out because of this. Measure the modulation spectrum
+  around 30-150 Hz, plus jitter, shimmer and harmonic-to-noise ratio.
 
-**Verdict: add a modulation-spectrum feature family. Without it, P03 and P04 are guesswork.**
+**Add a modulation-spectrum feature family; without it P03 and P04 are guesswork.**
 
-`tempo`, listed in Step 6, is only meaningful for the rhythmic classes - the pulse rate of a
-siren's T3 pattern or the repetition rate of a machinery defect. It is meaningless for a gunshot.
-Use it as an onset-envelope autocorrelation rather than as a music tempo estimate, and only feed it
-where the envelope shows periodicity.
+`tempo` from Step 6 only makes sense for rhythmic sounds (a siren's pulse pattern, a
+repeating machine fault). Compute it as onset-envelope autocorrelation, not a music tempo,
+and only where the envelope is periodic.
 
 ---
 
-## 6. Feature-by-feature verdict against the classes
+## 6. Feature summary
 
-| Feature (SRS Step 6 / FR xx) | Perceptual basis | Strong for | Weak / misleading for |
+| Feature (SRS Step 6 / FR xx) | Why it works | Good for | Weak for |
 |---|---|---|---|
-| Mel spectrogram | Cochlear frequency-place warping (Stevens 1937; Traunmüller 1990) | all classes as a common substrate; speech, tonal classes | fine broadband transient detail (coarse above 1 kHz) |
-| MFCC (+ Δ, ΔΔ) | Decorrelated log-Mel envelope; Δ encodes spectral motion | speech classes, machinery harmonics, animal calls | impulsive classes when used without decay features |
-| Chroma | Pitch-class folding; robust to octave | Alarm, Vehicle Horn, tonal animal calls | gunshot, glass, noise; anything inharmonic |
-| Zero-crossing rate | Noisiness / high-frequency content proxy | tonal vs noisy gross separation; glass | pitch, content; noise sensitivity at low level |
-| RMS energy | Envelope / loudness proxy | segmentation, background-noise estimation, onset support | leaks capture gain; **must never be the only level feature** |
-| Spectral centroid | Brightness - the perceptual "sharpness" axis | glass, scream, animal, horn | noisy sources where it is dominated by the masker |
-| Spectral bandwidth | Spectral spread; distinguishes tonal from broadband | siren vs hum; machinery vs noise | alone, ambiguous between many pairs |
-| Spectral roll-off | Fraction of energy below a frequency; transient brightness | glass, gunshot, screams | slowly-varying sounds |
-| Onset strength | Event-boundary detection (the basis of auditory stream segmentation) | all impulsive and repeated-event classes | **cannot separate same-onset pairs; needs a decay companion** |
-| Tempo / onset-envelope periodicity | Rhythmic rate of a repeated source | Machinery Fault, pulsed alarms | everything aperiodic (most of the ten classes) |
-| **Crest factor (dB)** *(added)* | Peak-to-RMS; the impulsive/sustained axis listeners hear as "sharp" vs "smooth" | Gunshot, Glass, vs all sustained classes | sensitive to a single outlier sample - use with the clipped-run check |
-| **Decay-envelope slope & onset density after onset** *(added)* | The ring-down carries the source identity (shards vs modes vs reverberation) | Glass vs Metal/Machinery (P06), Glass vs Gunshot (P11) | heavily reverberant recordings, where the room dominates the decay |
-| **Modulation spectrum 0.5-4 Hz** *(added)* | Sweep/pulse rate is the siren's designed signature | Alarm vs Horn (P03) | stationary sources |
-| **Modulation spectrum 30-150 Hz, jitter, HNR** *(added)* | Voice-quality roughness, the scream's privileged cue | Panic Scream vs Aggression (P04) | clean speech classes unaffected |
-| **Audible-margin (per-band SNR)** *(added)* | Energetic masking - is the event perceptually present at all? | gates every critical alert (P12) | requires a noise-floor estimate; over-estimates audibility in non-stationary noise |
-| **DRR, HF attenuation, RT60** *(added, optional)* | Distance cues a listener can actually use | relative near/far context, robustness | not absolute distance; needs careful estimation |
+| Mel spectrogram | Follows the cochlea's frequency map (Stevens 1937; Traunmüller 1990) | all classes; speech and tonal sounds | fine detail in broadband transients |
+| MFCC (+ Δ, ΔΔ) | Compact log-mel envelope; deltas capture movement | speech, machinery harmonics, animal calls | impulsive classes without decay features |
+| Chroma | Pitch class, ignoring octave | Alarm, Vehicle Horn, tonal animal calls | gunshot, glass, noise, anything inharmonic |
+| Zero-crossing rate | Rough measure of noisiness | tonal vs noisy; glass | pitch, content; unreliable at low levels |
+| RMS energy | Envelope and loudness | segmentation, noise estimate, onsets | depends on recording gain; don't use as the only level feature |
+| Spectral centroid | Brightness | glass, scream, animal, horn | noisy recordings |
+| Spectral bandwidth | Tonal vs broadband | siren vs hum; machinery vs noise | ambiguous on its own |
+| Spectral roll-off | Where the energy sits | glass, gunshot, screams | slowly changing sounds |
+| Onset strength | Where events start | impulsive and repeated-event classes | same-onset pairs without decay features |
+| Tempo / periodicity | Rhythm of repeated sounds | Machinery Fault, pulsed alarms | most non-rhythmic classes |
+| **Crest factor (dB)** *(added)* | Peak vs RMS: sharp vs smooth | Gunshot, Glass vs sustained classes | one outlier sample; pair with the clipping check |
+| **Decay slope and onset density after onset** *(added)* | The ring-down identifies the source | Glass vs metal (P06), Glass vs Gunshot (P11) | very reverberant rooms |
+| **Modulation spectrum 0.5-4 Hz** *(added)* | A siren's sweep rate | Alarm vs Horn (P03) | steady sounds |
+| **Modulation spectrum 30-150 Hz, jitter, HNR** *(added)* | Rough voice quality in screams | Panic Scream vs Aggression (P04) | normal speech |
+| **Per-band SNR (audible margin)** *(added)* | Whether the event is audible at all | gating critical alerts (P12) | needs a noise-floor estimate; less reliable in changing noise |
+| **DRR, HF loss, RT60** *(added, optional)* | Distance cues | near vs far, robustness | not absolute distance |
 
 ---
 
-## 7. What I will not sign off on
+## 7. Things to avoid
 
-1. **Reporting macro-F1 or accuracy as the headline for the critical classes.** The critical
-   classes are the ones that carry the NFR recall floor and the ones whose false positives destroy
-   operator trust. Report per-class precision *and* recall at a named threshold.
-2. **A confidence threshold whose only justification is that it makes the numbers look good.**
-   Thresholds must be chosen on validation against the false-alarm budget in
-   `recommended_perceptual_params.json`, and the operating point must be stated.
-3. **Reading ">=85% accuracy" as permission to tune on the test split.** An augmented or
-   re-tuned test set is not the unseen test set the SRS compares the two models on.
-4. **Any critical-class confusion called "fixed" without the named pair (P01-P12) being checked in
-   the confusion matrix.** Perceptual analysis says which pairs those are; the matrix says whether
-   they were actually addressed.
+1. Using macro-F1 or accuracy as the headline for the critical classes. Report per-class
+   precision and recall at a stated threshold.
+2. Picking a confidence threshold only because it makes the numbers look good. Choose it on
+   validation against the false-alarm budget in `recommended_perceptual_params.json`, and
+   state the operating point.
+3. Tuning on the test split to reach 85%.
+4. Calling a confusion "fixed" without checking that pair (P01-P12) in the confusion matrix.

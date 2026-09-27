@@ -1,6 +1,6 @@
 > Archived: the first audit, kept as a record of the starting point. It is not the current state.
 
-# SonicSentinel AI — project audit
+# SonicSentinel AI: project audit
 
 Audited on 2026-09-25 against the repository at `06cf07d` and the supplied **SonicSentinel AI SRS v1.0**. This is a discovery record and implementation plan. No application code or data was changed during this phase.
 
@@ -10,7 +10,7 @@ The statuses below describe that **pre-overhaul baseline**, not the final workin
 
 SonicSentinel is intended to help a person monitoring a site recognize ten classes of sound in an uploaded recording or a consented microphone stream. A local Python classifier and a separately trained Google Teachable Machine (GTM) audio classifier should each produce a class distribution. The application should compare them, assess audio quality, apply configurable alert rules, keep the evidence, and route uncertain cases to a reviewer. It is a competition prototype, not a certified emergency response service.
 
-The intended users are a normal user submitting recordings, an audio reviewer deciding uncertain cases, a security operator handling alerts, a maintenance operator changing technical configuration, and an administrator managing accounts and retention. The principal journey is **sign in → capture/upload → validate and classify with both models → inspect evidence → acknowledge an alert or review an uncertain result → search/export history**. The current checkout cannot complete that journey: the GTM export is absent, so the analysis pipeline does not load; the upload and live integration paths also have independent defects detailed below.
+The intended users are a normal user submitting recordings, an audio reviewer deciding uncertain cases, a security operator handling alerts, a maintenance operator changing technical configuration, and an administrator managing accounts and retention. The principal journey is **sign in, capture or upload, validate and classify with both models, inspect the evidence, acknowledge an alert or review an uncertain result, then search or export history**. The current checkout cannot complete that journey: the GTM export is absent, so the analysis pipeline does not load; the upload and live integration paths also have independent defects detailed below.
 
 ## What is actually in the repository
 
@@ -169,7 +169,7 @@ The palette and sidebar are a useful starting point, but the current screenshots
 ## Prioritized implementation plan
 
 1. **Restore a truthful runnable analysis path.** Obtain/train/export the separate GTM model from train-only recordings; capture and verify its frontend against browser predictions; record GTM test metrics on the frozen test split. If that export cannot be produced, leave dual-model inference explicitly unavailable and do not fabricate it.
-2. **Repair the vertical journey before redesign.** Align `audio_api` with the real pipeline/persistence signature, add a real HTTP upload integration test, repair live WAV encoding and consent visibility, persist live windows/events/alerts, and make the upload form usable without JavaScript. Verify sample WAV → event row → detail/playback → alert/review → dashboard/report.
+2. **Repair the vertical journey before redesign.** Align `audio_api` with the real pipeline/persistence signature, add a real HTTP upload integration test, repair live WAV encoding and consent visibility, persist live windows/events/alerts, and make the upload form usable without JavaScript. Check the whole path: sample WAV, event row, detail and playback, alert or review, dashboard and report.
 3. **Fix decision and privacy boundaries.** Apply per-class alert eligibility, suppression, escalation and repeat counts; supply near-duplicate candidates; implement or accurately remove the retention purge action; add CSRF protection and deployment-safe session settings; limit exports to administrators.
 4. **Complete SRS journeys.** Add registration/profile editing, actual batch selection/results, full microphone status, model version administration, full report evidence, missing analytics, and complete search/filter behavior. Use realistic stored events for each role and every failure state.
 5. **Polish the product UI.** Consolidate the mismatched template/CSS vocabulary; establish typography, spacing and severity hierarchy; build responsive dashboard/upload/live/detail/review views; fix imagery and asset paths; test keyboard, contrast, reduced motion and three viewport sizes.

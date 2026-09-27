@@ -1,8 +1,15 @@
 # HTTP API
 
-The Flask app serves JSON under `/api` and HTML pages outside it. Most routes require a signed-in session. Browser state-changing requests must include the `X-CSRF-Token` value from the page's `csrf-token` meta tag; normal HTML forms include a hidden token. A capability check is enforced on the server for each protected action. Errors use an `error` object with `code`, `message`, optional `details`, and `request_id`; a missing model returns HTTP 503 rather than a fabricated analysis.
+JSON routes live under `/api`; everything else is an HTML page. Most routes need a
+signed-in session. Requests from the browser that change something must send the
+`X-CSRF-Token` header with the value from the page's `csrf-token` meta tag (HTML forms
+include it as a hidden field). Every protected action checks the user's capabilities on
+the server. Errors come back as an `error` object with `code`, `message`, optional
+`details` and `request_id`. If a model is missing, analysis returns 503.
 
-`GET/POST /register` creates a normal-user account through an HTML form; privileged roles remain administrator-assigned. `GET/POST /profile` lets a signed-in user update their own display name and email. Password changes use the JSON endpoint listed below.
+`GET/POST /register` creates a normal user account from an HTML form; other roles are
+assigned by an administrator. `GET/POST /profile` lets a user change their own display
+name and email. Passwords are changed through the JSON endpoint below.
 
 ## Core journeys
 
@@ -32,7 +39,9 @@ Content-Disposition: form-data; name="file"; filename="site-audio.wav"
 Content-Type: audio/wav
 ```
 
-A live window body contains `seq`, `audio_b64` (a complete WAV file), `sample_rate`, and `duration_sec`. The server checks the active session and persists both the window and linked event. The UI obtains microphone permission only after the user acknowledges consent.
+A live window body has `seq`, `audio_b64` (a complete WAV file), `sample_rate` and
+`duration_sec`. The server checks that the session is active and stores the window and
+its event. The page only asks for the microphone after the user has given consent.
 
 ## Operations and reporting
 
@@ -45,11 +54,11 @@ A live window body contains `seq`, `audio_b64` (a complete WAV file), `sample_ra
 | `GET /api/reports/event/<id>`, `/api/reports/period?from=YYYY-MM-DD&to=YYYY-MM-DD` | Event and date-range reports |
 | `GET /api/export/events.csv`, `/api/export/events.xlsx` | Administrator-only filtered export |
 | `GET /api/analytics/classes`, `/model-comparison`, `/consistency`, `/alerts`, `/quality`, `/reviews` | Stored-event aggregates |
-| `GET /api/admin/config`, `PUT /api/admin/config/<file_key>` | View and atomically validate/edit JSON policy files |
+| `GET /api/admin/config`, `PUT /api/admin/config/<file_key>` | View config files, or validate and replace one |
 | `GET /api/admin/users`, `POST /api/admin/users`, `PATCH /api/admin/users/<id>` | Administrator user management |
 | `GET /api/admin/audit`, `/api/admin/monitoring/anomalies` | Audit and in-app health signals |
 | `POST /api/admin/retention/preview`, `/api/admin/retention/purge?dry_run=0` | Preview or run a batch-limited retention purge |
-| `GET /api/health`, `/api/health/ready`, `/api/health/detail`, `/api/version` | Liveness, database/model readiness, detailed health and build information; readiness returns 503 if the database or either model is unavailable |
+| `GET /api/health`, `/api/health/ready`, `/api/health/detail`, `/api/version` | Liveness, readiness (503 if the database or either model is down), detailed health, and version |
 
 Example validation response:
 
@@ -57,4 +66,9 @@ Example validation response:
 {"error":{"code":"validation_error","message":"Request body must be a JSON object.","request_id":"..."}}
 ```
 
-Route implementations in `src/api/` are the source of truth for all optional filters and payload fields. `documentation/archive/2026-09-23_api_contract_proposal.md` is an earlier proposal and includes routes that were never implemented; use this document for the delivered API. No model registration/activation API is currently available. `database/init_db.py` registers discovered artifacts, and persistence also records versions that produce real predictions. Registry activation does not hot-swap the saved model; restart after replacing an artifact.
+For every optional filter and field, check the route code in `src/api/`.
+`documentation/archive/2026-09-23_api_contract_proposal.md` is an older proposal with
+routes that were never built; this page describes what exists. There is no API for
+registering or activating models. `database/init_db.py` registers the models it finds on
+disk, and a version is also recorded when it makes its first prediction. Activating a
+version doesn't reload the model, so restart the app after replacing one.

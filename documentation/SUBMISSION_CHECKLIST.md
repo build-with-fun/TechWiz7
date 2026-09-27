@@ -1,43 +1,43 @@
 # Submission checklist
 
 Deadline for NextWave AI and ML: **29 September 2026**, 16:00 Pakistan time (check your
-centre's row in the official table). Aim to be finished by **29 Sep 04:00**, twelve hours early.
+centre's row in the official table). Aim to finish by **29 Sep 04:00**, twelve hours early.
 
-Status key: ✔ done in the repository · ☐ still to do · 👤 needs a team member (cannot be
-done by code).
+"Done" means it is in the repository. "Team" marks things only a team member can do.
 
 ## SRS §1.10 item 16
 
 | Item | Status | Where / what is missing |
 |---|---|---|
-| Project report | ✔ draft | `PROJECT_REPORT.md`; 👤 add team names, roll numbers, task allotment (§9) |
-| Public GitHub URL | ✔ | <https://github.com/build-with-fun/TechWiz7> (public, pushed 27 Sep), linked in the README |
-| Complete source code | ✔ | this repository |
-| Training / validation / testing datasets | 👤 | audio is not in Git (size, licences). Decide how to share it (e.g. a Drive/Kaggle archive with `DATA_ATTRIBUTION.md`); review the 36 Sampling+ clips first |
-| Dataset metadata | ✔ | `audio_dataset/manifest.csv`, `data/splits/split.json`, `DATA_DICTIONARY.md` |
-| Python model | ✔ | `python_models/best/` (+ `tools/fetch_pretrained.py` for CNN14) |
-| GTM model | ✔ export · 👤 evidence | `gtm_model/`; 👤 a team member trains the project in their own TM session, saves the project link and screenshots of every class |
-| Preprocessing and feature scripts | ✔ | `audio_preprocessing/`, `feature_extraction/`, `augmentation/` |
-| Alert rules | ✔ | `alert_rules/` |
-| Model comparison report | ✔ | `reports/MODEL_COMPARISON.md`, `reports/model_comparison.csv` |
-| Installation / execution instructions | ✔ | `README.md` |
-| Deployment URL | ✔ | <https://shelf-starlight-subfloor.ngrok-free.dev/login> (laptop + ngrok, 27 Sep). 👤 keep the laptop on, both terminals open, and `tools/uptime_probe.py` running until judging ends; then `--summary` for NFR 5 |
-| Demonstration video (MP4) | 👤 | record using `DEMO_GUIDE.md` |
-| Technical blog (≥ 2,000 words) | ✔ | published: <https://dev.to/buildwithfun/ai-voice-analysis-13oh> (2,226 words), linked in the README |
-| AI_USAGE.md | ✔ draft | 👤 each member adds what they reviewed and changed, and signs |
-| Team contribution record | 👤 | `documentation/TEAM_CONTRIBUTION_RECORD.md` |
+| Project report | Done (draft) | `PROJECT_REPORT.md`; team and task allotment filled in (§9). Team: add the team name and roll numbers |
+| Public GitHub URL | Done | <https://github.com/build-with-fun/TechWiz7> (public, pushed 27 Sep), linked in the README |
+| Complete source code | Done | this repository |
+| Training / validation / testing datasets | Done | Google Drive: <https://drive.google.com/drive/folders/19dNe0p0zEIV5f4IOaD0WQHPgDrCQHL1B> (all 3,000 originals, the split, metadata and licences; README "Get the dataset"). Team: review the 36 Sampling+ clips before making it public |
+| Dataset metadata | Done | `audio_dataset/manifest.csv`, `data/splits/split.json`, `DATA_DICTIONARY.md` |
+| Python model | Done | `python_models/best/` (AST weights via `tools/fetch_pretrained.py --ast`) |
+| GTM model | Done | `gtm_model/`. Project link: <https://teachablemachine.withgoogle.com/train/audio/17pC3F6eg_sY_HHF8fY8aI2M73_B87UQ_> (Drive file <https://drive.google.com/file/d/17pC3F6eg_sY_HHF8fY8aI2M73_B87UQ_/view>, anyone with the link can view); hosted model: <https://teachablemachine.withgoogle.com/models/56AmxJNhY/>; screenshots `screenshots/gtm/20260927_signed_in_*` |
+| Preprocessing and feature scripts | Done | `audio_preprocessing/`, `feature_extraction/`, `augmentation/` |
+| Alert rules | Done | `alert_rules/` |
+| Model comparison report | Done | `reports/MODEL_COMPARISON.md`, `reports/model_comparison.csv` |
+| Installation / execution instructions | Done | `README.md` |
+| Deployment URL | Done | <https://shelf-starlight-subfloor.ngrok-free.dev/login> (laptop + ngrok, 27 Sep). Team: keep the laptop on, both terminals open and `tools/uptime_probe.py` running until judging ends, then run `--summary` for NFR 5 |
+| Demonstration video (MP4) | Team | record it using `DEMO_GUIDE.md` |
+| Technical blog (≥ 2,000 words) | Done | published: <https://dev.to/buildwithfun/ai-voice-analysis-13oh> (2,226 words), linked in the README |
+| AI_USAGE.md | Done (draft) | Team: each member adds what they reviewed and changed, and signs |
+| Team contribution record | Done (draft) | `documentation/TEAM_CONTRIBUTION_RECORD.md`. Team: Aimon and Khizr confirm their rows and add evidence |
 
 ## Integrity items (SRS §1.8)
 
-- 👤 Every member can explain their modules (`documentation/VIVA_PACK.md`).
-- 👤 Commits from all members. Do not backdate or fake history; if the history shows one
-  author, say so honestly in the contribution record.
-- ✔ Development log (`documentation/devlog.md`); 👤 members add their own entries.
-- ✔ No hard-coded predictions, no generative-AI API at inference (`tests/test_model_independence.py`).
+- Team: every member can explain their own modules (`documentation/VIVA_PACK.md`).
+- Team: commits from all members. Don't backdate or fake history; if the history shows one
+  author, say so in the contribution record.
+- Done: development log (`documentation/devlog.md`). Team: members add their own entries.
+- Done: no hard-coded predictions and no generative-AI API at inference
+  (`tests/test_model_independence.py`).
 
 ## Before you zip / push
 
-- [x] `pytest -q` green; paste the result into `TEST_PLAN.md` — 497 passed, 0 failed (27 Sep)
+- [x] `pytest -q` passes and the result is in `TEST_PLAN.md` (497 passed, 0 failed, 27 Sep)
 - [x] `python tools/render_uml.py --check` PASS
 - [x] `grep -rn "{{" README.md PROJECT_REPORT.md TEST_PLAN.md documentation/` finds no unfilled placeholders
 - [x] No secrets: `.env` is not committed; `git grep -n "SECRET_KEY="` shows only `.env.example` and a `...` placeholder in the Dockerfile comment (27 Sep)

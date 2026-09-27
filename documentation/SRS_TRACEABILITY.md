@@ -1,15 +1,15 @@
 # SRS traceability matrix
 
-One row per requirement in SonicSentinel AI SRS v1.0, §1.6 (FR i–lxxx), §1.7 (NFR 1–5),
-§1.8 (integrity) and §1.10 (deliverables). Last checked **27 Sep 2026** against the
-working tree; update a row whenever its evidence changes.
+One row per requirement in the SonicSentinel AI SRS v1.0: §1.6 (FR i–lxxx), §1.7 (NFR 1–5),
+§1.8 (integrity) and §1.10 (deliverables). Last checked on **27 Sep 2026** against the
+working tree. Update a row whenever its evidence changes.
 
-**Status**: *verified* = an automated test or a recorded measurement shows it working;
-*partial* = implemented but some part is missing or unmeasured; *missing* = not built;
-*blocked* = needs something only a person can supply (recordings, accounts, a decision).
-**Owner** is left for the team to fill in. Code comments name people who do not match the
-Git history, so ownership must be confirmed by the team, not copied from those comments.
-**Priority**: P0 = core flow a judge tries first, P1 = explicitly required, P2 = polish.
+**Status**: *verified* means an automated test or a recorded measurement shows it
+working; *partial* means built but with something missing or unmeasured; *missing* means
+not built; *blocked* means it needs something only a person can provide (recordings,
+accounts, a decision). **Owner** is for the team to fill in; don't copy names from old code
+comments. **Priority**: P0 is the core flow a judge tries first, P1 is explicitly required,
+P2 is polish.
 
 Test files are under `tests/`; `pytest -q` runs them all.
 
@@ -18,14 +18,14 @@ Test files are under `tests/`; `pytest -q` runs them all.
 | FR | Requirement | Where | Evidence | Status | Owner | Pri | Next action |
 |---|---|---|---|---|---|---|---|
 | i | Registration and secure login | `src/api/pages.py`, `src/auth.py`, `templates/auth/` | `test_account_pages.py::test_register_and_update_own_profile`, `test_csrf.py`, lockout tests in `test_database.py` | verified | | P0 | Self-registration creates a normal user; privileged roles are granted by an administrator (deliberate: nobody can register as admin). |
-| ii | Five roles, server-enforced | `ROLE_CAPABILITIES` in `src/auth.py` | `test_database.py::test_every_srs_role_is_accepted`, export 403 in `test_pipeline_http_integration.py`; browser run: all six seeded accounts sign in through the form and nine guarded pages open or refuse exactly as the matrix says (`tools/browser_acceptance.py` → `reports/browser_acceptance.json`) | verified | | P0 | |
+| ii | Five roles, server-enforced | `ROLE_CAPABILITIES` in `src/auth.py` | `test_database.py::test_every_srs_role_is_accepted`, export 403 in `test_pipeline_http_integration.py`; browser run: all six seeded accounts sign in through the form and nine guarded pages open or refuse exactly as the matrix says (`tools/browser_acceptance.py`, `reports/browser_acceptance.json`) | verified | | P0 | |
 | iii | Profile and unique User ID | `pages.py` profile routes, `User.id` | `test_register_and_update_own_profile` | verified | | P1 | |
-| iv | Upload WAV/MP3/FLAC/OGG/M4A | `src/api/audio_api.py`, `audio_preprocessing/io.py` (FFmpeg) | `test_every_accepted_audio_format_has_a_mime_type`, conversion round-trip in `test_audio_preprocessing.py`; browser run uploads one file of each format through the Upload page and both models answer (`tools/browser_acceptance.py` → `reports/browser_acceptance.json`, `screenshots/acceptance/upload_*.png`) | verified | | P0 | |
-| v | Batch upload | `templates/upload.html` (multiple), `static/js/upload.js` | browser run: four files at once, two analysed and two refused with their reasons (silence; unsupported type) (`tools/browser_acceptance.py` → `reports/browser_acceptance.json`, `upload_batch.png`) | verified | | P1 | |
-| vi | Start/stop live monitoring after permission | `static/js/live.js`, `src/api/live_api.py` | `test_live_window_payload_carries_consistency_and_top3`, consent refusal tests; browser run with Chrome's fake microphone: consent → session → Active → windows classified (`tools/browser_acceptance.py` → `reports/browser_acceptance.json`) | verified | | P0 | Still worth one run with a real microphone on the demo laptop. |
-| vii | Mic states: Available, Active, Paused, Disconnected, Permission denied | `live.js` `setMic()`, `templates/live.html` | browser run shows all five: Available before consent, Active, Paused/Active on the pause button, Disconnected when the track ends, Permission denied with prompts refused (`tools/browser_acceptance.py` → `reports/browser_acceptance.json`, `live_*.png`) | verified | | P1 | |
+| iv | Upload WAV/MP3/FLAC/OGG/M4A | `src/api/audio_api.py`, `audio_preprocessing/io.py` (FFmpeg) | `test_every_accepted_audio_format_has_a_mime_type`, conversion round-trip in `test_audio_preprocessing.py`; browser run uploads one file of each format through the Upload page and both models answer (`tools/browser_acceptance.py`, `reports/browser_acceptance.json`, `screenshots/acceptance/upload_*.png`) | verified | | P0 | |
+| v | Batch upload | `templates/upload.html` (multiple), `static/js/upload.js` | browser run: four files at once, two analysed and two refused with their reasons (silence; unsupported type) (`tools/browser_acceptance.py`, `reports/browser_acceptance.json`, `upload_batch.png`) | verified | | P1 | |
+| vi | Start/stop live monitoring after permission | `static/js/live.js`, `src/api/live_api.py` | `test_live_window_payload_carries_consistency_and_top3`, consent refusal tests; browser run with Chrome's fake microphone: consent, then session, Active, windows classified (`tools/browser_acceptance.py`, `reports/browser_acceptance.json`) | verified | | P0 | Still worth one run with a real microphone on the demo laptop. |
+| vii | Mic states: Available, Active, Paused, Disconnected, Permission denied | `live.js` `setMic()`, `templates/live.html` | browser run shows all five: Available before consent, Active, Paused/Active on the pause button, Disconnected when the track ends, Permission denied with prompts refused (`tools/browser_acceptance.py`, `reports/browser_acceptance.json`, `live_*.png`) | verified | | P1 | |
 | viii | Validate format, size, duration, rate, channels, integrity, sound | `audio_preprocessing/io.py`, `quality.py`, `audio_api.py` | `test_audio_preprocessing.py` (silence, unknown format, short), `test_failed_upload_is_audited_for_anomaly_detection` | verified | | P0 | |
-| ix | Play, pause, replay, seek, volume | `templates/event_detail.html`, `static/js/event.js` | browser run drives play, pause, seek and volume from the keyboard and replay by click (`tools/browser_acceptance.py` → `reports/browser_acceptance.json`, `player.png`) | verified | | P1 | |
+| ix | Play, pause, replay, seek, volume | `templates/event_detail.html`, `static/js/event.js` | browser run drives play, pause, seek and volume from the keyboard and replay by click (`tools/browser_acceptance.py`, `reports/browser_acceptance.json`, `player.png`) | verified | | P1 | |
 | x | Metadata incl. bit depth, size, upload time | `AudioFile` (`bit_depth` added 26 Sep), `persistence.py` | `test_upload_stores_source_rate_and_bit_depth` | verified | | P1 | |
 | xi | Resample, mono, normalise, trim, denoise, segment, pad, truncate | `audio_preprocessing/pipeline.py`, `transforms.py` | `test_audio_preprocessing.py` (40+ tests) | verified | | P0 | |
 | xii | Silence detection | `quality.py` | `test_pipeline_rejects_a_silent_file_with_a_reason` | verified | | P0 | |
@@ -36,14 +36,14 @@ Test files are under `tests/`; `pytest -q` runs them all.
 | xvii | Dataset metadata fields | manifest (42 columns), `DATA_DICTIONARY.md` | `verify_dataset.py --strict` | verified | | P1 | 2,123 rows have `recording_environment=unspecified`. |
 | xviii | Balance / insufficiency check | `verify_dataset.py`, `build_split.py --strict` | `test_every_class_contributes_210_45_45` | verified | | P1 | |
 | xix | Controlled augmentation | `augmentation/transforms.py`, `augment_dataset.py` | `test_augmentation.py` (SNR accuracy, determinism, train-only lineage) | verified | | P1 | Decide from validation whether augmented copies improve the served model. |
-| xx | MFCC, mel, chroma, ZCR, RMS, centroid, bandwidth, roll-off | `feature_extraction/features.py` (254 columns) | `test_feature_extraction.py` | verified | | P0 | The served model uses CNN14 embeddings; the hand-crafted set feeds the HGB baseline. |
+| xx | MFCC, mel, chroma, ZCR, RMS, centroid, bandwidth, roll-off | `feature_extraction/features.py` (254 columns) | `test_feature_extraction.py` | verified | | P0 | The served model uses AST embeddings; the hand-made features feed the HGB baseline. |
 | xxi | Waveform display | `src/services/visuals.py`, `event.js`, report PNG | `test_event_report_contains_every_fr_lxix_item` | verified | | P1 | |
 | xxii | Spectrogram display | same | same | verified | | P1 | |
 | xxiii | Train and compare ≥3 models | `train_transfer.py`, `train_classical.py`, `train_deep.py` | `python_models/metrics/transfer_test_current.json`, `classical_metrics_hgb_split_v2.json`, `documentation/MODEL_EVALUATION.md` | verified | | P0 | CRNN numbers are from the superseded v1 split. |
 | xxiv | Systematic tuning | validation grids in `train_transfer.py`, `tuning.py` | `transfer_selection_current.json`, `test_tuning_protocol_labels.py` | verified | | P1 | |
 | xxv | Python model predicts one of ten classes | `src/inference/predictor.py`, `python_models/best/` | `test_transfer_model.py::test_predictor_returns_plain_strings_and_all_ten_scores` | verified | | P0 | |
 | xxvi | Python scores for all classes | same | same | verified | | P0 | |
-| xxvii | Separately trained TM audio model | `gtm_model/`, `tools/train_gtm_browser.py` | TM export + `screenshots/gtm/` (26 and 27 Sep runs: classes, sample counts, epochs, stalls, export) | partial | | P0 | The SRS accepts a project link *or* permitted evidence; a member's own signed-in run would add the link. |
+| xxvii | Separately trained TM audio model | `gtm_model/`, `tools/train_gtm_browser.py` | TM export, `screenshots/gtm/` (classes, sample counts, epochs, stalls, export), project link <https://teachablemachine.withgoogle.com/train/audio/17pC3F6eg_sY_HHF8fY8aI2M73_B87UQ_>, hosted model <https://teachablemachine.withgoogle.com/models/56AmxJNhY/> | verified | | P0 | The linked project is a re-run with the same samples and settings; the served export is the earlier run that won on validation. |
 | xxviii | TM integration by a supported method | TF.js export converted to Keras; `src/inference/gtm_predictor.py` | `test_pipeline_http_integration.py` (real export), `gtm_model/gtm_metrics.json` | verified | | P0 | Browser/server frontend parity not measured (`frontend_verified=false`). |
 | xxix | TM classifies the same segment independently | `gtm_predictor.py` | `test_model_independence.py` (9 tests) | verified | | P0 | |
 | xxx | TM scores for all classes | same | comparison CSV | verified | | P0 | |
@@ -59,10 +59,10 @@ Test files are under `tests/`; `pytest -q` runs them all.
 | xl | Consecutive-window confirmation | `RepeatTracker` in `pipeline.py` | rule tests in `test_alert_rules_config.py` | verified | | P0 | |
 | xli–xlix | Per-class behaviour (machinery, glass, alarm, horn, animal, gunshot, scream, aggression, help) | `alert_rules/alert_rules.json`, `severity_block` | `test_alert_rules_config.py` | verified | | P0 | Detection quality per class: see NFR 4. |
 | l | Background noise non-critical unless loud | `alert_rules.json` ambient limit | `test_background_noise_carries_a_configurable_ambient_limit` | verified | | P1 | |
-| li | Unknown / manual review | review conditions; UI wording "Manual Review Required" (27 Sep) | `reports/ROBUSTNESS.md` part B; browser run finds the phrase on an uncertain event (`tools/browser_acceptance.py` → `reports/browser_acceptance.json`) | verified | | P1 | No separate "Unknown" class; the SRS allows either label. |
+| li | Unknown / manual review | review conditions; UI wording "Manual Review Required" (27 Sep) | `reports/ROBUSTNESS.md` part B; browser run finds the phrase on an uncertain event (`tools/browser_acceptance.py`, `reports/browser_acceptance.json`) | verified | | P1 | No separate "Unknown" class; the SRS allows either label. |
 | lii | Severity levels | `config` severity scale | severity tests | verified | | P1 | |
 | liii | Configurable alert rules | `alert_rules/`, admin config API with validation | `test_alert_rules_config.py` (12 tests) | verified | | P0 | |
-| liv | Visible real-time alerts | dashboard, alerts page, live banner | alert page tests; browser run: a repeated critical sound raises the live banner after 3 consecutive windows (`tools/browser_acceptance.py` → `reports/browser_acceptance.json`, `live_alert.png`) | verified | | P0 | |
+| liv | Visible real-time alerts | dashboard, alerts page, live banner | alert page tests; browser run: a repeated critical sound raises the live banner after 3 consecutive windows (`tools/browser_acceptance.py`, `reports/browser_acceptance.json`, `live_alert.png`) | verified | | P0 | |
 | lv | Acknowledge, dismiss, escalate | `src/api/alerts_api.py` | `test_alert_review_pages.py`, `test_an_acknowledged_alert_records_who_and_when` | verified | | P0 | |
 | lvi | Alert history | alerts + audit tables | same | verified | | P1 | |
 | lvii | Manual-review queue | `reviews_api.py`, `templates/reviews.html` | review tests | verified | | P0 | |
@@ -70,7 +70,7 @@ Test files are under `tests/`; `pytest -q` runs them all.
 | lix–lxi | Confirm/correct, comments, override keeping model output | `reviews_api.py`, `Review.original_*` | `test_an_override_preserves_the_original_model_output` | verified | | P0 | |
 | lxii | Event statuses | `Event.status` | database tests | verified | | P1 | |
 | lxiii | User dashboard | `dashboard()` in `pages.py` (26 Sep) | `test_normal_user_dashboard_shows_only_their_own_uploads` | verified | | P0 | |
-| lxiv | Live dashboard items | `templates/live.html` | live payload test; browser run shows both models' class per window (`tools/browser_acceptance.py` → `reports/browser_acceptance.json`, `live_active.png`) | verified | | P0 | |
+| lxiv | Live dashboard items | `templates/live.html` | live payload test; browser run shows both models' class per window (`tools/browser_acceptance.py`, `reports/browser_acceptance.json`, `live_active.png`) | verified | | P0 | |
 | lxv | Administrator dashboard | admin block in dashboard | `test_admin_dashboard_has_srs_metrics_and_anomalies` | verified | | P1 | |
 | lxvi | Chronological timeline | critical-event timeline (26 Sep), `/api/dashboard/timeline` | dashboard test | verified | | P1 | |
 | lxvii | Nine search filters | `src/services/search.py` | `test_severity_filter_narrows_the_list`, search tests | verified | | P1 | |
@@ -85,19 +85,19 @@ Test files are under `tests/`; `pytest -q` runs them all.
 | lxxvi | Audit trail | `AuditRecord`, `record_audit` | audit tests | verified | | P1 | |
 | lxxvii | Understandable errors | `src/errors.py` | error-envelope tests | verified | | P1 | |
 | lxxviii | Six anomaly alerts | `src/services/monitoring.py` (26 Sep), dashboard banner | `test_admin_dashboard_has_srs_metrics_and_anomalies` | verified | | P1 | In-app only; no email or SMS. |
-| lxxix | Privacy: visible mic state, no secret recording | consent gate, Active pill and tab dot | consent tests; browser run: no microphone request before consent, start disabled until ticked, Active and tab dot while listening (`tools/browser_acceptance.py` → `reports/browser_acceptance.json`) | verified | | P0 | |
+| lxxix | Privacy: visible mic state, no secret recording | consent gate, Active pill and tab dot | consent tests; browser run: no microphone request before consent, start disabled until ticked, Active and tab dot while listening (`tools/browser_acceptance.py`, `reports/browser_acceptance.json`) | verified | | P0 | |
 | lxxx | Configurable retention | retention config, preview and purge | `test_retention_api.py` | verified | | P1 | |
-| — | Responsive UI | `static/css/`, `tools/check_ui.py` | `reports/ui_review.json` (52 route/width checks) | verified | | P0 | Firefox, Edge, Opera not tested. |
+| UI | Responsive UI | `static/css/`, `tools/check_ui.py` | `reports/ui_review.json` (52 route/width checks) | verified | | P0 | Firefox, Edge, Opera not tested. |
 
 ## Non-functional requirements (§1.7)
 
 | NFR | Target | Measured | Status | Next action |
 |---|---|---|---|---|
-| 1 Performance | ≤8 s for a 30 s upload; ≤3 s per live window | `reports/performance.json`: 30 s upload median 7.15 s (p95 7.47), 2 s live window median 2.06 s (p95 2.30), both against budget | **met** | Concurrency is single-process only: 4 clients degrade to 25.7 s median, the honest scaling limit. Under gunicorn (1 worker × 8 threads, `reports/scale.json`, 27 Sep) a 30 s upload took 4.8 s median; 4 at once, 17.5 s. |
-| 2 Scale | 20,000 events, several users | `tools/benchmark_scale.py` → `reports/scale.json`: 20,000 events, gunicorn 1 worker × 8 threads; p95 of all reads 0.065 s (1 user), 0.37 s (10), 0.60 s (20), no errors; slowest endpoint 0.76 s at 20 users; largest allowed export (9,334 rows) 1.61 s; plus `test_twenty_thousand_events_insert_and_the_search_filter_stays_fast` | **met** | Four simultaneous 30 s uploads take 17.5 s median (CPU-bound on this laptop). |
+| 1 Performance | ≤8 s for a 30 s upload; ≤3 s per live window | `reports/performance.json`: 30 s upload median 7.15 s (p95 7.47), 2 s live window median 2.06 s (p95 2.30), both against budget | **met** | One process only: with 4 clients at once the median goes up to 25.7 s. Under gunicorn (1 worker × 8 threads, `reports/scale.json`, 27 Sep) a 30 s upload took 4.8 s median; 4 at once, 17.5 s. |
+| 2 Scale | 20,000 events, several users | `tools/benchmark_scale.py`, `reports/scale.json`: 20,000 events, gunicorn 1 worker × 8 threads; p95 of all reads 0.065 s (1 user), 0.37 s (10), 0.60 s (20), no errors; slowest endpoint 0.76 s at 20 users; largest allowed export (9,334 rows) 1.61 s; plus `test_twenty_thousand_events_insert_and_the_search_filter_stays_fast` | **met** | Four simultaneous 30 s uploads take 17.5 s median (CPU-bound on this laptop). |
 | 3 Usability | intuitive UI for five roles | UI checks at four widths | partial | Record a first-time user walkthrough. |
-| 4 Accuracy | ≥85 % accuracy, ≥0.80 macro F1, ≥85 % recall per critical class, both models | Python (AST+logreg, v2 test): **0.891 / 0.892**; critical recall Help 1.00, Gunshot 0.96, Glass 0.91, Aggression 0.84, Panic 0.82 (mean 0.907). TM (200 epochs, 27 Sep): **0.511 / 0.492**, critical recall 0.600 (`gtm_model/gtm_metrics.json`) | partial | Python meets accuracy and macro-F1; 3 of 5 critical classes reach 0.85 (Aggression and Panic Scream do not; a Day 5 augmented retrain lost on validation). TM misses all three targets: 1,750 and 2,100 samples stall inside TM, and more epochs were the last lever (0.493 → 0.511). Disagreements go to human review as designed. |
-| 5 Availability | 99 % uptime | Live at <https://shelf-starlight-subfloor.ngrok-free.dev> (gunicorn on the team laptop, ngrok tunnel, production mode) since 27 Sep 05:29; `tools/uptime_probe.py` checks `/api/health/ready` every 5 min → `reports/uptime.jsonl`, `--summary` → `reports/uptime_summary.json` | partial | Uptime depends on the laptop staying on and online through the evaluation window; report the probe summary at submission. A Hugging Face Space kit is in `deploy/huggingface/` but new Docker Spaces need a paid plan. |
+| 4 Accuracy | ≥85 % accuracy, ≥0.80 macro F1, ≥85 % recall per critical class, both models | Python (AST+logreg, v2 test): **0.891 / 0.892**; critical recall Help 1.00, Gunshot 0.96, Glass 0.91, Aggression 0.84, Panic 0.82 (mean 0.907). TM (200 epochs, 27 Sep): **0.511 / 0.492**, critical recall 0.600 (`gtm_model/gtm_metrics.json`) | partial | Python meets accuracy and macro-F1; 3 of 5 critical classes reach 0.85 (Aggression and Panic Scream do not; a Day 5 augmented retrain lost on validation). TM misses all three targets: 1,750 and 2,100 samples stall inside TM, and more epochs were the last thing to try (0.493 to 0.511). Disagreements go to human review as designed. |
+| 5 Availability | 99 % uptime | Live at <https://shelf-starlight-subfloor.ngrok-free.dev> (gunicorn on the team laptop, ngrok tunnel, production mode) since 27 Sep 05:29; `tools/uptime_probe.py` checks `/api/health/ready` every 5 min and writes `reports/uptime.jsonl`; `--summary` writes `reports/uptime_summary.json` | partial | Uptime depends on the laptop staying on and online through the evaluation window; report the probe summary at submission. A Hugging Face Space kit is in `deploy/huggingface/` but new Docker Spaces need a paid plan. |
 
 ## Integrity (§1.8) and deliverables (§1.10)
 
@@ -111,12 +111,12 @@ Test files are under `tests/`; `pytest -q` runs them all.
 | Tested on unseen recordings | verified | frozen v2 test split, scored once per model family |
 | AI_USAGE.md | partial | updated 26 Sep; team must add their own verification names |
 | Project report with diagrams | partial | `PROJECT_REPORT.md`, `diagrams/` |
-| Dataset deliverable | blocked | audio is not in Git; the team must choose a licensed distribution (36 clips need permission review) |
+| Dataset deliverable | partial | shared on Google Drive (README, "Get the dataset"); the 36 Sampling+ clips still need a permission review |
 | Python model evidence | verified | `python_models/metrics/`, `documentation/MODEL_EVALUATION.md` |
-| TM evidence (project link, class screenshots) | blocked | automated run screenshots exist; the project link must come from a team member's own TM session |
+| TM evidence (project link, class screenshots) | verified | project <https://teachablemachine.withgoogle.com/train/audio/17pC3F6eg_sY_HHF8fY8aI2M73_B87UQ_>, hosted model <https://teachablemachine.withgoogle.com/models/56AmxJNhY/>, screenshots in `screenshots/gtm/` |
 | Comparison report (≥100 unseen, ≥10/class) | verified | `reports/model_comparison.csv` (all 450 test recordings) |
 | Alert rule files | verified | `alert_rules/alert_rules.json` |
 | Test cases incl. the 21 listed kinds | verified | `tests/`, `TEST_PLAN.md` |
 | Installation/execution instructions | verified | `README.md` |
 | Public GitHub, deployment URL, MP4 video, blog link | partial | GitHub public: <https://github.com/build-with-fun/TechWiz7>; live URL in README; blog published: <https://dev.to/buildwithfun/ai-voice-analysis-13oh> (2,226 words); MP4 video still to record |
-| LICENSE | blocked | team decision |
+| LICENSE | verified | MIT, `LICENSE` |

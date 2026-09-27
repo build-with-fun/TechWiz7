@@ -1,7 +1,7 @@
 # Test plan and results
 
-`pytest -q` runs everything below except the browser checks. Results are recorded with the
-date they were observed; anything not yet run says so.
+`pytest -q` runs everything below except the browser checks. Each result has the date it
+was run; anything not run yet says so.
 
 ## Latest runs
 
@@ -17,8 +17,7 @@ date they were observed; anything not yet run says so.
 | 25 Sep | `pytest -q` including deep-model tests (needs network for MobileNet weights) | 449 passed |
 | 25 Sep | `tools/check_ui.py` (Chrome, 13 routes × 4 widths) | 52 layout checks passed (`reports/ui_review.json`) |
 
-The deep-model tests download MobileNet weights on first run; offline they error, which is an
-environment limit, not a pass.
+The deep-model tests download MobileNet weights on first run, so they fail offline.
 
 ## SRS deliverable 8: test kinds and where they live
 
@@ -61,9 +60,14 @@ environment limit, not a pass.
 
 ## Manual checks still to do before the video
 
-- ✔ Upload each format (WAV, MP3, FLAC, OGG, M4A) through the browser — automated, 27 Sep.
-- ✔ Batch upload with bad files among good ones — automated, 27 Sep.
-- ✔ Live monitor states and the three-window alert with Chrome's fake microphone — automated, 27 Sep.
-- ☐ The same live run once with a real microphone on the demo laptop (unplug for Disconnected).
-- ☐ Keyboard-only pass through login, upload, event page and review.
-- ☐ Firefox and Edge (only Chrome has been checked).
+Done (automated, 27 Sep):
+
+- Upload each format (WAV, MP3, FLAC, OGG, M4A) through the browser.
+- Batch upload with bad files mixed in with good ones.
+- Live monitor states and the three-window alert, using Chrome's fake microphone.
+
+Still to do:
+
+- The same live run with a real microphone on the demo laptop (unplug it for Disconnected).
+- A keyboard-only pass through login, upload, the event page and review.
+- Firefox and Edge (only Chrome has been checked).

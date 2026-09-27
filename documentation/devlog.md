@@ -1,17 +1,17 @@
-# Development Log — SonicSentinel AI
+# Development log: SonicSentinel AI
 
 Format per SRS §1.8 rule 3: work completed, problems encountered, dataset changes,
 model failures, code changes, tests performed. Newest first.
 
 ---
 
-## Day 5 — 2026-09-27
+## Day 5, 2026-09-27
 
 ### Commit history, stated as it is
 SRS §1.8 asks for meaningful commits on all five competition days. The Git history has
-commits on 24, 25 and 27 September only. Day 1 (23 Sep) work — reading the SRS, acquiring the
-corpus, the first feature extractor and app skeleton, described below — was done before the
-repository's first commit (24 Sep 14:08). Day 4 (26 Sep) work was committed at 01:30 on
+commits on 24, 25 and 27 September only. The Day 1 (23 Sep) work described below (reading
+the SRS, getting the corpus, the first feature extractor and the app skeleton) was done
+before the repository's first commit (24 Sep 14:08). Day 4 (26 Sep) work was committed at 01:30 on
 27 Sep as `2174c4e`. No commit has been backdated and none will be; this entry and the
 per-day sections below are the record for the two days without commits.
 
@@ -70,7 +70,7 @@ Written down before the runs below started, so that validation decides and test 
   `transfer_selection_ast_current.json` was regenerated to add the per-class numbers; its
   choice is unchanged.
 - **Teachable Machine: more epochs, same 1,400 samples.** `train_gtm_browser.py --epochs`
-  sets TM's Advanced → Epochs (the tour card covering the Training panel is hidden first).
+  sets TM's Advanced > Epochs (the tour card covering the Training panel is hidden first).
   Same import package as the served model (rebuilt byte-for-byte; only the fetch date in
   the evidence rows differed, so the committed rows were kept).
 
@@ -86,6 +86,13 @@ Written down before the runs below started, so that validation decides and test 
   random start and internal split); one run per setting was all the time allowed. The
   search stopped at 200 epochs because the gain had shrunk to 0.01 and no setting comes
   near the 0.85 target. `init_db.py` registered the new version as active.
+- **Teachable Machine project link.** Trained the same project again in a signed-in Chrome
+  session (same 10 classes, same 1,400 samples, 200 epochs; 29 minutes), uploaded the model
+  (<https://teachablemachine.withgoogle.com/models/56AmxJNhY/>) and saved the project to Google Drive, shared as "anyone with the link"
+  (<https://teachablemachine.withgoogle.com/train/audio/17pC3F6eg_sY_HHF8fY8aI2M73_B87UQ_>). Screenshots: `screenshots/gtm/20260927_signed_in_*`. On validation this run
+  scored 0.531 / 0.519 / 0.640 (score 0.579) against 0.595 for the served export, so by the
+  selection rule the served model stays and the new one was not scored on test. It is kept
+  in `gtm_model/candidates/tm_linked_e200/`.
 - **Browser acceptance (FR ii, iv, v, vi, vii, ix, li, liv, lxiv, lxxix).** New
   `tools/browser_acceptance.py` starts its own copy of the app on a scratch database and drives
   system Chrome, with a fake microphone playing `sample_audio/person_asking_for_help.wav` for
@@ -95,7 +102,7 @@ Written down before the runs below started, so that validation decides and test 
   `reports/browser_acceptance.json`, `screenshots/acceptance/`. It found one wrong message: an
   unsupported file was told to send "WebM" audio, which the SRS does not list, and not M4A,
   which it does; fixed.
-- **NFR 2, measured** (`tools/benchmark_scale.py` → `reports/scale.json`): 20,000 synthetic
+- **NFR 2, measured** (`tools/benchmark_scale.py`, `reports/scale.json`): 20,000 synthetic
   events in a scratch SQLite database, served by gunicorn with **one worker and 8 threads**,
   real HTTP from signed-in users. Pass line written in the script before the first run: p95
   ≤ 1 s for every page and API read at 10 users, no errors, largest allowed export ≤ 10 s.
@@ -108,8 +115,9 @@ Written down before the runs below started, so that validation decides and test 
 
   Export: all 20,000 rows is refused in 0.02 s (the app caps exports at 10,000 rows and says
   so); the largest allowed export, 9,334 rows, took 1.61 s. 30-second uploads: median 4.79 s
-  one at a time; four at once, median 17.5 s and p95 20.5 s — CPU-bound on this laptop, so
-  simultaneous long uploads remain the real limit (NFR 1 holds for one at a time).
+  one at a time; four at once, median 17.5 s and p95 20.5 s. That is the CPU limit of this
+  laptop, so several long uploads at once are the real bottleneck (NFR 1 holds for one at a
+  time).
 
   How it got there, in order:
   1. The first runs used 2 workers × 4 threads, the Render kit's setting (10 users: free-text
@@ -122,7 +130,7 @@ Written down before the runs below started, so that validation decides and test 
      `SST_TORCH_THREADS` is now the physical core count.
   3. Free-text search used ILIKE, which SQLite runs as `lower(x) LIKE lower(?)` on six columns
      of every row. SQLite's LIKE is already case-insensitive for ASCII and its `lower()` folds
-     nothing else, so plain LIKE returns the same rows: 18.5 → 10.3 ms per scan of 20,000
+     nothing else, so plain LIKE returns the same rows, and a scan went from 18.5 to 10.3 ms of 20,000
      events. A test now checks that search ignores case.
 
   Two harness faults were also fixed: it signed in again for every load level and tripped the
@@ -144,7 +152,7 @@ Written down before the runs below started, so that validation decides and test 
 
 ---
 
-## Day 4, evening — 2026-09-26
+## Day 4 evening, 2026-09-26
 
 ### Work completed
 - **Teachable Machine rebuilt.** Found that the served TM export had been trained on the first
@@ -152,7 +160,7 @@ Written down before the runs below started, so that validation decides and test 
   came from UrbanSound8K. `make_gtm_imports.py` now takes recordings in a fixed hash order,
   writes the exact one-second windows as WAV evidence (`audio_dataset/gtm_samples/`,
   `manifests/gtm_segment_rows.csv`), and the server can average every window weighted by
-  energy. Validation 0.438 → 0.504; test (scored once) 0.462 → 0.493 accuracy.
+  energy. Validation went from 0.438 to 0.504, and test (scored once) from 0.462 to 0.493 accuracy.
 - **Withdrew the 25 Sep TM segment cut.** Under split v2 about 30 % of its parents were
   validation or test recordings. No model used it; the lists are archived with a note in
   `audio_dataset/manifests/archive_split_v1/`.
@@ -170,7 +178,7 @@ Written down before the runs below started, so that validation decides and test 
   card after each upload, and a readable spectrogram colour map. Removed the 3D decoration,
   gradient hero and four-palette theme picker. `tools/check_ui.py`: no layout failures at 320,
   390, 768 or 1440 px.
-- **Clean-up**: comment and docstring lines 9,434 → 5,651 (-40 %); pyflakes clean apart from
+- **Clean-up**: comment and docstring lines cut from 9,434 to 5,651 (-40%); pyflakes clean apart from
   one intentional import; the unused `GridRouter` removed from `tools/render_uml.py`; the old
   audit, API proposal and perception notes moved to `documentation/archive/`.
 
@@ -192,7 +200,7 @@ Written down before the runs below started, so that validation decides and test 
 
 ---
 
-## Day 4 — 2026-09-26
+## Day 4, 2026-09-26
 
 ### Work completed
 - **Baseline audit** (`documentation/BASELINE_AUDIT.md`): 431 non-deep tests passing,
@@ -248,7 +256,7 @@ Written down before the runs below started, so that validation decides and test 
 | Near-duplicate stage 2 missed an identical sound (0.86) | compared a preprocessed upload with a raw stored file | Both sides now go through the same preprocessor |
 
 ### Dataset changes
-- Split algorithm `sha256-order-v1` → `sha256-order-v2-source-groups` (same seed 20260923).
+- Split algorithm changed from `sha256-order-v1` to `sha256-order-v2-source-groups` (same seed 20260923).
 - 4,200 augmented copies were generated for the v1 train split and then deleted after the
   re-split, because their parents' partitions changed; they are regenerated from v2.
 
@@ -271,21 +279,21 @@ Written down before the runs below started, so that validation decides and test 
 
 ---
 
-## Day 3 — 2026-09-25
+## Day 3, 2026-09-25
 
 ### Work completed
 - **All API write paths smoke-tested end-to-end** (curl, admin cookie jar):
   - Alerts: acknowledge (JSON 200 + HTML-form 303 + flash), dismiss (422 without
-    reason → 200 with reason → 409 once closed), escalate (200, 422 on unknown
+    reason, 200 with one, 409 once closed), escalate (200, 422 on unknown
     severity), invalid-state transitions now flash a readable error on form posts.
   - Reviews: confirm (adopts original prediction), override with a real class name
-    (`Panic Scream`, not `Scream` — 422 otherwise), re-decide → 409, form confirm → 303.
+    (`Panic Scream`, not `Scream`, otherwise 422), deciding again gives 409, form confirm 303.
   - Admin: config PUT accepts only the *nested* schema; history records `config_edited`
     with before/after; users create/409/PATCH; retention preview + purge (legal hold
     respected); monitoring anomalies.
-  - Live: session create requires consent (422 → 201 with UUID), window push without a
+  - Live: creating a session requires consent (422 without, 201 with a UUID), window push without a
     GTM export returns a clean 503 `pipeline_unavailable` (correct pre-export behavior),
-    stop → 200, push-after-stop → 409.
+    stop returns 200, and a push after stop 409.
   - Reports: event HTML/JSON, period HTML, CSV/XLSX exports (xlsx verified as a real
     Excel 2007 file).
 - **GTM sample set cut**: 5,230 two-second 16 kHz mono segments from **train-split
@@ -314,11 +322,11 @@ Written down before the runs below started, so that validation decides and test 
 | `tensorflowjs` hard-crash at import | `tensorflow-decision-forests` CHECK-fails against protobuf 6.31.1 | Uninstalled tdf; pinned tfjs 4.20.0 `--no-deps`; wrapped the tdf import in the converter in try/except; protobuf 6.31.1 |
 
 ### Dataset changes
-- Cut GTM segments (train-split parents only) → `audio_dataset/gtm_samples/`.
+- Cut GTM segments (train-split parents only) into `audio_dataset/gtm_samples/`.
   The first cut, done 25 Sep against split v1, stamped all 5,230 segments
   `train` while the parents were spread over the old v1 groups; once split v2
   froze source groups by recording, 319 val + 328 test parents were inside that
-  set (1,599 of 5,230 segments, 30.6%) — contaminated. Re-cut on 26 Sep against
+  set (1,599 of 5,230 segments, 30.6%), so the set was contaminated. Re-cut on 26 Sep against
   the frozen v2 `assignments`, filtering to `split == train` and leaving
   `dataset_split` blank for `build_split.py` to inherit. The shipped model was
   unaffected: the 1400 ids in `tm_imports/index.json` were always train-only.
@@ -333,19 +341,19 @@ Written down before the runs below started, so that validation decides and test 
   stopped at 09:59). Restarted under `setsid nohup` with `--tag repaired` so artifacts
   don't clobber the registered best model while running.
 - Current best (xgboost depth=6): test accuracy 0.693, macro-F1 0.693, critical recall
-  0.799 — **floors (0.85 / 0.80 / 0.85) not yet met**. Weakest: Animal Sound F1 0.46,
+  0.799, so the **targets (0.85 / 0.80 / 0.85) are not met yet**. Weakest: Animal Sound F1 0.46,
   Alarm or Siren 0.56, Machinery Fault 0.58, Aggression recall 0.49. Classical
-  retrain (`--tag repaired`) running; **deep mel-CNN path (`train_deep --tag deep`)
-  launched in parallel** — it trains on mel tensors rather than 254 summary columns,
-  which is where the headroom is.
+  retrain (`--tag repaired`) running, and the **deep mel-CNN (`train_deep --tag deep`)
+  started in parallel**. It trains on mel tensors rather than 254 summary columns, which
+  is where we expect more room to improve.
 
 ### Tests performed
-- `pytest -q` → 403 passed. Manual curl matrix over every write endpoint including
+- `pytest -q`: 403 passed. Manual curl matrix over every write endpoint including
   negative cases (422/409/503) and both form/JSON surfaces.
 
 ---
 
-## Day 2 — 2026-09-24
+## Day 2, 2026-09-24
 
 ### Work completed
 - Dataset repair: 106 collided blobs re-hashed and re-cut (`repair_id_collision.py`),
@@ -359,17 +367,17 @@ Written down before the runs below started, so that validation decides and test 
 ### Problems encountered
 - Manifest assembly rejected ids after collision repair until the validator matched the
   re-cut numbering; fixed in `repair_id_collision.py`.
-- Class-code mapping (`config/classes.json`) drove the audio_id codes — kept as the
-  single source of truth.
+- The class codes in `config/classes.json` set the audio_id codes, and that file stays
+  the one place they are defined.
 
 ### Model failures
 - First classical sweep showed Person Asking for Help at 0.99 (synthetic TTS is too
-  easy) while Animal Sound sat at 0.46 — flagged for Day-3 retraining with feature
+  easy) while Animal Sound sat at 0.46; noted for Day 3 retraining with feature
   weighting and the deep path.
 
 ---
 
-## Day 1 — 2026-09-23
+## Day 1, 2026-09-23
 
 ### Work completed
 - Read both SRS PDFs; extracted mandatory patterns (dual-model, comparison taxonomy,

@@ -1,21 +1,20 @@
-# SonicSentinel — Dataset Manifest Schema (v1.0.0)
+# SonicSentinel dataset manifest schema (v1.0.0)
 
-**Status: FROZEN.** `owner: lorena`. Consumers: `omar` (writes it), `taha`, `nadia`, `bilal`
-(read it), `imran` (checks it), `raheem` (audits it).
+**Status: frozen.** Changing columns means updating every script that reads the manifest.
 
-The single machine-readable record of every audio file in the project. One row per file
-on disk. Source of truth for provenance (SRS Step 1, FR xvii) and the input to the
-split freezer (`audio_dataset/build_split.py`).
+The manifest lists every audio file in the project, one row per file on disk. It records
+where each file came from (SRS Step 1, FR xvii) and is the input to
+`audio_dataset/build_split.py`.
 
 ## Files
 
 | Path | Role |
 |---|---|
-| `audio_dataset/manifest.csv` | **The manifest.** One row per audio file. Written by `omar`. |
-| `data/splits/split.json` | **The frozen split.** Written *only* by `audio_dataset/build_split.py`. Authoritative train/val/test assignment. |
-| `audio_dataset/manifest_with_split.csv` | Manifest + resolved `dataset_split` column, emitted by the builder. Derived — never edit by hand. |
+| `audio_dataset/manifest.csv` | **The manifest.** One row per audio file, built by `audio_dataset/scripts/assemble_manifest.py`. |
+| `data/splits/split.json` | **The frozen split.** Only `audio_dataset/build_split.py` writes it. This is the train/val/test assignment everything uses. |
+| `audio_dataset/manifest_with_split.csv` | The manifest with `dataset_split` filled in, written by the builder. Don't edit it by hand. |
 
-## Columns (exact names and order — do not rename, do not reorder)
+## Columns (exact names and order; don't rename or reorder)
 
 | # | Column | Required | Type / allowed values | Notes |
 |---|---|---|---|---|
@@ -30,7 +29,7 @@ split freezer (`audio_dataset/build_split.py`).
 | 9 | `duration_sec` | yes | float seconds | Measured, not assumed. |
 | 10 | `sampling_rate` | yes | int Hz | As-stored, before resampling. |
 | 11 | `channels` | yes | int | 1 or 2 at source. |
-| 12 | `recording_environment` | yes | `indoor`\|`outdoor`\|`vehicle`\|`studio`\|`synthetic`\|`unspecified` | SRS Step 1 + §1.5 variation requirement. `unspecified` is the honest value for a clip whose source records no environment metadata (618 of the FSD50K reals); it is never coerced to a guess. |
+| 12 | `recording_environment` | yes | `indoor`\|`outdoor`\|`vehicle`\|`studio`\|`synthetic`\|`unspecified` | SRS Step 1 and the §1.5 variety requirement. Use `unspecified` when the source doesn't say; don't guess. |
 | 13 | `recording_device` | yes | free text | e.g. `Pixel 6a`, `Zoom H1n`, `generator`. |
 | 14 | `approximate_distance` | yes | `near`\|`medium`\|`far`\|`n/a` | SRS Step 1 "approximate source distance". |
 | 15 | `original_or_augmented` | yes | `original`\|`augmented` | **Only `original` counts toward the >=3,000 floor.** |
@@ -58,19 +57,18 @@ Background Noise
 Critical classes (recall >= 85% requirement):
 `Gunshot`, `Glass Breaking`, `Panic Scream`, `Aggression`, `Person Asking for Help`.
 
-## Lineage rules — enforced by the builder, not by trust
+## Lineage rules (checked by the builder)
 
-1. **One recording, one split.** Every segment of a recording, and every augmented copy
-   of it, is forced into the split of its *original* (`parent_audio_id`).
-   Rationale: a 30-second recording cut into six 5-second segments must not put five
-   segments in train and one in test — that is textbook leakage.
-2. **Augmentation is not data.** An `augmented` row never counts toward the 3,000 unique
-   originals and never appears in the train/val/test originals count.
-3. **Val and test are never trained on** by either model — Python or Teachable Machine.
-4. **A missing parent is an error**, not a warning. An augmented clip with no resolvable
-   original halts the build.
-5. **The split is frozen before sourcing.** Assignment is decided from `audio_id` alone,
-   so later arrival order of files cannot bias it.
+1. **One recording, one split.** Every segment and augmented copy of a recording goes to
+   the split of its original (`parent_audio_id`). Otherwise a 30-second recording cut into
+   six segments could end up with five in train and one in test, which is leakage.
+2. **Augmented rows aren't originals.** They never count toward the 3,000 originals or the
+   per-split totals.
+3. **Neither model is trained on val or test**, Python or Teachable Machine.
+4. **A missing parent is an error.** An augmented clip whose original can't be found stops
+   the build.
+5. **The order files arrive in doesn't matter.** Assignment depends only on the IDs (and
+   source groups), not on when a file was added.
 
 ## Freezing procedure
 
@@ -85,5 +83,5 @@ Critical classes (recall >= 85% requirement):
 .venv/bin/python audio_dataset/verify_split.py --check-split --check-files
 ```
 
-`--strict` requires exactly 300 originals per class (=> 2100/450/450). It fails loudly
-rather than silently producing an off-spec split.
+`--strict` requires exactly 300 originals per class (giving 2100/450/450) and fails
+otherwise.

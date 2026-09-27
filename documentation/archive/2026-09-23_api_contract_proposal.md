@@ -1,7 +1,7 @@
 > Archived: the API proposal written before the handlers existed. Several routes here were
 > never built. The delivered API is described in `API_DOCUMENTATION.md`.
 
-# SonicSentinel AI — HTTP API contract
+# SonicSentinel AI: HTTP API contract
 
 **Version 1.0.0 · frozen 2026-09-23**
 Consumers: the pipeline and live capture work (pipeline + upload + live mic), the front end work (templates + fetch calls),
@@ -9,7 +9,7 @@ the deployment work (deploy smoke test), the acceptance testing work (acceptance
 + load), accessibility (error text must be readable aloud) and usability review.
 
 > **Status: proposed, not yet implemented.** Handlers are being written against this document.
-> If something here does not fit what you are building, say so now — a change costs one edit
+> If something here does not fit what you are building, say so now; a change costs one edit
 > in this file; after the handlers exist it costs a rewrite. Ask the backend work for a v1.1 section.
 
 ---
@@ -29,10 +29,10 @@ the deployment work (deploy smoke test), the acceptance testing work (acceptance
 | IDs | integers for rows, UUID4 for live sessions | |
 | Content type for writes | JSON, **except** uploads (multipart) | |
 
-### 1.1 Error envelope — every failure, without exception
+### 1.1 Error envelope: every failure, without exception
 
 Successful responses return the resource directly (`200`) or `{"data": …, "meta": …}` for
-lists. **Every** error — 4xx and 5xx — returns this shape:
+lists. **Every** error (4xx and 5xx) returns this shape:
 
 ```json
 {
@@ -45,12 +45,12 @@ lists. **Every** error — 4xx and 5xx — returns this shape:
 }
 ```
 
-- `code` — stable, machine-readable, `snake_case`. Frontend may branch on it. **Never changes.**
-- `message` — one plain sentence, safe to show a user and safe to read aloud (FR lxxvii,
+- `code`: stable, machine-readable, `snake_case`. Frontend may branch on it. **Never changes.**
+- `message`: one plain sentence, safe to show a user and safe to read aloud (FR lxxvii,
   and the accessibility review needs it to make sense out of context). No stack traces, no SQL, no file paths,
   no library names, no internal identifiers. Exceptions are logged with `request_id`; the
   client is given only the `request_id` so support can correlate without leaking internals.
-- `request_id` — also returned in the `X-Request-Id` response header on **every** response,
+- `request_id`: also returned in the `X-Request-Id` response header on **every** response,
   success included.
 
 **Codes in use:** `invalid_credentials` · `account_locked` · `not_authenticated` ·
@@ -59,11 +59,11 @@ lists. **Every** error — 4xx and 5xx — returns this shape:
 `already_acknowledged` · `alert_not_acknowledgeable` · `config_invalid` · `export_too_large` ·
 `model_unavailable` · `internal_error`
 
-### 1.2 Roles and the permission matrix — FR ii
+### 1.2 Roles and the permission matrix: FR ii
 
 Five roles. `administrator` implies nothing automatically; the sets below are explicit and
 each row is a test in `tests/test_api_auth_rbac.py`. **A wrong role gets `403`, not `404`
-and not a hidden link** — hiding a link is not access control.
+and not a hidden link**, because hiding a link is not access control.
 
 | Capability | normal user | audio reviewer | security operator | maintenance operator | administrator |
 |---|:--:|:--:|:--:|:--:|:--:|
@@ -102,10 +102,10 @@ type · `422` well-formed but rejected (unusable audio, config invalid) ·
 1. **`404` and `403` are both used, on purpose.** A request that must never reveal whether a
    row exists returns `404` (an unprivileged user asking for someone else's event). A request
    for an endpoint the role can simply never perform returns `403` (the accessibility review will test that the
-   text reads sensibly aloud). The rule: *capability* → `403`; *existence of another user's
-   data* → `404`.
+   text reads sensibly aloud). The rule: a missing *capability* gives `403`; *another user's
+   data* gives `404`.
 2. **Config is validated on write and on read.** `PUT /api/admin/config/*` runs the same
-   validator as boot, so an invalid rule set is `422` and the file on disk is untouched —
+   validator as boot, so an invalid rule set is `422` and the file on disk is untouched;
    the running system can never be left in a state that cannot start.
 
 ---
@@ -114,7 +114,7 @@ type · `422` well-formed but rejected (unusable audio, config invalid) ·
 
 `R` = required role. `—` = any authenticated user.
 
-### Auth — FR i
+### Auth: FR i
 | Method | Path | R | Purpose |
 |---|---|---|---|
 | POST | `/api/auth/login` | none | Authenticate, start a session |
@@ -122,7 +122,7 @@ type · `422` well-formed but rejected (unusable audio, config invalid) ·
 | GET | `/api/auth/me` | any | Who am I, what may I do |
 | POST | `/api/auth/password` | any | Change own password |
 
-### Audio ingestion — FR iv–x, FR xxxvi, lxxi–lxxiv
+### Audio ingestion: FR iv–x, FR xxxvi, lxxi–lxxiv
 | Method | Path | R | Purpose |
 |---|---|---|---|
 | POST | `/api/audio/upload` | any | Upload a clip; validate, hash, dedupe, classify |
@@ -137,7 +137,7 @@ type · `422` well-formed but rejected (unusable audio, config invalid) ·
 | POST | `/api/live/sessions/<sid>/stop` | owner | Close the session, roll up results |
 | GET | `/api/live/sessions/<sid>` | owner | Session state and events so far |
 
-### Alerts — FR liii–lvi
+### Alerts: FR liii–lvi
 | Method | Path | R | Purpose |
 |---|---|---|---|
 | GET | `/api/alerts` | security op+ | Alert list, filterable |
@@ -147,7 +147,7 @@ type · `422` well-formed but rejected (unusable audio, config invalid) ·
 | POST | `/api/alerts/<id>/escalate` | security op+ | Escalate, with a note |
 | GET | `/api/alerts/history` | security op+ | All past alerts and their outcomes (FR lvi) |
 
-### Manual review — FR lvii–lxi
+### Manual review: FR lvii–lxi
 | Method | Path | R | Purpose |
 |---|---|---|---|
 | GET | `/api/reviews/queue` | reviewer+ | Prioritised queue with the reason for each item |
@@ -155,7 +155,7 @@ type · `422` well-formed but rejected (unusable audio, config invalid) ·
 | POST | `/api/reviews/<event_id>/decision` | reviewer+ | Confirm/override; comments; preserves original |
 | GET | `/api/reviews/history` | reviewer+ | Every decision, who and when |
 
-### Dashboards, analytics, reports — FR lxiv–lxx
+### Dashboards, analytics, reports: FR lxiv–lxx
 | Method | Path | R | Purpose |
 |---|---|---|---|
 | GET | `/api/dashboard/summary` | reviewer+ | Cards: totals, alerts open, queue depth, uptime |
@@ -166,18 +166,18 @@ type · `422` well-formed but rejected (unusable audio, config invalid) ·
 | GET | `/api/analytics/alerts` | reviewer+ | Alerts by severity, rate, false-alarm rate |
 | GET | `/api/analytics/quality` | reviewer+ | Quality distribution and its effect on agreement |
 | GET | `/api/analytics/reviews` | reviewer+ | Review outcomes, override rate, per-reviewer |
-| GET | `/api/reports/event/<id>` | reviewer+ | Downloadable single-event report (HTML→PDF) |
+| GET | `/api/reports/event/<id>` | reviewer+ | Downloadable single-event report (HTML, printable to PDF) |
 | GET | `/api/reports/period` | reviewer+ | Downloadable period report (`from`, `to`) |
 | GET | `/api/export/events.csv` | reviewer+ | CSV export honouring the active filters |
 | GET | `/api/export/events.xlsx` | reviewer+ | Excel export, same filters |
 
-### Models and administration — FR lxxv–lxxx
+### Models and administration: FR lxxv–lxxx
 | Method | Path | R | Purpose |
 |---|---|---|---|
 | GET | `/api/models` | any | Both models, versions, active version, metrics |
 | GET | `/api/models/<name>/versions` | any | Version history |
 | POST | `/api/models/<name>/versions` | maint op+ | Register a trained version (FR lxxv) |
-| POST | `/api/models/<name>/activate` | maint op+ | Switch the active version — never rewrites past results |
+| POST | `/api/models/<name>/activate` | maint op+ | Switch the active version (never rewrites past results) |
 | GET | `/api/admin/config` | maint op+ | Every live config value, sources resolved |
 | PUT | `/api/admin/config/thresholds` | maint op+ | Edit thresholds (validated) |
 | PUT | `/api/admin/config/alert-rules` | maint op+ | Edit rules/severity/scale (validated) |
@@ -196,7 +196,7 @@ type · `422` well-formed but rejected (unusable audio, config invalid) ·
 
 ## 3. Shapes
 
-### 3.1 `Event` — the central resource
+### 3.1 `Event`: the central resource
 
 ```json
 {
@@ -220,7 +220,7 @@ type · `422` well-formed but rejected (unusable audio, config invalid) ·
   "requires_manual_review": false,
   "review_reason": null,
   "alert": {"id": 331, "status": "Open", "severity": "High"},
-  "location": "Warehouse North — Bay 4",
+  "location": "Warehouse North, Bay 4",
   "models": {
     "python": {"name": "svm_mfcc_v3",    "version": "3.1.0", "predicted_class": "Glass Breaking", "confidence": 0.93},
     "gtm":    {"name": "teachable_machine_audio", "version": "2.0.0", "predicted_class": "Glass Breaking", "confidence": 0.89}
@@ -234,7 +234,7 @@ type · `422` well-formed but rejected (unusable audio, config invalid) ·
 - `consistency_status` is one of FR xxxiii: `Strong Match`, `Acceptable Match`, `Weak Match`,
   `Model Disagreement`, `Uncertain Result`.
 - `severity` is the stored value; `severity_display` is what to render after the
-  `active_scale` mapping in `alert_rules/severity_levels.json` — **render the latter**.
+  `active_scale` mapping in `alert_rules/severity_levels.json`; **show the latter**.
 - `confidence_difference` is `|python.confidence − gtm.confidence|` (FR xxxii).
 - `models.*.version` is stored **per event** (FR lxxv). Activating a new version never
   changes these numbers on an existing row.
@@ -248,7 +248,7 @@ type · `422` well-formed but rejected (unusable audio, config invalid) ·
           "filters": {"severity": "High"}, "generated_at": "2026-09-23T20:06:19Z"}}
 ```
 
-### 3.2 Search and filter — FR lxvii
+### 3.2 Search and filter: FR lxvii
 
 `GET /api/events` accepts, all optional and all combinable:
 
@@ -273,34 +273,34 @@ type · `422` well-formed but rejected (unusable audio, config invalid) ·
 | `page`, `per_page` | int | `per_page` ≤ 200 |
 
 An unknown value in a validated param returns `422 validation_error` naming the param and the
-accepted values — silently ignoring a bad filter shows the user the wrong data and looks like
+accepted values. Silently ignoring a bad filter shows the user the wrong data and looks like
 a bug in the search.
 
-### 3.3 `POST /api/audio/upload` — the busiest endpoint
+### 3.3 `POST /api/audio/upload`: the busiest endpoint
 
 `multipart/form-data`: `file` (required), `location` (optional), `source` (optional, default
 `upload`), `consent_ack` (`true` required when `source=microphone`, FR lxxix).
 
 `201` response is the full `Event`. The pipeline behind it, in order:
 
-1. size and type check → `413` / `415`
-2. decode → `422 quality_unusable` if undecodable or under the configured minimum duration
-3. **sha256 of the bytes** → exact duplicate → `409 duplicate_audio` naming the existing
+1. size and type check: `413` / `415`
+2. decode: `422 quality_unusable` if undecodable or under the configured minimum duration
+3. **sha256 of the bytes**: an exact duplicate gives `409 duplicate_audio` naming the existing
    `audio_id`, unless `?allow_duplicate=true` (FR lxxiii)
-4. **near-duplicate** check via perceptual fingerprint → creates the event and records
+4. **near-duplicate** check via perceptual fingerprint, which creates the event and records
    `near_duplicate_of` (FR lxxiv). Never silently merged; a human decides.
 5. preprocess + features (the audio DSP work's functions), quality verdict
-6. Python model → `PredictionResult`; GTM model → `PredictionResult`
-   (independent; the Python output is **never** an input to GTM — SRS 1.8)
+6. Python model gives a `PredictionResult`; GTM model gives a `PredictionResult`
+   (independent; the Python output is **never** an input to GTM, SRS 1.8)
 7. confidence comparison, consistency status (the model selection work's `classify_consistency`)
 8. severity + recommended action from `alert_rules/`; repeated-detection confirmation
 9. alert raised if the rule fires; manual review queued if a Step 17 condition matches
 10. audit record; config snapshot stored with the event
 
-`409` on a duplicate and `422` on unusable audio are **normal outcomes, not errors to hide** —
+`409` on a duplicate and `422` on unusable audio are **normal outcomes, not errors to hide**;
 the front end work should render both inline without a red screen, and the usability review will test the wording.
 
-### 3.4 `POST /api/live/sessions/<sid>/windows` — FR xxxvi
+### 3.4 `POST /api/live/sessions/<sid>/windows`: FR xxxvi
 
 ```json
 // request
@@ -314,11 +314,11 @@ the front end work should render both inline without a red screen, and the usabi
 ```
 
 `confirmed` and `consecutive`/`needed` are exposed so the live panel can show
-*"2 of 3 confirming windows"* rather than a spinner — the repeated-detection requirement
+*"2 of 3 confirming windows"* rather than a spinner; the repeated-detection requirement
 (FR xl) becomes visible instead of mysterious. `202` if the window arrived faster than the
 configured minimum and was dropped; the body carries `requeue_hint_ms`.
 
-### 3.5 `POST /api/reviews/<event_id>/decision` — FR lix–lxi
+### 3.5 `POST /api/reviews/<event_id>/decision`: FR lix–lxi
 
 ```json
 // request
@@ -345,7 +345,7 @@ what the models said, or the comparison report and the accuracy analytics become
 `comments` is required for `override` and `reject` (`422` without it). A second decision on a
 decided event is `409 invalid_state_transition`, not a silent overwrite.
 
-### 3.6 `GET /api/evidence` inside an event — the "explain any function" defence
+### 3.6 `GET /api/evidence` inside an event: the "explain any function" defence
 
 `GET /api/events/<id>/evidence` returns exactly what an evaluator needs to be shown on demand
 (SRS 1.8):
@@ -384,7 +384,7 @@ configuration that was in force at the time.
 - **Monitoring (FR lxxviii).** `/api/monitoring/anomalies` raises an in-app alert to
   administrators on error-rate, latency, queue-depth or disk thresholds.
 - **Rate limits.** `429` with `Retry-After` on login (per IP and per username), upload and
-  live windows. Failed logins lock the account for a configured window → `401` then `423`
+  live windows. Failed logins lock the account for a configured window (`401`, then `423`)
   (`account_locked`).
 - **Security headers** (owner the security work): `Content-Security-Policy` with no `unsafe-inline`,
   `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `X-Frame-Options: DENY`,
@@ -411,22 +411,22 @@ configuration that was in force at the time.
 
 ---
 
-## 6. Open questions — answers needed before handlers land
+## 6. Open questions: answers needed before handlers land
 
-1. **the pipeline and live capture work** — live mic: is the rolling-`POST` contract in §3.4 workable, or do you need a
+1. **the pipeline and live capture work**: live mic: is the rolling-`POST` contract in §3.4 workable, or do you need a
    WebSocket? Rolling POST keeps state server-side and survives a page reload; a socket is
    smoother but adds a second transport to test and deploy. Default: rolling POST.
-2. **the front end work** — confirm server-rendered Jinja with query params for search/filter (§3.2), so
+2. **the front end work**: confirm server-rendered Jinja with query params for search/filter (§3.2), so
    the filter state lives in the URL and is shareable and testable.
-3. **the model selection work** — the exact callable and signature the app should use to obtain both
+3. **the model selection work**: the exact callable and signature the app should use to obtain both
    `PredictionResult`s from a `PreprocessedAudio`, and where `save_bundle` output lands, so the
    app loads real models the same way the tests do.
-4. **the audio DSP work** — the function names for "validate a decoded clip" and "quality verdict", and
+4. **the audio DSP work**: the function names for "validate a decoded clip" and "quality verdict", and
    whether preprocessing rejects unusable audio itself or returns a verdict for the caller.
 
 Answer any of these and I move it into v1.1 the same hour. Silence means I build the
 documented default.
 
 ---
-*Change log — v1.0.0 (2026-09-23): first frozen contract. Framework, DB, auth, error envelope,
+*Change log, v1.0.0 (2026-09-23): first frozen contract. Framework, DB, auth, error envelope,
 permission matrix, ~50 endpoints, shapes, cross-cutting behaviour, consumer map.*

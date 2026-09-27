@@ -1,10 +1,9 @@
 # Baseline audit, 26 September 2026
 
-This is the state of the repository on the morning of 26 Sep 2026, before the model and
-data work recorded in `documentation/devlog.md` under that date. It supersedes nothing:
-`documentation/archive/2026-09-25_project_audit.md` describes the older 25 Sep baseline, and most of its defects were
-fixed later that day (see `documentation/devlog.md`). Everything below was measured on
-this laptop unless it is marked as an assumption.
+The state of the repository on the morning of 26 Sep 2026, before the model and data work
+logged in `documentation/devlog.md` for that day. The older 25 Sep audit is in
+`documentation/archive/2026-09-25_project_audit.md`; most of what it found was fixed later
+that day. Everything below was measured on this laptop unless marked as an assumption.
 
 Machine used for every number here: 4-core / 8-thread Intel laptop CPU, 15 GB RAM,
 Ubuntu (kernel 7.0), Python 3.12.14, no usable GPU (TensorFlow cannot load CUDA; PyTorch
@@ -34,24 +33,24 @@ git checkout 1673b00                      # last commit before this audit
 
 ## What was wrong, in order of impact
 
-1. **Both models are far below the SRS targets** (0.85 accuracy, 0.80 macro F1, 0.85
-   critical recall). The Python model has plateaued: every hand-crafted-feature
-   candidate lands between 0.70 and 0.76 on validation.
+1. **Both models are well below the SRS targets** (0.85 accuracy, 0.80 macro F1, 0.85
+   critical recall). The Python model has stopped improving: every candidate on the
+   hand-made features lands between 0.70 and 0.76 on validation.
 
-2. **The Teachable Machine model was starved of data, and trained on the wrong slice.**
-   It is not a frontend bug: the exported network gets 0.84 on its own training frames,
-   so FFT settings and label order match. But it saw 32 samples per class, and each one
-   was the *first* second of a clip, while the server scores the *loudest* second. For
-   short impulsive clips the first second is often the quiet lead-in.
+2. **The Teachable Machine model had too little data, from the wrong part of each clip.**
+   It isn't a frontend bug: the exported network gets 0.84 on its own training frames, so
+   the FFT settings and label order match. But it only saw 32 samples per class, each the
+   *first* second of a clip, while the server scores the *loudest* second. For short
+   impulsive sounds the first second is often just the quiet lead-in.
 
 3. **Preprocessing throws away the tails of impulsive sounds.** Spectral noise gating
    (strength 0.75) runs before end-trimming at 30 dB below peak. After preprocessing,
    165 clips are shorter than 0.5 s and 592 are shorter than 1 s. Glass Breaking keeps a
-   median of 60% of its duration. The decay after a gunshot or a glass break is part of
-   what makes it recognisable, so this may be costing accuracy. (Hypothesis, tested on
-   the validation split, see the devlog.)
+   median of 60% of its duration. The decay after a gunshot or glass break helps identify
+   it, so this may be costing accuracy. (A guess at this point; it was tested on the
+   validation split, see the devlog.)
 
-4. **Several labels are proxies, not the sound the SRS names.**
+4. **Several labels are stand-ins, not the sound the SRS names.**
    - *Aggression*: at least 69 of 300 clips are door slams or thumps from FSD50K and
      50 are procedurally synthesised; only about 30 are real shouting. The class is
      really "impact or raised voice".
@@ -62,7 +61,7 @@ git checkout 1673b00                      # last commit before this audit
    - 2,123 of 3,000 rows have `recording_environment = unspecified`, and 1,086 have an
      unspecified device.
 
-   No amount of modelling fixes this; it needs recordings made or licensed by the team.
+   Better modelling won't fix this; it needs recordings made or licensed by the team.
 
 5. **No augmentation code exists**, although SRS FR xix and the source-code list require
    an `augmentation/` folder with noise, shift, pitch, stretch, volume and reverb.
@@ -77,11 +76,11 @@ git checkout 1673b00                      # last commit before this audit
    that do not match any Git author and number more than the 4 to 6 team members the
    rules allow. They must be confirmed or removed by the team.
 
-## Strengths worth keeping
+## What was already good
 
 - Clean separation: preprocessing, features, the two predictors, the comparison, the
   rule engine and persistence are separate modules with tests.
-- The Python and TM predictors cannot see each other's output by construction, and
+- The Python and TM predictors can't see each other's output, and
   `tests/test_model_independence.py` checks this.
 - Label-order and feature-order drift are checked when a model bundle loads.
 - The split is built at recording level and verified: `verify_dataset.py --strict`
@@ -101,6 +100,6 @@ git checkout 1673b00                      # last commit before this audit
    rule as the server, retrain in Teachable Machine, re-evaluate on the 450 test clips.
 5. Add `augmentation/` (training copies with lineage, plus robustness probes).
 6. Generate the comparison report and a robustness report from the real pipeline.
-7. Write the SRS traceability matrix from the final state, not from intentions.
-8. Hand the team the decisions only they can make: licence, owners, new recordings,
-   GTM project link and screenshots, deployment URL, video.
+7. Write the SRS traceability matrix from what was actually built.
+8. Leave the team the decisions only they can make: licence, owners, new recordings,
+   the GTM project link and screenshots, deployment URL, and the video.
