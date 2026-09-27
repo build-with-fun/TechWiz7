@@ -41,8 +41,15 @@ VIEWPORTS = [
 # (filename, path, username, extra wait). Wait is for charts/tables, not for load.
 # /models/ has a trailing slash: the blueprint prefix is "/models" and the route is "/",
 # so "/models" 308-redirects and the capture would show a redirect page.
+# Public pages are captured signed out: a signed-in visitor is redirected away from them,
+# so capturing them inside a role's context saved the wrong page.
+PUBLIC_PAGES = [
+    ("00_home", "/", 2600, True),
+    ("01_login", "/login", 800, False),
+    ("14_register", "/register", 800, False),
+]
+
 PAGES = [
-    ("01_login", "/login", None, 500),
     ("02_dashboard", "/dashboard", "admin", 1500),
     ("03_upload", "/upload", "admin", 800),
     ("04_events", "/events", "admin", 1200),
@@ -55,7 +62,6 @@ PAGES = [
     ("11_admin_config", "/admin/config", "admin", 800),
     ("12_admin_users", "/admin/users", "admin", 800),
     ("13_profile", "/profile", "admin", 500),
-    ("14_register", "/register", None, 500),
     # Role-scoped views: same template, different capability set, so the role
     # boundary is visible in the evidence rather than asserted in prose.
     ("15_evaluator_dashboard", "/dashboard", "evaluator", 1500),
@@ -221,6 +227,27 @@ def main() -> int:
                     captured += 1
 
                 context.close()
+
+            # Signed out: the product page, sign-in and sign-up.
+            context = browser.new_context(viewport={"width": width, "height": height}, base_url=args.base)
+            page = context.new_page()
+            page.set_default_timeout(20000)
+            for filename, path, wait_ms, full in PUBLIC_PAGES:
+                page.goto(path, wait_until="networkidle")
+                if full:
+                    # Scroll through once so every scroll-revealed block has appeared.
+                    total = page.evaluate("() => document.documentElement.scrollHeight")
+                    for y in range(0, total, 500):
+                        page.evaluate(f"() => window.scrollTo(0, {y})")
+                        page.wait_for_timeout(120)
+                    page.evaluate("() => window.scrollTo(0, 0)")
+                page.wait_for_timeout(wait_ms)
+                fail_on_browser_error(page)
+                suffix = "" if vp_name == "desktop" else f"_{vp_name}"
+                page.screenshot(path=str(ui / f"{filename}{suffix}.png"), full_page=full)
+                print(f"  + {filename}{suffix}.png (signed out, {width}x{height})")
+                captured += 1
+            context.close()
 
     print(f"\ncaptured {captured} screenshots into {out.relative_to(REPO)}/ui/")
     return 0
