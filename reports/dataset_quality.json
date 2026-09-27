@@ -1,0 +1,151 @@
+{
+  "clips": 3000,
+  "measured": 3000,
+  "verdicts": {
+    "Good": 1775,
+    "Acceptable": 1169,
+    "Poor": 56
+  },
+  "per_class": {
+    "Aggression": {
+      "Good": 194,
+      "Acceptable": 103,
+      "Poor": 3
+    },
+    "Alarm or Siren": {
+      "Good": 179,
+      "Acceptable": 116,
+      "Poor": 5
+    },
+    "Animal Sound": {
+      "Good": 213,
+      "Acceptable": 85,
+      "Poor": 2
+    },
+    "Background Noise": {
+      "Good": 187,
+      "Acceptable": 111,
+      "Poor": 2
+    },
+    "Glass Breaking": {
+      "Acceptable": 182,
+      "Good": 103,
+      "Poor": 15
+    },
+    "Gunshot": {
+      "Acceptable": 96,
+      "Good": 196,
+      "Poor": 8
+    },
+    "Machinery Fault": {
+      "Acceptable": 79,
+      "Good": 218,
+      "Poor": 3
+    },
+    "Panic Scream": {
+      "Good": 203,
+      "Poor": 15,
+      "Acceptable": 82
+    },
+    "Person Asking for Help": {
+      "Acceptable": 207,
+      "Good": 93
+    },
+    "Vehicle Horn": {
+      "Good": 189,
+      "Acceptable": 108,
+      "Poor": 3
+    }
+  },
+  "per_split": {
+    "train": {
+      "Acceptable": 805,
+      "Good": 1252,
+      "Poor": 43
+    },
+    "val": {
+      "Good": 255,
+      "Acceptable": 187,
+      "Poor": 8
+    },
+    "test": {
+      "Good": 268,
+      "Acceptable": 177,
+      "Poor": 5
+    }
+  },
+  "duration_sec": {
+    "Aggression": {
+      "min": 0.53,
+      "median": 3.96,
+      "max": 28.33
+    },
+    "Alarm or Siren": {
+      "min": 0.51,
+      "median": 5.0,
+      "max": 29.73
+    },
+    "Animal Sound": {
+      "min": 0.54,
+      "median": 5.0,
+      "max": 29.72
+    },
+    "Background Noise": {
+      "min": 0.72,
+      "median": 5.0,
+      "max": 30.0
+    },
+    "Glass Breaking": {
+      "min": 0.5,
+      "median": 4.39,
+      "max": 29.0
+    },
+    "Gunshot": {
+      "min": 0.5,
+      "median": 1.88,
+      "max": 28.51
+    },
+    "Machinery Fault": {
+      "min": 0.52,
+      "median": 5.0,
+      "max": 29.72
+    },
+    "Panic Scream": {
+      "min": 0.51,
+      "median": 2.61,
+      "max": 101.81
+    },
+    "Person Asking for Help": {
+      "min": 0.6,
+      "median": 1.29,
+      "max": 3.25
+    },
+    "Vehicle Horn": {
+      "min": 0.52,
+      "median": 4.0,
+      "max": 30.0
+    }
+  },
+  "sample_rates": {
+    "44100": 2498,
+    "16000": 367,
+    "48000": 105,
+    "96000": 29,
+    "22050": 1
+  },
+  "channels": {
+    "1": 2629,
+    "2": 371
+  },
+  "environments": {
+    "unspecified": 2123,
+    "outdoor": 534,
+    "indoor": 251,
+    "vehicle": 60,
+    "studio": 32
+  },
+  "sources": {
+    "real": 2625,
+    "generated": 375
+  }
+}

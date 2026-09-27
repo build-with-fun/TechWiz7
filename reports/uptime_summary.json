@@ -1,0 +1,13 @@
+{
+  "probes": 1,
+  "up": 1,
+  "uptime": 1.0,
+  "target": 0.99,
+  "meets_target": true,
+  "first": "2026-09-27T00:29:08+00:00",
+  "last": "2026-09-27T00:29:08+00:00",
+  "bases": [
+    "https://shelf-starlight-subfloor.ngrok-free.dev"
+  ],
+  "outages": []
+}
