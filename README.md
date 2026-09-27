@@ -16,6 +16,17 @@ from the team's machine through an ngrok tunnel during the evaluation period; th
 shows ngrok's notice page, click **Visit Site** once. If it is unreachable, the local
 instructions below run the same application.
 
+## Links
+
+| Deliverable | Link |
+|---|---|
+| Live application | <https://shelf-starlight-subfloor.ngrok-free.dev/login> |
+| Source code (this repository) | <https://github.com/build-with-fun/TechWiz7> |
+| Project report | [PROJECT_REPORT.md](PROJECT_REPORT.md) |
+| Technical blog (2,200+ words) | <https://dev.to/buildwithfun/ai-voice-analysis-13oh> |
+| Demonstration video (.mp4) | to be added |
+| Dataset (training, validation, test audio) | to be added |
+
 ## Results on unseen recordings
 
 Frozen test split: 450 original recordings (45 per class) that no model trained on or was

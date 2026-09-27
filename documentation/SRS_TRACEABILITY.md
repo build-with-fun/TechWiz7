@@ -118,5 +118,5 @@ Test files are under `tests/`; `pytest -q` runs them all.
 | Alert rule files | verified | `alert_rules/alert_rules.json` |
 | Test cases incl. the 21 listed kinds | verified | `tests/`, `TEST_PLAN.md` |
 | Installation/execution instructions | verified | `README.md` |
-| Public GitHub, deployment URL, MP4 video, blog link | blocked | need the team's accounts and recording |
+| Public GitHub, deployment URL, MP4 video, blog link | partial | GitHub public: <https://github.com/build-with-fun/TechWiz7>; live URL in README; blog published: <https://dev.to/buildwithfun/ai-voice-analysis-13oh> (2,226 words); MP4 video still to record |
 | LICENSE | blocked | team decision |

@@ -11,7 +11,7 @@ done by code).
 | Item | Status | Where / what is missing |
 |---|---|---|
 | Project report | ✔ draft | `PROJECT_REPORT.md`; 👤 add team names, roll numbers, task allotment (§9) |
-| Public GitHub URL | 👤 | make the repository public; push; put the URL in the README |
+| Public GitHub URL | ✔ | <https://github.com/build-with-fun/TechWiz7> (public, pushed 27 Sep), linked in the README |
 | Complete source code | ✔ | this repository |
 | Training / validation / testing datasets | 👤 | audio is not in Git (size, licences). Decide how to share it (e.g. a Drive/Kaggle archive with `DATA_ATTRIBUTION.md`); review the 36 Sampling+ clips first |
 | Dataset metadata | ✔ | `audio_dataset/manifest.csv`, `data/splits/split.json`, `DATA_DICTIONARY.md` |
@@ -23,7 +23,7 @@ done by code).
 | Installation / execution instructions | ✔ | `README.md` |
 | Deployment URL | ✔ | <https://shelf-starlight-subfloor.ngrok-free.dev/login> (laptop + ngrok, 27 Sep). 👤 keep the laptop on, both terminals open, and `tools/uptime_probe.py` running until judging ends; then `--summary` for NFR 5 |
 | Demonstration video (MP4) | 👤 | record using `DEMO_GUIDE.md` |
-| Technical blog (≥ 2,000 words) | ✔ draft | `documentation/blog.md`; 👤 publish and link |
+| Technical blog (≥ 2,000 words) | ✔ | published: <https://dev.to/buildwithfun/ai-voice-analysis-13oh> (2,226 words), linked in the README |
 | AI_USAGE.md | ✔ draft | 👤 each member adds what they reviewed and changed, and signs |
 | Team contribution record | 👤 | `documentation/TEAM_CONTRIBUTION_RECORD.md` |
 
