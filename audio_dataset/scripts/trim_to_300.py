@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """One-off trim (already applied) to exactly 300 originals per class.
 
-Synthetic surplus goes first, then surplus dev-acquired clips; this also resolved 13
-SS-GLA-0700..0712 filename collisions. Dropped files move to data/dataset_overflow/.
+Drops extra synthetic clips first, then extra downloaded ones (this also fixed 13
+SS-GLA-0700..0712 name clashes). Dropped files go to data/dataset_overflow/.
 """
 from __future__ import annotations
 

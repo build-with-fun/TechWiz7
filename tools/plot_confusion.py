@@ -5,10 +5,8 @@
     python tools/plot_confusion.py gtm_model/gtm_metrics.json gtm_model/confusion_matrix_test.png \
         --title "Teachable Machine"
 
-Input is either the per-clip predictions CSV written by train_transfer.py (columns
-``actual`` and ``predicted``) or a metrics JSON with ``labels`` and ``confusion_matrix``.
-Rows are the true class and columns the prediction, the same convention as
-src/training/evaluation.py, and each cell shows the count out of the row total.
+Input is the predictions CSV from train_transfer.py (``actual``, ``predicted``) or a
+metrics JSON with ``labels`` and ``confusion_matrix``. Rows are the true class.
 """
 
 from __future__ import annotations
@@ -20,7 +18,7 @@ from pathlib import Path
 
 import numpy as np
 
-# One-hue sequential ramp (light -> dark blue); zero recedes to near-white.
+# Light to dark blue.
 RAMP = ["#f4f8fd", "#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95", "#0d366b"]
 
 
@@ -62,7 +60,7 @@ def plot(labels: list[str], matrix: np.ndarray, title: str, out: Path) -> None:
             if matrix[i, j]:
                 ink = "white" if share[i, j] > 0.5 else "#1f2328"
                 ax.text(j, i, str(matrix[i, j]), ha="center", va="center", fontsize=8, color=ink)
-    # Recessive frame: the cells carry the information, not the box around them.
+    # Light frame.
     for spine in ax.spines.values():
         spine.set_visible(False)
     ax.set_xticks(np.arange(-.5, len(labels)), minor=True)

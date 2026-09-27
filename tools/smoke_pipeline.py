@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Wiring check for src/services/pipeline.py: real audio, stub models.
+"""Smoke test for src/services/pipeline.py with real audio and stub models.
 
-The two models are replaced by deterministic stubs, so preprocessing, quality, comparison,
-severity, confirmation, review conditions, budgets, rejection and duplicate handling can be
-exercised without trained bundles. It proves the pipes connect, not that results are right;
-tools/check_e2e_upload.py runs the real models.
+The stubs let the rest of the pipeline (quality, comparison, severity, confirmation,
+review, budgets, rejection, duplicates) run without trained models. It checks the wiring,
+not the accuracy; tools/check_e2e_upload.py uses the real models.
 
     .venv/bin/python tools/smoke_pipeline.py [--clips /tmp/smoke_clips]
 
@@ -37,10 +36,10 @@ from src.services.pipeline import (  # noqa: E402
     severity_block,
 )
 
-# Stub models, labelled as stubs wherever they surface.
+# Stub models
 
 class StubPredictor:
-    """Fixed confidence distribution chosen from the clip's spectral centroid, so branches vary by clip."""
+    """Returns a confidence distribution based on the clip's spectral centroid."""
 
     def __init__(self, name: str, class_names: list[str], *, bias: dict[str, float] | None = None):
         self.model_name = name
@@ -56,7 +55,7 @@ class StubPredictor:
         spectrum = np.abs(np.fft.rfft(y * np.hanning(y.size)))
         freqs = np.fft.rfftfreq(y.size, 1.0 / sr)
         centroid = float((spectrum * freqs).sum() / max(spectrum.sum(), 1e-12))
-        # Low centroid -> machinery; high -> glass.  Deterministic, and different per clip.
+        # Low centroid -> machinery, high -> glass.
         t = float(np.clip(centroid / 4000.0, 0.0, 1.0))
         raw = np.full(len(self.class_names), 0.02)
         raw[0] = 0.9 * (1.0 - t)          # Machinery Fault
@@ -99,7 +98,7 @@ class Checking:
     def ok(self, condition: bool, label: str, detail: str = "") -> bool:
         self.checks += 1
         if not condition:
-            self.failures.append(f"{label}{(' -- ' + detail) if detail else ''}")
+            self.failures.append(f"{label}{(': ' + detail) if detail else ''}")
             print(f"  FAIL  {label}" + (f"  ({detail})" if detail else ""))
         return bool(condition)
 
@@ -115,7 +114,7 @@ class Checking:
 
 
 def _sha256_of(path: Path) -> str:
-    """The clip's bytes, hashed the same way the pipeline hashes them (FR lxxiii)."""
+    """SHA-256 of the clip, same as the pipeline (FR lxxiii)."""
     digest = hashlib.sha256()
     with open(path, "rb") as handle:
         for chunk in iter(lambda: handle.read(1 << 20), b""):
@@ -131,7 +130,7 @@ def build_pipeline(clips: Path) -> AnalysisPipeline:
 
     classes = store.class_names()
     models = PipelineModels(
-        # The stubs agree on bright clips and disagree on dark ones, so both comparison branches run.
+        # The stubs agree on bright clips and disagree on dark ones.
         python=StubPredictor("Python (stub)", classes, bias={"Glass Breaking": 0.35}),
         gtm=StubPredictor("Google Teachable Machine (stub)", classes, bias={"Machinery Fault": 0.35}),
         preprocessor=AudioPipeline(),
@@ -191,7 +190,7 @@ def main() -> int:
     print(f"      {record['elapsed_ms']} ms (budget {record['budget_sec']} s) "
           f"within_budget={record['within_budget']}")
 
-    # 3. the shape the UI and the report depend on
+    # 3. result shape used by the UI and the report
     print("\n[3] mandatory result shape (FR xxiv, lxix)")
     classes = pipeline.store.class_names()
     for _p, r in analysed:
@@ -212,7 +211,7 @@ def main() -> int:
         }, f"{tag}: consistency status in the SRS vocabulary")
         c.ok(isinstance(r["comparison"]["confidence_difference"], float),
              f"{tag}: confidence difference present")
-        # Both sides are rounded to 6 dp on output, so compare at 5 dp.
+        # Both are rounded to 6 dp, so compare at 5.
         expected_diff = abs(py["confidence"] - gtm["confidence"])
         c.ok(abs(r["comparison"]["confidence_difference"] - expected_diff) < 2e-6,
              f"{tag}: difference == |python - gtm|",
@@ -236,7 +235,7 @@ def main() -> int:
          f"worst {worst:.0f} ms")
     c.ok("warm" not in str(warm), "warm-up did not need to be repeated")
 
-    # 5. rejection is a result, not a crash
+    # 5. rejection returns a result instead of raising
     print("\n[5] rejection states")
     import soundfile as sf
 
@@ -374,7 +373,7 @@ def main() -> int:
     )
     c.ok("poor_audio_quality" in poor["matched"], "Poor quality is named as a review reason")
 
-    # 9. pipeline rejects unusable audio before it reaches a model
+    # 9. unusable audio is rejected before the models
     print("\n[9] the model path is guarded")
     c.ok(silent_result.get("predictions") is None,
          "no prediction is produced for refused audio")
@@ -395,7 +394,7 @@ def main() -> int:
     if y.ndim > 1:
         y = y.mean(axis=1)
 
-    # Fingerprints are compared on the preprocessed signal, as the pipeline stores them.
+    # Fingerprints are computed on the preprocessed signal, like the pipeline.
     def fingerprint_of(samples, sample_rate):
         pre = pipeline.models.preprocessor.preprocess_samples(samples, sample_rate, origin="upload")
         return audio_fingerprint(pre.samples, pre.sample_rate)
@@ -414,21 +413,21 @@ def main() -> int:
     c.ok(exact["duplicate"]["near_duplicate_of"] is None,
          "a clip with nothing to compare against claims no duplicate")
 
-    # FR lxxiii: the same file, byte for byte, is the same file
+    # FR lxxiii: identical bytes
     copy_path = REPO_ROOT / "data" / "tmp" / f"copy_{source_clip.name}"
     copy_path.write_bytes(source_clip.read_bytes())
     copy = pipeline.analyse_file(copy_path, location="smoke")
     c.ok(copy["audio"]["sha256"] == exact["audio"]["sha256"],
          "a byte-identical copy has the same sha256, whatever it is called")
 
-    # FR lxxiv: re-encoded / trimmed / volume-adjusted copies
+    # FR lxxiv: re-encoded, trimmed or volume-adjusted copies
     reencoded = {}
     for fmt, ext in (("MP3", "mp3"), ("OGG", "ogg"), ("FLAC", "flac")):
         target = REPO_ROOT / "data" / "tmp" / f"reencoded_{source_clip.stem}.{ext}"
         try:
             sf.write(str(target), y, sr, format=fmt)
             back, back_sr = sf.read(str(target), dtype="float32")
-        except Exception as exc:  # a codec this build of libsndfile lacks
+        except Exception as exc:  # codec missing from libsndfile
             print(f"    re-encoded as {ext.upper():4s} -> unavailable in this build ({exc})")
             continue
         if back.ndim > 1:
@@ -449,7 +448,7 @@ def main() -> int:
              f"a {label} copy is still recognised as the same recording",
              f"similarity {similarity}")
 
-    # ... and a genuinely different recording must not be.
+    # ... but a different recording is not
     for candidate in clip_paths:
         if candidate == source_clip:
             continue
@@ -461,7 +460,7 @@ def main() -> int:
              f"a different recording ({candidate.parent.name}) is not called a duplicate",
              f"similarity {similarity}")
 
-    # A match must surface as a review finding, not a silent merge (FR lxxiv).
+    # A match should show up as a review condition (FR lxxiv).
     flagged = pipeline.analyse_file(
         source_clip, location="smoke", audio_id="A-2",
         near_duplicate_candidates=[("A-1", fingerprint_of((y * 0.3).astype(np.float32), sr))],
@@ -478,7 +477,7 @@ def main() -> int:
     c.ok(any("A-1" in f["reason"] for f in flagged["review"]["findings"]),
          "the review reason names the recording it matched")
 
-    # A clip must never be compared against itself, or everything looks like a duplicate.
+    # Don't compare a clip with itself.
     self_match = pipeline.analyse_file(
         source_clip, location="smoke", audio_id="A-1",
         near_duplicate_candidates=[("A-1", original)],
@@ -486,7 +485,7 @@ def main() -> int:
     c.ok(self_match["duplicate"]["near_duplicate_of"] is None,
          "a clip is not reported as a near-duplicate of itself")
 
-    # FR lxxiv says near-duplicates are *flagged*, never dropped or merged with the original.
+    # FR lxxiv: near-duplicates are flagged, not dropped or merged.
     other_clip = next(p for p in clip_paths if p != source_clip)
     other_result = pipeline.analyse_file(other_clip, location="smoke", audio_id="A-3",
                                          near_duplicate_candidates=[("A-1", original)])

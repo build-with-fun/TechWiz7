@@ -1,11 +1,10 @@
-"""Print the configuration the loader actually resolved, references substituted.
+"""Print the alert rules as the app sees them, with references filled in.
 
     .venv/bin/python -m tools.show_alert_rules            # everything
     .venv/bin/python -m tools.show_alert_rules Gunshot    # one class
     .venv/bin/python -m tools.show_alert_rules --check    # validate, exit 1 on problems
 
-Written for the demonstration: it is the fastest honest answer to "show me the rule that
-just fired", and the quickest proof that a threshold edited on disk took effect.
+Handy in a demo to show a rule, or that an edited threshold was picked up.
 """
 
 from __future__ import annotations

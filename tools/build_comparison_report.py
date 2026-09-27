@@ -1,17 +1,14 @@
-"""SRS deliverable 6: the Python vs Teachable Machine comparison report on unseen audio.
+"""Python vs Teachable Machine comparison report on the test set (SRS deliverable 6).
 
     python tools/build_comparison_report.py                 # all 450 test recordings
     python tools/build_comparison_report.py --per-class 10  # the SRS minimum (100 clips)
 
-Every row comes from the same ``AnalysisPipeline.analyse_file`` call the upload route
-makes, with persistence switched off. So quality, severity, alert status, review
-routing and the final decision are the product's real output, not a re-implementation.
-Rows are not hand-edited. The "explanation" column is generated from the two score
-distributions and the ground truth, so it can only restate what the models did.
+Each row comes from AnalysisPipeline.analyse_file, the same call the upload route uses
+(without saving), so every column is the app's real output. The "explanation" column is
+generated from the scores and the true label.
 
-The repeat tracker is reset before every clip. The test recordings are independent
-events, and letting three unrelated gunshot files "confirm" each other would overstate
-how often an alert is raised.
+The repeat tracker is reset before each clip, since unrelated test files shouldn't
+confirm each other.
 
 Outputs (in ``reports/``):
     model_comparison.csv            one row per clip, SRS column list
@@ -57,7 +54,7 @@ def test_rows(per_class: int | None) -> list[dict[str, str]]:
 
 
 def explain(actual: str, py: dict, gtm: dict, agree: bool) -> str:
-    """One factual sentence; empty when the models agree and are right."""
+    """One sentence explaining the result; empty when both models are right."""
     py_cls, gtm_cls = py["predicted_class"], gtm["predicted_class"]
     if agree and py_cls == actual:
         return ""

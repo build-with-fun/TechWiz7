@@ -1,13 +1,9 @@
-"""Live-editable configuration: config/*.json and alert_rules/*.json.
+"""Reads config/*.json and alert_rules/*.json, which can be edited while the app runs.
 
-The SRS expects thresholds and alert rules to be changed by an administrator at runtime,
-without a code edit or restart (FR xxxv, xxxvi, liii, lxxx; SRS 1.8 rule 5). Files are
-cached on modification time, so saving a file is enough. "$thresholds.a.b" references
-let a number live in one place. Loading validates cross-file invariants (class names,
-severities, references) and raises ConfigError rather than quietly disabling an alert.
-
-Tests point the store at a temporary directory (constructor or SST_CONFIG_DIR /
-SST_ALERT_RULES_DIR) to prove an edit changes behaviour.
+Files are cached by modification time, so saving a file is enough (no restart).
+"$thresholds.a.b" strings refer to values in thresholds.json. Loading checks the files
+against each other and raises ConfigError on problems. Tests can point the store at
+another folder with SST_CONFIG_DIR / SST_ALERT_RULES_DIR.
 """
 
 from __future__ import annotations
@@ -26,7 +22,7 @@ DEFAULT_ALERT_RULES_DIR = REPO_ROOT / "alert_rules"
 
 REFERENCE_PREFIX = "$thresholds."
 
-#: Keys every effective alert rule must have once the defaults are merged in.
+# Keys every alert rule must have after merging in the defaults.
 REQUIRED_RULE_KEYS = (
     "class",
     "severity",
@@ -41,9 +37,7 @@ REQUIRED_RULE_KEYS = (
 
 
 class ConfigError(RuntimeError):
-    """A configuration file is missing, malformed or contradictory. Not a ValueError, so startup can
-    catch it specifically.
-    """
+    """A config file is missing, malformed or inconsistent."""
 
 
 def _read_json(path: Path) -> dict:
@@ -63,7 +57,7 @@ def _read_json(path: Path) -> dict:
 
 
 def _file_token(path: Path) -> tuple[float, int]:
-    """Cache key: modification time plus size, so a same-second edit still lands."""
+    """Cache key: mtime plus size, so two edits in the same second are still seen."""
     try:
         st = path.stat()
     except OSError as exc:
@@ -85,9 +79,7 @@ def _dig(data: Mapping[str, Any], dotted: str, *, origin: str) -> Any:
 
 
 def resolve_references(value: Any, thresholds: Mapping[str, Any], *, origin: str) -> Any:
-    """Replace "$thresholds.a.b" strings with values from thresholds.json; other strings are left
-    alone.
-    """
+    """Replace "$thresholds.a.b" strings with values from thresholds.json."""
     if isinstance(value, str):
         if value.startswith(REFERENCE_PREFIX):
             dotted = value[len(REFERENCE_PREFIX):]
@@ -102,9 +94,7 @@ def resolve_references(value: Any, thresholds: Mapping[str, Any], *, origin: str
 
 @dataclass(frozen=True)
 class ConfigSnapshot:
-    """The configuration that judged one event, stored with it so the result stays explainable after
-    an edit.
-    """
+    """The config in force when an event was judged, stored with the event."""
 
     thresholds_version: str
     classes_version: str
@@ -125,7 +115,7 @@ class ConfigSnapshot:
 
 
 class ConfigStore:
-    """mtime-cached, validated reader for ``config/`` and ``alert_rules/``."""
+    """Cached, validated reader for ``config/`` and ``alert_rules/``."""
 
     def __init__(
         self,
@@ -155,7 +145,7 @@ class ConfigStore:
             hit = self._cache.get(key)
             if hit is not None and hit[0] == token:
                 return hit[1]
-        data = _read_json(path)  # read outside the lock; cheap and avoids blocking
+        data = _read_json(path)  # read outside the lock
         with self._lock:
             self._cache[key] = (token, data)
         return data
@@ -173,11 +163,11 @@ class ConfigStore:
         return digest
 
     def thresholds(self) -> dict:
-        """``config/thresholds.json`` -- read by every module."""
+        """``config/thresholds.json``"""
         return self._load(self._config_path("thresholds"))
 
     def classes_config(self) -> dict:
-        """``config/classes.json`` -- the single source of truth for class names."""
+        """``config/classes.json`` (the class names)"""
         return self._load(self._config_path("classes"))
 
     def auth_config(self) -> dict:
@@ -185,7 +175,7 @@ class ConfigStore:
         return self._load(self._config_path("auth"))
 
     def auth_setting(self, dotted: str, default: Any = None) -> Any:
-        """One value from config/auth.json by dotted path; a missing key returns ``default``."""
+        """One value from config/auth.json by dotted path, or ``default``."""
         node: Any = self.auth_config()
         for part in dotted.split("."):
             if isinstance(node, Mapping) and part in node:
@@ -207,10 +197,9 @@ class ConfigStore:
         return {c["name"]: c.get("code", "") for c in self.classes_config().get("classes", [])}
 
     def critical_classes(self) -> list[str]:
-        """Critical categories with the FR liii override applied.
+        """Critical classes, with the FR liii override applied if it is set.
 
-        An empty override inherits classes.json; a non-empty one replaces it and is checked
-        against the class names, so a typo cannot silently drop a critical alert.
+        The override is checked against the class names so a typo can't drop an alert.
         """
         inherited = list(self.classes_config().get("critical_classes", []))
         rules = self.alert_rules()
@@ -235,7 +224,7 @@ class ConfigStore:
         return resolve_references(raw, thresholds, origin=str(self._rules_path("alert_rules")))
 
     def effective_rules(self) -> dict[str, dict]:
-        """Per-class rule with ``defaults`` merged in. Keyed by class name."""
+        """Rule per class name, with ``defaults`` merged in."""
         data = self.alert_rules()
         defaults = dict(data.get("defaults", {}))
         out: dict[str, dict] = {}
@@ -278,8 +267,7 @@ class ConfigStore:
         return self._load(self._rules_path("severity_levels"))
 
     def display_severity(self, recorded: str) -> str:
-        """Map a stored severity onto the active scale for display; the stored value never changes.
-        """
+        """Map a stored severity onto the current scale for display."""
         if recorded in self.severity_scale():
             return recorded
         levels = self.severity_levels()
@@ -293,7 +281,7 @@ class ConfigStore:
         )
 
     def severity_rank(self, recorded: str) -> int:
-        """Rank on the five-level scale, used to order events."""
+        """Position on the five-level scale, for sorting."""
         for level in self.severity_levels().get("levels", []):
             if level.get("name") == recorded:
                 return int(level.get("rank", 0))
@@ -303,7 +291,7 @@ class ConfigStore:
         return list(self.alert_rules().get("quality_ordering", []))
 
     def quality_at_least(self, quality: str, minimum: str) -> bool:
-        """True when ``quality`` is at least ``minimum`` on the configured ordering."""
+        """True if ``quality`` is at least ``minimum``."""
         order = self.quality_ordering()
         if quality not in order or minimum not in order:
             raise ConfigError(
@@ -329,7 +317,7 @@ class ConfigStore:
         return self._load(self._rules_path("retention"))
 
     def retention_days(self, artifact: str) -> int | None:
-        """Days an artifact class is kept; ``None`` means indefinitely."""
+        """Days to keep this kind of data; ``None`` means forever."""
         defaults = self.retention().get("defaults", {})
         key = f"{artifact}_days"
         if key not in defaults:
@@ -337,7 +325,7 @@ class ConfigStore:
         return defaults[key]
 
     def snapshot(self) -> ConfigSnapshot:
-        """A record of exactly which configuration judged an event."""
+        """Snapshot of the current config for storing with an event."""
         files = {
             "thresholds": self._config_path("thresholds"),
             "classes": self._config_path("classes"),
@@ -357,9 +345,7 @@ class ConfigStore:
         )
 
     def validate(self) -> list[str]:
-        """Check every cross-file invariant and return the problems found (the app factory raises on
-        any).
-        """
+        """Check the files against each other and return a list of problems."""
         problems: list[str] = []
 
         try:
@@ -367,7 +353,7 @@ class ConfigStore:
         except ConfigError as exc:
             return [str(exc)]
 
-        # A malformed auth.json would otherwise only surface at the first login.
+        # Otherwise a bad auth.json would only show up at the first login.
         try:
             auth = self.auth_config()
         except ConfigError as exc:
@@ -471,7 +457,7 @@ class ConfigStore:
                         f"unknown severity '{target}'"
                     )
 
-        # A critical class must actually be able to raise an alert.
+        # Every critical class must be able to raise an alert.
         for name in self.critical_classes():
             rule = rules.get(name)
             if rule and not rule.get("enabled", True):
@@ -522,7 +508,7 @@ class ConfigStore:
 
     @staticmethod
     def _condition_keys(when: Any) -> Iterable[str]:
-        """Every condition key inside a ``when`` block, including ``all``/``any`` nests."""
+        """All condition keys in a ``when`` block, including nested ``all``/``any``."""
         if not isinstance(when, Mapping):
             return []
         found: list[str] = []
@@ -547,7 +533,7 @@ _default_lock = threading.Lock()
 
 
 def get_store() -> ConfigStore:
-    """Process-wide store. Cached per directory pair, cheap to call anywhere."""
+    """Shared store, cached per directory pair."""
     global _default_store
     if _default_store is None:
         with _default_lock:
@@ -557,7 +543,7 @@ def get_store() -> ConfigStore:
 
 
 def set_store(store: ConfigStore | None) -> None:
-    """Override the process-wide store; used by tests and the app factory."""
+    """Replace the shared store (tests and the app factory)."""
     global _default_store
     with _default_lock:
         _default_store = store

@@ -1,9 +1,7 @@
 """Manual-review API (FR lvii-lxi).
 
-The original model outputs, copied onto the review row when it was queued, are never
-rewritten by a decision (FR lxi). An event can be decided once; a second decision is a 409.
-Overrides and rejections need a comment. Decisions can be addressed by review id (the
-console's forms) or by event id; both use the same decision code.
+A decision never changes the original model outputs stored on the review (FR lxi). Each
+event can be decided once (a second try is a 409). Overrides and rejections need a comment.
 """
 
 from __future__ import annotations
@@ -107,7 +105,7 @@ def _load_review(session, review_id: int) -> Review:
 
 
 def _load_review_for_event(session, event_id: int) -> Review:
-    """The decision target for an event: its newest open review, else its decided one."""
+    """Newest open review for an event, else the decided one."""
     review = session.execute(
         select(Review)
         .where(Review.event_id == event_id)
@@ -147,9 +145,7 @@ def _audit_decision(session, review: Review, before: dict, event: Event | None) 
 
 
 def _apply_decision(review: Review, body: dict) -> dict:
-    """Validate and apply a decision to ``review`` inside the caller's session, so write and audit
-    commit together.
-    """
+    """Validate and apply a decision in the caller's session (committed with its audit row)."""
     decision = (body.get("decision") or "").strip().lower()
     if decision not in _DECISIONS:
         raise validation_error(
@@ -184,7 +180,7 @@ def _apply_decision(review: Review, body: dict) -> dict:
                 final_class={"given": final_class, "accepted": valid_classes},
             )
     elif decision == "confirm":
-        # A confirmation adopts the models' agreed answer; a reject is a non-event.
+        # Confirm keeps the models' class; reject means there was no event.
         final_class = review.original_python_class
     if final_severity is not None:
         valid_severities = list(get_store().severity_scale())
@@ -213,7 +209,7 @@ def _apply_decision(review: Review, body: dict) -> dict:
 @bp.get("/reviews/queue")
 @capability_required("review_queue")
 def queue():
-    """FR lvii: the prioritised queue, each item carrying its reason."""
+    """FR lvii: the review queue, with the reason for each item."""
     try:
         page = max(1, int(request.args.get("page", 1)))
         per_page = int(request.args.get("per_page", _DEFAULT_PAGE_SIZE))
@@ -250,7 +246,7 @@ def queue():
 @bp.get("/reviews/history")
 @capability_required("review_queue")
 def history():
-    """FR lxi: every decision, who made it and when -- the override audit view."""
+    """FR lxi: all decisions, with who made them and when."""
     with session_scope(current_app.config["SST_SESSION_FACTORY"]) as session:
         rows = session.execute(
             select(Review)
@@ -275,7 +271,7 @@ def history():
 @bp.get("/reviews/event/<int:event_id>")
 @capability_required("review_queue")
 def event_context(event_id: int):
-    """FR lviii: full context for a decision -- the event, the originals, the reason."""
+    """FR lviii: the event, original outputs and reason for a review."""
     with session_scope(current_app.config["SST_SESSION_FACTORY"]) as session:
         review = _load_review_for_event(session, event_id)
         data = _review_to_dict(review, with_context=True)
@@ -287,7 +283,7 @@ def event_context(event_id: int):
 @bp.post("/reviews/<int:review_id>/decision")
 @capability_required("review_decide")
 def decide_by_review(review_id: int):
-    """The console's form target: decide by review row id, then defer to the shared path."""
+    """Decide by review id (used by the page's forms)."""
     with session_scope(current_app.config["SST_SESSION_FACTORY"]) as session:
         review = _load_review(session, review_id)
         event_id = review.event_id
@@ -297,7 +293,7 @@ def decide_by_review(review_id: int):
 @bp.post("/reviews/event/<int:event_id>/decision")
 @capability_required("review_decide")
 def decide_by_event(event_id: int):
-    """The contract's address (FR lix-lxi): decide the newest review item for an event."""
+    """Decide the newest review for an event (FR lix-lxi)."""
     return _decide(event_id)
 
 

@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
-"""Extract real, CC-BY recordings from ESC-50, UrbanSound8K and FSD50K into
-audio_dataset/originals/<class>/SS-<CODE>-0501.wav onwards, and write
+"""Copy CC-BY recordings from ESC-50, UrbanSound8K and FSD50K into
+audio_dataset/originals/<class>/ (from SS-<CODE>-0501.wav) and write
 audio_dataset/manifests/acquired_rows.csv for assemble_manifest.py.
 
-Labelling policy: a source category maps to one of our classes only if it is on the explicit
-allow-list below; "kind of similar" is skipped, never guessed. Fireworks is deliberately not
-Gunshot (class_label_map.json excludes it).
-
-dataset_split is always blank (only build_split.py assigns splits), duplicates are dropped
-by sha256 of the file bytes, and every row carries its licence.
+Only source categories on the allow-lists below are used. Fireworks is not counted as
+Gunshot. Duplicates are dropped by sha256, every row has its licence, and dataset_split is
+left blank for build_split.py.
 
     .venv/bin/python audio_dataset/scripts/acquire_corpus.py --per-class 300
 """
@@ -47,9 +44,9 @@ EXTRA_COLUMNS = [
 ]
 ALL_COLUMNS = FROZEN_COLUMNS + EXTRA_COLUMNS
 
-ID_START = 501  # FSD50K real rows occupy 0001..0150; new sources start at 0501.
+ID_START = 501  # FSD50K uses 0001..0150
 
-# Class allow-lists: a source category appears only if it genuinely is an instance of our class.
+# Allow-lists: source category -> our class.
 
 # ESC-50 categories (lowercase, underscores) -> our class name.
 ESC50_MAP = {
@@ -80,14 +77,14 @@ ESC50_MAP = {
     "hand_saw":         "Machinery Fault",
     "vacuum_cleaner":   "Machinery Fault",
     "washing_machine":  "Machinery Fault",
-    # Background Noise: the class description names wind, rain, water, HVAC.
+    # Background Noise: wind, rain, water, HVAC.
     "wind":             "Background Noise",
     "rain":             "Background Noise",
     "sea_waves":        "Background Noise",
     "thunderstorm":     "Background Noise",
     "water_drops":      "Background Noise",
     "crackling_fire":   "Background Noise",
-    # NOTE: 'fireworks' deliberately absent from Gunshot (see docstring).
+    # 'fireworks' is not Gunshot.
 }
 
 # UrbanSound8K classes -> our class name.
@@ -98,8 +95,8 @@ US8K_MAP = {
     "gun_shot":         "Gunshot",
     "jackhammer":       "Machinery Fault",
     "engine_idling":    "Machinery Fault",
-    "air_conditioner":  "Background Noise",  # HVAC, named in the BGN description
-    "drilling":         "Machinery Fault",   # drill/drone = rotating machine fault timbre
+    "air_conditioner":  "Background Noise",  # HVAC
+    "drilling":         "Machinery Fault",
 }
 
 # FSD50K.eval ontology terms -> our class name, unambiguous terms only.
@@ -146,7 +143,7 @@ FSD_EVAL_MAP = {
     "Quarrel":                   "Aggression",
 }
 
-# Provenance blocks -- one per corpus.
+# Source details, one per corpus.
 
 ESC50_PROV = {
     "source": "ESC-50 (Environmental Sound Classification)",
@@ -196,9 +193,7 @@ def _audio_meta(blob: bytes, tmp: Path) -> tuple[float, int, int] | None:
 
 
 def _passes_quality(blob: bytes, tmp: Path) -> bool:
-    """Every original must be at least 0.5 s and louder than -50 dBFS RMS, the same floors as
-    audio_preprocessing's QUALITY_DEFAULTS, so no clip is refused at training or inference.
-    """
+    """At least 0.5 s and louder than -50 dBFS RMS (same limits as QUALITY_DEFAULTS)."""
     min_dur, silence_rms = 0.5, 10 ** (-50.0 / 20.0)
     try:
         tmp.write_bytes(blob)
@@ -251,8 +246,7 @@ def _ingest_blob(rows: list[dict], prov: dict, category: str, class_label: str,
                  slug: str, code: str, next_id: list[int], have_sha: set[str],
                  stats: Counter, skipped: Counter, blob: bytes, extra: dict,
                  tmp: Path, room: dict[str, int]) -> bool:
-    """Decode one in-memory WAV blob; if unique and audible, emit a row and write
-    it into originals/<slug>/. Returns True when a clip was accepted."""
+    """Decode a WAV blob and, if new and audible, save it and add a row. True if accepted."""
     meta = _audio_meta(blob, tmp)
     if meta is None:
         skipped["undecodable"] += 1
@@ -260,7 +254,7 @@ def _ingest_blob(rows: list[dict], prov: dict, category: str, class_label: str,
     if not _passes_quality(blob, tmp):
         skipped["quality_too_short_or_silent"] += 1
         return False
-    # Hash the bytes we ship, as the QA test re-hashes the file on disk.
+    # Hash the bytes we write.
     digest = hashlib.sha256(blob).hexdigest()
     if digest in have_sha:
         skipped["dupe_sha256"] += 1
@@ -313,7 +307,7 @@ def from_us8k(classes: dict, next_id: dict, have_sha: set, stats: Counter,
         except Exception:
             skipped["unreadable_parquet:" + parquet.name] += 1
             continue
-        # itertuples renames the reserved `class` column, so rename it first.
+        # itertuples mangles the `class` column, so rename it first.
         if "class" in df.columns:
             df = df.rename(columns={"class": "us8k_class"})
         for rec in df.itertuples(index=False):
@@ -334,8 +328,7 @@ def from_us8k(classes: dict, next_id: dict, have_sha: set, stats: Counter,
 
 
 def _load_acquired(have_sha: set) -> list[dict]:
-    """Reload rows written by a previous run so re-runs ACCUMULATE into
-    acquired_rows.csv instead of overwriting it."""
+    """Load rows from earlier runs so they are kept, not overwritten."""
     if not OUT_MANIFEST.exists():
         return []
     with OUT_MANIFEST.open(newline="", encoding="utf-8") as fh:
@@ -352,9 +345,7 @@ def _load_acquired(have_sha: set) -> list[dict]:
 
 
 def _wipe_acquired(classes: dict) -> None:
-    """Remove every clip this script wrote (numeric id >= ID_START), so a rebuild regenerates the
-    same set; FSD50K clips 0001-0150 are never touched.
-    """
+    """Delete the clips this script wrote (id >= ID_START). FSD50K clips are left alone."""
     removed = 0
     for name, c in classes.items():
         d = AUDIO_DATASET / "originals" / c["slug"]
@@ -376,8 +367,7 @@ def _wipe_acquired(classes: dict) -> None:
 
 def from_fsd_eval(classes: dict, next_id: dict, have_sha: set, stats: Counter,
                   skipped: Counter, room: dict[str, int], tmp: Path) -> list[dict]:
-    """FSD50K.eval wavs recovered from the truncated archive, labelled with the
-    corpus's own ground-truth labels. The last real source on disk."""
+    """FSD50K.eval clips from the partial archive, with their own labels."""
     rows: list[dict] = []
     labels_json = Path("/tmp/eval_labels.json")
     wav_dir = AUDIO_DATASET / "raw_downloads" / "fsd50k_eval_recovered"
@@ -393,7 +383,7 @@ def from_fsd_eval(classes: dict, next_id: dict, have_sha: set, stats: Counter,
         if not terms:
             skipped["fsd_eval:no_label"] += 1
             continue
-        # first matching allow-listed term wins; terms are unordered at source
+        # first allow-listed term wins
         label = None
         for term in terms:
             if term in FSD_EVAL_MAP and room.get(FSD_EVAL_MAP[term], 0) > 0:
@@ -426,10 +416,9 @@ FSD_DEV_PROV = {
 
 def from_fsd_dev(classes: dict, next_id: dict, have_sha: set, stats: Counter,
                  skipped: Counter, room: dict[str, int], tmp: Path) -> list[dict]:
-    """FSD50K.dev clips downloaded one by one from the Hugging Face mirror (the Zenodo zip is ~8 GB).
+    """Download FSD50K.dev clips one at a time from the Hugging Face mirror.
 
-    Only clips whose labels map to a class still short of originals are fetched, and each
-    clip's own licence is checked first; NC and unlicensed clips are never downloaded.
+    Only fetches clips for classes that still need more, and skips NC or unlicensed clips.
     """
     rows: list[dict] = []
     import urllib.request
@@ -445,7 +434,7 @@ def from_fsd_dev(classes: dict, next_id: dict, have_sha: set, stats: Counter,
         "http://creativecommons.org/licenses/by/3.0/": "CC-BY-3.0",
         "http://creativecommons.org/licenses/sampling+/1.0/": "Sampling+-1.0",
     }
-    # already-used source clips (by original filename) are never re-fetched
+    # skip clips we already have
     used_sources: set[str] = set()
     for src_csv in (AUDIO_DATASET / "manifests" / "fsd50k_real_rows.csv", OUT_MANIFEST):
         if src_csv.exists():
@@ -502,11 +491,11 @@ def from_fsd_dev(classes: dict, next_id: dict, have_sha: set, stats: Counter,
         try:
             with urllib.request.urlopen(url, timeout=60) as resp:
                 blob = resp.read()
-        except Exception as exc:  # noqa: BLE001 - a lost clip is skipped, not fatal
+        except Exception as exc:  # noqa: BLE001 - skip the clip
             skipped[f"fsd_dev:download_failed"] += 1
             print(f"  ! {fname}: {exc}")
             continue
-        # trust but verify: the bytes must decode as audio and hash uniquely
+        # must decode and not be a duplicate
         if _ingest_blob(rows, FSD_DEV_PROV, f"fsd50k_dev:{info.get(fname, {}).get('title', '')[:40]}",
                         label, classes[label]["slug"], classes[label]["code"],
                         next_id[label], have_sha, stats, skipped, blob,
@@ -542,13 +531,13 @@ def main(argv=None) -> int:
     if args.rebuild:
         _wipe_acquired(classes)
 
-    # Count existing originals from disk so re-runs are idempotent.
+    # Count what is already on disk.
     existing: Counter = Counter()
     for name, c in classes.items():
         d = AUDIO_DATASET / "originals" / c["slug"]
         if d.exists():
             existing[name] = len(list(d.glob("*.wav")))
-    # the stray empty dir from the old naming bug is not a class
+    # skip the empty folder left by an old naming bug
     stray = AUDIO_DATASET / "originals" / "alarm_siren"
     if stray.exists() and not any(stray.iterdir()):
         stray.rmdir()
@@ -556,7 +545,7 @@ def main(argv=None) -> int:
 
     room = {name: max(0, args.per_class - existing[name]) for name in classes}
     next_id = {name: [ID_START] for name in classes}
-    # Start above any id already assigned, so a re-run never collides.
+    # Start above the highest id in use.
     if OUT_MANIFEST.exists():
         with OUT_MANIFEST.open(newline="", encoding="utf-8") as fh:
             for r in csv.DictReader(fh):
@@ -569,7 +558,7 @@ def main(argv=None) -> int:
     stats: Counter = Counter()
     skipped: Counter = Counter()
 
-    # Seed known hashes from the manifest so a clip already present is never re-emitted.
+    # Known hashes from the manifest.
     for src_csv in (AUDIO_DATASET / "manifests" / "fsd50k_real_rows.csv", OUT_MANIFEST):
         if src_csv.exists():
             with src_csv.open(newline="", encoding="utf-8") as fh:
@@ -597,7 +586,7 @@ def main(argv=None) -> int:
         pass
 
     rows.sort(key=lambda r: (r["class_label"], r["audio_id"]))
-    # Rows may come from an older CSV with dropped or extra columns; keep only the schema.
+    # Older CSVs may have different columns; keep only the schema ones.
     rows = [{k: r.get(k, "") for k in ALL_COLUMNS} for r in rows]
     OUT_MANIFEST.parent.mkdir(parents=True, exist_ok=True)
     with OUT_MANIFEST.open("w", newline="", encoding="utf-8") as fh:

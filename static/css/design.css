@@ -1,11 +1,7 @@
-/* ============================================================================
-   Design layer, loaded after app.css and product.css.
-   Layout: an ink sidebar beside a light canvas on desktop; below 1025px the
-   sidebar becomes an off-canvas drawer opened from the top bar. Tables turn into
-   stacked cards below 721px. Values come from tokens.css.
-   ========================================================================== */
+/* Design layer, loaded after app.css and product.css.
+   Below 1025px the sidebar becomes a drawer; below 721px tables become cards. */
 
-/* ------------------------------------------------------------------ base -- */
+/* Base */
 body {
   font-family: var(--font-sans);
   font-size: var(--fs-base);
@@ -28,7 +24,7 @@ code, kbd, samp, .mono, .audio-id { font-family: var(--font-mono); font-size: 0.
 :focus-visible { outline: 2px solid var(--focus-ring-color); outline-offset: 2px; }
 ::selection { background: color-mix(in srgb, var(--accent) 22%, transparent); }
 
-/* ------------------------------------------------------------------ shell -- */
+/* Shell */
 .app {
   grid-template-columns: var(--nav-w) minmax(0, 1fr);
   grid-template-rows: var(--topbar-h) minmax(0, 1fr);
@@ -137,7 +133,7 @@ code, kbd, samp, .mono, .audio-id { font-family: var(--font-mono); font-size: 0.
   gap: var(--sp-5);
 }
 
-/* ------------------------------------------------------------- page head -- */
+/* Page head */
 .page-head { gap: var(--sp-3) var(--sp-4); align-items: flex-end; }
 .page-title {
   font-size: clamp(1.5rem, 1.1rem + 1.1vw, 2rem);
@@ -150,7 +146,7 @@ code, kbd, samp, .mono, .audio-id { font-family: var(--font-mono); font-size: 0.
 .page-foot { border-top: 1px solid var(--border); padding-top: var(--sp-4); margin-top: var(--sp-6); }
 .page-foot .field__hint { font-size: var(--fs-xs); color: var(--text-subtle); }
 
-/* -------------------------------------------------------- panels & cards -- */
+/* Panels & cards */
 .panel, .card, .status-strip, .live__controls, .verdict {
   background: var(--bg-surface);
   border: 1px solid var(--border);
@@ -173,7 +169,7 @@ code, kbd, samp, .mono, .audio-id { font-family: var(--font-mono); font-size: 0.
 .card { padding: var(--sp-5); }
 .card--flush { padding: 0; }
 
-/* ---------------------------------------------------------------- buttons -- */
+/* Buttons */
 .btn {
   min-height: 2.5rem; padding: 0 var(--sp-4);
   border-radius: var(--r-2);
@@ -204,7 +200,7 @@ code, kbd, samp, .mono, .audio-id { font-family: var(--font-mono); font-size: 0.
 .btn--icon { width: 2.5rem; min-width: 2.5rem; padding: 0; aspect-ratio: 1; }
 .btn--sm.btn--icon { width: 2rem; min-width: 2rem; }
 
-/* ------------------------------------------------------------------ forms -- */
+/* Forms */
 .field { gap: 6px; }
 .field__label { color: var(--text); font-weight: var(--fw-medium); font-size: var(--fs-sm); }
 .field__hint, .field small { color: var(--text-subtle); font-size: var(--fs-xs); }
@@ -226,7 +222,7 @@ code, kbd, samp, .mono, .audio-id { font-family: var(--font-mono); font-size: 0.
 fieldset { border-color: var(--border); border-radius: var(--r-3); }
 input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width: 1rem; height: 1rem; }
 
-/* ------------------------------------------------------------------ chips -- */
+/* Chips */
 .chip {
   gap: 6px; padding: 3px var(--sp-2);
   border: 1px solid transparent; border-radius: var(--r-round);
@@ -236,8 +232,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
 }
 .chip__text { overflow: visible; text-overflow: clip; }
 .chip--status, .chip--role { border-color: var(--border); background: var(--bg-surface); }
-/* Severity, agreement and quality show a colour dot next to the word; the text glyphs
-   (aria-hidden) are dropped. The word always stays, so colour is never the only cue. */
+/* These chips show a colour dot next to the word instead of the text glyph. */
 .chip[class*="chip--sev-"] .chip__glyph,
 .chip[class*="chip--consistency-"] .chip__glyph,
 .chip[class*="chip--quality-"] .chip__glyph { display: none; }
@@ -267,7 +262,7 @@ a.chip[aria-current="page"] { background: var(--accent-dim); border-color: color
 .tag { border-radius: var(--r-round); padding: 2px var(--sp-2); }
 .tag--alert { background: var(--danger-dim); border-color: transparent; color: var(--danger); font-weight: var(--fw-medium); }
 
-/* ----------------------------------------------------------------- tables -- */
+/* Tables */
 .table-wrap { border-radius: 0; }
 table.data { font-size: var(--fs-sm); }
 table.data caption { padding: 0 0 var(--sp-3); font-size: var(--fs-xs); color: var(--text-subtle); }
@@ -285,7 +280,7 @@ table.data tbody tr:hover { background: color-mix(in srgb, var(--accent-dim) 45%
 table.data td a { font-weight: var(--fw-medium); }
 table.data td.num, table.data th.num { font-family: var(--font-mono); font-size: 0.8125rem; }
 
-/* ------------------------------------------------------------ KPIs & stats -- */
+/* KPIs & stats */
 .kpis { gap: var(--sp-4); }
 .kpi, .summary-cell {
   padding: var(--sp-4) var(--sp-5);
@@ -304,7 +299,7 @@ a.kpi:hover { border-color: var(--border-strong); background: var(--bg-surface);
 .stat { border-radius: var(--r-3); background: var(--bg-surface-2); padding: var(--sp-4); }
 .stat__value { letter-spacing: -0.03em; }
 
-/* ---------------------------------------------------------------- banners -- */
+/* Banners */
 .banner {
   align-items: center;
   padding: var(--sp-3) var(--sp-4);
@@ -329,7 +324,7 @@ a.kpi:hover { border-color: var(--border-strong); background: var(--bg-surface);
 .callout { border-radius: var(--r-2); background: var(--accent-dim); border-left-color: var(--accent); color: var(--text-muted); }
 .toast { border-radius: var(--r-3); box-shadow: var(--shadow-3); border: 1px solid var(--border); border-left-width: 3px; }
 
-/* -------------------------------------------------------------- dashboard -- */
+/* Dashboard */
 .verdict-head__value { font-size: clamp(1.4rem, 1.1rem + 0.9vw, 1.75rem); letter-spacing: -0.03em; }
 .verdict-head__file { max-width: 100%; }
 .facts dt, .verdict-head__label, .result__label, .model-card__subhead, .eyebrow { letter-spacing: 0.06em; }
@@ -344,7 +339,7 @@ a.kpi:hover { border-color: var(--border-strong); background: var(--bg-surface);
 .model-card { border-radius: var(--r-3); box-shadow: var(--shadow-1); background: var(--bg-surface); }
 .steps__n { border-color: var(--border-strong); font-family: var(--font-mono); }
 
-/* -------------------------------------------------------------- sign in --- */
+/* Sign in */
 /* A rounded white frame on an ink page: a brand panel on the left, the form on the right. */
 body[data-page="login"], body[data-page="register"] { background: var(--bg-surface); min-height: 100svh; }
 body[data-page="login"] .app, body[data-page="register"] .app { display: block; background: transparent; min-height: 100svh; }
@@ -471,7 +466,7 @@ body[data-page="login"] .main, body[data-page="register"] .main { max-width: non
   .auth-form__row { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* ------------------------------------------------------------ responsive -- */
+/* Responsive */
 @media (max-width: 1200px) {
   .main { padding: var(--sp-5) var(--sp-5) var(--sp-6); }
   .topbar { padding: 0 var(--sp-5); }
@@ -570,10 +565,7 @@ body[data-page="login"] .main, body[data-page="register"] .main { max-width: non
   .app { grid-template-areas: "main"; }
 }
 
-/* ============================================================================
-   Visual language shared with the public page: bright canvas, white rail with a
-   blue active pill, pill buttons, softer and rounder cards, and a sky header.
-   ========================================================================== */
+/* Styles shared with the public page: white rail, pill buttons, rounder cards. */
 
 /* rail */
 .nav { box-shadow: none; }
@@ -638,10 +630,7 @@ table.data thead th { background: transparent; border-bottom: 1px solid var(--bo
 }
 
 
-/* ============================================================================
-   Soft dashboard: lavender canvas, borderless white cards with soft shadows,
-   a plain sidebar with an accent bar, and a greeting header.
-   ========================================================================== */
+/* Dashboard look: lavender canvas, borderless white cards, soft shadows. */
 :root { --card-shadow: 0 18px 40px -26px rgba(67, 84, 150, 0.35), 0 2px 6px -2px rgba(67, 84, 150, 0.06); }
 :root[data-theme="dark"] { --card-shadow: 0 18px 40px -24px rgba(0, 0, 0, 0.7); }
 
@@ -712,7 +701,7 @@ table.data thead th { color: var(--text-subtle); border-bottom-color: var(--bord
 .page-title { font-size: clamp(1.6rem, 1.2rem + 1.2vw, 2.1rem); font-weight: 700; letter-spacing: -0.035em; }
 .breadcrumb { font-size: var(--fs-sm); color: var(--text-subtle); }
 
-/* ---- dashboard ---- */
+/* Dashboard */
 .dash-greet { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--sp-4); }
 .dash-greet__hi { margin: 0 0 0.2rem; color: var(--text-subtle); font-size: 0.9rem; font-weight: 500; }
 .dash-greet__title { margin: 0; font-size: clamp(1.7rem, 1.2rem + 1.4vw, 2.3rem); font-weight: 700; letter-spacing: -0.04em; line-height: 1.1; }
@@ -848,11 +837,8 @@ a.dash-stat:hover { transform: translateY(-2px); color: var(--text); text-decora
 }
 table.data .chip { white-space: nowrap; }
 
-/* ============================================================================
-   Motion. Entrances play once per page; hovers answer the pointer. The global
-   reduced-motion rules in product.css switch every animation and transition off,
-   and every animated property here rests at its final value when that happens.
-   ========================================================================== */
+/* Motion. product.css turns all of it off for reduced motion, and every animated
+   property ends at its final value, so nothing is lost. */
 @keyframes sst-rise { from { opacity: 0; translate: 0 14px; } }
 @keyframes sst-fade { from { opacity: 0; } }
 @keyframes sst-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
@@ -877,7 +863,7 @@ table.data .chip { white-space: nowrap; }
 .kpis > :nth-child(n + 5), .summary-grid > :nth-child(n + 5) { animation-delay: 340ms; }
 .dash-feature { animation: sst-rise .6s var(--ease) .15s both; }
 
-/* chart: the line draws itself, the area fades in, the peak pops and keeps a soft pulse */
+/* chart: draw the line, fade in the area, pulse the peak */
 .dash-chart__line { stroke-dasharray: 1; animation: sst-draw 1.6s cubic-bezier(.6, 0, .2, 1) .35s both; }
 .dash-chart__area { animation: sst-fade 1s ease .9s both; }
 .dash-chart__dot, .dash-chart__halo { transform-box: fill-box; transform-origin: center; }

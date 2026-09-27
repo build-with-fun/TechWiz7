@@ -1,25 +1,10 @@
-{# ==========================================================================
-   templates/_presentation.html
-   --------------------------------------------------------------------------
-   The ONE place that decides how a vocabulary value is shown to a human:
-   its slug (for CSS), its glyph, and the navigation structure.
+{# How each status value is displayed: CSS slug, glyph and the navigation.
+   The values themselves come from config/ and alert_rules/. The JS reads the same table
+   through presentation_payload(), so server and client chips always match.
+   No status is shown by colour alone: each has its word plus a glyph, and severity uses
+   a dot count so the order is readable in greyscale. #}
 
-   Why a template and not three files: the SRS's surprise-modification rule says
-   a new category, a changed threshold or a new filter must be quick to add.
-   Class names, severity levels, quality verdicts and consistency statuses all
-   come from `config/`/`alert_rules/` at runtime; only the *presentation* of
-   those vocabularies lives here, once. The JavaScript does not re-declare any
-   of it -- it reads the same table from the JSON payload this file emits
-   (`presentation_payload`), so a glyph cannot drift between server and client.
-
-   Accessibility rule this file exists to hold: **no indicator is colour alone.**
-   Every value has a word (the value itself) and a glyph whose *shape or count*
-   encodes the level, so the chips survive greyscale, colour-blindness and
-   forced-colours mode. Severity uses a monotonic count of solid dots so the
-   ordering is visible without the hue.
-   ========================================================================== #}
-
-{# ---- severity (names come from alert_rules/severity_levels.json) -------- #}
+{# Severity (names from alert_rules/severity_levels.json) #}
 {% macro severity_glyph(name) -%}
 {%- if name == 'Critical' -%}●●●●
 {%- elif name == 'High' -%}●●●
@@ -38,13 +23,12 @@ informational
 {%- endif -%}
 {% endmacro %}
 
-{# A severity is "loud" when it demands a human: High and Critical. Used to
-   decide whether a banner interrupts or merely informs. #}
+{# High and Critical get an interrupting banner; lower levels only inform. #}
 {% macro severity_is_loud(name) -%}
 {{ 'true' if name in ('High', 'Critical') else 'false' }}
 {% endmacro %}
 
-{# ---- consistency statuses (SRS FR xxxiii / the five in src/models.py) ---- #}
+{# Consistency statuses (FR xxxiii, defined in src/models.py) #}
 {% macro consistency_slug(status) -%}
 {%- if status == 'Strong Match' -%}strong
 {%- elif status == 'Acceptable Match' -%}acceptable
@@ -65,18 +49,18 @@ informational
 {%- endif -%}
 {% endmacro %}
 
-{# One sentence a reader can act on, so the status is never just a label. #}
+{# A plain sentence to go with each status. #}
 {% macro consistency_explanation(status) -%}
 {%- if status == 'Strong Match' -%}Both models agree on the class and their top-class confidences are close.
 {%- elif status == 'Acceptable Match' -%}Both models agree on the class; the confidences differ within the accepted band.
-{%- elif status == 'Weak Match' -%}Both models agree on the class but their confidences differ widely -- treat with care.
+{%- elif status == 'Weak Match' -%}Both models agree on the class but their confidences differ widely, so treat it with care.
 {%- elif status == 'Model Disagreement' -%}The two models named different classes, so no single reading is safe.
 {%- elif status == 'Uncertain Result' -%}At least one model was not confident enough to commit to a class.
 {%- else -%}No consistency verdict was recorded for this event.
 {%- endif -%}
 {% endmacro %}
 
-{# ---- audio quality verdicts (config alert_rules/alert_rules.json) -------- #}
+{# Audio quality verdicts (alert_rules/alert_rules.json) #}
 {% macro quality_slug(verdict) -%}
 {{ (verdict or 'Unusable') | lower }}
 {% endmacro %}
@@ -93,18 +77,18 @@ informational
 {% macro quality_explanation(verdict) -%}
 {%- if verdict == 'Good' -%}Clean signal, usable for classification without further work.
 {%- elif verdict == 'Acceptable' -%}Minor issues (some noise or narrow bandwidth); still classified.
-{%- elif verdict == 'Poor' -%}Degraded signal -- the classification is shown but should be read with caution.
+{%- elif verdict == 'Poor' -%}Degraded signal. The classification is shown but should be read with caution.
 {%- elif verdict == 'Unusable' -%}Too degraded to classify reliably; the event is routed for a human instead.
 {%- else -%}No quality assessment was recorded.
 {%- endif -%}
 {% endmacro %}
 
-{# ---- event statuses, alert statuses, review states ---------------------- #}
+{# Event, alert and review statuses #}
 {% macro status_glyph(status) -%}
 {%- if status == 'Uploaded' -%}↑
 {%- elif status == 'Classified' -%}✓
 {%- elif status == 'Uncertain' -%}?
-{%- elif status == 'Alert Generated' -%}⚠
+{%- elif status == 'Alert Generated' -%}!
 {%- elif status == 'Manual Review' -%}☰
 {%- elif status == 'Reviewed' -%}✓✓
 {%- elif status == 'Closed' -%}■
@@ -131,15 +115,8 @@ informational
 {{ (status or 'Not queued') | lower | replace(' ', '-') }}
 {% endmacro %}
 
-{# ---- navigation ---------------------------------------------------------
-   Capability names are the executable permission matrix in src/auth.py:
-   gating on a capability string, never on a role, so moving a capability
-   between roles is a one-line change there and no template edit.
-
-   `nav_entries()` is also what tests/test_ui_frontend.py reads to check that
-   every endpoint name below is one the backend actually provides -- a typo
-   here would otherwise be a 500 at render time.
-   ---------------------------------------------------------------------- #}
+{# Navigation. Items are gated on capabilities from src/auth.py, not on roles, so moving
+   a capability between roles needs no template change. #}
 {% macro nav_entries() -%}
 [
   {"group": "Monitor", "items": [
@@ -163,17 +140,14 @@ informational
 ]
 {%- endmacro %}
 
-{# Every endpoint name any of my templates calls with url_for(). Kept beside
-   the nav so the list is maintained in one place; the test suite asserts each
-   one resolves in the real application's URL map. #}
+{# Every endpoint the templates pass to url_for(). The tests check each one exists. #}
 {% macro endpoint_names() -%}
 ["main.live", "main.upload", "main.events", "main.event_detail", "main.dashboard",
  "main.analytics", "main.alerts", "main.reviews", "models.list", "admin.config",
  "admin.users", "auth.login", "auth.logout", "main.event_audio"]
 {%- endmacro %}
 
-{# The table the browser-side code reads, so glyphs and labels cannot drift
-   between the server-rendered chip and a client-rendered one. #}
+{# Same glyphs and slugs for the browser-side code. #}
 {% macro presentation_payload() -%}
 {"severity": {
    "Informational": {"glyph": "◦", "slug": "informational"},

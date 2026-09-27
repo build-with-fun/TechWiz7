@@ -1,9 +1,7 @@
-"""Label-order contract of TuningProtocol._predictions.
+"""Label order in TuningProtocol._predictions.
 
-Regression for a real bug: predict_proba columns follow the estimator's own
-``classes_`` (alphabetical for sklearn), but the protocol indexed them positionally
-against ``class_names`` (config order). Every prediction was relabelled and whole
-candidate sweeps scored at chance level -- silently, with no error.
+Regression test: predict_proba columns are in classes_ order (alphabetical), but they were
+read in config order, so predictions got the wrong labels and scored at chance.
 """
 
 from __future__ import annotations
@@ -14,7 +12,7 @@ from sklearn.ensemble import RandomForestClassifier
 from python_models.tuning import TuningProtocol
 
 CONFIG_ORDER = [
-    "Machinery Fault",      # config/classes.json order, deliberately NOT alphabetical
+    "Machinery Fault",      # config order, not alphabetical
     "Glass Breaking",
     "Alarm or Siren",
     "Vehicle Horn",
@@ -27,7 +25,7 @@ def _dataset(alphabetical_labels: bool):
     n_per, width = 40, 6
     X, y, idx = [], [], []
     for i, name in enumerate(CONFIG_ORDER):
-        # separable clusters so a healthy score is a known constant
+        # separable clusters
         centre = np.full(width, float(i) * 10.0)
         X.append(centre + rng.normal(0, 0.1, (n_per, width)))
         y.extend([name] * n_per)
@@ -35,7 +33,7 @@ def _dataset(alphabetical_labels: bool):
     X = np.vstack(X)
     if alphabetical_labels:
         y = [str(cls) for cls in y]
-    # interleave so train/val both see every class (rows are currently grouped by class)
+    # interleave so train and val both get every class
     order = rng.permutation(len(y))
     return X[order], [y[i] for i in order], [idx[i] for i in order]
 
@@ -52,7 +50,7 @@ def _protocol(alphabetical_labels: bool) -> TuningProtocol:
         fit=_fit(0),
         predict_proba_of=_predict_proba,
         selection_metric="macro_f1",
-        critical_recall_floor=None,  # label-order test, not the floor check
+        critical_recall_floor=None,
     )
 
 
@@ -79,8 +77,7 @@ def _attach(protocol: TuningProtocol, alphabetical_labels: bool):
 
 
 def test_columns_are_resolved_through_the_estimators_classes():
-    """Scores come back in class_names order: argmax is resolved through the estimator's classes_.
-    """
+    """Scores come back in class_names order."""
     protocol = _attach(_protocol(alphabetical_labels=False), alphabetical_labels=False)
     selection = protocol.select(
         [("rf", {"_candidate": "unused"})],
@@ -98,7 +95,7 @@ def test_columns_are_resolved_through_the_estimators_classes():
 
 
 def test_alphabetical_class_list_still_scores_perfectly():
-    """The same dataset with an already-alphabetical class list must be unaffected."""
+    """An alphabetical class list works too."""
     protocol = _attach(_protocol(alphabetical_labels=True), alphabetical_labels=True)
     selection = protocol.select(
         [("rf", {"_candidate": "unused"})],
@@ -109,8 +106,7 @@ def test_alphabetical_class_list_still_scores_perfectly():
 
 
 def test_scrambled_estimates_fail_loudly_not_silently():
-    """If the mapping is ever wrong again, accuracy lands at chance and the test fails --
-    documenting what the bug looked like (0.25 acc with no error raised)."""
+    """A wrong mapping gives chance accuracy (0.25), which is what the bug looked like."""
     protocol = _attach(_protocol(alphabetical_labels=False), alphabetical_labels=False)
     fit = _fit(0)
     est = fit(protocol.X_train, protocol.y_train, {}, 0, None)

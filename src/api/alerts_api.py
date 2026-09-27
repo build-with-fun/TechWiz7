@@ -1,9 +1,7 @@
-"""Alert console API (FR liii-lvi): list, detail, history, acknowledge, dismiss, escalate.
+"""Alerts API (FR liii-lvi): list, detail, history, acknowledge, dismiss, escalate.
 
-Transitions are explicit: acknowledging does not resolve, dismissing records why
-(resolution_note, is_false_alarm), escalating records the new severity. Every transition is
-audited with before and after. Form posts get a redirect back to the console, JSON callers
-the JSON envelope; the rules are the same.
+Dismissing needs a reason and escalating needs a new severity. Every change is audited.
+Form posts are redirected back to the page; JSON requests get JSON.
 """
 
 from __future__ import annotations
@@ -31,7 +29,7 @@ _MAX_PAGE_SIZE = 200
 
 
 def _payload() -> dict:
-    """Read a write payload from JSON or a form post; both go through the same validation."""
+    """Request data from JSON or a form."""
     if request.is_json:
         body = request.get_json(silent=True)
         return body if isinstance(body, dict) else {}
@@ -39,7 +37,7 @@ def _payload() -> dict:
 
 
 def _wants_html() -> bool:
-    """True for the console's plain form posts: they should land back on the page."""
+    """True for plain form posts from the alerts page."""
     if request.is_json:
         return False
     accept = request.accept_mimetypes
@@ -129,7 +127,7 @@ def _audit_transition(
 @bp.get("/alerts")
 @capability_required("view_alerts")
 def list_alerts():
-    """FR liii: the filterable alert list. ``status``/``severity`` are validated."""
+    """FR liii: list alerts, filtered by ``status`` and ``severity``."""
     store = get_store()
     valid_severities = list(store.severity_scale())
     statuses = list(ALERT_STATUSES) + ["all"]
@@ -185,7 +183,7 @@ def list_alerts():
 @bp.get("/alerts/history")
 @capability_required("view_alerts")
 def alert_history():
-    """FR lvi: every past alert and its outcome -- acknowledged, dismissed, escalated."""
+    """FR lvi: past alerts and their outcome."""
     store = get_store()
     valid_severities = list(store.severity_scale())
     severities = [value for value in request.args.getlist("severity") if value]
@@ -203,7 +201,7 @@ def alert_history():
     with session_scope(current_app.config["SST_SESSION_FACTORY"]) as session:
         statement = (
             select(Alert)
-            # _alert_to_dict reads alert.event after the session closes, so load it now.
+            # Load alert.event before the session closes.
             .options(joinedload(Alert.event))
             .where(Alert.status != "Open")
             .order_by(Alert.created_at.desc(), Alert.id.desc())
@@ -244,14 +242,14 @@ def get_alert(alert_id: int):
 @bp.post("/alerts/<int:alert_id>/acknowledge")
 @capability_required("acknowledge_alerts")
 def acknowledge(alert_id: int):
-    """FR lv: acknowledge an open alert. Idempotent: re-acknowledging is a no-op."""
+    """FR lv: acknowledge an alert (doing it twice is fine)."""
     return _transition(alert_id, "acknowledge")
 
 
 @bp.post("/alerts/<int:alert_id>/dismiss")
 @capability_required("acknowledge_alerts")
 def dismiss(alert_id: int):
-    """FR lv: dismiss as a false alarm -- the reason is mandatory, and stored."""
+    """FR lv: dismiss as a false alarm. A reason is required."""
     body = _payload()
     reason = (body.get("reason") or body.get("note") or "").strip()
     if not reason:
@@ -267,7 +265,7 @@ def dismiss(alert_id: int):
 @bp.post("/alerts/<int:alert_id>/escalate")
 @capability_required("acknowledge_alerts")
 def escalate(alert_id: int):
-    """FR lvi: escalate -- the target severity must exist on the active scale."""
+    """FR lvi: escalate to a severity on the current scale."""
     store = get_store()
     valid_severities = list(store.severity_scale())
     body = _payload()
@@ -282,15 +280,13 @@ def escalate(alert_id: int):
 
 
 def _redirect_with_error(alert_id: int, error: ApiError):
-    """Send a failed form post back to the console with a flash message instead of a raw 409."""
+    """Redirect a failed form post back to the page with a flash message."""
     flash(f"Alert #{alert_id}: {error.message}", "error")
     return redirect(_back_href("main.alerts", status="Open"), code=303)
 
 
 def _transition(alert_id: int, action: str, **changes) -> "jsonify | redirect":
-    """Apply one transition with its audit row. Dismissed and Closed are final; anything else
-    may still be acknowledged, escalated or dismissed.
-    """
+    """Apply one status change and audit it. Dismissed and Closed are final."""
     if action not in {"acknowledge", "dismiss", "escalate"}:  # pragma: no cover
         raise ApiError("bad_request", f"Unknown alert action {action!r}.")
     now = utcnow()
@@ -312,7 +308,7 @@ def _transition(alert_id: int, action: str, **changes) -> "jsonify | redirect":
             if _wants_html():
                 return _redirect_with_error(alert.id, error)
             raise error
-        # Until 26 Sep only Open alerts changed; later actions returned 200 and did nothing.
+        # Any non-final status can change, not just Open.
         if action == "acknowledge":
             if alert.acknowledged_by_id is None:
                 alert.acknowledged_by_id = user.id

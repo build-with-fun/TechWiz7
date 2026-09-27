@@ -1,9 +1,7 @@
-"""The saved-model contract: no silent label drift and no silent feature drift.
+"""Saved model bundles: label order and feature width are checked.
 
-predict_proba columns follow the estimator's fitted order, so mapping them onto a
-differently ordered class list attaches every score to the wrong name; a changed feature
-extractor would be scored without error. save_bundle/load refuse both, and these tests keep
-those guards in place.
+A class list in the wrong order would put every score on the wrong name, and a changed
+feature extractor would still produce numbers. save_bundle/load catch both.
 """
 
 from __future__ import annotations
@@ -25,14 +23,14 @@ from src.inference.predictor import (
 )
 from src.inference.contract import ModelLoadError
 
-CLASSES = class_names()          # the 10 canonical names, in config order
+CLASSES = class_names()          # config order
 N_FEATURES = 24
 
 
-# Fixtures — a real sklearn estimator, because a stub cannot have real drift bugs
+# Fixtures (a real sklearn estimator)
 
 def _training_data(n_per_class: int = 12, seed: int = 7):
-    """Linearly separable-ish data so a real estimator behaves like a real estimator."""
+    """Roughly separable training data."""
     rng = np.random.default_rng(seed)
     X, y = [], []
     for i, name in enumerate(CLASSES):
@@ -56,7 +54,7 @@ def fitted_estimator():
 
 def feature_extractor_factory(width: int = N_FEATURES):
     def extract(preprocessed: PreprocessedAudio) -> np.ndarray:
-        # Deterministic, input-dependent, right width.
+        # Depends on the input, right width.
         seed = int(abs(float(np.asarray(preprocessed.samples).sum())) * 1e6) % (2**31)
         rng = np.random.default_rng(seed)
         return rng.standard_normal((1, width))
@@ -94,7 +92,7 @@ def build_bundle(estimator, *, class_names_override=None, n_features=N_FEATURES)
 # Round trip
 
 def test_save_bundle_then_load_reproduces_the_same_predictions(tmp_path, fitted_estimator):
-    """The round trip is the promise every training script relies on."""
+    """Save then load gives the same predictions."""
     save_bundle(
         fitted_estimator,
         tmp_path,
@@ -124,11 +122,7 @@ def test_save_bundle_then_load_reproduces_the_same_predictions(tmp_path, fitted_
 
 
 def test_saved_label_order_is_the_estimators_fitted_order(tmp_path, fitted_estimator):
-    """The stored order must be the order predict_proba's columns come back in.
-
-    Storing the config's class order instead is the exact bug that renames every
-    prediction, so this asserts the file agrees with `classes_`.
-    """
+    """The saved label order is the estimator's classes_ order."""
     save_bundle(
         fitted_estimator,
         tmp_path,
@@ -140,7 +134,7 @@ def test_saved_label_order_is_the_estimators_fitted_order(tmp_path, fitted_estim
 
 
 def test_load_reorders_when_the_json_order_differs_from_the_fitted_order(tmp_path, fitted_estimator):
-    """Same names in a different sidecar order: the scores must still carry the fitted names."""
+    """A reordered label file still maps scores to the right names."""
     save_bundle(
         fitted_estimator,
         tmp_path,
@@ -148,7 +142,7 @@ def test_load_reorders_when_the_json_order_differs_from_the_fitted_order(tmp_pat
         feature_version="mfcc-v1",
         feature_columns=[f"f{i}" for i in range(N_FEATURES)],
     )
-    # Scramble the sidecar's order, keeping the same set of names.
+    # Shuffle the label file.
     sidecar = tmp_path / "label_encoder.json"
     saved = json.loads(sidecar.read_text())["class_names"]
     sidecar.write_text(json.dumps({"class_names": list(reversed(saved))}))
@@ -166,10 +160,10 @@ def test_load_reorders_when_the_json_order_differs_from_the_fitted_order(tmp_pat
     assert reloaded.predict(source, PassthroughPreprocessor()).predicted_class == correct.predicted_class
 
 
-# Label drift — must raise, loudly, at load time
+# Label mismatch raises at load time
 
 def test_label_drift_raises_at_load(tmp_path, fitted_estimator):
-    """A model fitted on one class set, a sidecar naming another: refuse to serve it."""
+    """Different class sets in the model and the label file raise."""
     save_bundle(
         fitted_estimator,
         tmp_path,
@@ -201,7 +195,7 @@ def test_label_count_mismatch_raises_at_load(tmp_path, fitted_estimator):
 
 
 def test_the_error_message_names_both_class_lists(tmp_path, fitted_estimator):
-    """An operator woken at 3am needs to know WHICH list is wrong."""
+    """The error shows both class lists."""
     save_bundle(
         fitted_estimator, tmp_path, class_names=CLASSES,
         feature_version="v1", feature_columns=[f"f{i}" for i in range(N_FEATURES)],
@@ -215,7 +209,7 @@ def test_the_error_message_names_both_class_lists(tmp_path, fitted_estimator):
     assert "A" in message and "Gunshot" in message
 
 
-# Missing artefacts — refused, never guessed
+# Missing files
 
 def test_missing_model_file_raises(tmp_path):
     with pytest.raises(ModelLoadError, match="no saved model"):
@@ -241,10 +235,10 @@ def test_missing_feature_config_raises(tmp_path, fitted_estimator):
         PythonModelPredictor.load(tmp_path, feature_extractor_factory())
 
 
-# Feature drift — must raise at predict time
+# Feature width mismatch raises at predict time
 
 def test_feature_drift_raises_at_predict(fitted_estimator):
-    """A changed feature extractor must not silently score the wrong columns."""
+    """A wrong feature width raises."""
     bundle = build_bundle(fitted_estimator, n_features=N_FEATURES)
     predictor = PythonModelPredictor(bundle, feature_extractor_factory(width=N_FEATURES + 6))
 
@@ -268,7 +262,7 @@ def test_feature_drift_message_states_both_widths(fitted_estimator):
 
 
 def test_no_width_check_when_the_bundle_does_not_declare_one(fitted_estimator):
-    """An undeclared width cannot be checked; the code must not invent a limit."""
+    """No width check when the bundle doesn't declare one."""
     class WideEstimator:
         classes_ = np.asarray(CLASSES)
 
@@ -293,10 +287,10 @@ def test_no_width_check_when_the_bundle_does_not_declare_one(fitted_estimator):
     assert set(result.confidences) == set(CLASSES)
 
 
-# Honest output — no fabricated confidences
+# Output
 
 def test_a_model_without_predict_proba_reports_a_one_hot_not_a_fake_distribution():
-    """If the model only says a class, report that — do not manufacture a softmax."""
+    """A model without predict_proba gives a one-hot result."""
     class HardEstimator:
         classes_ = np.asarray(CLASSES)
         n_features_in_ = N_FEATURES
@@ -319,12 +313,12 @@ def test_a_model_without_predict_proba_reports_a_one_hot_not_a_fake_distribution
     assert result.predicted_class == CLASSES[3]
     assert result.confidence == 1.0
     assert sum(result.confidences.values()) == pytest.approx(1.0)
-    # Exactly one class non-zero: spread confidence would be invented information.
+    # Exactly one non-zero class.
     assert sum(1 for v in result.confidences.values() if v > 0) == 1
 
 
 def test_predictions_cover_every_class_and_sum_to_one(fitted_estimator):
-    """The UI, the comparison table and the TM independence rule all need the full row."""
+    """Every class has a confidence and they sum to 1."""
     predictor = PythonModelPredictor(build_bundle(fitted_estimator), feature_extractor_factory())
     result = predictor.predict(
         AudioSource.from_samples(np.ones(16000, dtype="float32"), 16000),
@@ -352,7 +346,7 @@ def test_rejected_audio_is_never_scored(fitted_estimator):
         )
 
 
-# The fingerprint — duplicate detection (FR lxxiii)
+# Fingerprint (FR lxxiii)
 
 def test_same_audio_gives_the_same_fingerprint_and_different_audio_does_not(tmp_path):
     from src.inference.contract import audio_fingerprint
@@ -365,7 +359,7 @@ def test_same_audio_gives_the_same_fingerprint_and_different_audio_does_not(tmp_
     assert a != c
 
 
-# describe() — the audit trail
+# describe()
 
 def test_describe_reports_everything_the_audit_trail_needs(tmp_path, fitted_estimator):
     save_bundle(

@@ -1,11 +1,10 @@
-{# Public product page at "/". Signed-in users never see it (they are sent to their home).
-   Every style lives in static/css/landing.css: the CSP allows no inline styles. Bar lengths
-   are SVG attributes, which the CSP permits. #}
+{# Public page at "/". Signed-in users are redirected to their home page.
+   Styles are in static/css/landing.css because the CSP blocks inline styles. #}
 {% import "_macros.html" as ui with context %}
 {% set py = metrics.python if metrics else none %}
 {% set tm = metrics.gtm if metrics else none %}
 {% set repo = "https://github.com/build-with-fun/TechWiz7" %}
-{# A rough amplitude outline per class, 0..1, drawn as a small waveform on each class tile. #}
+{# Rough amplitude shape per class (0..1) for the small waveform on each tile. #}
 {% set shapes = {
   "Machinery Fault":        [0.45,0.5,0.48,0.52,0.47,0.5,0.49,0.53,0.46,0.5,0.51,0.48,0.5,0.47,0.52,0.49],
   "Glass Breaking":         [0.1,0.95,0.3,0.8,0.15,0.7,0.9,0.2,0.6,0.35,0.5,0.15,0.3,0.1,0.2,0.08],
@@ -24,7 +23,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light">
-  <title>SonicSentinel AI — hear what matters</title>
+  <title>SonicSentinel AI · Hear what matters</title>
   <meta name="description" content="SonicSentinel AI listens to uploaded recordings and a consented microphone, classifies ten sound events with two independently trained models, and sends anything uncertain to a person.">
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo.svg') }}">
   <link rel="preload" href="{{ url_for('static', filename='fonts/geist-latin-wght-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
@@ -51,7 +50,7 @@
   </header>
 
   <main id="top">
-    {# ------------------------------------------------------------------ hero #}
+    {# Hero #}
     <section class="lp-hero" aria-labelledby="lp-title">
       <div class="lp-sky" aria-hidden="true"><span class="lp-cloud lp-cloud--a"></span><span class="lp-cloud lp-cloud--b"></span><span class="lp-cloud lp-cloud--c"></span><span class="lp-cloud lp-cloud--d"></span></div>
 
@@ -93,7 +92,7 @@
       </div>
     </section>
 
-    {# ------------------------------------------------------------ at a glance #}
+    {# At a glance #}
     <section class="lp-stats" aria-label="At a glance" data-reveal>
       <div><strong data-count-to="10">10</strong><span>sound classes, five of them critical</span></div>
       <div><strong data-count-to="2">2</strong><span>models trained separately, compared on every clip</span></div>
@@ -101,7 +100,7 @@
       <div><strong data-count-to="3">3</strong><span>matching windows in a row before a live alert</span></div>
     </section>
 
-    {# ---------------------------------------------------------------- console #}
+    {# Console #}
     <section class="lp-section lp-showcase" id="console" aria-labelledby="console-title">
       <div class="lp-wrap">
         <div class="lp-head lp-head--center" data-reveal>
@@ -157,7 +156,7 @@
       </div>
     </section>
 
-    {# ----------------------------------------------------------- how it works #}
+    {# How it works #}
     <section class="lp-section lp-section--tint" id="how" aria-labelledby="how-title">
       <div class="lp-wrap lp-split">
         <div class="lp-split__intro" data-reveal>
@@ -204,7 +203,7 @@
       </div>
     </section>
 
-    {# ---------------------------------------------------------- sound classes #}
+    {# Sound classes #}
     <section class="lp-section lp-dark" id="classes" aria-labelledby="classes-title">
       <div class="lp-wrap">
         <div class="lp-head" data-reveal>
@@ -229,7 +228,7 @@
       </div>
     </section>
 
-    {# ----------------------------------------------------------------- models #}
+    {# Models #}
     <section class="lp-section" id="models" aria-labelledby="models-title">
       <div class="lp-wrap lp-split lp-split--models">
         <div class="lp-split__intro" data-reveal>
@@ -270,7 +269,7 @@
       </div>
     </section>
 
-    {# ------------------------------------------------------------------ roles #}
+    {# Roles #}
     <section class="lp-section lp-section--tint" aria-labelledby="roles-title">
       <div class="lp-wrap">
         <div class="lp-head lp-head--center" data-reveal>
@@ -307,7 +306,7 @@
       </div>
     </section>
 
-    {# ------------------------------------------------------------------ final #}
+    {# Closing call to action #}
     <section class="lp-final" aria-labelledby="final-title" data-reveal>
       <div class="lp-sky" aria-hidden="true"><span class="lp-cloud lp-cloud--a"></span><span class="lp-cloud lp-cloud--b"></span></div>
       <h2 class="lp-h2" id="final-title">Try it with the evaluator account</h2>

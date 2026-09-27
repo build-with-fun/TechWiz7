@@ -23,8 +23,7 @@ def test_login_rejects_missing_csrf_token(tmp_path):
 
 
 def test_client_ip_ignores_forwarded_header_unless_a_proxy_is_trusted(tmp_path):
-    """A client-supplied X-Forwarded-For must not change the address used for per-IP
-    login limits; behind one trusted proxy, the entry that proxy appended is used."""
+    """X-Forwarded-For is ignored unless a proxy is trusted, then the proxy's entry is used."""
     from src.app import create_app
     from src.auth import client_ip
 

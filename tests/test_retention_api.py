@@ -1,4 +1,4 @@
-"""Retention preview and purge must describe and perform the same deletion."""
+"""Retention preview and purge agree on what gets deleted."""
 
 from datetime import timedelta
 

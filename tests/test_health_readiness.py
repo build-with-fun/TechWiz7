@@ -1,4 +1,4 @@
-"""Readiness must reflect whether a judge can actually submit audio."""
+"""Readiness reflects whether audio can actually be analysed."""
 
 from src.app import create_app
 

@@ -13,9 +13,8 @@ Typical use::
     .venv/bin/python database/init_db.py --register-model python \\
         --version 3.1.0 --artifact python_models/svm_mfcc_v3/model.joblib --activate
 
-Idempotent by default: running it twice changes nothing and says so. ``--reset`` is the only
-destructive path and refuses to run without ``--yes`` (or an interactive confirmation when a
-terminal is attached), because the database is the evidence for the whole submission.
+Running it twice changes nothing. ``--reset`` deletes everything and needs ``--yes`` (or a
+confirmation at the terminal).
 """
 
 from __future__ import annotations
@@ -63,12 +62,11 @@ SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
 # schema.sql
 
-HEADER = """-- SonicSentinel AI -- canonical database schema.
+HEADER = """-- SonicSentinel AI database schema.
 --
--- GENERATED from src/models.py. Do not hand-edit this file: change the models and run
+-- Generated from src/models.py; don't edit by hand. After changing the models run
 --   .venv/bin/python database/init_db.py --emit-schema
--- tests/test_database.py fails if this file and the ORM models disagree, so the two
--- definitions can never drift apart.
+-- tests/test_database.py checks that this file matches the models.
 --
 -- Dialect: SQLite 3. Datetimes are UTC, stored naive (no offset). See database/README.md.
 -- SRS FR lxxi-lxxii, FR lxxv, FR lxxvi, FR lxxx.
@@ -76,7 +74,7 @@ HEADER = """-- SonicSentinel AI -- canonical database schema.
 
 
 def emit_schema(target: Path = SCHEMA_PATH) -> str:
-    """Render ``schema.sql`` deterministically: stable table order, stable index order."""
+    """Write ``schema.sql`` with tables and indexes in a stable order."""
     dialect = create_engine_for(":memory:").dialect
     lines = [HEADER]
     for table in Base.metadata.sorted_tables:
@@ -130,7 +128,7 @@ def load_credentials(path: Path) -> dict:
 
 
 def seed_users(session, credentials: dict, *, verbose: bool = True) -> tuple[int, int]:
-    """Create any seed user that does not exist yet. Returns (created, skipped)."""
+    """Create missing seed users. Returns (created, skipped)."""
     created = skipped = 0
     for entry in credentials["users"]:
         existing = session.execute(
@@ -140,7 +138,7 @@ def seed_users(session, credentials: dict, *, verbose: bool = True) -> tuple[int
             skipped += 1
             if verbose:
                 print(f"  = user '{entry['username']}' already exists "
-                      f"({existing.role}) -- left untouched, password unchanged")
+                      f"({existing.role}), left as is")
             continue
         user = User(
             username=entry["username"],
@@ -170,11 +168,10 @@ def seed_users(session, credentials: dict, *, verbose: bool = True) -> tuple[int
 
 
 def discover_model_artifacts() -> list[dict]:
-    """Register any trained model that is actually on disk. Never invents a version.
+    """Register the trained models found on disk.
 
-    ``python_models/**/model_meta.json`` and ``gtm_model/metadata.json`` are the artifacts the
-    ML owners produce; if they are absent, the app reports the model as unavailable from
-    ``/api/health`` rather than pretending it works.
+    Looks for ``python_models/**/model_meta.json`` and ``gtm_model/metadata.json``. If they
+    are missing, /api/health reports the model as unavailable.
     """
     found: list[dict] = []
 
@@ -210,15 +207,12 @@ def discover_model_artifacts() -> list[dict]:
     gtm_dir = REPO_ROOT / "gtm_model"
     served_gtm_meta = gtm_dir / "metadata.json"
     seen_gtm_artifacts: set[Path] = set()
-    # gtm_model/metadata.json is the served export, so it sorts first -- exactly as
-    # python_models/best does on the python side. Without this, an archive dir sorts ahead of
-    # it alphabetically and the dashboard marks the model actually in service as "Superseded".
+    # The served export (gtm_model/metadata.json) sorts first, like python_models/best,
+    # otherwise an archive folder would come first and the live model shows as "Superseded".
     for meta in sorted(gtm_dir.glob("**/metadata.json"),
                        key=lambda path: (path != served_gtm_meta, str(path))):
-        # gtm_model/ is the served export and gtm_model/candidates/<name>/ holds the same
-        # export under its candidate name, plus earlier ones. Register each *artifact* once,
-        # preferring the served copy, so the served version is the row that ends up active
-        # instead of shadowing itself.
+        # gtm_model/candidates/ has a copy of the served export. Register each export once,
+        # preferring the served copy.
         if meta.resolve() in seen_gtm_artifacts:
             continue
         try:
@@ -238,11 +232,8 @@ def discover_model_artifacts() -> list[dict]:
                 )
             except (OSError, json.JSONDecodeError):
                 pass
-        # Must stay in sync with GtmModelPredictor.load (src/inference/gtm_predictor.py):
-        # the version is the export timeStamp, alnum-truncated to 16 chars and suffixed with
-        # -ew when windows are aggregated energy-weighted rather than loudest. A mismatch here
-        # means the metrics file's model_version never lines up with the registered row, and
-        # the dashboard reports the GTM model as unmeasured.
+        # Keep in sync with GtmModelPredictor.load: the export timestamp, alphanumeric, cut
+        # to 16 chars, plus -ew for energy-weighted windows.
         stamp = "".join(ch for ch in str(payload.get("timeStamp", ""))[:16] if ch.isalnum())
         suffix = ""
         if frontend_id is not None:
@@ -257,8 +248,7 @@ def discover_model_artifacts() -> list[dict]:
                           (f"gtm-{frontend_id}" if frontend_id else "0.0.0")))
         metrics = None
         measured_version = None
-        # Prefer the *test* split: that is the number the SRS comparison report is built on.
-        # Val metrics are only for model selection, so a candidate that has both keeps test.
+        # Prefer test metrics over validation ones.
         metrics_path = meta.parent / "gtm_metrics.json"
         if not metrics_path.exists():
             for cand in sorted(meta.parent.glob("gtm_val_metrics_*.json")):
@@ -279,13 +269,10 @@ def discover_model_artifacts() -> list[dict]:
                         "split", "n_clips", "accuracy", "macro_f1", "critical_macro_recall",
                         "frontend_verified", "protocol"
                     ) if key in measured}
-                    # a candidate's measurements identify the frontend, not the export; keep the
-                    # version it was measured against so the registry stays traceable
+                    # keep the version the metrics were measured against
                     if measured_version is not None:
                         metrics["measured_frontend_version"] = measured_version
-                # else: an unrelated metrics file (a different aggregation mode, or a different
-                # export) must not be attached to this version. Leave it unmeasured rather
-                # than reporting another model's numbers as its own.
+                # else: metrics belong to another export or mode; leave this one unmeasured.
             except (OSError, json.JSONDecodeError):
                 pass
         found.append(
@@ -331,10 +318,8 @@ def register_models(session, artifacts: list[dict], *, verbose: bool = True) -> 
                           "metrics", "trained_at", "dataset_manifest_hash"):
                 if spec.get(field) is not None:
                     setattr(exists, field, spec[field])
-            # The first artifact discovered per model family is the served one (see
-            # discover_model_artifacts: python_models/best sorts first). On a re-seed after a
-            # promotion, the pre-existing row *is* that row, so it has to become active and
-            # the previously served version has to step down.
+            # The first artifact per model is the served one. On a re-seed after a promotion,
+            # make it active and deactivate the old one.
             if spec["model_name"] not in active_seen:
                 active_seen.add(spec["model_name"])
                 for row in session.execute(select(ModelVersion).where(
@@ -450,7 +435,7 @@ def print_stats(engine) -> int:
             select(ModelVersion).order_by(ModelVersion.model_name, ModelVersion.version)
         ).scalars().all()
         if not rows:
-            print("  (none registered yet -- the ML owners have not published artifacts)")
+            print("  (none registered yet)")
         for row in rows:
             print(f"  {row.model_name:<8} v{row.version:<10} "
                   f"{'ACTIVE' if row.is_active else '      '}  {row.label or ''}")
@@ -483,8 +468,7 @@ def confirm_destructive(db_path: Path) -> bool:
 
 
 def reset_database(engine, db_path: Path) -> None:
-    """Drop everything and rebuild. FKs are disabled for the drop because SQLAlchemy emits
-    tables in dependency order and SQLite would otherwise refuse a parent drop."""
+    """Drop everything and rebuild (foreign keys are turned off for the drop)."""
     from sqlalchemy import text
 
     with engine.begin() as connection:
@@ -587,7 +571,7 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print("\nregistering trained models: none found yet.\n"
                       "  looking for python_models/**/model_meta.json and\n"
-                      "  gtm_model/**/metadata.json -- run again once the ML owners publish.\n"
+                      "  gtm_model/**/metadata.json; run again once they exist.\n"
                       "  the app boots without them and reports them unavailable in /api/health.")
 
             record_audit(

@@ -1,12 +1,10 @@
-"""The two models must stay independent (SRS integrity rules), tested three ways:
+"""The two models must stay independent (SRS integrity rules).
 
-1. Structural: the TM module cannot import the Python predictor, and no TM entry point
-   accepts a prediction, a confidence mapping or **kwargs.
-2. Behavioural: changing the Python model's output must leave the TM output bit-identical.
-3. Symmetric: the Python model cannot read the TM model either.
+1. The TM module doesn't import the Python predictor and takes no prediction as input.
+2. Changing the Python model's output doesn't change the TM output.
+3. The same holds the other way round.
 
-Also: an uploaded file and the same audio as a live window reach the same preprocessor and
-produce the same scores.
+Also checks that an upload and the same audio as a live window get the same preprocessing.
 """
 
 from __future__ import annotations
@@ -35,26 +33,22 @@ PREDICTOR_SOURCE = REPO_ROOT / "src" / "inference" / "predictor.py"
 CLASSES = class_names()
 
 
-# Test doubles — a GTM model that actually depends on its input, so "output unchanged"
-# means something. A constant stub would make the poisoned-input test pass trivially.
+# A fake TM model whose output depends on its input (a constant stub would prove nothing).
 
 class StubGtmModel:
-    """A deterministic, continuous function of the spectrogram, so a wav round trip does not flip
-    its answer.
-    """
+    """Output is a smooth function of the spectrogram."""
 
     def __init__(self, n_classes: int) -> None:
         self.n_classes = n_classes
         self.calls = 0
         self.last_input_sum = None
 
-    def predict(self, x, verbose=0):  # noqa: ARG002 - mirrors the Keras signature
+    def predict(self, x, verbose=0):  # noqa: ARG002 - Keras signature
         self.calls += 1
         arr = np.asarray(x, dtype="float64")
         self.last_input_sum = float(arr.sum())
 
-        # Per-band mean energy is a smooth, input-dependent summary: the same audio always
-        # gives the same vector, different audio gives a different one.
+        # Mean energy per band.
         flat = arr.reshape(arr.shape[0], -1) if arr.ndim >= 2 else arr.reshape(1, -1)
         per_band = flat.mean(axis=-1).ravel()
         profile = np.zeros(self.n_classes)
@@ -98,7 +92,7 @@ def make_audio(seconds: float = 1.0, sr: int = 16000, freq: float = 440.0, seed:
 
 
 class RecordingPreprocessor:
-    """The single preprocessing path. Records every call so tests can prove who saw what."""
+    """Preprocessor that records every call."""
 
     def __init__(self, sample_rate: int = 16000) -> None:
         self.sample_rate = sample_rate
@@ -127,7 +121,7 @@ class RecordingPreprocessor:
 
 
 def python_result_for(class_name: str, confidence: float) -> PredictionResult:
-    """A plausible Python-model output. Only ever used to try to influence the GTM path."""
+    """A fake Python result, used to try to influence the TM path."""
     confidences = {name: (1.0 - confidence) / (len(CLASSES) - 1) for name in CLASSES}
     confidences[class_name] = confidence
     return PredictionResult(
@@ -142,7 +136,7 @@ def python_result_for(class_name: str, confidence: float) -> PredictionResult:
     )
 
 
-# 1. STRUCTURAL — what the GTM code is even able to name
+# 1. Imports and signatures
 
 def _imported_module_names(path: Path) -> set[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -158,7 +152,7 @@ def _imported_module_names(path: Path) -> set[str]:
 
 
 def test_gtm_module_cannot_name_the_python_predictor():
-    """No import of the Python predictor or of the code that compares the two models."""
+    """The TM module doesn't import the Python predictor or the comparison code."""
     imported = _imported_module_names(GTM_SOURCE)
     forbidden = {
         token
@@ -172,7 +166,7 @@ def test_gtm_module_cannot_name_the_python_predictor():
 
 
 def test_python_predictor_cannot_name_the_gtm_model():
-    """The reverse direction, so independence is not a one-way hierarchy."""
+    """And the other way round."""
     imported = _imported_module_names(PREDICTOR_SOURCE)
     forbidden = {t for t in imported if "gtm" in t}
     assert forbidden == set(), (
@@ -181,16 +175,11 @@ def test_python_predictor_cannot_name_the_gtm_model():
 
 
 def test_only_the_comparison_layer_sees_both_models():
-    """consistency.py is the one place allowed to hold two results at once.
-
-    That concentration is deliberate: it means the SRS comparison logic can be audited
-    in a single file, and neither model can secretly consult the other.
-    """
+    """Only consistency.py handles both results."""
     consistency = REPO_ROOT / "src" / "inference" / "consistency.py"
     imported = _imported_module_names(consistency)
     assert any("predictor" in t or "gtm" in t for t in imported) is False, (
-        "consistency.py should depend only on the contract, not on either predictor — "
-        "it must be testable with hand-built results."
+        "consistency.py should depend only on the contract, not on either predictor."
     )
 
 
@@ -199,7 +188,7 @@ GTM_ENTRY_POINTS = ["predict", "predict_from_preprocessed", "_select_window"]
 
 @pytest.mark.parametrize("method_name", GTM_ENTRY_POINTS)
 def test_no_gtm_entry_point_accepts_a_prediction(method_name):
-    """Signature-level check: nothing on the GTM path can be handed the Python opinion."""
+    """No TM function accepts a prediction."""
     method = getattr(GtmModelPredictor, method_name)
     params = inspect.signature(method).parameters
 
@@ -222,15 +211,15 @@ def test_no_gtm_entry_point_accepts_a_prediction(method_name):
 
 
 def test_gtm_predict_arguments_are_audio_only():
-    """The two positional arguments are the audio and the shared preprocessor."""
+    """TM predict takes the audio and the preprocessor only."""
     params = list(inspect.signature(GtmModelPredictor.predict).parameters.values())
     assert [p.name for p in params] == ["self", "source", "preprocessor"]
 
 
-# 2. BEHAVIOURAL — the poisoned-input proof
+# 2. Behaviour
 
 def test_gtm_output_is_immutable_to_the_python_models_opinion(monkeypatch):
-    """Change the Python model's answer completely; the GTM answer must not move."""
+    """Changing the Python answer doesn't change the TM answer."""
     gtm = make_gtm_predictor()
     preprocessor = RecordingPreprocessor()
     source = AudioSource.from_samples(make_audio(seconds=1.0, freq=440.0), 16000)
@@ -244,8 +233,7 @@ def test_gtm_output_is_immutable_to_the_python_models_opinion(monkeypatch):
     ]
 
     for poisoned_result in poison:
-        # Every route the Python opinion could plausibly travel: a module global on the
-        # package, and an attribute on the running predictor.
+        # Plant the Python result as a module global and on the predictor.
         monkeypatch.setattr(
             sys.modules["src.inference"], "last_result", poisoned_result, raising=False
         )
@@ -260,8 +248,7 @@ def test_gtm_output_is_immutable_to_the_python_models_opinion(monkeypatch):
         assert replayed.predicted_class == baseline.predicted_class
         assert replayed.confidence == baseline.confidence
 
-    # Nothing beyond the two attributes the test itself planted. A random plant is
-    # necessarily visible; what matters is that predict() neither read it nor kept one.
+    # Only the attributes we planted ourselves.
     planted = {"last_result"}
     leaked = [
         name
@@ -274,14 +261,14 @@ def test_gtm_output_is_immutable_to_the_python_models_opinion(monkeypatch):
         "what it read"
     )
 
-    # A predictor that never saw a planted value is the honest control.
+    # Compare with a clean predictor.
     fresh = make_gtm_predictor()
     fresh.predict(source, preprocessor)
     assert not any(isinstance(v, PredictionResult) for v in vars(fresh).values())
 
 
 def test_gtm_output_does_change_when_the_audio_changes():
-    """The control. Without this, the test above would pass on a constant model."""
+    """Control: different audio does change the TM output."""
     gtm = make_gtm_predictor()
     preprocessor = RecordingPreprocessor()
 
@@ -294,7 +281,7 @@ def test_gtm_output_does_change_when_the_audio_changes():
 
 
 def test_python_predictor_output_is_immutable_to_the_gtm_opinion(tmp_path):
-    """The reverse poisoning: the GTM answer must not steer the Python model."""
+    """The TM answer doesn't affect the Python model."""
     class FixedEstimator:
         def __init__(self) -> None:
             self.classes_ = np.asarray(CLASSES)
@@ -326,7 +313,7 @@ def test_python_predictor_output_is_immutable_to_the_gtm_opinion(tmp_path):
     baseline = python_model.predict(source, preprocessor)
     gtm_opinion = python_result_for("Gunshot", 0.97)
 
-    # Even with a GTM result planted everywhere reachable, the Python path must not read it.
+    # A planted TM result doesn't change the Python output.
     sys.modules["src.inference"].gtm_result = gtm_opinion
     python_model.gtm_result = gtm_opinion
     replayed = python_model.predict(source, preprocessor)
@@ -335,15 +322,10 @@ def test_python_predictor_output_is_immutable_to_the_gtm_opinion(tmp_path):
     sys.modules["src.inference"].__dict__.pop("gtm_result", None)
 
 
-# 3. The shared preprocessing path — both input modes
+# 3. Shared preprocessing for both input modes
 
 def test_upload_and_live_window_reach_the_same_preprocessor(tmp_path):
-    """A file and the same audio in memory must go through one preprocessing path.
-
-    The SRS makes the live path and the upload path separate features and the natural
-    implementation drift is for them to grow their own resampling. Then a clip that
-    scores 0.95 on upload scores 0.6 live, and nobody can say which is right.
-    """
+    """A file and the same audio in memory go through the same preprocessor."""
     sr = 16000
     samples = make_audio(seconds=1.0, sr=sr)
     clip_path = tmp_path / "clip.wav"
@@ -362,15 +344,13 @@ def test_upload_and_live_window_reach_the_same_preprocessor(tmp_path):
     )
 
     assert len(preprocessor.calls) == 2
-    # instances_seen holds ids as ints — compare the values, not id-of-int.
+    # instances_seen holds ids as ints.
     assert set(preprocessor.instances_seen) == {id(preprocessor)}, (
         "the two input modes reached different preprocessor objects"
     )
     assert [c.origin for c in preprocessor.calls] == ["upload", "live"]
 
-    # The direct evidence that the two doors lead to one room: the spectrograms handed to
-    # the model are the same array up to 16-bit quantisation noise. This is continuous, so
-    # it measures the pipeline rather than the model's sensitivity.
+    # The spectrograms match up to 16-bit quantisation noise.
     from src.inference.gtm_predictor import compute_spectrogram
 
     upload_pre = preprocessor(AudioSource.from_path(clip_path, origin="upload"))
@@ -385,22 +365,22 @@ def test_upload_and_live_window_reach_the_same_preprocessor(tmp_path):
     scale = float(np.max(np.abs(live_spec))) or 1.0
     assert max_delta / scale < 0.01, (
         f"the two input modes produced spectrograms differing by {max_delta / scale:.3%} "
-        "of full scale — the paths have diverged"
+        "of full scale; the two paths have diverged"
     )
 
-    # And the downstream decision agrees.
+    # Same decision.
     assert upload_result.predicted_class == live_result.predicted_class
     for name in CLASSES:
         assert abs(upload_result.confidences[name] - live_result.confidences[name]) < 0.05
 
-    # Origin is carried through honestly rather than being silently normalised away.
+    # The origin is kept.
     assert upload_result.source_origin == "upload"
     assert live_result.source_origin == "live"
     assert upload_result.to_dict()["source_origin"] == "upload"
 
 
 def test_both_input_modes_are_rejected_by_the_same_gate():
-    """A rejected clip must be rejected whichever door it came in through."""
+    """Bad audio is rejected the same way in both modes."""
     class RejectingPreprocessor(RecordingPreprocessor):
         def __call__(self, source: AudioSource) -> PreprocessedAudio:
             result = super().__call__(source)
@@ -418,14 +398,10 @@ def test_both_input_modes_are_rejected_by_the_same_gate():
             gtm.predict(source, preprocessor)
 
 
-# 4. Import hygiene — the web app must boot without TensorFlow
+# 4. The web app starts without TensorFlow
 
 def test_inference_package_imports_without_tensorflow():
-    """The app must start and REPORT a broken GTM model, not refuse to start.
-
-    A single upload endpoint should not be able to take down the dashboard, the
-    manual-review queue and the event log.
-    """
+    """src.inference imports without TensorFlow, so a broken TM model doesn't stop the app."""
     import importlib
 
     for module_name in sorted(
@@ -448,7 +424,7 @@ def test_inference_package_imports_without_tensorflow():
 
 
 class BandModel:
-    """Batch-aware fake: class 0 when the lower mel half is louder, class 1 otherwise."""
+    """Fake model: class 0 if the lower mel half is louder, else class 1."""
 
     def predict(self, x, verbose=0):
         x = np.asarray(x)
@@ -479,11 +455,11 @@ def _predict_with(aggregation: str):
 def test_loudest_window_mode_scores_one_window():
     result = _predict_with("loudest")
     assert result.extra["windows_scored"] == 1
-    assert result.predicted_class == CLASSES[0]        # the loudest second is the 440 Hz part
+    assert result.predicted_class == CLASSES[0]        # loudest second is 440 Hz
 
 
 def test_energy_weighted_mode_scores_every_window():
     result = _predict_with("energy_weighted")
     assert result.extra["windows_scored"] == 5         # 3 s at half-second hops
-    assert result.predicted_class == CLASSES[1]        # two seconds of 3 kHz outweigh one of 440 Hz
+    assert result.predicted_class == CLASSES[1]        # 2 s of 3 kHz beats 1 s of 440 Hz
     assert abs(sum(result.confidences.values()) - 1.0) < 1e-6

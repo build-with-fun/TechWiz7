@@ -1,19 +1,14 @@
-"""Write augmented copies of TRAINING recordings, with lineage, never counted as originals.
+"""Write augmented copies of training recordings.
 
     python -m augmentation.augment_dataset --copies 2          # ~4,200 files, ~10 min
 
-Rules (SRS "Hint" section and FR xix):
+Only train-split rows are used. Each copy gets the ID ``<parent>-A<n>``, is marked as
+augmented with its parent ID, and records its recipe and seed so ``regenerate(row)`` can
+rebuild it exactly (SRS FR xix).
 
-* only rows with ``dataset_split == train`` are read, and each copy inherits that split;
-* every copy gets its own ID ``<parent>-A<n>``, ``original_or_augmented=augmented`` and
-  ``parent_audio_id=<parent>``, so the manifest can never count it as an original;
-* the recipe name and the integer seed are recorded, so any single copy can be rebuilt
-  bit-for-bit with ``regenerate(row)``.
-
-Copies are written as 16 kHz PCM WAV under ``audio_dataset/augmented/`` (ignored by Git
-like the originals) and listed in ``audio_dataset/manifests/augmented_rows.csv``.
-The noise recipe mixes in a real Background Noise *training* clip when one is available,
-because synthetic pink noise alone is easier to ignore than a real street or HVAC bed.
+Copies go to ``audio_dataset/augmented/`` as 16 kHz WAV (not in Git) and are listed in
+``audio_dataset/manifests/augmented_rows.csv``. The noise recipe uses a real Background
+Noise training clip when there is one.
 """
 
 from __future__ import annotations
@@ -49,8 +44,7 @@ def load_mono(path: Path, rate: int = RATE) -> np.ndarray:
 
 
 def seed_for(parent: str, copy: int) -> int:
-    # Derived from the ID rather than a running counter, so adding or removing rows
-    # elsewhere in the manifest does not change any existing copy.
+    # Seed from the ID, so other manifest changes don't affect existing copies.
     return int(hashlib.sha256(f"{parent}:{copy}".encode()).hexdigest()[:8], 16)
 
 
@@ -100,8 +94,7 @@ def main() -> None:
         for copy in range(1, args.copies + 1):
             seed = seed_for(row["audio_id"], copy)
             recipe = recipes[seed % len(recipes)]
-            # Background Noise copies with added noise are still background noise, but
-            # a noise-on-noise copy teaches nothing, so give those a different recipe.
+            # Adding noise to Background Noise is pointless; use another recipe.
             if recipe == "noise" and row["class_label"] == "Background Noise":
                 recipe = "reverb"
             out = augment_one(y, recipe, seed, bank)

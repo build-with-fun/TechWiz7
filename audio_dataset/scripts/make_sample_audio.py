@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
-"""Regenerate sample_audio/ (SRS deliverable: permitted sample audio).
-
-One test-split clip per class + failure-path clips (silence, quiet, clipped, invalid).
-Test-split provenance means no sample was ever seen in training.
+"""Regenerate sample_audio/: one test-split clip per class plus clips that should fail
+(silence, quiet, clipped, invalid).
 """
 from __future__ import annotations
 import shutil
@@ -37,7 +35,7 @@ def main() -> int:
                            "dataset_split": r["dataset_split"], "source": r["source"],
                            "licence": r["licence"], "author": r["author"],
                            "source_url": r["source_url"]})
-    # Record each sample's source, so its licence and test-split origin can be checked.
+    # Record where each sample came from.
     with (OUT / "SOURCES.csv").open("w", newline="", encoding="utf-8") as fh:
         writer = csv.DictWriter(fh, fieldnames=list(provenance[0]))
         writer.writeheader()

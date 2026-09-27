@@ -1,14 +1,8 @@
 #!/usr/bin/env python3
-"""Regenerate corpus_statistics.json from the *frozen* manifest.
+"""Regenerate corpus_statistics.json from the frozen manifest.
 
-`assemble_manifest.py` merges per-source row CSVs and emits both manifest.csv and
-corpus_statistics.json in one pass. Its DEFAULT_SOURCES point at intermediate row
-files that are no longer kept in the tree, so re-running the full assembly is not
-an option this late: the manifest is frozen and must not change.
-
-This script recomputes the statistics deliverable from the frozen manifest instead.
-It reads manifest.csv, runs the same `statistics()` the assembler uses, and writes
-corpus_statistics.json with the manifest's real sha256.
+assemble_manifest.py can't be re-run (its default sources are gone and the manifest must
+not change), so this reads manifest.csv and runs the same statistics() on it.
 
 Usage:
     .venv/bin/python audio_dataset/scripts/regen_corpus_stats.py [--check]
@@ -28,8 +22,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
-# Import the canonical statistics() so the numbers can never drift from the
-# assembler's own definition.
+# Same statistics() as the assembler.
 from audio_dataset.scripts.assemble_manifest import (  # noqa: E402
     statistics,
     load_classes,
@@ -59,10 +52,10 @@ def main(argv: list[str] | None = None) -> int:
     stats = statistics(rows, classes)
     digest = hashlib.sha256(MANIFEST.read_bytes()).hexdigest()
     stats["manifest_sha256"] = digest
-    # Recomputed from the frozen manifest, not from the assembler's row sources.
+    # From the manifest, not the row sources.
     stats["generated_by"] = "audio_dataset/scripts/regen_corpus_stats.py"
 
-    # Integrity check: the stats must describe exactly the manifest they name.
+    # The stats must match the manifest they name.
     totals = stats["totals"]
     print(f"manifest: {MANIFEST.name}  sha256 {digest[:16]}...")
     print(f"rows={totals['rows']} originals={totals['originals']} "

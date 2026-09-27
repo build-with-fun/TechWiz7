@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-"""Generate the 300 "Person Asking for Help" originals with offline TTS (pyttsx3/espeak; no
-generative-AI API).
+"""Generate the 300 "Person Asking for Help" clips with offline TTS (pyttsx3/espeak).
 
-Only the five allowed phrases from config/classes.json are spoken, in wording and intensity
-variants. Voice, rate and pitch vary per clip, and a seeded post-chain adds telephone band,
-echo, reverb, a background bed at a seeded SNR, distance and mic colouring. Same seed, same
-bytes; dataset_split is left blank.
+Speaks the five allowed phrases from config/classes.json in several variants, with
+different voices, rates and pitches. A seeded effects chain adds telephone band, echo,
+reverb, background noise, distance and mic colouring. Same seed, same output.
 
     python audio_dataset/scripts/generate_help_clips.py --check
     python audio_dataset/scripts/generate_help_clips.py --limit 5     # smoke
@@ -31,12 +29,12 @@ CLASS_LABEL = "Person Asking for Help"
 CLASS_CODE = "HAL"
 SLUG = "person_asking_for_help"
 
-#: ids continue after the acquired (real) range that starts at 0501
+# ids continue after the real clips (0501 onwards)
 ID_START = 501
 TARGET = 300
 MASTER_SEED = 20260923
 
-LICENCE = "CC0-1.0"                       # own generated work -> public domain
+LICENCE = "CC0-1.0"                       # our own generated audio
 SOURCE_TAG = "procedural_synthesis:audio_dataset/scripts/generate_help_clips.py"
 AUTHOR_TAG = "sonicsentinel procedural synthesis (pyttsx3 TTS, generate_help_clips.py)"
 DATE_FETCHED = "2026-09-24"
@@ -72,7 +70,7 @@ PHRASE_VARIANTS: list[tuple[str, str]] = [
     ("Emergency! Help me!", "desperate"),
     ("Emergency. Please help me.", "pleading"),
 ]
-# 24 distinct spoken texts >= the 20-variant requirement.
+# 24 different texts (at least 20 required).
 
 FROZEN_COLUMNS = [
     "audio_id", "filename", "class_label", "source", "source_url", "licence", "author",
@@ -81,7 +79,7 @@ FROZEN_COLUMNS = [
     "segment_start_sec", "segment_end_sec", "sha256", "dataset_split",
 ]
 
-# extra telemetry columns (preserved by the assembler / split builder)
+# extra columns
 EXTRA_COLUMNS = [
     "seed", "audio_provenance", "sim_environment", "sim_distance_m", "sim_intensity",
     "sim_interference", "voice_name", "speech_rate_wpm", "pitch_hz", "post_chain",
@@ -111,7 +109,7 @@ DISTANCE_BANDS = {
     "mid_3-15m": "medium",
     "far_20-60m": "far",
 }
-#: numeric bounds for simulation (manifest gets the enum value above)
+# numeric bounds for simulation (manifest gets the enum value above)
 DISTANCE_RANGE = {
     "near": (0.5, 2.0),
     "medium": (3.0, 15.0),
@@ -127,7 +125,7 @@ def seed_for(audio_id: str, master_seed: int = MASTER_SEED) -> int:
     return int(digest[:8], 16)
 
 
-# DSP helpers (same primitives/policy as data/generate_corpus.py)
+# DSP helpers (same as data/generate_corpus.py)
 def _norm(x: np.ndarray) -> np.ndarray:
     peak = float(np.max(np.abs(x))) if x.size else 0.0
     return x / peak if peak > 1e-12 else x
@@ -194,7 +192,7 @@ def reverb(x: np.ndarray, sr: int, rt60: float, wet: float, rng: np.random.Gener
 
 
 def post_chain(y: np.ndarray, sr: int, rng: np.random.Generator, chain: str) -> np.ndarray:
-    """Per-clip rendering chain chosen by the seeded RNG."""
+    """Random effects chain for one clip."""
     if chain == "clean":
         return y
     if chain == "telephone":
@@ -252,7 +250,7 @@ def render_tts(text: str, voice_uri: str, rate: int, pitch_hz: int, out_path: Pa
 
 # Clip plan
 def clip_plan(rng: np.random.Generator, n: int) -> list[dict]:
-    """Deterministic per-clip plan: phrase, voice, rate, pitch, post chain."""
+    """Per-clip plan: phrase, voice, rate, pitch, effects."""
     import pyttsx3
     voices = [v for v in pyttsx3.init().getProperty("voices")
               if "english" in (v.name or "").lower() or "en" in (v.id or "").lower()]
@@ -271,7 +269,7 @@ def clip_plan(rng: np.random.Generator, n: int) -> list[dict]:
             "rate": int(rng.integers(110, 190)),          # words per minute
             "pitch": int(rng.integers(30, 170)),           # espeak 0..200 scale
             "env": env,
-            "dist_band": dist,              # already the frozen enum value
+            "dist_band": dist,
             "dist_m": float(rng.uniform(*DISTANCE_RANGE[dist])),
             "device": str(rng.choice(list(DEVICES))),
             "intensity": str(rng.choice(list(INTENSITIES), p=[0.25, 0.35, 0.25, 0.15])),
@@ -285,7 +283,7 @@ def clip_plan(rng: np.random.Generator, n: int) -> list[dict]:
 
 
 def build_clip(plan: dict, rng: np.random.Generator, wav_out: Path) -> tuple[float, int, int]:
-    """Render TTS, apply post chain + channel simulation; write WAV. Returns (dur, sr, ch)."""
+    """Render TTS, apply effects and write the WAV. Returns (dur, sr, ch)."""
     tmp = Path(tempfile.mkdtemp(prefix="ss_help_")) / "raw.wav"
     mono, sr = render_tts(plan["text"], plan["voice_uri"], plan["rate"],
                           plan["pitch"], tmp, sr_target=22050)
@@ -301,7 +299,7 @@ def build_clip(plan: dict, rng: np.random.Generator, wav_out: Path) -> tuple[flo
         pad = np.zeros(int(0.6 * sr) - len(mono))
         mono = np.concatenate([mono, pad])
 
-    # intensity + post chain + mic + distance (order mirrors simulate_channel)
+    # intensity, effects, mic, distance (same order as simulate_channel)
     lo, hi = INTENSITIES[plan["intensity"]]
     y = _norm(mono) * float(rng.uniform(lo, hi))
     y = post_chain(y, sr, rng, plan["chain"])
@@ -317,7 +315,7 @@ def build_clip(plan: dict, rng: np.random.Generator, wav_out: Path) -> tuple[flo
     y *= (1.0 / d) ** 0.85
     air_cut = float(np.clip(19000.0 / (1.0 + d / 6.0), 1800.0, 19000.0))
     y = lowpass(y, sr, air_cut, order=2)
-    # background bed (interference) at the drawn SNR
+    # background noise at the chosen SNR
     sig_rms = _rms(y) + 1e-9
     bed = 0.5 * lowpass(pink_noise(len(y), rng), sr, 800) \
         + 0.3 * bandpass(pink_noise(len(y), rng), sr, 1000, 4000)
@@ -325,17 +323,16 @@ def build_clip(plan: dict, rng: np.random.Generator, wav_out: Path) -> tuple[flo
     # mic self-noise then gain staging
     y = y + (10 ** (floor_db / 20.0)) * rng.standard_normal(len(y))
     y = y * float(rng.uniform(*RECORDER_GAIN))
-    # Distance attenuation can push far clips under the -50 dBFS silence gate; lift the whole mix to
-    # a floor (SNR is unchanged).
+    # Far clips can fall under the -50 dBFS silence gate; raise the whole mix.
     rms_after = _rms(y)
-    target_floor = 0.02  # -34 dBFS, comfortably above the -50 dBFS gate
+    target_floor = 0.02  # -34 dBFS
     if rms_after < target_floor:
         y = y * (target_floor / max(rms_after, 1e-9))
     if float(np.max(np.abs(y))) > 0.95:
         y = np.tanh(y) * 0.97
     y = np.clip(y, -1.0, 1.0)
 
-    # resample to 16 kHz mono (the corpus's dominant format)
+    # resample to 16 kHz mono
     y16 = signal_resample(y, sr, 16000)
     wav_out = OUT_DIR / f"{plan['audio_id']}.wav"
     wav_out.parent.mkdir(parents=True, exist_ok=True)
@@ -391,7 +388,7 @@ def main(argv=None) -> int:
     for plan, num in zip(plans, todo):
         audio_id = f"SS-{CLASS_CODE}-{num:04d}"
         plan["audio_id"] = audio_id
-        # per-clip RNG seeded by id -> re-runs regenerate the same condition set
+        # seed per clip id so re-runs are identical
         rng = np.random.default_rng(seed_for(audio_id, args.seed))
         dur, sr, ch = build_clip(plan, rng, None)
         rel = f"synthetic/{SLUG}/{audio_id}.wav"
@@ -416,7 +413,7 @@ def main(argv=None) -> int:
             "segment_start_sec": "",
             "segment_end_sec": "",
             "sha256": digest,
-            "dataset_split": "",  # build_split.py is the only writer
+            "dataset_split": "",  # set by build_split.py
             "seed": seed_for(audio_id, args.seed),
             "audio_provenance": "synthetic",
             "sim_environment": plan["env"],

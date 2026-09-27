@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-"""One-off repair (already applied) for an audio_id collision between acquisition batches.
+"""One-off fix (already applied) for an audio_id collision between download batches.
 
-``from_fsd_dev`` seeded ids from ID_START instead of the highest id on disk, re-issued
-SS-<CODE>-0501.. and overwrote the files of earlier batches: 90 rows named a file whose bytes
-belonged to another clip. For each affected id this restores the original bytes from their
-source, moves the dev clip to a new id, updates both rows from the bytes and adds a note.
-Nothing is deleted.
+``from_fsd_dev`` started numbering at ID_START instead of the highest id on disk and
+overwrote 90 earlier files. This restores each original from its source, moves the dev
+clip to a new id and updates both rows. Nothing is deleted.
 """
 from __future__ import annotations
 
@@ -97,19 +95,19 @@ def main() -> int:
     for audio_id, group in sorted(collided.items()):
         code = audio_id.split("-")[1]
         slug = slug_by_code[code]
-        # Each dev write overwrote the last, so the file on disk is the last dev row in the group.
+        # The file on disk is the last dev row written.
         on_disk = next((r for r in reversed(group)
                         if r["fetch_batch"] == "fsd50k_dev_topup_v1"), group[-1])
         victims = [r for r in group if r is not on_disk]
 
-        # highest-numbered victim determines the new id for the on-disk clip
+        # new id for the on-disk clip
         bump = max(int(r["audio_id"].rsplit("-", 1)[1]) for r in victims)
         max_num[code] = max(max_num[code], bump)
         new_num = max_num[code] + 1
         max_num[code] = new_num
         new_id = f"SS-{code}-{new_num:04d}"
 
-        # 1. every victim's bytes, from its own source
+        # 1. get each overwritten clip back from its source
         restored: list[tuple[dict, bytes, tuple]] = []
         ok = True
         for v in victims:
@@ -127,7 +125,7 @@ def main() -> int:
         if not ok:
             continue
 
-        # 2. keep the on-disk dev bytes safe, then restore the first victim's content
+        # 2. save the dev clip, then restore the first overwritten clip
         first_v, first_blob, first_meta = restored[0]
         dst = AD / first_v["filename"]
         dev_bytes = dst.read_bytes()
@@ -136,7 +134,7 @@ def main() -> int:
             fh.write(first_blob)
         os.replace(tmpf, dst)
 
-        # extra victims (3rd row for glass ids stolen twice): new ids too
+        # clips overwritten twice get new ids too
         for extra_v, extra_blob, extra_m in restored[1:]:
             max_num[code] += 1
             extra_id = f"SS-{code}-{max_num[code]:04d}"
@@ -148,7 +146,7 @@ def main() -> int:
             extra_v["notes"] = NOTES
             repaired += 1
 
-        # 3. the on-disk (dev) clip keeps its bytes under the new id
+        # 3. the dev clip moves to the new id
         on_disk["audio_id"] = new_id
         on_disk["filename"] = f"originals/{slug}/{new_id}.wav"
         fd, tmpf = tempfile.mkstemp(dir=(AD / on_disk["filename"]).parent)
@@ -156,14 +154,14 @@ def main() -> int:
             fh.write(dev_bytes)
         os.replace(tmpf, AD / on_disk["filename"])
 
-        # 4. victims' rows point at the restored bytes again
+        # 4. rows point at the restored files again
         first_v["notes"] = NOTES
         repaired += 1
 
         print(f"  {audio_id}: victim restored, dev clip -> {new_id}")
 
     tmp.unlink(missing_ok=True)
-    # nothing to do for rows whose ids were fine
+    # rows with fine ids are left alone
     with ACQ.open("w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=cols, extrasaction="ignore")
         w.writeheader()

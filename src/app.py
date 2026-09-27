@@ -1,11 +1,8 @@
-"""The application factory.
+"""Flask application factory.
 
-Settings come from files (config/auth.json for sessions, lockout, rate limits and headers;
-config/ and alert_rules/ for thresholds and rules), so an edit takes effect without code
-changes (SRS 1.8 rule 5). The app starts even when a model is missing: /api/health says
-why, and analysis requests get a 503 with a readable message. The pipeline, database and
-predictors can be injected, which is how the tests run the whole HTTP surface. Every
-response carries X-Request-Id.
+Settings come from config/auth.json, config/ and alert_rules/. The app still starts when a
+model is missing: /api/health explains why and analysis requests return 503. Tests can
+inject the pipeline, database and predictors.
 """
 
 from __future__ import annotations
@@ -37,7 +34,7 @@ logger = logging.getLogger("sonicsentinel.app")
 APP_NAME = "SonicSentinel AI"
 APP_VERSION = "1.0.0"
 
-#: The SRS 1.10 folder list, checked at startup and reported by /api/health.
+# SRS 1.10 folders, checked at start-up and shown in /api/health.
 REQUIRED_DATA_FOLDERS: tuple[str, ...] = (
     "config",
     "alert_rules",
@@ -56,7 +53,7 @@ DEFAULT_ALERT_RULES_DIR = "alert_rules"
 
 
 def _configure_logging(app: Flask) -> None:
-    """One log format including the request id, so a failure can be matched to what the user saw."""
+    """Log format with the request id."""
     level = app.config.get("SST_LOG_LEVEL", "INFO")
     logging.getLogger("sonicsentinel").setLevel(level)
     if not logging.getLogger("sonicsentinel").handlers:
@@ -68,10 +65,7 @@ def _configure_logging(app: Flask) -> None:
 
 
 def _apply_security_headers(app: Flask, store) -> None:
-    """Security headers from config/auth.json, applied to every response including errors.
-
-    Permissions-Policy allows the microphone for this origin only; the live page needs it.
-    """
+    """Add the security headers from config/auth.json to every response."""
     settings = store.auth_config().get("security_headers", {})
 
     @app.after_request
@@ -95,11 +89,11 @@ def _apply_security_headers(app: Flask, store) -> None:
 
 
 def _apply_request_context(app: Flask) -> None:
-    """Give every request an id and start its audit breadcrumb."""
+    """Assign a request id to every request."""
 
     @app.before_request
     def _start_request():
-        # Only an id that looks like ours is reused: it is echoed into logs.
+        # Only reuse ids that look like ours, since they end up in the logs.
         inbound = request.headers.get("X-Request-Id", "")
         g.request_id = inbound if (inbound and inbound.isalnum() and len(inbound) <= 32) \
             else new_request_id()
@@ -134,7 +128,7 @@ def _register_session_hooks(app: Flask) -> None:
 
 
 def _register_csrf(app: Flask) -> None:
-    """Protect cookie-authenticated writes, including the sign-in and sign-out forms."""
+    """CSRF protection for cookie-authenticated writes."""
 
     def token() -> str:
         if "_csrf_token" not in session:
@@ -162,17 +156,15 @@ def _register_blueprints(app: Flask) -> None:
     from src.api.pages import bp as pages_bp
 
     app.register_blueprint(health_bp)
-    # auth_api.py owns /api/auth/*; pages.py's auth_bp owns the HTML /login, /logout.
+    # auth_api.py serves /api/auth/*, pages.py serves the /login and /logout pages.
     app.register_blueprint(auth_api_bp)
     app.register_blueprint(pages_bp)
-    # pages.py contributes five blueprints (auth, main, admin, models, event_visuals); all must
-    # be registered or url_for calls in the templates fail.
+    # All five page blueprints are needed or url_for in the templates fails.
     for extra in pages_module.BLUEPRINTS:
         if extra is not pages_bp:
             app.register_blueprint(extra)
 
-    # Optional API slices are registered only when importable, and /api/health reports
-    # any that are missing.
+    # Optional API modules; /api/health lists any that failed to import.
     optional = (
         ("src.api.audio_api", "/api/audio"),
         ("src.api.events_api", "/api"),
@@ -206,7 +198,7 @@ def _build_store(app: Flask):
         config_dir=app.config["SST_CONFIG_DIR"],
         alert_rules_dir=app.config["SST_ALERT_RULES_DIR"],
     )
-    # Refuse to start on broken configuration rather than discover it mid-demo.
+    # Fail at start-up on broken configuration.
     problems = store.validate()
     if problems:
         joined = "; ".join(problems)
@@ -217,11 +209,7 @@ def _build_store(app: Flask):
 
 
 def _load_models(app: Flask, pipeline: Any | None) -> Any | None:
-    """Resolve the analysis pipeline without ever failing the boot.
-
-    Injected pipeline (tests), else one loaded from disk, else none: the server still runs and
-    /api/health reports why analysis is unavailable.
-    """
+    """Get the pipeline: the injected one, else load from disk, else None (app still starts)."""
     from src.services.pipeline import AnalysisPipeline, set_pipeline
 
     if pipeline is not None:
@@ -239,7 +227,7 @@ def _load_models(app: Flask, pipeline: Any | None) -> Any | None:
     try:
         loaded = AnalysisPipeline.load()
     except Exception as exc:
-        # Recorded with its reason, reported by /api/health, and the app still starts.
+        # Keep the reason for /api/health and carry on.
         from src.services.pipeline import ModelsUnavailable
 
         reason = str(exc) if isinstance(exc, ModelsUnavailable) else f"{type(exc).__name__}: {exc}"
@@ -265,16 +253,14 @@ def _load_models(app: Flask, pipeline: Any | None) -> Any | None:
 
 
 def create_app(config: Mapping[str, Any] | None = None, **overrides: Any) -> Flask:
-    """Build the application. ``config``/``overrides`` go over the defaults, e.g.
-    create_app(TESTING=True, SST_DB_PATH=":memory:") for a test app with no models.
-    """
+    """Build the app. Example: create_app(TESTING=True, SST_DB_PATH=":memory:")."""
     app = Flask(
         __name__,
         template_folder=str(REPO_ROOT / "templates"),
         static_folder=str(REPO_ROOT / "static"),
     )
 
-    # Merge both ways of configuring the instance before the bootstrap reads them.
+    # Merge config and overrides.
     supplied: dict[str, Any] = dict(config or {})
     supplied.update(overrides)
 
@@ -291,14 +277,14 @@ def create_app(config: Mapping[str, Any] | None = None, **overrides: Any) -> Fla
         "JSON_SORT_KEYS": False,
         "MAX_CONTENT_LENGTH": 64 * 1024 * 1024,
         "SST_CSRF_ENABLED": not supplied.get("TESTING", False),
-        # Reverse proxies in front of the app (1 on Render or behind nginx). With 0,
-        # X-Forwarded-For is ignored, because any client can send that header.
+        # Number of reverse proxies in front (1 on Render or behind nginx). With 0,
+        # X-Forwarded-For is ignored.
         "SST_TRUSTED_PROXY_HOPS": int(os.environ.get("SST_TRUSTED_PROXY_HOPS", "0")),
     }
     app.config.update(defaults)
     app.config.update(supplied)
 
-    # The config store must exist before the cookie settings (from auth.json) are known.
+    # Load config first; the cookie settings come from auth.json.
     store = _build_store(app)
 
     app.secret_key = app.config.get("SECRET_KEY") or _secret_key(app.config)
@@ -324,7 +310,7 @@ def create_app(config: Mapping[str, Any] | None = None, **overrides: Any) -> Fla
         days=float(app.config["SST_REMEMBER_DAYS"])
     )
 
-    # Login rate limiters, shared by the form and the JSON API (limits from config/auth.json).
+    # Login rate limiters, shared by the form and the API.
     from src.services.ratelimit import RateLimiter
 
     app.extensions["sst_limiter_login_ip"] = RateLimiter(
@@ -361,12 +347,11 @@ def create_app(config: Mapping[str, Any] | None = None, **overrides: Any) -> Fla
 
     loaded = _load_models(app, app.config.get("SST_PIPELINE_INJECT"))
 
-    # Pay librosa/numba and first-model-call costs now, not in the first request. AST's
-    # first forward pass in particular is far slower than every later one.
+    # Warm up now so the first request isn't slow (AST's first pass is much slower).
     if app.config.get("SST_WARM_MODELS", True) and loaded is not None:
         try:
             loaded.warm()
-        except Exception as exc:  # a warm-up failure must not stop the app from starting
+        except Exception as exc:  # warm-up failure shouldn't stop start-up
             logger.warning("model warm-up failed at start-up: %s", exc)
 
     _apply_request_context(app)
@@ -391,13 +376,11 @@ def create_app(config: Mapping[str, Any] | None = None, **overrides: Any) -> Fla
 
 
 def _configure_jinja(app: Flask, store) -> None:
-    """Register the fromjson filter and the template globals (severity scale, classes, model labels)
-    every page needs.
-    """
+    """Register the fromjson filter and the template globals."""
     import json as _json
 
     def _fromjson(value):
-        # Macro payloads are already text; config values may arrive as real lists.
+        # Macro output is text, but config values may already be lists.
         if isinstance(value, (list, dict)):
             return value
         if value is None or value == "":
@@ -407,7 +390,7 @@ def _configure_jinja(app: Flask, store) -> None:
     app.jinja_env.filters["fromjson"] = _fromjson
 
     def _review_reason(value):
-        """'low_confidence,model_disagreement' -> the SRS phrases from manual_review_conditions.json."""
+        """'low_confidence,model_disagreement' -> readable phrases from the conditions file."""
         if not value:
             return ""
         phrases = {c["id"]: c.get("srs_phrase", c["id"]) for c in store.review_conditions()}
@@ -419,7 +402,7 @@ def _configure_jinja(app: Flask, store) -> None:
     app.jinja_env.filters["review_reason"] = _review_reason
 
     def _when(value):
-        """Naive-UTC datetime -> '26 Sep 2026, 12:36:44 UTC'; anything else unchanged."""
+        """Naive UTC datetime -> '26 Sep 2026, 12:36:44 UTC'. Other values pass through."""
         return value.strftime("%d %b %Y, %H:%M:%S UTC") if hasattr(value, "strftime") else (value or "")
 
     app.jinja_env.filters["when"] = _when
@@ -456,10 +439,8 @@ def _configure_jinja(app: Flask, store) -> None:
 
 
 def _secret_key(config: Mapping[str, Any]) -> str:
-    """A stable secret key.
-
-    In development it is derived from the repository path so restarts keep sessions (that key is
-    predictable, so never use it in a deployment); with SST_PRODUCTION=1, SST_SECRET_KEY must be set.
+    """Secret key. In development it comes from the repo path (predictable, so not for
+    deployment); with SST_PRODUCTION=1, SST_SECRET_KEY must be set.
     """
     configured = os.environ.get("SST_SECRET_KEY") or os.environ.get("SECRET_KEY")
     if configured:
@@ -479,7 +460,7 @@ def _secret_key(config: Mapping[str, Any]) -> str:
 
 
 def app_health() -> dict[str, Any]:  # pragma: no cover - used by CLI and health endpoint
-    """A one-line summary for the CLI: is this instance able to work?"""
+    """Short health summary for the CLI."""
     from src.services.pipeline import pipeline_status
 
     status = pipeline_status()

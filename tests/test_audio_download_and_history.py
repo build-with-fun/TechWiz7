@@ -1,15 +1,7 @@
-"""Audio evidence must actually download, and the alert history must serialise.
+"""Audio download and alert history.
 
-Two defects this pins down:
-
-* ``/api/audio/<id>/download`` and ``/api/events/<id>/audio`` read
-  ``audio.content_type``. No such column exists -- the format lives in the stored path
-  suffix and in ``container_format``/``original_format`` -- so both endpoints raised
-  ``AttributeError`` and returned 500 for *every* audio file. The download of the evidence
-  is the whole point of keeping it.
-* ``/api/alerts/history`` built its response with ``_alert_to_dict`` after the session had
-  closed; ``alert.event`` was an unloaded relationship on a detached row, so the endpoint
-  500'd once any alert had been resolved.
+Regression tests for two bugs: the audio download endpoints read a column that didn't
+exist and returned 500, and /api/alerts/history read alert.event after the session closed.
 """
 
 
@@ -19,7 +11,7 @@ from src.models import Alert, AudioFile, Event, User
 
 
 def _backend_app(tmp_path):
-    """An app over a real dataset: one classified event with bytes on disk and an alert."""
+    """App with one event, its audio file and an alert."""
     storage = tmp_path / "storage"
     uploads = storage / "uploads"
     uploads.mkdir(parents=True)
@@ -61,10 +53,10 @@ def _client(app, user_id):
 def test_content_type_is_derived_from_the_stored_path():
     wav = AudioFile(stored_path="uploads/clip.wav")
     assert wav.content_type == "audio/wav"
-    # A purged record keeps its recorded format, so the header is still right.
+    # A purged file still has the right content type.
     purged = AudioFile(stored_path="", container_format="mp3")
     assert purged.content_type == "audio/mpeg"
-    # Unknown and absent formats fall back rather than raising.
+    # Unknown formats fall back instead of raising.
     assert AudioFile(stored_path="clip.zzz").content_type == "application/octet-stream"
     assert AudioFile(stored_path="").content_type == "application/octet-stream"
 
@@ -97,7 +89,7 @@ def test_event_audio_endpoint_serves_the_bytes(tmp_path):
 
 def test_alert_history_serialises_a_resolved_alert(tmp_path):
     app, factory, admin_id, _audio_id, event_id = _backend_app(tmp_path)
-    # Nothing about the alert is cached on this instance, as in a real request.
+    # Nothing cached, like a real request.
     with factory() as session:
         session.expunge_all()
 
@@ -105,7 +97,7 @@ def test_alert_history_serialises_a_resolved_alert(tmp_path):
 
     assert response.status_code == 200
     body = response.get_json()
-    # ``outcome_counts`` is fed by a GROUP BY on severity, so it counts severities.
+    # outcome_counts groups by severity.
     assert body["meta"]["outcome_counts"] == {"Critical": 1}
     assert body["data"][0]["event_id"] == event_id
     assert body["data"][0]["message"] == "Gunshot detected"

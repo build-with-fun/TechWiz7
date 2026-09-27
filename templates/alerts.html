@@ -1,15 +1,10 @@
 {% extends "base.html" %}
 {% import "_macros.html" as ui %}
 {% import "_presentation.html" as pres %}
-{# ==========================================================================
-   templates/alerts.html — the alert console (FR liv–lvi).
-
-   One tab per alert status; a severity multi-filter shared by GET form, so
-   every view is a URL. Actions (acknowledge / resolve / escalate) are plain
-   POST forms against the alerts API slice — no inline JS, the CSP holds.
-   ========================================================================== #}
+{# Alert console (FR liv-lvi): a tab per status and a severity filter, all in the URL.
+   Acknowledge, resolve and escalate are plain POST forms, so no inline JS is needed. #}
 {% set page_id = "main.alerts" %}
-{% block title %}Alerts — {{ app_name }}{% endblock %}
+{% block title %}Alerts · {{ app_name }}{% endblock %}
 
 {% block content %}
 <header class="page-head">

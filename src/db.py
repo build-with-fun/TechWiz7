@@ -1,7 +1,7 @@
 """Engine, sessions and audio storage (SRS FR lxxi-lxxii, lxxvi, lxxx).
 
-Separate from src.models so database/init_db.py and the tests can build a database without a
-Flask app. Storage layout (root overridable by SST_STORAGE_DIR)::
+Works without a Flask app, for database/init_db.py and the tests.
+Storage layout (root set by SST_STORAGE_DIR)::
 
     <root>/audio/<yyyy>/<mm>/<audio_id>.<ext>   uploaded and retained audio
     <root>/live/<session_id>/<seq>.wav          short-lived microphone windows
@@ -34,7 +34,7 @@ def repo_root() -> Path:
 
 
 def default_db_path() -> Path:
-    """``SST_DB_PATH`` if set (tests use a temp file), else ``database/sonicsentinel.db``."""
+    """``SST_DB_PATH`` if set, else ``database/sonicsentinel.db``."""
     override = os.environ.get("SST_DB_PATH")
     if override:
         return Path(override).expanduser().resolve()
@@ -49,7 +49,7 @@ def default_storage_dir() -> Path:
 
 
 def database_url(path: str | os.PathLike[str] | None = None) -> str:
-    """SQLite URL for a path, or ``:memory:`` when the caller passes it explicitly."""
+    """SQLite URL for a path or ``:memory:``."""
     if path is None:
         path = default_db_path()
     if str(path) == ":memory:":
@@ -58,14 +58,12 @@ def database_url(path: str | os.PathLike[str] | None = None) -> str:
 
 
 def create_engine_for(target: str | os.PathLike[str] | None = None, *, echo: bool = False) -> Engine:
-    """SQLite engine with foreign keys on (SQLite ignores them by default) and WAL journaling,
-    so searches can read while a classification is being written.
-    """
+    """SQLite engine with foreign keys on and WAL mode, so reads don't block on writes."""
     is_memory = str(target) == ":memory:"
     url = "sqlite+pysqlite:///:memory:" if is_memory else database_url(target)
     kwargs: dict = {"echo": echo, "future": True}
     if is_memory:
-        # A single shared connection, otherwise each session gets its own empty database.
+        # One shared connection, or each session gets its own empty in-memory database.
         from sqlalchemy.pool import StaticPool
 
         kwargs["poolclass"] = StaticPool
@@ -86,15 +84,15 @@ def create_engine_for(target: str | os.PathLike[str] | None = None, *, echo: boo
     return engine
 
 
-# Columns added after the first release (create_all never alters a table): (table, column, SQL
-# type).
+# Columns added after the first release, since create_all doesn't alter tables:
+# (table, column, SQL type).
 _ADDED_COLUMNS = (
     ("audio_files", "bit_depth", "INTEGER"),
 )
 
 
 def create_schema(engine: Engine) -> None:
-    """Create every table and index. Idempotent: safe to re-run on an existing database."""
+    """Create all tables and indexes. Safe to run again on an existing database."""
     Base.metadata.create_all(engine)
     from sqlalchemy import inspect, text
 
@@ -113,10 +111,9 @@ def make_session_factory(engine: Engine) -> sessionmaker[Session]:
 
 @contextlib.contextmanager
 def session_scope(factory: sessionmaker[Session] | None = None) -> Iterator[Session]:
-    """Commit on success, roll back on any exception, always close.
+    """Commit on success, roll back on error, always close.
 
-    Without a factory it uses the running app's factory, so background callers (the persistence
-    callback) never open a second engine against the app's WAL database.
+    Without a factory it uses the running app's, so we don't open a second engine.
     """
     owns_factory = factory is None
     if owns_factory:
@@ -133,8 +130,7 @@ def session_scope(factory: sessionmaker[Session] | None = None) -> Iterator[Sess
 
 
 def app_session_factory() -> sessionmaker[Session]:
-    """The running app's session factory, for code outside a request; raises when no app is running.
-    """
+    """The running app's session factory. Raises if there is no app."""
     from flask import current_app
 
     if not current_app:
@@ -155,7 +151,7 @@ _AUDIO_ID_RE = re.compile(r"^SST-(\d{4})-(\d{2})-(\d{2})-(\d{6})$")
 
 
 def format_audio_id(sequence: int, when: _dt.datetime | None = None) -> str:
-    """``SST-YYYY-MM-DD-NNNNNN``. Sortable, human-readable, bounded length."""
+    """``SST-YYYY-MM-DD-NNNNNN``"""
     when = when or utcnow()
     return f"SST-{when:%Y-%m-%d}-{sequence:06d}"
 
@@ -169,8 +165,8 @@ def parse_audio_id(audio_id: str) -> _dt.date | None:
 
 
 def next_audio_id(session: Session, when: _dt.datetime | None = None) -> str:
-    """Next free id for the day, from the highest existing suffix (a row count would repeat after a
-    delete).
+    """Next free id for the day, based on the highest suffix (not a count, which breaks after
+    a delete).
     """
     from src.models import AudioFile
 
@@ -189,7 +185,7 @@ def next_audio_id(session: Session, when: _dt.datetime | None = None) -> str:
 
 
 def new_session_id() -> str:
-    """UUID4-ish, but generated here so the format is one decision, not many."""
+    """New live session id (UUID4)."""
     return secrets.token_hex(16)
 
 
@@ -197,8 +193,7 @@ def new_session_id() -> str:
 
 
 class StorageLayout:
-    """Resolves and creates the on-disk locations. Paths are stored *relative* to the root
-    so the database survives the project being moved (FR lxxi)."""
+    """Storage folders. Paths in the database are relative to the root (FR lxxi)."""
 
     def __init__(self, root: str | os.PathLike[str] | None = None) -> None:
         self.root = Path(root).expanduser().resolve() if root else default_storage_dir()
@@ -235,7 +230,7 @@ class StorageLayout:
         return self.exports_dir / f"{when:%Y}" / f"{when:%m}" / name
 
     def resolve(self, stored_path: str) -> Path:
-        """Turn a stored relative path back into an absolute one, refusing escapes."""
+        """Relative stored path -> absolute path. Rejects paths outside the root."""
         candidate = (self.root / stored_path).resolve()
         root = self.root.resolve()
         if root not in candidate.parents and candidate != root:
@@ -261,9 +256,7 @@ def record_audit(
     user_agent: str | None = None,
     request_id: str | None = None,
 ) -> AuditRecord:
-    """Append an audit row (FR lxxvi). ``actor`` may be None (e.g. a failed login for an unknown
-    user); username and role are copied so the row stays readable after the user is deleted.
-    """
+    """Add an audit row (FR lxxvi). ``actor`` may be None, e.g. for a failed login."""
     record = AuditRecord(
         action=action,
         actor_id=getattr(actor, "id", None),

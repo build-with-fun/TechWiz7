@@ -1,9 +1,8 @@
 """Audio upload and download.
 
-POST /api/audio/upload checks size and type before decoding, refuses an exact duplicate
-(SHA-256) with 409 unless allow_duplicate is set, lets the pipeline analyse the clip, and
-persists the result. Unusable audio is a 422 naming the reason; a near-duplicate is linked,
-not refused.
+POST /api/audio/upload checks size and type, returns 409 for an exact duplicate unless
+allow_duplicate is set, runs the pipeline and saves the result. Unusable audio gets a 422.
+Near-duplicates are linked, not refused.
 """
 
 from __future__ import annotations
@@ -25,10 +24,10 @@ bp = Blueprint("audio_api", __name__, url_prefix="/api/audio")
 
 _LOGGER = logging.getLogger(__name__)
 
-# The contract's size gate applies to the whole request body, not to a decoded buffer.
+# Size limit applies to the whole request body.
 _MAX_BODY_BYTES = 64 * 1024 * 1024
 
-# The suffix check is cheap; the decoder has the final word. .webm is for live recordings.
+# Quick suffix check; the decoder decides for real. .webm is for live recordings.
 _ACCEPTED_SUFFIXES = frozenset({".wav", ".wave", ".flac", ".mp3", ".ogg", ".oga", ".webm", ".m4a"})
 
 _MIME_BY_SUFFIX = {
@@ -48,9 +47,7 @@ def _sha256_of(raw: bytes) -> str:
 
 
 def _suffix_of(filename: str | None, mimetype: str | None) -> str:
-    """File suffix from the declared mimetype, else the name. The stored file is named with it, so a
-    wrong one would break playback.
-    """
+    """File suffix from the mimetype, else from the filename."""
     if mimetype:
         for suffix, mime in _MIME_BY_SUFFIX.items():
             if mimetype.lower() == mime:
@@ -65,9 +62,7 @@ def _suffix_of(filename: str | None, mimetype: str | None) -> str:
 @bp.post("/upload")
 @capability_required("upload_audio")
 def upload():
-    """Analyse an uploaded clip: 201 with the Event, 409 for a known duplicate, 422 for unusable
-    audio.
-    """
+    """Analyse an upload: 201 with the Event, 409 for a duplicate, 422 for unusable audio."""
     from src.services.persistence import make_persistence_callback
     from src.services.pipeline import ModelsUnavailable, PipelineError, get_pipeline
 
@@ -84,8 +79,7 @@ def upload():
         raise validation_error(
             "source must be one of: upload, microphone", source=source
         )
-    # FR lxxix: a microphone recording needs an explicit consent acknowledgement, stored on the file
-    # row.
+    # FR lxxix: microphone recordings need consent, stored on the file row.
     consent_ack = (request.form.get("consent_ack", "") or "").strip().lower() in {"1", "true", "yes"}
     if source == "microphone" and not consent_ack:
         raise validation_error(
@@ -110,8 +104,7 @@ def upload():
                 select(AudioFile).where(AudioFile.sha256 == digest)
             ).scalar_one_or_none()
         if existing is not None:
-            # FR lxxiii: name the first event so the operator can tell a re-upload from a real
-            # repeat.
+            # FR lxxiii: point to the original event.
             raise ApiError(
                 "duplicate_audio",
                 f"These bytes are already stored as {existing.audio_id}. "
@@ -122,17 +115,16 @@ def upload():
     try:
         pipeline = get_pipeline()
     except PipelineError as exc:
-        # get_pipeline() raises the base PipelineError when nothing was loaded; catching only
-        # ModelsUnavailable let it become a 500 instead of the documented 503.
+        # get_pipeline() raises PipelineError when nothing is loaded; that should be a 503.
         if isinstance(exc, ModelsUnavailable):
-            # Name the missing artifact; a pathless 'not found' wastes the next person's time.
+            # Say which file is missing.
             raise ApiError("pipeline_unavailable", str(exc)) from exc
-        # Never initialised: an internal wiring detail, so use the standard user-facing sentence.
+        # Not initialised: use the standard message.
         raise ApiError("pipeline_unavailable") from exc
     storage = current_app.config["SST_STORAGE"]
     actor = current_user._get_current_object() if hasattr(current_user, "_get_current_object") else current_user
 
-    # The pipeline does the analysis; persistence is its callback, bound to this request's actor.
+    # The pipeline saves through this callback, bound to the current user.
     persist = make_persistence_callback(
         storage=storage,
         actor=actor,
@@ -168,7 +160,7 @@ def upload():
         )
     except ApiError:
         raise
-    except Exception as exc:  # noqa: BLE001 - reported, never swallowed silently
+    except Exception as exc:  # noqa: BLE001 - reported below
         _LOGGER.exception("analysis failed for %s", filename)
         raise ApiError(
             "internal_error",
@@ -182,9 +174,7 @@ def upload():
         _LOGGER.error("analysis could not be stored for request %s: %s",
                       current_request_id(), (record.get("stored") or {}).get("error"))
         raise ApiError("storage_error", "The analysis finished, but the result could not be saved. Try again.")
-    # The pipeline record never embeds the actor, and the response builder only has the
-    # ConfigStore, so attach it here where the request's user is still in scope. Without this
-    # an event stored with created_by_id=2 reports created_by=null in the upload response.
+    # The pipeline record has no creator, so add the current user here.
     if record.get("created_by") is None:
         actor_obj = (current_user._get_current_object()
                      if hasattr(current_user, "_get_current_object") else current_user)
@@ -198,9 +188,7 @@ def upload():
 @bp.get("/<int:audio_pk>/download")
 @capability_required("download_any_audio")
 def download(audio_pk: int):
-    """Download a stored file (reviewer and above). Paths resolve inside the storage root, so ../../
-    cannot escape.
-    """
+    """Download a stored file (reviewer and above). Paths can't leave the storage root."""
     factory = current_app.config["SST_SESSION_FACTORY"]
     with session_scope(factory) as session:
         audio = session.execute(
@@ -229,7 +217,7 @@ def download(audio_pk: int):
 # Internals
 
 def _request_body() -> bytes:
-    """The uploaded bytes, size-checked before Flask's multipart parser can buffer a huge body."""
+    """The uploaded bytes, size-checked before Flask parses the multipart body."""
     if request.content_length is not None and request.content_length > _MAX_BODY_BYTES:
         raise ApiError(
             "payload_too_large",
@@ -252,7 +240,7 @@ def _request_body() -> bytes:
 
 
 def _response_for(record: dict, store) -> dict:
-    """The contract's ``Event`` shape for a persisted analysis record."""
+    """API ``Event`` for a saved analysis record."""
     from src.api.events_api import event_to_dict
 
     status = record.get("status")
@@ -261,7 +249,7 @@ def _response_for(record: dict, store) -> dict:
                       (record.get("error") or {}).get("stage"), current_request_id())
         raise ApiError("model_unavailable", "The models could not analyse this clip. Try again shortly.")
     if status == "rejected":
-        # Unusable or undecodable: a 422 naming the reason, not a 201 with an empty event.
+        # Unusable or undecodable: 422 with the reason.
         rejection = record.get("rejection") or {}
         quality = record.get("quality") or {}
         code = "quality_unusable" if quality.get("verdict") == "Unusable" else "quality_rejected"

@@ -1,18 +1,14 @@
-"""Audio Spectrogram Transformer (AST) embeddings for the Python model.
+"""Audio Spectrogram Transformer (AST) embeddings for the served Python model.
 
-CNN14 embeddings plateaued at about 0.84 validation accuracy whatever classifier sat on
-top (26 Sep experiments in documentation/MODEL_EVALUATION.md). AST (Gong et al., 2021),
-fine-tuned on AudioSet, separates our confusable pairs better. It is used here the same
-way as CNN14: frozen, as a feature extractor, with a small classifier trained on our
-2,100 training recordings.
+CNN14 embeddings stalled at about 0.84 validation accuracy (see MODEL_EVALUATION.md). AST
+(Gong et al., 2021) separates our confusable classes better. Like CNN14 it is frozen and
+only a small classifier is trained on top.
 
-Weights: MIT/ast-finetuned-audioset-10-10-0.4593 on Hugging Face (BSD-3-Clause), pinned
-to one revision and downloaded once into the Hugging Face cache (~350 MB).
+Weights: MIT/ast-finetuned-audioset-10-10-0.4593 on Hugging Face (BSD-3-Clause), one
+pinned revision, ~350 MB in the Hugging Face cache.
 
-Features per clip: the pooled [CLS]/[DIST] token (768), the mean of the patch tokens
-(768), and AST's own 527 AudioSet scores (sigmoid), averaged over 10.24 s chunks. The
-classifier decides which of them matter; the AudioSet scores are inputs to it, never a
-decision on their own.
+Per clip we use the pooled [CLS]/[DIST] token (768), the mean patch token (768) and the
+527 AudioSet scores, averaged over 10.24 s chunks. All of them are just classifier inputs.
 """
 
 from __future__ import annotations
@@ -27,14 +23,14 @@ AST_MODEL = "MIT/ast-finetuned-audioset-10-10-0.4593"
 AST_REVISION = "f826b80d28226b62986cc218e5cec390b1096902"
 EMBEDDING_VERSION = "ast-audioset-10-10-emb-1.0.0"
 SAMPLE_RATE = 16000
-CHUNK = int(10.24 * SAMPLE_RATE)   # the 1024 frames AST's position embeddings cover
-MIN_TAIL = SAMPLE_RATE             # a tail under 1 s joins the previous chunk (AST's 1024 frames then trim it)
+CHUNK = int(10.24 * SAMPLE_RATE)   # 1024 frames, AST's input length
+MIN_TAIL = SAMPLE_RATE             # a tail under 1 s is merged into the previous chunk
 POOLED_DIM, TOKENS_DIM, AUDIOSET_DIM = 768, 768, 527
 EMBEDDING_DIM = POOLED_DIM + TOKENS_DIM + AUDIOSET_DIM
 
 
 def chunks(y: np.ndarray) -> list[np.ndarray]:
-    """Split a waveform into <=10.24 s pieces; a clip shorter than that is one piece."""
+    """Split a waveform into pieces of at most 10.24 s."""
     if y.size <= CHUNK:
         return [y]
     starts = list(range(0, y.size, CHUNK))
@@ -46,7 +42,7 @@ def chunks(y: np.ndarray) -> list[np.ndarray]:
 
 
 class AstEmbedder:
-    """Turns a mono waveform into a fixed-length AST feature vector (eval mode, no grad)."""
+    """Mono waveform -> fixed-length AST feature vector."""
 
     _lock = threading.Lock()
 
@@ -91,7 +87,7 @@ _shared_lock = threading.Lock()
 
 
 def shared_embedder() -> AstEmbedder:
-    """One AST per process; loading it takes a few seconds."""
+    """Shared AST model (loading takes a few seconds)."""
     global _shared
     with _shared_lock:
         if _shared is None:
@@ -106,10 +102,7 @@ def embedding_columns() -> list[str]:
 
 
 class AstFeatureExtractor:
-    """Feature extractor for bundles whose feature_version is the AST embedding version.
-
-    Receives the same PreprocessedAudio the GTM model receives, like the CNN14 extractor.
-    """
+    """Feature extractor for bundles that use AST embeddings."""
 
     feature_version = EMBEDDING_VERSION
 

@@ -4,12 +4,9 @@
 {% import "_charts.html" as charts %}
 {% import "_player.html" as player_ui with context %}
 {% block page_id %}dashboard{% endblock %}
-{% block title %}Dashboard — {{ app_name }}{% endblock %}
+{% block title %}Dashboard · {{ app_name }}{% endblock %}
 
-{# SRS Step 18 and FR lxiii-lxv: current detection with both models, agreement, waveform,
-   spectrogram, quality, severity and alert status; recent detections; the critical-event
-   timeline; manual-review items; category statistics; and, for administrators, totals,
-   average confidence, disagreements, poor-quality recordings and detection trends. #}
+{# Dashboard (SRS Step 18, FR lxiii-lxv). Administrators also get totals and trends. #}
 
 {% block content %}
 {% set _name = current_user.display_name or current_user.username %}
@@ -191,7 +188,7 @@
 </div>
 
 <div class="dash-grid">
-  {# ---- the current detection: both models, agreement, quality, severity, alert, audio ---- #}
+  {# Latest detection #}
   <section class="panel dash-grid__main" aria-labelledby="latest-title">
     <div class="panel__head">
       <h2 class="panel__title" id="latest-title">{{ ui.icon('waves', 16) }} Latest detection</h2>

@@ -1,24 +1,11 @@
-"""Soft-voting ensemble experiment across embedding families (val-selected, test-scored once).
+"""Experiment: blend the CNN14 and AST models (soft voting).
 
-Protocol (identical rules to train_transfer.py):
+Same rules as train_transfer.py. The blend is ``w * p_ast + (1 - w) * p_cnn14``, with w
+chosen on validation by the same selection score, and test scored once afterwards. Each
+member is the configuration that won on validation for its own embeddings.
 
-* ``fit`` sees only the 2,100 training originals (plus augmented copies with --augmented);
-* the blend weight is a hyper-parameter, so it is chosen on the 450 validation recordings by
-  the same ``selection_score`` criterion (0.5*macro_f1 + 0.5*critical_recall);
-* the 450 test recordings are scored exactly once, after the weight is written down.
-
-Two members, each the *selected* configuration of its own family:
-  * CNN14 (PANNs) embeddings -> the classifier family that won on validation for that cache;
-  * AST embeddings           -> the classifier family that won on validation for that cache.
-
-Members are blended as ``w * p_ast + (1 - w) * p_cnn14`` with probabilities aligned to the
-configured class order, so the blend can never map a score onto the wrong name.
-
-This is an EXPERIMENT. ``python_models/best`` is only replaced by a blend if the blend wins
-on validation by more than the 0.005 tie band AND it can be served under the saved-bundle
-contract (a single feature vector per clip). A blend of two different embedding dimensions
-cannot be, so a cross-family blend is reported here as a result and the served bundle stays
-a single-backbone model unless a same-backbone blend wins.
+The result is only reported. A two-backbone blend can't be saved as a single bundle, so
+the served model stays a single-backbone model.
 """
 
 from __future__ import annotations
@@ -48,7 +35,7 @@ def _pick(selection_doc: dict) -> tuple[str, dict]:
 
 
 def aligned_proba(estimator, X, class_names) -> np.ndarray:
-    """predict_proba re-sorted into the configured class order."""
+    """predict_proba in the configured class order."""
     proba = np.asarray(estimator.predict_proba(X), dtype=np.float64)
     order = [str(c) for c in estimator.classes_]
     idx = [order.index(c) for c in class_names]
@@ -65,7 +52,7 @@ def load_selection(backbone: str, variant: str, augmented: bool) -> dict:
 
 
 def members(variant: str, augmented: bool):
-    """Fit each family's selected configuration and return fitted estimators + configs."""
+    """Fit each member's selected configuration."""
     out = {}
     for backbone in sorted(BACKBONES):
         sel = load_selection(backbone, variant, augmented)
@@ -107,7 +94,7 @@ def evaluate(variant: str, augmented: bool, *, out_tag: str) -> dict:
         print(f"blend w_ast={w:.1f} acc={res.accuracy:.4f} f1={res.macro_f1:.4f} "
               f"crit={res.critical_recall:.4f}", flush=True)
 
-    # Single-member reference points, so the blend is only preferred if it really beats them.
+    # Scores of each member alone, for comparison.
     for backbone, Xva in (("ast", Xva_ast), ("cnn14", Xva_cnn)):
         pred = [class_names[i] for i in pva[backbone].argmax(axis=1)]
         res = compute_metrics(yva, pred, class_names, critical,
@@ -139,7 +126,7 @@ def evaluate(variant: str, augmented: bool, *, out_tag: str) -> dict:
 
 
 def final_test(variant: str, augmented: bool, *, out_tag: str) -> dict:
-    """Score the frozen test split once with the val-chosen weight. Test is touched one time."""
+    """Score the test split once with the chosen weight."""
     class_names, critical = class_config()
     chosen = json.loads((METRICS / f"ensemble_selection_{out_tag}.json").read_text())
     w = chosen["chosen_w_ast"]
@@ -166,9 +153,7 @@ def final_test(variant: str, augmented: bool, *, out_tag: str) -> dict:
     print(f"TEST ensemble w_ast={w} acc={res.accuracy:.4f} f1={res.macro_f1:.4f} "
           f"crit={res.critical_recall:.4f} {res.critical_recall_by_class}", flush=True)
 
-    # Solo members on test, for the honest before/after table. These are the same two
-    # families whose test scores are already recorded by their own `final` runs; recomputed
-    # here only so the table is self-consistent under one code path.
+    # Each member alone on test, recomputed here so the table uses one code path.
     solo = {}
     for backbone in sorted(BACKBONES):
         s = [class_names[i] for i in p_te[backbone].argmax(axis=1)]

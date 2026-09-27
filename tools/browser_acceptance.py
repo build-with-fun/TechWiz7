@@ -1,12 +1,11 @@
-"""Browser acceptance run for the SRS items a unit test cannot show.
+"""Browser acceptance tests for the SRS items unit tests can't cover.
 
-    .venv/bin/python tools/browser_acceptance.py            # isolated app on a scratch DB
+    .venv/bin/python tools/browser_acceptance.py            # own app on a temp database
     .venv/bin/python tools/browser_acceptance.py --base http://127.0.0.1:5055   # existing app
 
-Without ``--base`` the script starts its own copy of the app on a temporary database and
-storage folder (seeded by ``database/init_db.py``), so the demo database is never touched.
-System Chrome is driven with a fake microphone that plays a WAV file, which lets the live
-page run end to end without a person.
+Without ``--base`` it starts its own app on a temporary database, so the demo data is
+untouched. Chrome runs with a fake microphone that plays a WAV file, so the live page can
+be tested without a person.
 
 Checks (SRS section 1.6):
   ii        every seeded account signs in through the form; pages its role grants open,
@@ -50,7 +49,7 @@ SAMPLES = REPO / "sample_audio"
 SHOTS = REPO / "screenshots" / "acceptance"
 REPORT = REPO / "reports" / "browser_acceptance.json"
 
-# Page -> capability that guards it (src/api/pages.py). "/models/" only needs a login.
+# Page -> required capability (src/api/pages.py). "/models/" only needs a login.
 GUARDED_PAGES = {
     "/upload": "upload_audio",
     "/events": "view_own_events",
@@ -63,7 +62,7 @@ GUARDED_PAGES = {
     "/admin/users": "manage_users",
 }
 
-# One source clip per format so no upload is an exact or near duplicate of another.
+# A different clip per format so none of the uploads count as duplicates.
 FORMATS = [
     ("wav", "gunshot.wav", []),
     ("mp3", "glass_breaking.wav", ["-c:a", "libmp3lame", "-b:a", "128k"]),
@@ -72,8 +71,8 @@ FORMATS = [
     ("m4a", "animal_sound.wav", ["-c:a", "aac", "-b:a", "128k"]),
 ]
 
-# Test hooks injected before any page script runs. They only record objects the page
-# creates (the microphone stream, the audio element) so the script can inspect them.
+# Injected before the page scripts; they keep references to the microphone stream and
+# the audio element so we can inspect them.
 HOOKS = """
 (() => {
   const md = navigator.mediaDevices;
@@ -106,7 +105,7 @@ class Run:
         if shot:
             row["screenshot"] = f"screenshots/acceptance/{shot}.png"
         self.checks.append(row)
-        print(f"  {'PASS' if passed else 'FAIL'}  [{fr}] {name}" + (f" -- {detail}" if detail else ""),
+        print(f"  {'PASS' if passed else 'FAIL'}  [{fr}] {name}" + (f": {detail}" if detail else ""),
               flush=True)
         return passed
 
@@ -116,7 +115,7 @@ class Run:
                 if msg.type == "error" else None)
 
 
-# isolated app ------------------------------------------------------------------------
+# isolated app
 
 def free_port() -> int:
     with socket.socket() as s:
@@ -164,7 +163,7 @@ def make_format_files(workdir: Path) -> list[tuple[str, Path]]:
     return out
 
 
-# helpers -----------------------------------------------------------------------------
+# helpers
 
 def accounts() -> list[dict]:
     doc = json.loads((REPO / "database" / "seed_credentials.json").read_text(encoding="utf-8"))
@@ -181,7 +180,7 @@ def sign_in(page, base: str, username: str, password: str) -> bool:
 
 
 def wait_for_queue(page, count: int, timeout_s: float = 120) -> list[dict]:
-    """Wait until ``count`` queue items have left the loading state; return their outcome."""
+    """Wait for ``count`` queue items to finish loading and return their results."""
     deadline = time.time() + timeout_s
     while time.time() < deadline:
         items = page.evaluate("""() => Array.from(document.querySelectorAll('[data-upload-item]')).map(li => {
@@ -213,7 +212,7 @@ def wait_for_mic(page, wanted: str, timeout_s: float = 20) -> str:
     return state
 
 
-# checks ------------------------------------------------------------------------------
+# checks
 
 def check_roles(run: Run, browser, base: str) -> None:
     for account in accounts():

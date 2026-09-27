@@ -4,9 +4,9 @@
     .venv/bin/python tools/capture_gtm_frontend.py verify \
         --recordings gtm_model/browser_recordings.json [--tolerance 0.05]
 
-``browser_recordings.json`` lists clips with the class and confidences TM's web UI showed for
-them. The check passes when the classes match on at least 95% of clips and every confidence is
-within the tolerance; it writes gtm_model/frontend_verification.json.
+``browser_recordings.json`` lists clips with what TM's web UI predicted. Passes when the
+class matches on at least 95% of clips and confidences are within the tolerance. Writes
+gtm_model/frontend_verification.json.
 """
 from __future__ import annotations
 

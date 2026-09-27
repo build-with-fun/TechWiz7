@@ -1,8 +1,7 @@
-"""In-process sliding-window rate limiter for logins and uploads (limits in config/auth.json).
+"""Sliding-window rate limiter for logins and uploads (limits in config/auth.json).
 
-In memory on purpose for a single-host deployment. If the app ever runs on several
-machines, these counters must move to a shared store or each gets its own allowance.
-Uses time.monotonic, so a clock change cannot grant or deny a request.
+Counters are kept in memory, which is fine for a single server. With several servers
+they would need a shared store.
 """
 
 from __future__ import annotations
@@ -16,7 +15,7 @@ from typing import Deque, Hashable
 
 @dataclass
 class LimitResult:
-    """The answer, with enough detail for a useful ``429`` and its ``Retry-After``."""
+    """Result of a check, with what's needed for a 429 and Retry-After."""
 
     allowed: bool
     remaining: int
@@ -28,7 +27,7 @@ class LimitResult:
 
 @dataclass
 class RateLimiter:
-    """N events per ``window_seconds`` for each caller-chosen key (IP, username, user:upload)."""
+    """Allows N events per ``window_seconds`` per key (IP, username, ...)."""
 
     limit: int
     window_seconds: float
@@ -36,9 +35,7 @@ class RateLimiter:
     _lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
 
     def check(self, key: Hashable) -> LimitResult:
-        """Record an attempt and say whether it is allowed; refused attempts are not recorded, so
-        backing off works.
-        """
+        """Record an attempt and return whether it is allowed. Refused attempts aren't counted."""
         now = time.monotonic()
         cutoff = now - self.window_seconds
         with self._lock:
@@ -57,7 +54,7 @@ class RateLimiter:
             return LimitResult(True, self.limit - len(hits), 0)
 
     def peek(self, key: Hashable) -> int:
-        """Remaining allowance, without spending any of it."""
+        """Remaining allowance, without using any."""
         now = time.monotonic()
         cutoff = now - self.window_seconds
         with self._lock:
@@ -69,7 +66,7 @@ class RateLimiter:
             return max(0, self.limit - len(hits))
 
     def reset(self, key: Hashable | None = None) -> None:
-        """Clear one key, or everything. A successful sign-in clears that username's key."""
+        """Clear one key, or all of them."""
         with self._lock:
             if key is None:
                 self._hits.clear()
@@ -77,7 +74,7 @@ class RateLimiter:
                 self._hits.pop(key, None)
 
     def _prune(self, now: float) -> None:
-        """Drop idle keys so a dict keyed on client-supplied values cannot grow without bound."""
+        """Drop idle keys so the dict doesn't grow forever."""
         if len(self._hits) < 512:
             return
         cutoff = now - self.window_seconds

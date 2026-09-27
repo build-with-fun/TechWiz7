@@ -24,8 +24,7 @@ def rms(y):
 
 @pytest.mark.parametrize("snr", [0.0, 10.0, 20.0])
 def test_add_noise_hits_the_requested_snr(snr):
-    # Quiet enough that the peak limiter never engages; limiting scales the whole mix,
-    # which keeps the ratio but would break this subtraction-based measurement.
+    # Quiet enough that the limiter doesn't kick in.
     clean = tone(amp=0.05)
     mixed = T.add_noise(clean, SR, np.random.default_rng(1), snr_db=snr)
     measured = 20 * np.log10(rms(clean) / rms(mixed - clean))
@@ -37,8 +36,7 @@ def test_same_seed_same_output_and_seeds_give_variety():
     for name, fn in T.TRAINING_RECIPES.items():
         a = fn(y, SR, np.random.default_rng(7))
         assert np.array_equal(a, fn(y, SR, np.random.default_rng(7))), name
-        # Some recipes pick from a small set (device picks one of three), so two seeds
-        # may coincide; across ten seeds there must be more than one distinct output.
+        # Some recipes pick from a small set, so just need more than one distinct output.
         outputs = {fn(y, SR, np.random.default_rng(seed)).tobytes() for seed in range(10)}
         assert len(outputs) > 1, name
 
@@ -53,7 +51,7 @@ def test_recipes_never_exceed_full_scale():
 
 def test_time_shift_zero_fills_instead_of_wrapping():
     y = np.zeros(SR, dtype=np.float32)
-    y[:100] = 1.0                         # an onset at the very start
+    y[:100] = 1.0                         # onset at the start
     out = T.time_shift(y, SR, np.random.default_rng(0), max_shift_sec=0.5)
     assert out.size == y.size
     assert out[-50:].max() == 0.0 or out[:100].max() == 1.0
@@ -105,14 +103,14 @@ def test_augmented_rows_are_training_only_and_never_originals():
 
 
 def test_gtm_import_window_is_the_serving_window():
-    """The import builder's first window must be exactly what the server scores."""
+    """The import builder's first window is the one the server scores."""
     from audio_dataset.scripts.make_gtm_imports import ranked_windows
     from src.inference.gtm_predictor import GtmFrontendConfig, select_gtm_window
 
     cfg = GtmFrontendConfig.load(ROOT / "gtm_model" / "frontend_config.json")
     rng = np.random.default_rng(11)
     y = (rng.normal(0, 0.01, SR * 5)).astype(np.float32)
-    y[SR * 3: SR * 3 + 2000] += 0.8          # the event is 3 s in, not at the start
+    y[SR * 3: SR * 3 + 2000] += 0.8          # event 3 s in
     windows = ranked_windows(y, SR, cfg, 2)
     assert np.array_equal(windows[0][1], select_gtm_window(y, SR, cfg))
     assert len(windows) == 2
@@ -128,7 +126,7 @@ def test_teachable_machine_imports_use_training_recordings_only():
         split = {r["audio_id"]: r["dataset_split"] for r in csv.DictReader(fh)}
     index = json.loads(TM_INDEX.read_text())
     parents = [s["parent_audio_id"] for c in index for s in c.get("samples", [])]
-    if not parents:  # the v1 index format listed parent_ids instead
+    if not parents:  # v1 index format
         parents = [p for c in index for p in c.get("parent_ids", [])]
     assert parents
     assert {split[p] for p in parents} == {"train"}
@@ -139,7 +137,7 @@ GTM_ROWS = ROOT / "audio_dataset" / "manifests" / "gtm_segment_rows.csv"
 
 @pytest.mark.skipif(not GTM_ROWS.exists(), reason="Teachable Machine evidence rows not generated")
 def test_gtm_samples_come_from_training():
-    """Every window Teachable Machine trains on names a training parent of the same class."""
+    """Every TM window comes from a training recording of the same class."""
     with (ROOT / "audio_dataset" / "manifest_with_split.csv").open(newline="") as fh:
         originals = {r["audio_id"]: r for r in csv.DictReader(fh)}
     with GTM_ROWS.open(newline="") as fh:

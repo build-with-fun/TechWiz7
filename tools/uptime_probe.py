@@ -4,12 +4,10 @@
     .venv/bin/python tools/uptime_probe.py http://127.0.0.1:5055 --interval 60 --hours 8
     .venv/bin/python tools/uptime_probe.py --summary      # summarise what was recorded
 
-Every ``--interval`` seconds it requests ``/api/health/ready`` and appends one line to
-``reports/uptime.jsonl``: time, HTTP status, response time and whether the app was ready
-(database up and both models loaded). A probe counts as up only when the status is 200
-within ``--timeout`` seconds. ``--summary`` prints and writes ``reports/uptime_summary.json``
-with the uptime percentage against the SRS target of 99 %. Stop it with Ctrl+C; runs can be
-resumed and are summarised together.
+Every ``--interval`` seconds it calls ``/api/health/ready`` and appends a line to
+``reports/uptime.jsonl`` (time, status, response time, ready or not). Only a 200 within
+``--timeout`` counts as up. ``--summary`` writes ``reports/uptime_summary.json`` with the
+uptime against the 99% target. Stop with Ctrl+C; later runs add to the same log.
 """
 
 from __future__ import annotations

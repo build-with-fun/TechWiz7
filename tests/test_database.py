@@ -1,15 +1,10 @@
-"""The database is the store of record: these tests are the contract on it.
+"""Database tests.
 
-SRS FR lxxi-lxxii (storage and contents), lxxiii-lxxiv (duplicate detection),
-lxxv (model version tracking), lxxvi (audit trail), lxxx (retention), §1.10 item 11
-(mandated folder `database/`, shipped credentials).
+SRS FR lxxi-lxxii (storage), lxxiii-lxxiv (duplicates), lxxv (model versions), lxxvi
+(audit trail), lxxx (retention), 1.10 item 11 (database/ folder, shipped credentials).
 
-The tests that matter most are the two the SRS calls out as integrity traps:
-
-* **FR lxxv** -- activating a new model version must not change a single number on an event
-  that was already classified. An evaluator will try exactly this.
-* **FR lxxvi** -- the audit trail must still make sense after a user is deleted, which means
-  the actor's name cannot be a live foreign key that becomes null.
+The key ones: a new model version must not change old results (FR lxxv), and the audit
+trail must stay readable after a user is deleted (FR lxxvi).
 """
 
 from __future__ import annotations
@@ -78,12 +73,7 @@ def factory(engine):
 
 @pytest.fixture()
 def session(factory):
-    """A session that survives an expected IntegrityError.
-
-    Tests below assert that the *database* refuses bad data, so a failed flush is the
-    expected outcome. A committing ``session_scope`` would then raise PendingRollbackError
-    instead, which is why this fixture rolls back and lets the test own the transaction.
-    """
+    """A session that rolls back at the end, so tests can expect IntegrityErrors."""
     s = factory()
     try:
         yield s
@@ -179,7 +169,7 @@ def test_database_folder_contains_the_mandated_files():
 
 
 def test_all_required_tables_exist(engine):
-    """FR lxxii names what must be stored; each maps to a table here."""
+    """FR lxxii: every required table exists."""
     present = set(inspect(engine).get_table_names())
     required = {
         "users",             # accounts and roles (FR i, ii)
@@ -197,24 +187,21 @@ def test_all_required_tables_exist(engine):
 
 
 def test_schema_sql_matches_the_orm_models():
-    """schema.sql is generated; this fails the moment the two drift apart.
-
-    Without this, the committed DDL becomes a lie the evaluator reads instead of the schema.
-    """
+    """schema.sql matches the ORM models."""
     from database.init_db import emit_schema
 
     generated = emit_schema(SCHEMA_SQL)
     assert SCHEMA_SQL.read_text(encoding="utf-8") == generated
-    # Every table must appear, so a truncated generation cannot pass.
+    # Every table must be there.
     for table in ("users", "audio_files", "events", "alerts", "reviews", "audit_records"):
         assert f"CREATE TABLE {table} " in generated, f"{table} missing from schema.sql"
 
 
-# Constraints -- the schema refuses nonsense even when the app has a bug
+# Constraints
 
 
 def test_foreign_keys_are_actually_enforced(engine, factory):
-    """SQLite ignores FKs unless the pragma is set; a silent FK would corrupt analytics."""
+    """SQLite only enforces foreign keys with the pragma set."""
     with engine.connect() as connection:
         assert connection.execute(text("PRAGMA foreign_keys")).scalar() == 1
 
@@ -249,7 +236,7 @@ def test_an_unknown_event_status_is_rejected(session):
 
 
 def test_all_seven_srs_event_statuses_are_accepted(session):
-    """FR lxii lists seven; all must be storable, or a real transition would 500."""
+    """FR lxii: all seven statuses can be stored."""
     user = _user(session)
     audio = _audio(session, user, sha="b" * 64)
     for index, status in enumerate(EVENT_STATUSES):
@@ -285,7 +272,7 @@ def test_a_confidence_outside_zero_to_one_is_rejected(session):
 
 
 def test_one_confidence_cell_per_event_model_and_class(session):
-    """A duplicate cell would double-count in the per-class analytics."""
+    """One score row per event, model and class."""
     user = _user(session)
     audio = _audio(session, user)
     py, gtm = _model_version(session), _model_version(session, "gtm")
@@ -329,15 +316,11 @@ def test_a_review_decision_outside_the_vocabulary_is_rejected(session):
         session.flush()
 
 
-# FR lxxiii / lxxiv -- duplicate and near-duplicate detection
+# FR lxxiii / lxxiv: duplicates
 
 
 def test_the_same_bytes_can_only_be_stored_once(session):
-    """FR lxxiii: the exact-duplicate check is a unique constraint, not a query.
-
-    A query-based check loses the race between two simultaneous uploads; the constraint
-    cannot, so the guarantee holds under the concurrency the demo will actually see.
-    """
+    """FR lxxiii: a unique constraint blocks exact duplicates (safe under concurrency)."""
     user = _user(session)
     _audio(session, user, name="first.wav", sha="d" * 64)
     with pytest.raises(IntegrityError):
@@ -357,7 +340,7 @@ def test_different_bytes_are_both_stored(session):
 
 
 def test_a_near_duplicate_is_recorded_and_never_silently_merged(session):
-    """FR lxxiv: identify re-uploads of the same event. A human decides what to do."""
+    """FR lxxiv: near-duplicates are linked, not merged."""
     user = _user(session)
     original = _audio(session, user, name="orig.wav", sha="1" * 64)
     original.perceptual_fingerprint = "fp-abc"
@@ -372,7 +355,7 @@ def test_a_near_duplicate_is_recorded_and_never_silently_merged(session):
 
 
 def test_sha256_file_matches_a_known_digest(tmp_path: Path):
-    """The upload path hashes bytes; a wrong algorithm would silently break dedup."""
+    """sha256_file gives the right digest."""
     import hashlib
 
     sample = tmp_path / "sample.bin"
@@ -381,7 +364,7 @@ def test_sha256_file_matches_a_known_digest(tmp_path: Path):
     assert sha256_file(sample) == hashlib.sha256(payload).hexdigest()
 
 
-# FR lxxv -- model version tracking. The integrity trap.
+# FR lxxv: model versions
 
 
 def test_every_event_records_both_model_versions(session):
@@ -395,8 +378,7 @@ def test_every_event_records_both_model_versions(session):
 
 
 def test_activating_a_new_model_version_does_not_change_a_past_result(session):
-    """FR lxxv, verbatim: "a model version update must not alter previously recorded
-    results". This is the test an evaluator will try to break."""
+    """FR lxxv: a model version update must not alter previously recorded results."""
     user = _user(session)
     audio = _audio(session, user)
     py_old = _model_version(session, "python", "3.0.0", active=True)
@@ -435,7 +417,7 @@ def test_activating_a_new_model_version_does_not_change_a_past_result(session):
     assert reread.python_model_version_id == py_old.id
     assert py_new.is_active is True
 
-    # A new event, however, is judged by the newly active version.
+    # A new event uses the new version.
     fresh = _event(session, _audio(session, user, sha="9" * 64), user, py_new, gtm)
     assert fresh.python_model_version.version == "4.0.0"
 
@@ -447,7 +429,7 @@ def test_a_model_version_cannot_be_registered_twice(session):
 
 
 def test_a_superseded_version_is_kept_because_events_reference_it(session):
-    """Deleting an old version would orphan its events; the FK refuses."""
+    """An old version can't be deleted while events use it."""
     user = _user(session)
     audio = _audio(session, user)
     py = _model_version(session, "python", "1.0.0")
@@ -465,11 +447,11 @@ def test_an_unknown_model_name_is_rejected(session):
         session.flush()
 
 
-# FR lix-lxi -- review and override preserve the original prediction
+# FR lix-lxi: reviews keep the original prediction
 
 
 def test_an_override_preserves_the_original_model_output(session):
-    """FR lxi: the override must not erase what the models said."""
+    """FR lxi: an override keeps the model output."""
     user = _user(session)
     audio = _audio(session, user)
     py = _model_version(session, "python", "3.1.0")
@@ -515,7 +497,7 @@ def test_an_override_preserves_the_original_model_output(session):
 
 
 def test_the_original_scores_survive_an_override(session):
-    """The comparison report and the accuracy analytics read these rows."""
+    """The score rows are unchanged by an override."""
     user = _user(session)
     audio = _audio(session, user)
     py = _model_version(session, "python", "3.1.0")
@@ -530,7 +512,7 @@ def test_the_original_scores_survive_an_override(session):
 
 
 def test_the_review_queue_records_why_an_item_was_queued(session):
-    """FR lvii: an item that says only "needs review" is a usability defect."""
+    """FR lvii: the queue item says why it was queued."""
     user = _user(session)
     audio = _audio(session, user)
     py = _model_version(session), _model_version(session, "gtm")
@@ -550,8 +532,7 @@ def test_the_review_queue_records_why_an_item_was_queued(session):
 
 
 def test_a_review_may_be_decided_exactly_once_per_row(session):
-    """A second decision is an illegal state transition handled by the service layer; at the
-    storage level a decided row must carry who and when."""
+    """A decided review records who and when."""
     user = _user(session)
     audio = _audio(session, user)
     models = (_model_version(session), _model_version(session, "gtm"))
@@ -563,11 +544,10 @@ def test_a_review_may_be_decided_exactly_once_per_row(session):
     assert review.is_decided and review.decided_at is not None and review.decided_by_id
 
 
-# FR liv-lvi -- alerts
+# FR liv-lvi: alerts
 
 def test_an_alert_records_the_rule_that_fired(session):
-    """FR liii rules are editable, so the alert keeps its own copy: "why did this alert?"
-    must still answer correctly after an administrator changes the rule."""
+    """The alert keeps a copy of its rule, since rules can be edited (FR liii)."""
     user = _user(session)
     audio = _audio(session, user)
     models = (_model_version(session), _model_version(session, "gtm"))
@@ -601,7 +581,7 @@ def test_an_acknowledged_alert_records_who_and_when(session):
 
 
 def test_a_dismissed_alert_records_the_false_alarm_reason(session):
-    """FR lvi: without the reason the false-alarm rate is not measurable."""
+    """FR lvi: a dismissed alert stores the reason."""
     user = _user(session)
     audio = _audio(session, user)
     models = (_model_version(session), _model_version(session, "gtm"))
@@ -617,7 +597,7 @@ def test_a_dismissed_alert_records_the_false_alarm_reason(session):
 
 
 def test_two_alerts_can_share_a_dedup_key_so_a_burst_collapses(session):
-    """FR liv's dedup window: a key is recorded, not unique, so the burst is countable."""
+    """FR liv: the dedup key isn't unique, so repeats can be counted."""
     user = _user(session)
     audio = _audio(session, user)
     models = (_model_version(session), _model_version(session, "gtm"))
@@ -629,11 +609,11 @@ def test_two_alerts_can_share_a_dedup_key_so_a_burst_collapses(session):
     assert session.execute(select(Alert)).scalars().all().__len__() == 3
 
 
-# FR xxxvi / lxxix -- live sessions and consent
+# FR xxxvi / lxxix: live sessions and consent
 
 
 def test_a_live_session_records_consent_and_its_windows(session):
-    """FR lxxix: users are informed when the microphone is active; the consent is stored."""
+    """FR lxxix: consent is stored with the session."""
     from src.db import new_session_id
 
     user = _user(session)
@@ -652,7 +632,7 @@ def test_a_live_session_records_consent_and_its_windows(session):
         ))
     session.flush()
     assert len(session.get(LiveSession, sid).windows) == 3
-    # The consecutive count is exposed so the UI can show "2 of 3 confirming windows".
+    # The UI shows this as "2 of 3 confirming windows".
     windows = session.execute(
         select(LiveWindow).where(LiveWindow.session_id == sid).order_by(LiveWindow.seq)
     ).scalars().all()
@@ -688,11 +668,11 @@ def test_a_deleted_session_takes_its_windows_with_it(session):
     assert session.execute(select(LiveWindow)).scalars().all() == []
 
 
-# FR lxxvi -- the audit trail
+# FR lxxvi: audit trail
 
 
 def test_every_audit_action_in_the_vocabulary_is_known():
-    """Handlers name an action; the vocabulary is here so a typo is caught by review."""
+    """Every audit action used is in the known list."""
     required = {
         "login_success", "login_failure", "logout", "audio_upload", "audio_download",
         "mic_session_start", "mic_consent", "prediction", "alert_generated",
@@ -706,7 +686,7 @@ def test_every_audit_action_in_the_vocabulary_is_known():
 
 
 def test_record_audit_copies_the_actor_so_history_survives_deletion(session):
-    """An audit trail that turns into nulls when a user is removed is not an audit trail."""
+    """Audit rows keep the actor's name after the user is deleted."""
     actor = _user(session, "o.operator", "security_operator")
     record_audit(session, action="alert_acknowledged", actor=actor,
                  target_type="alert", target_id=7, detail="acknowledged a Glass Breaking alert",
@@ -745,7 +725,7 @@ def test_a_failed_login_for_an_unknown_user_is_still_auditable(session):
     assert row.outcome == "failure"
 
 
-# FR lxxi / lxxx -- storage paths and retention
+# FR lxxi / lxxx: storage and retention
 
 
 def test_storage_layout_creates_its_directories(storage: StorageLayout):
@@ -762,7 +742,7 @@ def test_stored_paths_are_relative_so_the_database_survives_a_move(storage: Stor
 
 
 def test_a_stored_path_may_not_escape_the_storage_root(storage: StorageLayout):
-    """A path from the database is data, not a trusted instruction."""
+    """Stored paths can't point outside the storage root."""
     with pytest.raises(ValueError, match="escapes the storage root"):
         storage.resolve("../../etc/passwd")
 
@@ -779,7 +759,7 @@ def test_retention_expiry_is_storable_and_queryable(session):
 
 
 def test_a_flagged_event_is_excluded_from_a_purge_candidate_query(session):
-    """FR lxxvi legal hold: an event under investigation is never purged."""
+    """Flagged events are never purged."""
     user = _user(session)
     for index, flagged in enumerate((False, True)):
         row = _audio(session, user, name=f"clip{index}.wav", sha=str(index + 1) * 64)
@@ -808,26 +788,21 @@ def test_audio_id_is_sortable_and_round_trips():
 
 
 def test_a_new_audio_id_never_collides_with_a_surviving_row(session):
-    """A row count would hand out a duplicate after a deletion; the max-suffix scheme cannot.
-
-    This matters because the search filter (FR lxvii) and the audit trail (FR lxxvi) both
-    address an audio file by this id -- two live rows sharing one is an ambiguity, not a
-    cosmetic clash.
-    """
+    """New ids don't reuse an existing id after a delete."""
     user = _user(session)
     first = _audio(session, user, name="a.wav", sha="a1" * 32)
     second = _audio(session, user, name="b.wav", sha="b1" * 32)
     third = _audio(session, user, name="c.wav", sha="c1" * 32)
     assert len({first.audio_id, second.audio_id, third.audio_id}) == 3
 
-    # Delete the oldest, as a retention purge (FR lxxx) does.
+    # Delete the oldest, like a retention purge.
     session.delete(first)
     session.flush()
 
     surviving = {
         row.audio_id for row in session.execute(select(AudioFile)).scalars()
     }
-    # A count-based scheme returns "000003" here and collides with `third`.
+    # Counting rows would give "000003" here and clash with `third`.
     count_based = format_audio_id(len(surviving) + 1)
     assert count_based in surviving, "sanity: this is the collision the max-suffix scheme avoids"
 
@@ -845,16 +820,11 @@ def test_audio_id_has_a_unique_constraint(session):
         session.flush()
 
 
-# Scale -- NFR: at least 20,000 event records, and search must stay usable
+# Scale: 20,000 events
 
 
 def test_twenty_thousand_events_insert_and_the_search_filter_stays_fast(factory, engine):
-    """NFR: >=20,000 event records (FR lxxii) and a usable search (FR lxvii).
-
-    The measured query is the shape the search endpoint issues: filter on severity and
-    class, order by time, take a page. Without the ``ix_events_search`` index this is a
-    full scan and the endpoint misses its budget once the demo database is full.
-    """
+    """20,000 events insert fine and a typical search query stays fast (uses ix_events_search)."""
     classes = ["Glass Breaking", "Gunshot", "Gunshot", "Machinery Fault",
                "Panic Scream", "Aggression", "Animal Sound"]
     severities = ["High", "Critical", "Low", "Medium"]
@@ -925,7 +895,7 @@ def test_twenty_thousand_events_insert_and_the_search_filter_stays_fast(factory,
     assert "SCAN events" not in plan_text, f"full table scan: {plan_text}"
 
 
-# database/init_db.py -- the script the evaluator runs
+# database/init_db.py
 
 
 def _load_init_module():
@@ -936,7 +906,7 @@ def _load_init_module():
 
 
 def test_init_db_is_idempotent(tmp_path: Path, capsys):
-    """Running it twice must change nothing and say so, not duplicate the accounts."""
+    """Running it twice doesn't duplicate anything."""
     init = _load_init_module()
     db = tmp_path / "init.db"
 
@@ -983,15 +953,14 @@ def test_seed_passwords_are_hashed_never_stored_plaintext(tmp_path: Path):
 
 
 def test_the_shipped_credentials_are_documented_as_public():
-    """They are published on purpose (SRS §1.10 item 11) and must say so, or someone reuses
-    them for something real."""
+    """The seed credentials are marked as public (SRS 1.10 item 11)."""
     payload = json.loads(CREDENTIALS.read_text())
     assert "DELIBERATELY published" in payload["_comment"]
     assert set(payload["_roles_covered"]) == set(ROLES)
 
 
 def test_init_db_reset_requires_confirmation_when_not_confirmed(tmp_path: Path, monkeypatch):
-    """--reset is destructive; without --yes and without a tty it must refuse, not proceed."""
+    """--reset refuses without --yes and without a terminal."""
     init = _load_init_module()
     db = tmp_path / "reset.db"
     assert init.main(["--db", str(db), "--seed", "--storage", str(tmp_path / "st")]) == 0
@@ -1017,10 +986,9 @@ def test_init_db_reset_with_yes_rebuilds_and_reassigns_ids(tmp_path: Path):
 
 
 def test_init_db_register_model_then_activate(tmp_path: Path, monkeypatch):
-    """FR lxxv: versions are registered and activated through a documented operator command."""
+    """FR lxxv: register and activate a model version from the command line."""
     init = _load_init_module()
-    # Isolate from real artifacts on disk (python_models/ carries a smoke bundle): the
-    # seed step must discover nothing here so the operator command is the sole registration.
+    # Point away from the real models so only the command registers one.
     monkeypatch.setattr(init, "REPO_ROOT", tmp_path)
     db = tmp_path / "models.db"
     assert init.main(["--db", str(db), "--seed", "--storage", str(tmp_path / "st")]) == 0
@@ -1039,7 +1007,7 @@ def test_init_db_register_model_then_activate(tmp_path: Path, monkeypatch):
 
 
 def test_init_db_discovers_a_python_model_artifact(tmp_path: Path, monkeypatch):
-    """The seed step registers a model only when a real artifact exists on disk."""
+    """Seeding registers a model found on disk."""
     init = _load_init_module()
     models_dir = tmp_path / "python_models" / "svm_v1"
     models_dir.mkdir(parents=True)
@@ -1092,7 +1060,7 @@ def test_init_db_activates_new_export_and_refreshes_existing_metadata(session):
 
 
 def test_init_db_reports_no_models_rather_than_inventing_one(tmp_path: Path, monkeypatch, capsys):
-    """No trained artifact means the app says so; it must never register a fake version."""
+    """No model on disk means nothing is registered."""
     init = _load_init_module()
     monkeypatch.setattr(init, "REPO_ROOT", tmp_path)
     assert init.discover_model_artifacts() == []
@@ -1121,7 +1089,7 @@ def test_init_db_emits_a_schema_file_covering_every_table(tmp_path: Path, monkey
         assert f"CREATE TABLE {table} " in text_out
 
 
-# Relationships between the pieces
+# Relationships
 
 
 def test_deleting_an_event_takes_its_scores_alerts_and_reviews(session):
@@ -1142,7 +1110,7 @@ def test_deleting_an_event_takes_its_scores_alerts_and_reviews(session):
 
 
 def test_an_event_may_be_analysed_twice_from_one_audio_file(session):
-    """Re-analysis by a new model version must not duplicate the audio bytes (FR lxxi)."""
+    """Re-analysing a file doesn't copy the audio again (FR lxxi)."""
     user = _user(session)
     audio = _audio(session, user)
     v1 = _model_version(session, "python", "3.0.0")

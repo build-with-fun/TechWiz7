@@ -1,7 +1,6 @@
-/* Page components on top of app.css. Colours, radii and type come from tokens.css.
-   Surfaces are flat: one border, no gradients, no glow. Colour is kept for status. */
+/* Page components on top of app.css. Values come from tokens.css. */
 
-/* ------------------------------------------------------------- shell ---- */
+/* Shell */
 .topbar { padding: 0 var(--sp-5); border-color: var(--border); }
 .topbar__brand { text-decoration: none; }
 .topbar__title { display: block; font-size: var(--fs-base); }
@@ -33,7 +32,7 @@
 .page-foot p { margin: 0; max-width: 110ch; }
 .page-foot__separator { padding: 0 var(--sp-2); color: var(--text-subtle); }
 
-/* ------------------------------------------------------------ panels ---- */
+/* Panels */
 .panel { min-width: 0; border: 1px solid var(--border); border-radius: var(--r-3); background: var(--bg-surface); overflow: hidden; }
 .panel__head {
   display: flex; justify-content: space-between; align-items: center;
@@ -49,7 +48,7 @@
 .panel__body--flush { padding: 0; }
 .prose { color: var(--text-muted); padding: var(--sp-4); }
 
-/* ----------------------------------------------------------- controls ---- */
+/* Controls */
 .btn { border-radius: var(--r-2); min-height: 2.25rem; font-size: var(--fs-sm); transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease); }
 .btn:hover:not(:disabled) { border-color: var(--border-strong); background: var(--bg-surface-2); }
 .btn:active:not(:disabled) { transform: translateY(1px); }
@@ -72,7 +71,7 @@
 .pip--muted { color: var(--text-subtle) !important; }
 .pip--live, .pip--bad { color: var(--danger) !important; }
 
-/* ---------------------------------------------------- dashboard strip ---- */
+/* Dashboard strip */
 .status-strip {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3);
   padding: var(--sp-3) var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-3); background: var(--bg-surface);
@@ -85,7 +84,7 @@
 .model-chip__name { font-size: var(--fs-sm); font-weight: var(--fw-semi); }
 .model-chip__meta { font-size: var(--fs-xs); color: var(--text-subtle); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 
-/* ------------------------------------------------------------ metrics ---- */
+/* Metrics */
 .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr)); gap: var(--sp-3); }
 .summary-cell {
   min-width: 0; padding: var(--sp-3) var(--sp-4);
@@ -102,7 +101,7 @@
 .bar-row__track { height: .5rem; border: 0; background: var(--bg-inset); border-radius: var(--r-round); }
 .bar-row__fill { display: block; height: 100%; width: 0; border-radius: var(--r-round); background: var(--accent); transition: width var(--t-base) var(--ease); }
 
-/* ------------------------------------------------------------- upload ---- */
+/* Upload */
 .dropzone {
   min-height: 14rem; display: flex; flex-direction: column; justify-content: center;
   align-items: center; gap: var(--sp-2); padding: var(--sp-6) var(--sp-4);
@@ -133,7 +132,7 @@
 .steps__title { margin: 0 0 2px; font-weight: var(--fw-semi); }
 .steps__body { color: var(--text-muted); font-size: var(--fs-sm); margin: 0; }
 
-/* --------------------------------------------------------------- live ---- */
+/* Live */
 .live { display: grid; gap: var(--sp-4); }
 .live__controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--r-3); }
 .live__state { font-size: var(--fs-md); font-weight: var(--fw-semi); }
@@ -152,7 +151,7 @@
 .live__alert { margin: 0 0 var(--sp-4); padding: var(--sp-3) var(--sp-4); display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 .live__alert a { margin-left: auto; font-weight: var(--fw-semi); }
 
-/* ------------------------------------------------- two-model comparison ---- */
+/* Two-model comparison */
 .duo { display: grid; grid-template-columns: minmax(0, 1fr) 4rem minmax(0, 1fr); gap: var(--sp-3); align-items: stretch; }
 .duo__gap { align-self: center; text-align: center; display: grid; gap: 2px; }
 .duo__gap-label { color: var(--text-subtle); font-size: var(--fs-xs); }
@@ -168,7 +167,7 @@
 .model-card__top3 { margin: var(--sp-2) 0 0; padding-left: var(--sp-5); font-size: var(--fs-sm); color: var(--text-muted); }
 .model-card__top3 li { margin: 2px 0; font-variant-numeric: tabular-nums; }
 
-/* ------------------------------------------------------ lists & feeds ---- */
+/* Lists & feeds */
 .scale-list__item { display: grid; grid-template-columns: minmax(9rem, 1fr) minmax(0, 2fr) 2rem; gap: var(--sp-3); align-items: center; padding: var(--sp-2) var(--sp-4); border-bottom: 1px solid var(--border-subtle); font-size: var(--fs-sm); }
 .scale-list__item:last-child { border-bottom: 0; }
 .scale-list__item[data-scale-critical="1"] .scale-list__name::before { content: "◆ "; color: var(--danger); }
@@ -190,7 +189,7 @@
 .timeline__item--critical::before { background: var(--danger); }
 .table tbody tr:hover { background: var(--bg-surface-2); }
 
-/* ------------------------------------------------------ sign-in pages ---- */
+/* Sign-in pages */
 body[data-page="login"] .app, body[data-page="register"] .app { display: block; }
 body[data-page="login"] .nav, body[data-page="login"] .page-foot,
 body[data-page="register"] .nav, body[data-page="register"] .page-foot { display: none; }
@@ -210,7 +209,7 @@ body[data-page="login"] .main, body[data-page="register"] .main { padding: 0; ma
 .auth-form .btn--primary { min-height: 2.5rem; width: 100%; justify-content: center; }
 .eyebrow { color: var(--text-subtle); font-size: var(--fs-xs); letter-spacing: 0.08em; text-transform: uppercase; font-weight: var(--fw-semi); }
 
-/* --------------------------------------------------------- responsive ---- */
+/* Responsive */
 @media (max-width: 1024px) {
   .nav { padding: var(--sp-4) var(--sp-2); }
   .grid--2col { grid-template-columns: minmax(0, 1fr); }
@@ -239,7 +238,7 @@ body[data-page="login"] .main, body[data-page="register"] .main { padding: 0; ma
   .bar-row { grid-template-columns: minmax(5rem, 7rem) minmax(0, 1fr) 2rem; gap: var(--sp-2); }
 }
 
-/* Motion is only ever feedback; the reduced-motion preference removes it entirely. */
+/* Reduced motion switches all animation off. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
@@ -251,7 +250,7 @@ body[data-page="login"] .main, body[data-page="register"] .main { padding: 0; ma
 :root[data-theme="light"] .input, :root[data-theme="light"] .select, :root[data-theme="light"] .textarea { background: var(--bg-surface); }
 .field small { color: var(--text-subtle); font-size: var(--fs-xs); }
 
-/* ================================================================ v2 components ==== */
+/* Newer components */
 body { font-feature-settings: "cv11", "ss01"; -webkit-font-smoothing: antialiased; }
 h1, h2, h3, .page-title, .panel__title { letter-spacing: -0.015em; }
 .muted { color: var(--text-subtle); }

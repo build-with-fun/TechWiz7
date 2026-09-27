@@ -2,8 +2,7 @@
 
     python tools/comment_stats.py [--json out.json]
 
-Used to measure the comment clean-up of 26 Sep; kept because it is a quick way to see
-which modules have drifted into narrating their own code.
+Shows which files have the most comments.
 """
 
 from __future__ import annotations

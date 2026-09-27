@@ -1,9 +1,8 @@
 """Live microphone sessions (FR vi, vii, lxxix).
 
-POST /sessions opens one, and is refused without consent_ack; consent is audited.
-POST /sessions/<sid>/windows analyses one 1-3 s window through the same pipeline as an
-upload, stores a LiveWindow row, and keeps the repeated-detection state on the session row.
-POST /sessions/<sid>/stop closes it. Sessions belong to their opener: anyone else gets 404.
+POST /sessions opens a session (needs consent_ack). POST /sessions/<sid>/windows analyses
+one 1-3 s window with the same pipeline as uploads. POST /sessions/<sid>/stop closes it.
+Only the user who opened a session can see it; others get 404.
 """
 
 from __future__ import annotations
@@ -27,7 +26,7 @@ bp = Blueprint("live_api", __name__)
 
 _LOGGER = logging.getLogger(__name__)
 
-#: A session with no window for this long reads as expired (well before its audio ages out).
+# A session with no window for this long counts as expired.
 _IDLE_TIMEOUT = _dt.timedelta(minutes=10)
 
 
@@ -57,13 +56,13 @@ def _session_to_dict(session_row: LiveSession) -> dict:
 
 
 def _load_owned_session(session, session_id: str) -> LiveSession:
-    """Load the session and enforce ownership: another user's session is a 404."""
+    """Load the session, or 404 if it belongs to someone else."""
     row = session.get(LiveSession, session_id)
     if row is None:
         raise not_found("live session")
     user = current_user._get_current_object()
     if row.user_id != user.id and not user.can("view_all_events"):
-        # Same rule as events: not "exists but is not yours" -- simply not found.
+        # Same as events: 404, not 403.
         raise not_found("live session")
     return row
 
@@ -89,7 +88,7 @@ def _audit(session, *, action: str, row: LiveSession, detail: str, after=None) -
 @bp.get("/sessions")
 @capability_required("live_session")
 def list_sessions():
-    """This caller's sessions, newest first -- the console's session picker."""
+    """The user's sessions, newest first."""
     user = current_user._get_current_object()
     with session_scope(current_app.config["SST_SESSION_FACTORY"]) as session:
         statement = (
@@ -105,7 +104,7 @@ def list_sessions():
 @bp.post("/sessions")
 @capability_required("live_session")
 def start_session():
-    """FR lxxix: open a microphone session behind the consent gate."""
+    """FR lxxix: open a microphone session (consent required)."""
     body = request.get_json(silent=True) or {}
     consent = body.get("consent_ack") if "consent_ack" in body else body.get("consent_acknowledged")
     if consent not in (True, "true", "True", 1, "1"):
@@ -117,7 +116,7 @@ def start_session():
     now = utcnow()
     with session_scope(current_app.config["SST_SESSION_FACTORY"]) as session:
         row = LiveSession(
-            # The client-facing id is a random UUID4, so it reveals nothing about volume.
+            # Random UUID4 id.
             id=str(uuid.uuid4()),
             user_id=user.id,
             device_label=(body.get("device_label") or "browser").strip()[:80],
@@ -144,7 +143,7 @@ def start_session():
 @bp.get("/sessions/<session_id>")
 @capability_required("live_session")
 def get_session(session_id: str):
-    """Session state plus its window roll -- what the panel shows on reload."""
+    """Session state and its windows."""
     with session_scope(current_app.config["SST_SESSION_FACTORY"]) as session:
         row = _load_owned_session(session, session_id)
         if row.status == "active" and row.started_at is not None:
@@ -191,7 +190,7 @@ def get_session(session_id: str):
 @bp.post("/sessions/<session_id>/stop")
 @capability_required("live_session")
 def stop_session(session_id: str):
-    """Close the session and roll up its counters; the rows stay readable (FR lxxvi)."""
+    """Close the session and total up its counters (FR lxxvi)."""
     with session_scope(current_app.config["SST_SESSION_FACTORY"]) as session:
         row = _load_owned_session(session, session_id)
         if row.status != "active":
@@ -216,10 +215,9 @@ def stop_session(session_id: str):
 @bp.post("/sessions/<session_id>/windows")
 @capability_required("live_session")
 def push_window(session_id: str):
-    """Analyse one live window (budget 3 s) and return its verdict.
+    """Analyse one live window (3 s budget) and return the result.
 
-    The confirmation streak is saved on the session row after each window, so it survives a
-    page reload or a server restart.
+    The detection streak is saved on the session row, so it survives a reload or restart.
     """
     body = request.get_json(silent=True)
     if not isinstance(body, dict):
@@ -268,7 +266,7 @@ def push_window(session_id: str):
                 "invalid_state_transition",
                 f"Session {session_id} is {row.status}; open a new session to continue.",
             )
-        # Duplicate protection: a retried window must not double-count a streak.
+        # A retried window must not count twice.
         existing = session.execute(
             select(LiveWindow).where(
                 LiveWindow.session_id == row.id, LiveWindow.seq == seq
@@ -295,13 +293,13 @@ def push_window(session_id: str):
             "request_id": current_request_id(),
         }
         if audio_bytes[:4] == b"RIFF":
-            # The window is a WAV: decode it through the same path as an upload.
+            # WAV: decode like an upload.
             record = pipeline.analyse_bytes(
                 audio_bytes, filename=f"window_{seq}.wav", origin="live",
                 persist=persist, **meta
             )
         else:
-            # Raw little-endian float32 PCM from a client that streams without a header.
+            # Raw little-endian float32 PCM without a header.
             record = pipeline.analyse_samples(audio_bytes, sample_rate, origin="live",
                                               persist=persist, **meta)
 
@@ -368,7 +366,7 @@ def push_window(session_id: str):
                     "confidence": gtm_block.get("confidence")},
             "confidence_difference": comparison.get("confidence_difference"),
             "consistency_status": comparison.get("consistency_status"),
-            # FR xxxiv: top three per model, from the comparison record.
+            # FR xxxiv: top three per model.
             "top3": {
                 "python": (comparison.get("python") or {}).get("top3"),
                 "gtm": (comparison.get("gtm") or {}).get("top3"),
@@ -390,13 +388,13 @@ def push_window(session_id: str):
             "requeue_hint_ms": 500,
         }
         data = _session_to_dict(row)
-        data["latest_window"] = payload  # the row is committed with the session counters
+        data["latest_window"] = payload
 
     return jsonify({"data": payload, "meta": {"session": data}})
 
 
 def _validated_sample_rate(body: dict) -> int:
-    """The window's sample rate, defaulting to the browser's capture rate (16 kHz)."""
+    """Window sample rate, default 16 kHz."""
     try:
         rate = int(body.get("sample_rate") or 16000)
     except (TypeError, ValueError):

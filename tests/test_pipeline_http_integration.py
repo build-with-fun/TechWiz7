@@ -1,4 +1,4 @@
-"""Exercise the real analysis orchestrator across the HTTP and database boundary."""
+"""The real analysis pipeline through HTTP and the database."""
 
 import io
 import base64
@@ -18,7 +18,7 @@ from src.services.pipeline import AnalysisPipeline, PipelineModels, set_pipeline
 
 
 class FixedPredictor:
-    """Keep inference deterministic while testing the surrounding real workflow."""
+    """Fixed predictions, so the rest of the workflow can be tested."""
 
     def __init__(self, name, classes):
         self.name = name
@@ -128,7 +128,7 @@ def test_upload_with_real_pipeline_writes_event_and_original(tmp_path):
 
 
 def test_exported_models_complete_an_http_upload(tmp_path):
-    """Catch model-loader and feature-contract failures hidden by fixed predictors."""
+    """Upload with the real exported models."""
     root = Path(__file__).resolve().parents[1]
     if not (root / "gtm_model/gtm_model.h5").exists():
         pytest.skip("The independently trained GTM export is not installed")

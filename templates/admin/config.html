@@ -1,17 +1,10 @@
 {% extends "base.html" %}
 {% import "_macros.html" as ui %}
 {% import "_presentation.html" as pres %}
-{# ==========================================================================
-   templates/admin/config.html — the live-editable configuration view
-   (FR liii / FR lxxx).
-
-   Read-only to look at. The write path is PUT /api/admin/config/<file> in the
-   admin API slice, which runs the same validator as boot before anything
-   touches the disk — so what an evaluator edits here is exactly what boot
-   would have accepted. Server-rendered, CSP-safe.
-   ========================================================================== #}
+{# Configuration view (FR liii, FR lxxx). This page only displays the files. Edits go
+   through PUT /api/admin/config/<file>, which runs the same validator as start-up. #}
 {% set page_id = "admin.config" %}
-{% block title %}Configuration — {{ app_name }}{% endblock %}
+{% block title %}Configuration · {{ app_name }}{% endblock %}
 
 {% block content %}
 <header class="page-head">
@@ -19,13 +12,13 @@
     <div class="breadcrumb"><a href="{{ url_for('main.dashboard') }}">Home</a><span>Admin</span><span>Configuration</span></div>
     <h1 class="page-title">{{ page_title or 'Configuration' }}</h1>
     <p class="page-sub">
-      Every threshold, class and rule the engine reads at runtime — no value is ever a literal in code.
+      Every threshold, class and rule the engine reads at runtime. None of them are hard-coded.
       Config dir: <span class="mono">{{ config_dir }}</span> · rules dir: <span class="mono">{{ alert_rules_dir }}</span>
     </p>
   </div>
   <div class="page-head__actions">
     <span class="chip {{ 'chip--quality-good' if can_edit else '' }}">
-      <span class="chip__glyph" aria-hidden="true">{{ '✎' if can_edit else '🔒' }}</span>
+      <span class="chip__glyph" aria-hidden="true">{{ ui.icon('edit', 11) if can_edit else ui.icon('lock', 11) }}</span>
       <span class="chip__text">{{ 'Editable via admin API' if can_edit else 'Read-only for your role' }}</span>
     </span>
   </div>
@@ -34,7 +27,7 @@
 <section class="panel">
   <div class="panel__head">
     <h2 class="panel__title">{{ ui.icon('sliders', 14) }} Active configuration snapshot</h2>
-    <p class="panel__note">Exactly which versions judged the current events — this snapshot is stored on every event record.</p>
+    <p class="panel__note">The model versions behind the current events. Every event record stores this snapshot.</p>
   </div>
   <div class="panel__body">
     <dl class="kv">
@@ -62,7 +55,7 @@
 
 <section class="panel">
   <div class="panel__head">
-    <h2 class="panel__title">{{ ui.icon('sliders', 14) }} Thresholds — config/thresholds.json</h2>
+    <h2 class="panel__title">{{ ui.icon('sliders', 14) }} Thresholds (config/thresholds.json)</h2>
     <p class="panel__note">An evaluator may demand a changed threshold live; the next analysis uses it, no restart.</p>
   </div>
   <div class="panel__body">
@@ -89,8 +82,8 @@
 
 <section class="panel">
   <div class="panel__head">
-    <h2 class="panel__title">{{ ui.icon('list', 14) }} Sound classes — config/classes.json</h2>
-    <p class="panel__note">The single source of truth for class names; adding one here grows every dropdown in the app.</p>
+    <h2 class="panel__title">{{ ui.icon('list', 14) }} Sound classes (config/classes.json)</h2>
+    <p class="panel__note">Class names come from this file; a class added here shows up in every dropdown.</p>
   </div>
   <div class="panel__body">
     <div class="table-wrap">
@@ -139,7 +132,7 @@
 
 <section class="panel">
   <div class="panel__head">
-    <h2 class="panel__title">{{ ui.icon('bell', 14) }} Effective alert rules — alert_rules/alert_rules.json</h2>
+    <h2 class="panel__title">{{ ui.icon('bell', 14) }} Effective alert rules (alert_rules/alert_rules.json)</h2>
     <p class="panel__note">Per class, with defaults merged. This is the exact rule that fires when an event matches.</p>
   </div>
   <div class="panel__body">
@@ -190,8 +183,8 @@
 
 <section class="panel">
   <div class="panel__head">
-    <h2 class="panel__title">{{ ui.icon('clock', 14) }} Retention — alert_rules/retention.json</h2>
-    <p class="panel__note">Windows are read at purge time, so a change takes effect at the next purge — no restart.</p>
+    <h2 class="panel__title">{{ ui.icon('clock', 14) }} Retention (alert_rules/retention.json)</h2>
+    <p class="panel__note">Windows are read at purge time, so a change applies from the next purge without a restart.</p>
   </div>
   <div class="panel__body">
     <dl class="kv">

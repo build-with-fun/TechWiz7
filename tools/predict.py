@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Try the model on an audio file from the command line.
+"""Try the models on an audio file from the command line.
 
-Runs one clip (or a whole folder) through BOTH bundled models — the Python model
-(python_models/best) and the converted Google Teachable Machine model (gtm_model/) —
-and prints what each one predicted, how much they agree, and the app's final decision.
+Runs a clip (or a folder) through the Python model (python_models/best) and the Teachable
+Machine model (gtm_model/) and prints both predictions, how well they agree, and the
+final decision.
 
     .venv/bin/python tools/predict.py sample_audio/gunshot.wav
     .venv/bin/python tools/predict.py sample_audio/                 # every .wav in a folder
     .venv/bin/python tools/predict.py my_clip.wav --top 5
 
-Nothing is written to the database: this is a read-only look at the models.
+Nothing is saved.
 """
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ if str(REPO_ROOT) not in sys.path:
 
 
 def _scores(block: dict) -> list[tuple[str, float]]:
-    """Per-class confidences, preferring the full vector and falling back to top-3."""
+    """Per-class confidences (full list if available, else top 3)."""
     conf = block.get("confidences")
     if isinstance(conf, dict) and conf:
         return sorted(conf.items(), key=lambda kv: -kv[1])
@@ -108,7 +108,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"no .wav files in {args.target}", file=sys.stderr)
         return 2
 
-    # TensorFlow prints a lot of noise on load; quiet the loudest offenders.
+    # Quiet TensorFlow's startup logging.
     import logging
     logging.disable(logging.INFO)
 

@@ -1,7 +1,6 @@
-"""Audio settings from config/thresholds.json and config/features.json, cached on modification time.
+"""Audio settings from config/thresholds.json and config/features.json.
 
-The SRS allows evaluators to ask for a different segment duration or format during the demo
-(SRS 1.8 rule 5), so no audio parameter is a literal in code and an edit applies on the next call.
+Files are cached by modification time, so edits apply on the next call.
 """
 
 from __future__ import annotations
@@ -19,7 +18,7 @@ THRESHOLDS_FILE = "thresholds.json"
 FEATURES_FILE = "features.json"
 CLASSES_FILE = "classes.json"
 
-# Fallbacks, used only if a config file is missing; audio_config() reports its _source.
+# Defaults for when a config file is missing.
 
 AUDIO_DEFAULTS: dict[str, Any] = {
     "target_sample_rate": 16000,
@@ -49,7 +48,7 @@ QUALITY_DEFAULTS: dict[str, Any] = {
     "good_snr_db": 20.0,
     "acceptable_snr_db": 12.0,
     "poor_snr_db": 6.0,
-    # Not in thresholds.json yet; stated here so it is visible and overridable.
+    # Not in thresholds.json yet.
     "low_signal_peak_dbfs": -40.0,
 }
 
@@ -75,13 +74,13 @@ FEATURE_DEFAULTS: dict[str, Any] = {
     "onset_top_db": 30.0,
 }
 
-# mtime-keyed JSON cache
+# JSON cache keyed on mtime
 
 _CACHE: dict[str, tuple[float, int, dict[str, Any]]] = {}
 
 
 def _load_json(path: Path) -> dict[str, Any] | None:
-    """Read a JSON config, cached on (mtime, size). None when absent; a malformed file raises."""
+    """Read a cached JSON file. None if missing; raises if malformed."""
     if not path.exists():
         return None
     stat = path.stat()
@@ -99,13 +98,12 @@ def _load_json(path: Path) -> dict[str, Any] | None:
 
 
 def clear_cache() -> None:
-    """Drop the config cache.  Used by tests that rewrite a config file in place."""
+    """Clear the cache (used by tests)."""
     _CACHE.clear()
 
 
 def require_config_file(name: str, config_dir: Path | None = None) -> dict[str, Any]:
-    """Read a config file that must exist; a missing file is a startup error, not invented defaults.
-    """
+    """Read a config file that must exist."""
     directory = Path(config_dir) if config_dir is not None else CONFIG_DIR
     data = _load_json(directory / name)
     if data is None:
@@ -126,17 +124,17 @@ def _merge(defaults: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]
     return merged
 
 
-# Public accessors
+# Accessors
 
 def thresholds(config_dir: Path | None = None) -> dict[str, Any]:
-    """The full frozen thresholds document (config/thresholds.json)."""
+    """config/thresholds.json"""
     directory = Path(config_dir) if config_dir is not None else CONFIG_DIR
     data = _load_json(directory / THRESHOLDS_FILE)
     return data if data is not None else {}
 
 
 def audio_config(config_dir: Path | None = None) -> dict[str, Any]:
-    """Audio parameters: sample rate, segment duration, formats, normalisation targets."""
+    """Audio settings: sample rate, segment length, formats, normalisation."""
     doc = thresholds(config_dir)
     override = doc.get("audio", {}) if isinstance(doc.get("audio"), dict) else {}
     merged = _merge(AUDIO_DEFAULTS, override)
@@ -147,12 +145,12 @@ def audio_config(config_dir: Path | None = None) -> dict[str, Any]:
 
 
 def quality_config(config_dir: Path | None = None) -> dict[str, Any]:
-    """Audio-quality thresholds used by the Good/Acceptable/Poor/Unusable verdict."""
+    """Thresholds for the quality verdict."""
     doc = thresholds(config_dir)
     override = doc.get("audio_quality", {}) if isinstance(doc.get("audio_quality"), dict) else {}
     merged = _merge(QUALITY_DEFAULTS, override)
     audio = audio_config(config_dir)
-    # Duration limits are stated in both blocks; the audio block wins if it is explicit.
+    # Duration limits are in both blocks; the audio block wins.
     for key in ("min_duration_sec", "max_duration_sec"):
         if key in audio:
             merged.setdefault(key, audio[key])
@@ -162,7 +160,7 @@ def quality_config(config_dir: Path | None = None) -> dict[str, Any]:
 
 
 def performance_budget(config_dir: Path | None = None) -> dict[str, Any]:
-    """The SRS performance budgets (30 s clip <= 8 s, live window <= 3 s)."""
+    """SRS time budgets (30 s clip <= 8 s, live window <= 3 s)."""
     doc = thresholds(config_dir)
     override = doc.get("performance", {}) if isinstance(doc.get("performance"), dict) else {}
     merged = _merge(PERFORMANCE_DEFAULTS, override)
@@ -173,11 +171,11 @@ def performance_budget(config_dir: Path | None = None) -> dict[str, Any]:
 
 
 def feature_config(config_dir: Path | None = None) -> dict[str, Any]:
-    """Extractor parameters.  ``config/features.json`` is owned by feature_extraction."""
+    """Feature extractor settings from ``config/features.json``."""
     directory = Path(config_dir) if config_dir is not None else CONFIG_DIR
     data = _load_json(directory / FEATURES_FILE)
     if data is None:
-        # Absent file: use the thresholds file's numbers so segmenter and extractor agree.
+        # No file: fall back to the thresholds file.
         audio = audio_config(config_dir)
         merged = copy.deepcopy(FEATURE_DEFAULTS)
         merged["sample_rate"] = audio["target_sample_rate"]
@@ -190,7 +188,7 @@ def feature_config(config_dir: Path | None = None) -> dict[str, Any]:
         return merged
     merged = _merge(FEATURE_DEFAULTS, data)
     merged["_source"] = str(directory / FEATURES_FILE)
-    # The audio block wins for rate and segment length, even over features.json.
+    # The audio block wins for rate and segment length.
     audio = audio_config(config_dir)
     merged["_audio_block"] = {
         "target_sample_rate": audio["target_sample_rate"],
@@ -202,12 +200,12 @@ def feature_config(config_dir: Path | None = None) -> dict[str, Any]:
 
 
 def ffmpeg_binary() -> str:
-    """Path to ffmpeg, overridable for a machine where it is not on PATH."""
+    """Path to ffmpeg (can be overridden)."""
     return os.environ.get("SONICSENTINEL_FFMPEG", "ffmpeg")
 
 
 def config_dir_report(config_dir: Path | None = None) -> dict[str, Any]:
-    """Which config files this process is reading, and their versions."""
+    """Config files in use and their versions."""
     directory = Path(config_dir) if config_dir is not None else CONFIG_DIR
     thresholds_doc = thresholds(config_dir) or {}
     features_doc = _load_json(directory / FEATURES_FILE) or {}
@@ -246,5 +244,5 @@ def config_dir_report(config_dir: Path | None = None) -> dict[str, Any]:
 
 
 def ffprobe_binary() -> str:
-    """Path to ffprobe, overridable for the same reason."""
+    """Path to ffprobe (can be overridden)."""
     return os.environ.get("SONICSENTINEL_FFPROBE", "ffprobe")

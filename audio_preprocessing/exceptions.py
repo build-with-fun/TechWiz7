@@ -1,7 +1,6 @@
-"""Explicit rejection of unusable audio (SRS Step 3, FR viii, lxxvii).
+"""Rejection of unusable audio (SRS Step 3, FR viii, lxxvii).
 
-Unreadable audio is never dropped silently: it is rejected with a stable reason code (a plain
-string, so it survives JSON, the database and the API) and a readable message.
+Each rejection has a reason code (a plain string) and a readable message.
 """
 
 from __future__ import annotations
@@ -61,7 +60,7 @@ REASON_DESCRIPTIONS: dict[str, str] = {
 
 @dataclass
 class RejectionInfo:
-    """Why a piece of audio was refused, in a form the UI and the audit trail can store."""
+    """Why audio was refused."""
 
     reason: str
     detail: str = ""
@@ -75,7 +74,7 @@ class RejectionInfo:
 
 
 class AudioRejected(Exception):
-    """Audio that cannot be used, carrying RejectionInfo (reason code, detail, measurements)."""
+    """Unusable audio. Carries a RejectionInfo."""
 
     def __init__(self, reason: str, detail: str = "", metrics: dict[str, Any] | None = None):
         self.info = RejectionInfo(reason=reason, detail=detail, metrics=metrics)
@@ -97,7 +96,7 @@ class AudioDecodeError(AudioRejected):
 
 
 def message_for(reason: str, **fmt: Any) -> str:
-    """Readable text for a reason code; an unknown code falls back to the code itself."""
+    """Message for a reason code (the code itself if unknown)."""
     template = REASON_DESCRIPTIONS.get(reason)
     if template is None:
         return f"Audio rejected: {reason}"

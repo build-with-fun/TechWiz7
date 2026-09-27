@@ -1,8 +1,7 @@
 """Health endpoints.
 
-/api/health is liveness: fast, no database, no inference. /api/health/ready answers 200 only
-when the database and both models can serve analysis. /api/health/detail (signed in) reports
-the pipeline, database, storage, configuration, model versions and anomaly counters.
+/api/health: liveness, no database or inference. /api/health/ready: 200 only when the
+database and both models work. /api/health/detail (signed in): full status.
 """
 
 from __future__ import annotations
@@ -24,7 +23,7 @@ _STARTED_MONOTONIC = time.monotonic()
 
 
 def _folder_report() -> dict[str, dict]:
-    """The SRS 1.10 deliverable folders and whether each exists on this instance."""
+    """Which of the SRS 1.10 folders exist."""
     names = (
         "src", "templates", "static", "config", "alert_rules", "database", "data",
         "tests", "audio_dataset", "sample_audio", "documentation", "python_models",
@@ -36,7 +35,7 @@ def _folder_report() -> dict[str, dict]:
         path = REPO_ROOT / name
         entry: dict = {"present": path.exists()}
         if path.is_dir():
-            # A count only: cheap, and it leaks no filenames.
+            # Count only, no filenames.
             try:
                 entry["entries"] = sum(1 for _ in os.scandir(path))
             except OSError:
@@ -47,9 +46,7 @@ def _folder_report() -> dict[str, dict]:
 
 @bp.get("/api/health")
 def health():
-    """Liveness plus whether analysis can run. Does not touch the database, so a busy database
-    cannot restart a working app.
-    """
+    """Liveness and whether analysis can run. Doesn't touch the database."""
     from src.services.pipeline import pipeline_status
 
     status = pipeline_status()
@@ -64,7 +61,7 @@ def health():
             "models": "ready" if status.get("ready") else "unavailable",
         },
     }
-    # 200 while the console is usable: sign-in, dashboards and review still work without a model.
+    # Still 200 without a model: sign-in, dashboards and review work.
     return jsonify(payload)
 
 
@@ -89,7 +86,7 @@ def ready():
 @bp.get("/api/health/detail")
 @capability_required("view_dashboards")
 def health_detail():
-    """Everything an operator needs to see, in one place. FR lxxviii."""
+    """Full status for operators (FR lxxviii)."""
     from src.services.pipeline import pipeline_status
     from src.services.config import get_store
 
@@ -124,8 +121,7 @@ def health_detail():
                         "active": bool(v.is_active),
                         "labels": v.label,
                         "algorithm": v.algorithm,
-                        # metrics is a JSON column, and a version registered without metrics is
-                        # normal.
+                        # metrics may be empty.
                         "test_accuracy": (v.metrics or {}).get("accuracy"),
                         "macro_f1": (v.metrics or {}).get("macro_f1"),
                         "trained_at": v.trained_at.isoformat() if v.trained_at else None,
@@ -139,7 +135,7 @@ def health_detail():
     pipeline = pipeline_status()
     storage = current_app.config["SST_STORAGE"]
 
-    # FR lxxviii's anomaly list, reported as live counters.
+    # FR lxxviii anomaly counters.
     anomalies: list[dict] = []
     if not pipeline.get("ready"):
         anomalies.append({
@@ -196,7 +192,7 @@ def health_detail():
 
 @bp.get("/api/version")
 def version():
-    """Which build is running. Unauthenticated on purpose -- it exposes nothing but a name."""
+    """App name and version. No login needed."""
     from src.app import APP_NAME, APP_VERSION
 
     return jsonify({

@@ -1,5 +1,4 @@
-"""Cached waveform peaks and a mel spectrogram of a stored recording, for the event page and report.
-"""
+"""Waveform peaks and mel spectrogram of a stored recording (cached)."""
 
 from __future__ import annotations
 
@@ -18,7 +17,7 @@ _cache: dict[str, dict[str, Any]] = {}
 
 
 def _cache_path(storage_root: Path, audio_id: str, stored_path: str) -> Path:
-    """Cache file sits beside the recording's directory root: visuals/<audio_id>.json."""
+    """visuals/<audio_id>.json next to the audio folder."""
     return Path(storage_root) / "visuals" / f"{audio_id or 'unknown'}.json"
 
 
@@ -34,7 +33,7 @@ def _store_cached(cache_file: Path, payload: dict[str, Any]) -> None:
         cache_file.parent.mkdir(parents=True, exist_ok=True)
         cache_file.write_text(json.dumps(payload))
     except OSError:
-        pass  # a failed cache write must never fail the request
+        pass  # caching is optional
 
 
 def _waveform_peaks(samples: np.ndarray, columns: int) -> list[float]:
@@ -61,7 +60,7 @@ def build_visuals(
     fallback_duration: float | None = None,
     fallback_sample_rate: int | None = None,
 ) -> dict[str, Any]:
-    """Peaks (normalised, PEAK_COLUMNS long) and a 0..1 mel spectrogram as a flat row-major list."""
+    """Normalised peaks (PEAK_COLUMNS long) and a 0..1 mel spectrogram as a flat list."""
     path = storage.resolve(stored_path)
     cache_file = _cache_path(storage.root, str(event_id), stored_path)
 
@@ -72,7 +71,7 @@ def build_visuals(
 
     import librosa
 
-    # Enough headroom for the whole clip; uploads are <= 30 s and live windows ~2 s.
+    # Uploads are at most 30 s, live windows about 2 s.
     y, sr = librosa.load(path, sr=None, mono=True)
 
     peaks = _waveform_peaks(y.astype("float32"), PEAK_COLUMNS)
@@ -114,7 +113,7 @@ def build_visuals(
 
 
 def _mel(y: np.ndarray, cfg: Any) -> np.ndarray:
-    """Mel spectrogram without the GTM window cropping -- draw the WHOLE recording."""
+    """Mel spectrogram of the whole recording (no TM window cropping)."""
     import librosa
 
     hop = max(1, y.size // cfg.n_frames) if y.size else 1
@@ -135,7 +134,7 @@ def _mel(y: np.ndarray, cfg: Any) -> np.ndarray:
 
 
 def report_figures(path: Path) -> dict[str, str]:
-    """Waveform and spectrogram PNGs (base64) for the standalone event report (FR lxix)."""
+    """Waveform and spectrogram PNGs (base64) for the event report (FR lxix)."""
     import base64
     import io
 

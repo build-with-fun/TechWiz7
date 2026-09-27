@@ -1,14 +1,7 @@
-"""The event detail page must render the top-score latency.
+"""The event page renders the top score's latency.
 
-The page detaches (``expunge``) every row it hands the template, and the template renders
-"Inference ..." through the ``ms`` macro only when the model's *top* score carries a
-``latency_sec``. When the macro the template calls does not exist, Jinja raises
-``UndefinedError`` -> HTTP 500 -- but only on the events that actually reach that line.
-
-The blind spot this closes: every other test either never rendered this page at all, or
-built a prediction with no latency, so the branch was never entered and the missing macro
-went unnoticed. On the real database that meant /events/1-3 rendered and /events/4-191
-were 500s.
+Regression test: the template called a macro that didn't exist, but only when the top
+score had a latency, so most events returned 500 while the tests passed.
 """
 
 from src.app import create_app
@@ -17,7 +10,7 @@ from src.models import AudioFile, ConfidenceScore, Event, User
 
 
 def _seed_app(tmp_path, *, latency):
-    """An app holding one classified event whose top score carries ``latency`` seconds."""
+    """App with one event whose top score has a latency."""
     app = create_app(TESTING=True, SST_DB_PATH=str(tmp_path / "app.db"),
                      SST_STORAGE_DIR=str(tmp_path / "storage"), SST_LOAD_MODELS=False)
     factory = app.config["SST_SESSION_FACTORY"]
@@ -62,12 +55,12 @@ def test_event_detail_renders_the_top_score_latency(tmp_path):
 
     assert response.status_code == 200
     body = response.get_data(as_text=True)
-    # The macro renders whole milliseconds, matching live.js ("Inference 12 ms").
+    # Whole milliseconds, like live.js ("Inference 12 ms").
     assert "Inference 12 ms" in body
 
 
 def test_event_detail_renders_when_the_top_score_has_no_latency(tmp_path):
-    # The branch the template skips: this shape is why the missing macro stayed hidden.
+    # No latency: the line is skipped.
     app, (admin_id, event_id) = _seed_app(tmp_path, latency=None)
 
     response = _signed_in_client(app, admin_id).get(f"/events/{event_id}")

@@ -1,33 +1,16 @@
-/* ============================================================================
- * static/js/core.js — the small shared layer under every screen.
- *
- * What it provides, and why each piece exists:
- *   SST.config / SST.vocabulary  Read the inert JSON blocks base.html emits.
- *   SST.api                      fetch() that understands the error envelope
- *                                ({error:{code,message,details,request_id}}),
- *                                keeps the X-Request-Id visible to the operator,
- *                                and never lets a rejected promise escape.
- *   SST.region                   The loading / empty / error states for one part
- *                                of the page. This is the thing that stops a
- *                                failed panel from blanking the console.
- *   SST.toast, SST.error         Non-blocking notices, always dismissible.
- *   SST.el / SST.set / SST.text  Element builders. Text goes in through
- *                                textContent: a filename from an upload is user
- *                                input and is never interpolated as markup.
- *   SST.lifecycle                Teardown registry. Anything holding a timer, a
- *                                MediaStream, an AudioContext or a socket
- *                                registers here; pagehide and overnight-tab
- *                                handling are then automatic rather than
- *                                remembered per feature.
- *
- * Network behaviour worth knowing: the API is same-origin, cookie-authenticated
- * (session cookie is HttpOnly + SameSite=Lax per config/auth.json), so every
- * request sends credentials and no token is handled in JavaScript.
- * ========================================================================== */
+/* Shared helpers used by every page:
+ *   SST.config / SST.vocabulary  the JSON blocks base.html writes into the page
+ *   SST.api                      fetch wrapper that reads the error envelope and request id
+ *   SST.region                   loading / empty / error states for one panel
+ *   SST.toast, SST.error         dismissible notices
+ *   SST.el / SST.set / SST.text  element builders (text always goes in via textContent)
+ *   SST.lifecycle                cleanup for timers, streams and audio contexts
+ * The API is same-origin with an HttpOnly session cookie, so no token lives in JS.
+ */
 (function (SST) {
   'use strict';
 
-  /* --------------------------------------------------------------- config - */
+  // Config
 
   function readJsonBlock(id) {
     var node = document.getElementById(id);
@@ -35,8 +18,7 @@
     try {
       return JSON.parse(node.textContent || '{}');
     } catch (err) {
-      // A malformed block is a build-time bug, not a runtime condition. Say so
-      // once, loudly, rather than silently running with defaults.
+      // A broken block is a template bug; log it instead of quietly using defaults.
       if (window.console && console.error) {
         console.error('[SST] could not parse #' + id + ':', err);
       }
@@ -57,7 +39,7 @@
     return node === undefined ? fallback : node;
   }
 
-  /* ---------------------------------------------------------------- error - */
+  // Errors
 
   function ApiError(message, options) {
     var opts = options || {};
@@ -73,10 +55,8 @@
   ApiError.prototype = Object.create(Error.prototype);
   ApiError.prototype.constructor = ApiError;
 
-  /* A sentence an operator can act on. The server's `message` is preferred --
-     it knows whether a duplicate is a duplicate or a quality rejection -- and
-     the request id is appended because that is what makes a support question
-     answerable. */
+  /* Prefer the server's message, since it knows the actual reason, and add the
+     request id so the failure can be found in the log. */
   ApiError.prototype.describe = function () {
     var text = this.message;
     if (this.code && this.code !== 'unknown_error') {
@@ -95,16 +75,15 @@
     return null;
   }
 
-  /* ------------------------------------------------------------------ api - */
+  // API
 
   var REDIRECT_STATUSES = { 401: true };
 
   /**
    * SST.api(path, options) -> Promise<data>
    *   options: { method, body, json, headers, timeoutMs, signal, raw }
-   * Rejects with an ApiError. Never rejects with a TypeError from fetch: a
-   * dropped connection while the laptop sleeps is a normal event in a console
-   * left open overnight, and it must render as a retryable message.
+   * Always rejects with an ApiError, including for network failures, so callers
+   * can show a retry message.
    */
   function api(path, options) {
     var opts = options || {};
@@ -140,8 +119,7 @@
       var requestId = response.headers.get('X-Request-Id');
 
       if (REDIRECT_STATUSES[response.status]) {
-        // The session expired while the tab sat open. Send the operator to the
-        // login page with the page they were on, once — not in a loop.
+        // Session expired: go to the login page once, remembering where we were.
         var here = window.location.pathname + window.location.search;
         if (window.location.pathname !== config.endpoints.login) {
           window.location.assign(config.endpoints.login + '?next=' + encodeURIComponent(here));
@@ -192,13 +170,13 @@
         throw new ApiError('The request was cancelled.', { code: 'aborted', retryable: true });
       }
       throw new ApiError(
-        'Could not reach the server. Check that the service is running — this message is safe to retry.',
+        'Could not reach the server. Check that the service is running, then try again.',
         { code: 'network_error', retryable: true }
       );
     });
   }
 
-  /* ------------------------------------------------------------------- el - */
+  // Element helpers
 
   function el(tag, attrs, children) {
     var node = document.createElement(tag);
@@ -245,18 +223,16 @@
     return Array.prototype.slice.call((root || document).querySelectorAll(selector));
   }
 
-  /* The presentation table (glyphs, slugs) is emitted by _presentation.html so
-     a client-rendered chip cannot drift from a server-rendered one. */
+  /* Glyphs and slugs come from _presentation.html, same as the server-rendered chips. */
   function presentation(kind, value) {
     var table = (vocabulary.presentation || {})[kind] || {};
     return table[value] || { glyph: '\u00b7', slug: 'unknown' };
   }
 
-  /* -------------------------------------------------------------- regions - */
+  // Regions
 
   /**
-   * Wrap one part of a page so it can show its own loading, empty and error
-   * states without touching its neighbours.
+   * Gives one panel its own loading, empty and error states.
    *   var region = SST.region(document.querySelector('#results'));
    *   region.loading();
    *   region.error({ message: '…', requestId: '…', retry: fn });
@@ -310,7 +286,7 @@
           el('p', { class: 'banner__text', text: opts.message || 'The request failed.' }),
           opts.requestId ? el('p', { class: 'banner__text' }, [
             'Reference: ', el('span', { class: 'mono', text: opts.requestId }),
-            ' — quote this and the exact request can be found in the log.'
+            '. Quote it and we can find the request in the log.'
           ]) : null
         ]));
         if (opts.retry) {
@@ -339,7 +315,7 @@
     return api;
   }
 
-  /* --------------------------------------------------------------- notices - */
+  // Notices
 
   var MAX_TOASTS = 4;
 
@@ -359,8 +335,7 @@
     node.appendChild(close);
     stack.appendChild(node);
 
-    // A deep stack of notices is noise, and on the live console it would cover
-    // the console itself. Oldest goes first.
+    // Keep the stack short so it does not cover the page; drop the oldest.
     while (stack.children.length > MAX_TOASTS) stack.removeChild(stack.firstChild);
 
     var timer = null;
@@ -372,8 +347,7 @@
     return remove;
   }
 
-  /* The page-level error strip. Used when a failure belongs to the whole screen
-     rather than one panel, e.g. the search endpoint itself being down. */
+  /* Page-level error strip, for failures that affect the whole screen. */
   function showError(message, requestId, retry) {
     var host = byId('page-error');
     if (!host) return;
@@ -405,11 +379,8 @@
     clear(host);
   }
 
-  /* ------------------------------------------------------------- lifecycle -
-   * Every long-lived resource registers here. This is the answer to "the tab
-   * was left open overnight": nothing relies on the author remembering to stop
-   * its own timer on unload.
-   * ---------------------------------------------------------------------- */
+  /* Lifecycle: long-lived resources register here so they are stopped when the
+   page is hidden or unloaded. */
 
   var disposers = [];
   var visibilityHandlers = [];
@@ -439,11 +410,7 @@
   /** Fires when the tab becomes visible again. Used to resume the live loop. */
   function onVisible(fn) { visibilityHandlers.push(fn); arm(); }
 
-  /**
-   * Fires when the tab is hidden. The live loop uses this to stop capturing and
-   * posting: an overnight background tab must not hold the microphone open or
-   * keep posting windows nobody is watching.
-   */
+  /** Fires when the tab is hidden. The live loop stops capturing here. */
   function onHidden(fn) { hiddenHandlers.push(fn); arm(); }
 
   function arm() {
@@ -462,9 +429,8 @@
       });
     });
 
-    // A bfcache restore re-arms nothing by itself: the page comes back with its
-    // timers already dead. Tell the features so they can re-register rather than
-    // sit there looking alive.
+    // After a back/forward cache restore the timers are dead, so tell the
+    // features to start again.
     window.addEventListener('pageshow', function (event) {
       if (event.persisted) {
         dispatch('pageshow-restored');
@@ -482,7 +448,7 @@
     });
   }
 
-  /* ---------------------------------------------------------------- theme - */
+  // Theme
 
   var THEMES = ['dark', 'light'];
 
@@ -511,11 +477,8 @@
     });
   }
 
-  /* Server-rendered bar fills carry their width in `data-bar-width` (a percentage)
-     instead of a style="" attribute, because config/auth.json locks the CSP to
-     `style-src 'self'`. This turns the attribute into a CSSOM write, which CSP
-     permits. Any markup that renders a bar can use it; SST.region.render() calls
-     it again for bars inserted after the initial load. */
+  /* Bars carry their width in data-bar-width because the CSP blocks style=""
+     attributes. Setting it through the CSSOM is allowed. */
   function initBars(root) {
     qsa('[data-bar-width]', root || document).forEach(function (fill) {
       var pct = parseFloat(fill.getAttribute('data-bar-width'));
@@ -524,11 +487,10 @@
     });
   }
 
-  /* ------------------------------------------------------------ navigation - */
+  // Navigation
 
-  /* Below 1025px the sidebar is an off-canvas drawer. The toggle keeps
-     aria-expanded in step; Escape, the scrim and the close button all shut it,
-     and focus goes back to the toggle so keyboard users are not stranded. */
+  /* Below 1025px the sidebar is a drawer. Escape, the scrim and the close button
+     shut it and return focus to the toggle. */
   function initNav() {
     var app = document.querySelector('.app');
     var nav = byId('app-nav');
@@ -563,9 +525,8 @@
     if (wide.addEventListener) wide.addEventListener('change', onWide);
   }
 
-  /* On phones every table.data becomes a stack of cards (design.css). Each cell
-     needs its column name for that, so the header text is copied onto the cells
-     here instead of being repeated in every template. */
+  /* On phones tables turn into cards (design.css), so copy each header onto its cells
+     as a label. */
   function initTableLabels(root) {
     qsa('table.data', root || document).forEach(function (table) {
       var heads = qsa('thead th', table).map(function (th) {
@@ -579,8 +540,7 @@
     });
   }
 
-  /* Numbers marked data-count-up climb from zero once on load. Skipped when the
-     visitor asked for reduced motion; the server-rendered value is the final one. */
+  /* Count data-count-up numbers up from zero on load, unless reduced motion is on. */
   function motionAllowed() {
     return !window.matchMedia('(prefers-reduced-motion: reduce)').matches &&
       document.documentElement.getAttribute('data-motion') !== 'reduced';
@@ -609,10 +569,9 @@
     });
   }
 
-  /* ------------------------------------------------------------ delegated - */
+  // Delegated handlers
 
-  /* Retry buttons that the server-rendered error blocks emit. Delegated so a
-     block inserted later still works. */
+  /* Retry buttons in error blocks, including ones added later. */
   function initDelegates() {
     document.addEventListener('click', function (event) {
       var target = event.target.closest ? event.target.closest('[data-retry]') : null;
@@ -634,7 +593,7 @@
     initCountUp();
   });
 
-  /* ------------------------------------------------------------------ API - */
+  // Public API
 
   SST.config = config;
   SST.vocabulary = vocabulary;

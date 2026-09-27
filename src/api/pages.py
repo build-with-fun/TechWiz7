@@ -1,12 +1,7 @@
-"""Server-rendered pages (and the visuals JSON the event page loads).
+"""Server-rendered pages, plus the visuals JSON the event page loads.
 
-Blueprints: auth (sign-in, register, profile), main (upload, events, live, alerts,
-reviews, dashboard, analytics), admin (config, users), models (read-only list) and
-event_visuals. Endpoint names are what the templates' url_for calls use.
-
-Every route is gated on a capability from src/auth.py, never on a role name; hiding a
-link in a template is presentation, not access control. An event the caller may not see
-answers 404 rather than 403, so ids cannot be probed (_visible_event).
+Blueprints: auth, main, admin, models and event_visuals. Routes check capabilities from
+src/auth.py rather than role names. Events the user can't see return 404, not 403.
 """
 
 from __future__ import annotations
@@ -48,7 +43,7 @@ from src.services.search import (
 
 logger = logging.getLogger("sonicsentinel.api.pages")
 
-#: FR lxii statuses and review decisions, shared by the list pages and the CSV export.
+# FR lxii statuses and review decisions, shared by the list pages and the CSV export.
 SEVERITY_TONE = {
     "Critical": "critical", "High": "high", "Medium": "medium",
     "Low": "low", "Informational": "info",
@@ -60,7 +55,7 @@ admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 models_bp = Blueprint("models", __name__, url_prefix="/models")
 visuals_bp = Blueprint("event_visuals", __name__, url_prefix="/api")
 
-#: Every blueprint in this module, in registration order (src.app registers them).
+# Registered by src.app in this order.
 BLUEPRINTS = (auth_bp, main_bp, admin_bp, models_bp, visuals_bp)
 bp = main_bp
 
@@ -76,9 +71,7 @@ def _factory():
 
 
 def _render(template: str, **context):
-    """Render a template; a missing template becomes a generic error page, and only the log names
-    the file.
-    """
+    """Render a template. A missing template shows a generic error page and is logged."""
     try:
         return render_template(template, **context)
     except TemplateNotFound:
@@ -93,7 +86,7 @@ def _render(template: str, **context):
 
 
 def _visible_event(session, event_id: int, *, for_download: bool = False) -> Event:
-    """Fetch one event, or 404 if it is missing or belongs to someone the caller may not see."""
+    """Fetch one event, or 404 if it doesn't exist or the user can't see it."""
     event = session.get(Event, event_id)
     if event is None:
         raise ApiError("not_found", "That event does not exist.")
@@ -113,7 +106,7 @@ def _pagination(args, store) -> tuple[int, int]:
 
 
 def _event_id_int(value: str) -> int:
-    """Only numeric ids reach the query (base.html uses an __EVENT_ID__ placeholder in URLs)."""
+    """Parse the event id; base.html uses an __EVENT_ID__ placeholder in some URLs."""
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -121,7 +114,7 @@ def _event_id_int(value: str) -> int:
 
 
 def _search_context(viewer, *, default_statuses=None) -> dict:
-    """Everything the search page needs, built once so the page and the API agree."""
+    """Search page context, shared with the API."""
     store = _store()
     default_size, max_size = _pagination(request.args, store)
     filters = parse_filters(request.args, store, viewer=viewer,
@@ -145,7 +138,7 @@ def _search_context(viewer, *, default_statuses=None) -> dict:
 
 @auth_bp.get("/login")
 def login():
-    """The sign-in page. A signed-in user is sent on, unless they asked to switch account."""
+    """Sign-in page. Signed-in users are redirected unless they want to switch account."""
     if current_user.is_authenticated and request.args.get("switch") != "1":
         return redirect(_home_for(current_user))
     return _render(
@@ -158,7 +151,7 @@ def login():
 
 @auth_bp.route("/register", methods=["GET", "POST"])
 def register():
-    """Create a normal-user account; privileged roles remain administrator-assigned."""
+    """Create a normal user account. Other roles are assigned by an administrator."""
     from src.auth import client_ip, hash_password, password_problems, sign_in
     from src.db import record_audit
     from src.models import User
@@ -199,7 +192,7 @@ def register():
 @auth_bp.route("/profile", methods=["GET", "POST"])
 @login_required
 def profile():
-    """Let a signed-in user maintain their own contact and display details."""
+    """Edit your own contact and display details."""
     from src.db import record_audit
     from src.models import User
 
@@ -228,10 +221,9 @@ def profile():
 
 @auth_bp.post("/session")
 def session_login():
-    """Form sign-in (the JSON endpoint is POST /api/auth/login).
+    """Form sign-in. Uses the same src.auth.authenticate as POST /api/auth/login.
 
-    Both go through src.auth.authenticate, so lockout, rate limits and auditing are shared.
-    ``next`` is followed only when it is a relative path, so this cannot be an open redirect.
+    ``next`` is only followed if it is a relative path, to avoid an open redirect.
     """
     from src.auth import authenticate, client_ip, sign_in
     from flask import g
@@ -280,7 +272,7 @@ def session_login():
                         detail=outcome.code, request_id=request_id)
 
     if not outcome.ok:
-        # Same wording the JSON path uses: never reveal whether the username exists.
+        # Don't reveal whether the username exists.
         return _fail("Sign-in failed. Check the username and password, "
                      "or the account may be locked or disabled.")
 
@@ -296,7 +288,7 @@ def session_login():
 @auth_bp.post("/logout")
 @login_required
 def logout():
-    """Sign out from a page form (the JSON client uses POST /api/auth/logout)."""
+    """Sign out from a form (the API uses POST /api/auth/logout)."""
     from src.auth import audit_login, sign_out
     from flask import g
 
@@ -310,13 +302,13 @@ def logout():
 
 
 def _home_for(user) -> str:
-    """The most useful page this user's capabilities allow, used after sign-in."""
+    """Where to send a user after sign-in, based on their capabilities."""
     for capability, endpoint in (
         ("view_dashboards", "main.dashboard"),
         ("view_alerts", "main.alerts"),
         ("review_queue", "main.reviews"),
     ):
-        # ``user`` may be the User row or the Flask-Login wrapper; both expose ``role``.
+        # Works for both the User row and the Flask-Login wrapper.
         if has_capability(getattr(user, "role", None), capability):
             return url_for(endpoint)
     return url_for("main.events")
@@ -325,8 +317,7 @@ def _home_for(user) -> str:
 
 
 def _landing_metrics() -> dict:
-    """Held-out test results of the two served models, read from their metrics files so the
-    public page can never state a number the evaluation did not produce."""
+    """Test-set results of both served models, read from their metrics files."""
     import json
 
     from src.db import REPO_ROOT
@@ -349,7 +340,7 @@ def _landing_metrics() -> dict:
 
 @main_bp.get("/")
 def index():
-    """Signed-in users go to the home their role allows; everyone else sees the product page."""
+    """Signed-in users go to their home page; everyone else sees the public page."""
     if current_user.is_authenticated:
         return redirect(_home_for(current_user))
     return _render("landing.html", metrics=_landing_metrics())
@@ -358,7 +349,7 @@ def index():
 @main_bp.get("/upload")
 @capability_required("upload_audio")
 def upload():
-    """FR iv-ix: the upload page, stating the same formats and size limit the server enforces."""
+    """FR iv-ix: upload page."""
     store = _store()
     return _render(
         "upload.html",
@@ -374,7 +365,7 @@ def upload():
 @main_bp.get("/events")
 @capability_required("view_own_events")
 def events():
-    """FR lxvii: browse and search; a normal user's search is scoped inside the query."""
+    """FR lxvii: event search. Normal users only see their own events."""
     context = _search_context(current_user)
     context["page_title"] = "Events"
     return _render("events.html", **context)
@@ -383,10 +374,10 @@ def events():
 @main_bp.get("/events/<event_id>")
 @capability_required("view_own_events")
 def event_detail(event_id: str):
-    """One event in full: both models' scores, the comparison, quality, severity and the rule that fired.
+    """Event detail page.
 
-    Uses a string converter because base.html builds an __EVENT_ID__ placeholder URL that the
-    int converter would reject.
+    The id is a string in the route because base.html builds URLs with an __EVENT_ID__
+    placeholder.
     """
     event_id = _event_id_int(event_id)
     with session_scope(_factory()) as session:
@@ -425,7 +416,7 @@ def event_detail(event_id: str):
 @main_bp.get("/events/<event_id>/audio")
 @owner_or_capability("download_any_audio")
 def event_audio(event_id: str):
-    """Stream the stored recording; ``?download=1`` makes it an attachment."""
+    """Stream the stored recording. ``?download=1`` sends it as an attachment."""
     event_id = _event_id_int(event_id)
     from flask import send_from_directory
 
@@ -439,11 +430,11 @@ def event_audio(event_id: str):
     try:
         target = layout.resolve(stored_path)
     except ValueError:
-        # A path that escapes the storage root is not a missing file, it is a bad record.
+        # A path outside the storage root means a bad record.
         logger.error("stored path for event %s escapes the storage root", event_id)
         raise ApiError("storage_error", "That recording could not be located.")
     if not stored_path or not target.is_file():
-        # The recording has gone (retention or moved); the analysis is still intact and auditable.
+        # The file was purged or moved; the event itself is still there.
         raise ApiError(
             "no_audio",
             "That recording is no longer on disk. Its analysis and history are unaffected.",
@@ -458,7 +449,7 @@ def event_audio(event_id: str):
 @main_bp.get("/live")
 @capability_required("live_session")
 def live():
-    """The live microphone monitor."""
+    """Live microphone page."""
     store = _store()
     return _render(
         "live.html",
@@ -472,13 +463,12 @@ def live():
 @main_bp.get("/alerts")
 @capability_required("view_alerts")
 def alerts():
-    """FR liv-lvi: the alert console."""
+    """FR liv-lvi: alert console."""
     store = _store()
     status = request.args.get("status") or "Open"
     severity = request.args.getlist("severity")
     with session_scope(_factory()) as session:
-        # joinedload: the rows are expunged and the template reads alert.event, which would
-        # otherwise raise DetachedInstanceError (tests/test_alert_review_pages.py).
+        # joinedload because the rows are expunged and the template reads alert.event.
         statement = (
             select(Alert)
             .options(joinedload(Alert.event))
@@ -512,11 +502,11 @@ def alerts():
 @main_bp.get("/reviews")
 @capability_required("review_queue")
 def reviews():
-    """FR lvii-lxi: the manual-review queue, oldest and most severe first."""
+    """FR lvii-lxi: manual-review queue, oldest and most severe first."""
     store = _store()
     status = request.args.get("status") or "Pending Review"
     with session_scope(_factory()) as session:
-        # joinedload for the same reason as the alert console.
+        # joinedload, same as alerts().
         statement = (
             select(Review)
             .options(joinedload(Review.event))
@@ -546,8 +536,7 @@ def reviews():
 
 def _smooth_chart(values: list[int], width: float = 320.0, height: float = 150.0,
                   pad: float = 14.0) -> dict:
-    """SVG geometry for a smooth line (Catmull-Rom as cubic Beziers) and the area under it.
-    Drawn server-side because the CSP allows no inline scripts or styles."""
+    """SVG path for a smooth line (Catmull-Rom as cubic Beziers) and the area under it."""
     n = len(values)
     top = max(values + [1])
     xs = [pad + i * (width - 2 * pad) / max(n - 1, 1) for i in range(n)]
@@ -574,11 +563,10 @@ def _smooth_chart(values: list[int], width: float = 320.0, height: float = 150.0
 @main_bp.get("/dashboard")
 @capability_required("view_own_events")
 def dashboard():
-    """FR lxiii user dashboard, plus the FR lxv administrator block.
+    """Dashboard (FR lxiii), plus the administrator block (FR lxv).
 
-    A normal user sees only their own events; roles that can see all events see everyone's.
-    Roles with analytics access also get average confidence, disagreements, poor-quality
-    counts, a 14-day trend and (administrators) the FR lxxviii anomaly list.
+    Normal users see their own events. Roles with analytics access also get averages,
+    disagreements, poor-quality counts and a 14-day trend.
     """
     from src.models import AudioFile
     from src.services.monitoring import compute_anomalies
@@ -627,7 +615,7 @@ def dashboard():
                    "consistency": e.consistency_status, "review": e.requires_manual_review}
                   for e, name in recent_rows]
         critical_recent = [r for r in recent if r["severity"] == "Critical"]
-        # SRS Step 18: the current detection with both models side by side.
+        # SRS Step 18: latest detection with both models.
         latest = None
         if recent_rows:
             event, name = recent_rows[0]
@@ -650,7 +638,7 @@ def dashboard():
             .order_by(Event.created_at.desc()).limit(5))).scalars().all()
         review_items = [{"id": e.id, "class": e.final_class or e.predicted_class, "at": e.created_at,
                          "reason": e.review_reason, "severity": e.severity} for e in review_rows]
-        # SRS Step 18 / FR lxvi: high and critical events in time order, newest first.
+        # FR lxvi: high and critical events, newest first.
         timeline_rows = session.execute(scoped(
             select(Event).where(Event.created_at >= week_ago,
                                 Event.severity.in_(("High", "Critical")))
@@ -729,7 +717,7 @@ def dashboard():
 @main_bp.get("/analytics")
 @capability_required("view_analytics")
 def analytics():
-    """FR lxviii analytics over a window chosen with ``?hours=`` (default one week)."""
+    """FR lxviii analytics for the last ``?hours=`` (default one week)."""
     store = _store()
     hours = request.args.get("hours", type=int) or 24 * 7
     hours = max(1, min(hours, 24 * 365))
@@ -794,7 +782,7 @@ def analytics():
 
 
 def _histogram(values, bins: int = 10) -> list[dict]:
-    """Confidence distribution in 0.1-wide buckets (FR lxviii)."""
+    """Confidence histogram in 0.1 buckets (FR lxviii)."""
     counts = [0] * bins
     for v in values:
         counts[min(bins - 1, max(0, int(float(v) * bins)))] += 1
@@ -804,11 +792,10 @@ def _histogram(values, bins: int = 10) -> list[dict]:
 
 
 def _review_errors(decided, critical: set[str]) -> dict:
-    """False positives and negatives, judged by reviewers.
+    """False positives and negatives according to reviewers.
 
-    Only reviewed events have a ground truth. A false positive is a critical class the model
-    named that the reviewer rejected or marked a false alarm; a false negative is a critical
-    class the reviewer found that the model did not name.
+    False positive: the model named a critical class the reviewer rejected. False negative:
+    the reviewer found a critical class the model missed.
     """
     per_class: dict[str, dict[str, int]] = {}
     fp = fn = agreed = 0
@@ -828,7 +815,7 @@ def _review_errors(decided, critical: set[str]) -> dict:
 
 
 def _alert_response(rows) -> dict:
-    """How quickly alerts were acknowledged and resolved, and how many were false alarms."""
+    """Alert acknowledge/resolve times and false-alarm count."""
     import statistics
 
     ack = [(a - c).total_seconds() for _, _, c, a, _, _ in rows if a and c]
@@ -850,9 +837,7 @@ def _alert_response(rows) -> dict:
 @admin_bp.get("/config")
 @capability_required("edit_config")
 def config():
-    """FR liii / lxxx: view the live configuration. Edits go through PUT /api/admin/config/<file>,
-    which validates first.
-    """
+    """FR liii / lxxx: configuration view. Edits go through PUT /api/admin/config/<file>."""
     store = _store()
     snapshot = store.snapshot()
     return _render(
@@ -876,7 +861,7 @@ def config():
 @admin_bp.get("/users")
 @capability_required("manage_users")
 def users():
-    """FR i-ii: accounts and roles."""
+    """FR i-ii: users and roles."""
     from src.models import ROLES, ROLE_LABELS, User
 
     with session_scope(_factory()) as session:
@@ -898,10 +883,7 @@ def users():
 @models_bp.get("/", endpoint="list")
 @login_required
 def model_list():
-    """FR lxxv: which model versions are in service. Readable by anyone signed in; changing them needs manage_models.
-
-    Named model_list, not list, so it does not shadow the builtin for the whole module.
-    """
+    """FR lxxv: model versions in service. Changing them needs manage_models."""
     with session_scope(_factory()) as session:
         rows = session.execute(
             select(ModelVersion).order_by(ModelVersion.model_name, ModelVersion.registered_at.desc())
@@ -921,11 +903,7 @@ def model_list():
 @visuals_bp.get("/events/<int:event_id>/visuals")
 @owner_or_capability("download_any_audio")
 def visuals(event_id: int):
-    """Waveform peaks and a spectrogram for one stored recording, computed server-side and cached.
-
-    They are drawn from the stored original file, so the picture shows what was uploaded,
-    not the preprocessed signal the models saw.
-    """
+    """Waveform peaks and spectrogram of the stored original recording (cached)."""
     from src.services.visuals import build_visuals
 
     with session_scope(_factory()) as session:
@@ -942,7 +920,7 @@ def visuals(event_id: int):
     except ValueError:
         raise ApiError("storage_error", "That recording could not be located.")
     if not stored_path or not target.is_file():
-        # As in event_audio: a recording removed by retention leaves the analysis intact.
+        # The file may have been purged; the event is still there.
         raise ApiError(
             "no_audio",
             "That recording is no longer on disk. Its analysis and history are unaffected.",

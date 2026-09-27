@@ -1,16 +1,10 @@
 {% extends "base.html" %}
 {% import "_macros.html" as ui %}
 {% import "_presentation.html" as pres %}
-{# ==========================================================================
-   templates/events.html — the searchable event table (FR lxvii).
-
-   Server-rendered and CSP-safe (no inline JS or styles). The filter form is
-   built entirely from `filter_fields` (src/services/search.py), so a class or
-   severity added to the config files grows the form without a template edit.
-   Every filter state is a URL: the form GETs the same /events endpoint.
-   ========================================================================== #}
+{# Event search (FR lxvii). The filter form is built from `filter_fields` and submits
+   with GET, so every filtered view has its own URL. #}
 {% set page_id = "main.events" %}
-{% block title %}Events — {{ app_name }}{% endblock %}
+{% block title %}Events · {{ app_name }}{% endblock %}
 
 {% block content %}
 <header class="page-head">

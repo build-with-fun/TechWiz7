@@ -1,25 +1,6 @@
-{# ==========================================================================
-   templates/event_detail.html — one event in full.
-
-   The comparison page: both models' classes and
-   confidences side by side, the difference, the consistency verdict, the
-   quality verdict, severity, the rule that fired, and the audio with its
-   waveform and spectrogram.
-
-   Context (src/api/pages.py::event_detail):
-     event         Event  the row, expunged
-     audio         AudioFile|None
-     scores        dict[str, list[ConfidenceScore]] keyed by model_name, by rank
-     alerts        list[Alert] newest first
-     reviews       list[Review] newest first
-     severity_tone dict
-     rule          dict|None  the alert rule snapshot that fired
-     page_title    str
-
-   `scores` is keyed by model_name and each list is already sorted by rank, so the
-   page walks MODEL_NAMES and reads what it finds; a model with no scores shows
-   an honest "no prediction recorded" rather than a zero.
-   ========================================================================== #}
+{# One event: both models side by side, the verdicts, the rule that fired, and the audio.
+   Context comes from src/api/pages.py::event_detail. `scores` maps model name to its
+   scores sorted by rank; a model without scores shows "no prediction recorded". #}
 {% extends "base.html" %}
 {% import "_macros.html" as ui %}
 {% import "_presentation.html" as pres %}
@@ -58,7 +39,7 @@
   </div>
 </section>
 
-{# ---- the summary rail: the six facts, each with a word and a glyph. --------- #}
+{# Summary #}
 <section class="summary-grid" data-testid="event-summary">
   <div class="summary-cell">
     <p class="summary-label">Final class</p>
@@ -75,7 +56,7 @@
   <div class="summary-cell">
     <p class="summary-label">Severity</p>
     <div class="summary-value">{{ ui.severity_chip(event.severity) }}</div>
-    {% if event.is_critical %}<p class="summary-note">Critical category — alertable</p>{% endif %}
+    {% if event.is_critical %}<p class="summary-note">Critical category, can raise an alert</p>{% endif %}
   </div>
 
   <div class="summary-cell">
@@ -127,7 +108,7 @@
 </div>
 {% endif %}
 
-{# ---- the audio and its visuals. ------------------------------------------- #}
+{# Audio #}
 <section class="panel">
   <div class="panel__head">
     <h2 class="panel__title">Recording</h2>
@@ -152,7 +133,7 @@
   </div>
 </section>
 
-{# ---- both models, side by side. The reason this page exists. -------------- #}
+{# Both models #}
 <section class="panel">
   <div class="panel__head">
     <h2 class="panel__title">Model comparison</h2>
@@ -198,7 +179,7 @@
       </div>
     </div>
 
-    {# ---- the verdict, stated in words. ------------------------------------ #}
+    {# Verdict #}
     <div class="verdict" data-testid="event-verdict">
       <div class="verdict__item">
         <p class="verdict__label">Agreed class</p>
@@ -206,7 +187,7 @@
           {% set p_top = scores.get('python', [{}])[0] if 'python' in scores else none %}
           {% set g_top = scores.get('gtm', [{}])[0] if 'gtm' in scores else none %}
           {% if p_top and g_top %}
-            {% if p_top.class_name == g_top.class_name %}{{ p_top.class_name }}{% else %}No agreement — see the queue{% endif %}
+            {% if p_top.class_name == g_top.class_name %}{{ p_top.class_name }}{% else %}No agreement, see the review queue{% endif %}
           {% else %}—{% endif %}
         </p>
       </div>
@@ -246,7 +227,7 @@
   </div>
 </section>
 
-{# ---- the rule that fired. -------------------------------------------------- #}
+{# Rule that fired #}
 {% if rule %}
 <section class="panel">
   <div class="panel__head">
@@ -270,7 +251,7 @@
 </section>
 {% endif %}
 
-{# ---- alerts on this event. ------------------------------------------------- #}
+{# Alerts #}
 <section class="panel">
   <div class="panel__head">
     <h2 class="panel__title">Alerts</h2>
@@ -306,7 +287,7 @@
   {% endif %}
 </section>
 
-{# ---- the review history. --------------------------------------------------- #}
+{# Reviews #}
 <section class="panel">
   <div class="panel__head">
     <h2 class="panel__title">Review history</h2>
@@ -334,7 +315,7 @@
             {% if review.final_class %}<dt>Final class</dt><dd>{{ review.final_class }}</dd>{% endif %}
             {% if review.final_severity %}<dt>Final severity</dt><dd>{{ ui.severity_chip(review.final_severity) }}</dd>{% endif %}
             {% if review.false_alarm is not none %}
-            <dt>False alarm</dt><dd>{{ 'Yes — recorded against the false-alarm rate' if review.false_alarm else 'No' }}</dd>
+            <dt>False alarm</dt><dd>{{ 'Yes (counted in the false-alarm rate)' if review.false_alarm else 'No' }}</dd>
             {% endif %}
           </dl>
           <p class="field__hint">

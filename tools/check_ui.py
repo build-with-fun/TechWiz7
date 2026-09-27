@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Review the real Flask UI in Chromium using an isolated, temporary database.
+"""Check the UI in Chrome against a temporary database.
 
-Requires the optional Playwright dependency and Google Chrome. Model inference is
-disabled: this checks navigation, the theme toggle, layout at four widths and browser errors.
+Needs Playwright and Chrome. Models are off; this checks navigation, the theme toggle,
+layout at four widths and browser errors.
 """
 
 from __future__ import annotations

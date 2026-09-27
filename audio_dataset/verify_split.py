@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""Independent auditor for the split and manifest: a separate implementation from
-build_split.py that reads only the frozen artifacts and the files on disk.
+"""Independent check of the split and manifest (separate code from build_split.py).
 
   --check-manifest    structure, licences, legal classes
   --check-split       split.json is consistent, exhaustive and stratified
@@ -74,7 +73,7 @@ def check_manifest(records: list[dict[str, str]], classes: dict) -> list[tuple[b
     if len(originals) >= 3000:
         _ok(results, f"total originals >= 3000 ({len(originals)})")
     else:
-        _fail(results, f"total originals < 3000 ({len(originals)}) — SRS floor not met")
+        _fail(results, f"total originals < 3000 ({len(originals)}), below the SRS minimum")
     return results
 
 
@@ -83,7 +82,7 @@ def check_split(records: list[dict[str, str]], split: dict, classes: dict) -> li
     assignments = split["assignments"]
     by_id = {r["audio_id"]: r for r in records}
 
-    # 1. Exhaustive and no phantom ids
+    # 1. Every id present, no unknown ids
     missing = set(by_id) - set(assignments)
     phantom = set(assignments) - set(by_id)
     if missing or phantom:
@@ -108,7 +107,7 @@ def check_split(records: list[dict[str, str]], split: dict, classes: dict) -> li
     else:
         _ok(results, f"split values are legal ({sorted(SPLIT_NAMES)})")
 
-    # 4. Per-class stratification of ORIGINALS
+    # 4. Per-class counts of originals
     originals_by_class_split: dict[str, Counter] = defaultdict(Counter)
     for audio_id, info in assignments.items():
         if info["role"] == ORIGINAL:
@@ -132,13 +131,13 @@ def check_split(records: list[dict[str, str]], split: dict, classes: dict) -> li
     else:
         _fail(results, f"overall originals {dict(totals)} != 2100/450/450")
 
-    # 6. Determinism: re-deriving the original assignments must give an identical result
+    # 6. Rebuilding the split must give the same result
     from audio_dataset.build_split import build_split
     rebuilt = build_split(records, classes, seed=split.get("seed", 20260923))
     if rebuilt["assignments"] == assignments:
         _ok(results, "re-running the builder reproduces the split byte-for-byte")
     else:
-        _fail(results, "split is NOT reproducible — the builder disagrees with the frozen file")
+        _fail(results, "split is not reproducible: the builder gives a different result from the frozen file")
     return results
 
 
@@ -197,7 +196,7 @@ def check_files(records: list[dict[str, str]]) -> list[tuple[bool, str]]:
     else:
         _ok(results, f"all {len(records)} manifest files exist on disk")
 
-    # Nothing on disk may be missing from the manifest (would mean unreported audio).
+    # Every file on disk must be in the manifest.
     extensions = {".wav", ".mp3", ".flac", ".ogg", ".m4a"}
     on_disk = {
         str(p.relative_to(audio_root))

@@ -1,11 +1,8 @@
-"""Tests for ``/api/audio`` and ``/api/events``.
+"""Tests for /api/audio and /api/events.
 
-
-The pipeline is stubbed, not the endpoints. A real trained model does not exist on disk
-yet, and these tests are about the contract the console relies on -- the status codes, the
-scoping rule, the duplicate gate, the shape of the response -- none of which depend on
-which class the model picked. The stub returns a record shaped exactly like
-``AnalysisPipeline.analyse`` so the serializer is exercised against the real thing.
+The pipeline is replaced by a stub that returns records shaped like
+AnalysisPipeline.analyse output. The tests cover status codes, scoping, duplicates and
+response shape, none of which depend on the model.
 """
 
 from __future__ import annotations
@@ -23,7 +20,7 @@ from src.auth import hash_password
 from src.models import Event, User
 
 
-# A pipeline stub that returns a realistic record
+# Pipeline stub
 
 def _record(*, event_id: int = 1, sha256: str = "a" * 64, agree: bool = True,
             severity: str = "High", alert: bool = True, review: bool = False,
@@ -70,9 +67,7 @@ def _record(*, event_id: int = 1, sha256: str = "a" * 64, agree: bool = True,
 
 
 class _StubPipeline:
-    """Returns a canned record, calls ``persist`` like the real pipeline, and records what it
-    analysed.
-    """
+    """Returns a fixed record, calls ``persist`` and remembers what it analysed."""
 
     def __init__(self):
         self.calls = []
@@ -89,13 +84,12 @@ class _StubPipeline:
                                   "summary": "0.2s is below the 0.5s minimum"}}
         else:
             record = _record(verdict=self.next_quality_verdict)
-        # Digest of the bytes actually received, so identical uploads collide and different ones do
-        # not.
+        # Hash the real bytes so duplicates behave like the real thing.
         digest = hashlib.sha256(raw).hexdigest()
         record["audio"]["sha256"] = digest
         record["audio"]["fingerprint"] = f"fp-{digest[:8]}"
         if persist is not None:
-            # Like the real pipeline, keep the record and attach the stored result to it.
+            # Attach the stored result, like the real pipeline.
             stored = persist(record)
             record["stored"] = dict(stored)
             if stored.get("event_ids"):
@@ -106,7 +100,7 @@ class _StubPipeline:
 
 @pytest.fixture()
 def stub(monkeypatch):
-    """Replace the process pipeline with a stub for the duration of the app."""
+    """Swap in the stub pipeline."""
     import src.services.pipeline as pipeline_mod
 
     stub_ = _StubPipeline()
@@ -155,8 +149,7 @@ def reviewer(factory):
 
 
 def _client(app, user):
-    """A test client carrying that user's signed session cookie, read back from session_transaction.
-    """
+    """Test client signed in as the given user."""
     client = app.test_client()
     with app.test_request_context("/"):
         with client.session_transaction() as sess:
@@ -167,7 +160,7 @@ def _client(app, user):
 
 
 def _login(app, user):
-    """Kept for the two tests that only need the user row itself."""
+    """Return the user row (for tests that don't need a client)."""
     return user
 
 
@@ -190,7 +183,7 @@ def test_upload_returns_201_with_the_event_shape(app, viewer, stub):
     assert body["consistency_status"] == "Strong Match"
     assert body["models"]["python"]["version"] == "svm_v1"
     assert body["models"]["gtm"]["version"] == "tm_v1"
-    # FR lxxix: the pipeline was given the metadata, not just the bytes.
+    # FR lxxix: the metadata reached the pipeline.
     assert stub.calls[0]["meta"]["location"] == "Warehouse North"
 
 
@@ -199,8 +192,7 @@ def test_upload_writes_the_event_and_audio_rows(app, factory, viewer):
     with factory() as session:
         event = session.execute(select(Event)).scalar_one()
         assert event.predicted_class == "Gunshot"
-        # The stub digests the real bytes (as the pipeline does), so the stored hash is
-        # the digest of what was uploaded, not the canned "a"*64 placeholder.
+        # The stored hash is of the uploaded bytes.
         assert event.audio_file.sha256 == hashlib.sha256(b"RIFF****").hexdigest()
 
 
@@ -212,7 +204,7 @@ def test_upload_of_the_same_bytes_is_a_409_naming_the_first(app, viewer):
 
     assert again.status_code == 409
     assert again.get_json()["error"]["code"] == "duplicate_audio"
-    # Error envelope contract: field-level identifiers live in details.
+    # Field names go in details.
     assert again.get_json()["error"]["details"]["audio_id"].startswith("SST-")
 
 
@@ -235,7 +227,7 @@ def test_a_microphone_upload_needs_explicit_consent(app, viewer):
 def test_a_microphone_upload_with_consent_is_accepted(app, viewer, stub):
     resp = _upload(_client(app, viewer), source="microphone", consent_ack="true")
     assert resp.status_code == 201
-    # FR lxxix: the origin is mapped to the storage label the schema accepts.
+    # FR lxxix: origin mapped to the stored label.
     assert stub.calls[0]["origin"] == "live"
 
 
@@ -267,15 +259,14 @@ def test_an_anonymous_upload_is_not_allowed(app):
     assert resp.status_code in (401, 403)
 
 
-# A server started without model artifacts answers 503 with a readable sentence, never 500
-# (regression: PipelineError slipped past the ModelsUnavailable guard).
+# Without models, uploads get a 503 with a readable message, not a 500.
 
 @pytest.fixture()
 def no_models_app(tmp_path, monkeypatch):
-    """An app whose pipeline genuinely was never initialised (``SST_LOAD_MODELS=False``)."""
+    """App with no pipeline (``SST_LOAD_MODELS=False``)."""
     import src.services.pipeline as pipeline_mod
 
-    # ``set_pipeline(None)`` below writes this global; monkeypatch puts it back afterwards.
+    # monkeypatch restores the global afterwards.
     monkeypatch.setattr(pipeline_mod, "_PIPELINE", None)
     return create_app(
         TESTING=True,
@@ -292,19 +283,13 @@ def test_upload_without_a_loaded_pipeline_is_a_503_not_a_500(no_models_app):
     assert resp.status_code == 503
     err = resp.get_json()["error"]
     assert err["code"] == "pipeline_unavailable"
-    # The standard user-facing sentence -- not the app-factory wiring instructions, which
-    # name an internal function and belong in the start-up log, not in a response body.
+    # The standard message, without internal details.
     assert "set_pipeline" not in err["message"]
     assert err["message"].strip()
 
 
 def test_upload_names_the_missing_artifact_when_a_model_fails_to_load(app, viewer, monkeypatch):
-    """A real load failure still names the artifact, on purpose.
-
-    ``ModelsUnavailable`` docstring: "not found" without a path costs the next person
-    twenty minutes. That diagnostic is the whole reason the subclass exists, so the fix
-    must keep it rather than flattening every failure to one generic sentence.
-    """
+    """A model load failure names the missing file."""
     import src.services.pipeline as pipeline_mod
 
     def _boom():
@@ -323,11 +308,7 @@ def test_upload_names_the_missing_artifact_when_a_model_fails_to_load(app, viewe
 
 
 def test_an_unexpected_pipeline_failure_is_not_echoed_to_the_caller(app, viewer, monkeypatch):
-    """A bare ``PipelineError`` can carry anything, so its text is not published.
-
-    src/errors.py is explicit that an error message is one *we* wrote and safe to show.
-    Catching the parent class is what makes that guarantee hold for this endpoint too.
-    """
+    """The text of an unexpected PipelineError isn't sent to the client."""
     import src.services.pipeline as pipeline_mod
 
     def _boom():
@@ -342,7 +323,7 @@ def test_an_unexpected_pipeline_failure_is_not_echoed_to_the_caller(app, viewer,
     assert "sqlite3" not in err["message"]
 
 
-# /api/events -- scoping
+# /api/events: scoping
 
 _seed_counter = itertools.count()
 _seed_digests: dict[int, str] = {}
@@ -354,7 +335,7 @@ def _seed_event(factory, user, *, predicted="Gunshot", severity="High"):
 
     layout = StorageLayout(Path("/tmp") / f"sst-test-{user.id}")
     layout.ensure()
-    # A distinct digest per seed, or the store treats the second seed as a re-upload.
+    # Different hash per seed, or it counts as a duplicate.
     digest = hashlib.sha256(str(next(_seed_counter)).encode()).hexdigest()
     record = _record(severity=severity, sha256=digest)
     record["predictions"]["python"]["predicted_class"] = predicted
@@ -396,7 +377,7 @@ def test_unknown_event_id_is_a_404(app, viewer):
     assert resp.status_code == 404
 
 
-# /api/events -- filters and sort
+# /api/events: filters and sort
 
 def test_severity_filter_narrows_the_list(app, factory, viewer):
     _seed_event(factory, viewer, severity="High")
@@ -409,7 +390,7 @@ def test_severity_filter_narrows_the_list(app, factory, viewer):
 
 
 def test_free_text_search_ignores_case(app, factory, viewer):
-    """Search matches with LIKE, relying on SQLite's case-insensitive LIKE for ASCII."""
+    """Free-text search ignores case."""
     _seed_event(factory, viewer, predicted="Glass Breaking")
     _seed_event(factory, viewer, predicted="Gunshot")
 
@@ -467,7 +448,7 @@ def test_flagging_an_event_is_audited_not_a_reclassification(app, factory, viewe
         actions = [a.action for a in session.execute(select(AuditRecord)).scalars()]
         event = session.execute(select(Event).where(Event.id == event_id)).scalar_one()
     assert "event_flagged" in actions
-    # The classification is untouched: flagging is a request for attention.
+    # Flagging doesn't change the classification.
     assert event.predicted_class == "Gunshot"
 
 
@@ -489,5 +470,5 @@ def test_a_reviewer_can_delete_and_it_is_audited_with_a_before_image(app, factor
         rows = [a for a in session.execute(select(AuditRecord)).scalars()
                 if a.action == "event_deleted"]
     assert rows
-    # The before-image records the audio exactly as it was stored.
+    # The audit before-image has the audio as stored.
     assert rows[0].before["sha256"] == _seed_digests[event_id]

@@ -1,1 +1,1 @@
-"""Operator and demonstration tooling."""
+"""Command-line tools."""

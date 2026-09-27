@@ -1,6 +1,6 @@
-/* Design tokens. Light is the default theme; dark is a parallel palette, not an inversion.
-   Colour is reserved for status, severity and the two models; the neutral ramp does the rest.
-   Severity token names are also referenced by alert_rules/. */
+/* Design tokens. Light theme by default, with a separate dark palette.
+   Colour is kept for status, severity and the two models. alert_rules/ uses the
+   severity token names. */
 @font-face {
   font-family: "Geist";
   src: url("../fonts/geist-latin-wght-normal.woff2") format("woff2");
@@ -19,7 +19,7 @@
 :root {
   color-scheme: light;
 
-  /* --- surfaces --------------------------------------------------------- */
+  /* Surfaces */
   --bg-canvas:        #f4f7fe;
   --bg-surface:       #ffffff;
   --bg-surface-2:     #f4f7fe;
@@ -30,19 +30,19 @@
   --border-strong:    #cdd5e6;
   --border-subtle:    #edf1f9;
 
-  /* --- text --------------------------------------------------------------- */
+  /* Text */
   --text:             #1b2559;
   --text-muted:       #4a5578;
   --text-subtle:      #68759a;
   --text-inverse:     #ffffff;
 
-  /* --- accent: one blue, used for actions and focus only ------------------ */
+  /* Accent (actions and focus) */
   --accent:           #4361ee;
   --accent-strong:    #3450d6;
   --accent-dim:       #eef1ff;
   --accent-contrast:  #ffffff;
 
-  /* --- status ------------------------------------------------------------ */
+  /* Status */
   --ok:               #067647;
   --ok-dim:           #dcfae6;
   --warn:             #b54708;
@@ -73,11 +73,11 @@
   --quality-poor:       #b54708;
   --quality-unusable:   #475467;
 
-  /* --- model identity: each model keeps one hue everywhere --------------- */
+  /* One colour per model */
   --model-python: #0891b2;
   --model-gtm:    #c026d3;
 
-  /* --- navigation rail ---------------------------------------------------- */
+  /* Navigation rail */
   --nav-bg:          #ffffff;
   --nav-border:      transparent;
   --nav-text:        #68759a;
@@ -87,7 +87,7 @@
   --nav-active:      transparent;
   --nav-accent:      #4361ee;
 
-  /* --- space scale (4px base, 8pt rhythm) -------------------------------- */
+  /* Space scale (4px base, 8pt rhythm) */
   --sp-0: 0;
   --sp-1: 0.25rem;
   --sp-2: 0.5rem;
@@ -98,14 +98,14 @@
   --sp-7: 3rem;
   --sp-8: 4rem;
 
-  /* --- radius ------------------------------------------------------------- */
+  /* Radius */
   --r-1: 6px;
   --r-2: 8px;
   --r-3: 12px;
   --r-4: 16px;
   --r-round: 999px;
 
-  /* --- type ---------------------------------------------------------------- */
+  /* Type */
   --font-sans: "Geist", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
                Arial, "Noto Sans", sans-serif;
   --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
@@ -128,22 +128,22 @@
   --fw-semi:   600;
   --fw-bold:   700;
 
-  /* --- elevation ---------------------------------------------------------- */
+  /* Elevation */
   --shadow-1: 0 1px 2px rgba(16, 24, 40, 0.05);
   --shadow-2: 0 4px 12px -2px rgba(16, 24, 40, 0.08), 0 2px 4px -2px rgba(16, 24, 40, 0.04);
   --shadow-3: 0 20px 48px -12px rgba(16, 24, 40, 0.22);
 
-  /* --- focus: never removed, only restyled -------------------------------- */
+  /* Focus */
   --focus-ring-color: var(--accent);
   --focus-ring: 0 0 0 2px var(--bg-canvas), 0 0 0 4px var(--focus-ring-color);
   --focus-ring-inset: inset 0 0 0 2px var(--focus-ring-color);
 
-  /* --- motion ------------------------------------------------------------- */
+  /* Motion */
   --t-fast: 140ms;
   --t-base: 220ms;
   --ease: cubic-bezier(0.2, 0, 0, 1);
 
-  /* --- fixed geometry ----------------------------------------------------- */
+  /* Fixed geometry */
   --topbar-h: 4rem;
   --nav-w: 15.5rem;
   --nav-w-collapsed: 4.5rem;
@@ -231,7 +231,7 @@
   --shadow-3: 0 24px 56px -12px rgba(0, 0, 0, 0.65);
 }
 
-/* Windows high-contrast / forced-colors: hand the palette to the OS. */
+/* Forced colours (Windows high contrast): let the OS pick. */
 @media (forced-colors: active) {
   :root {
     --border: CanvasText;

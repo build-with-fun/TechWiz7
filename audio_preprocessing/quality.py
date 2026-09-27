@@ -1,8 +1,7 @@
-"""Audio-quality verdict (SRS Step 13, FR xii-xiv): Good, Acceptable, Poor or Unusable.
+"""Audio quality verdict (SRS Step 13, FR xii-xiv): Good, Acceptable, Poor or Unusable.
 
-The seven SRS checks (silence, clipping, excessive noise, low signal, unsuitable duration,
-encoding problems, missing frames) each report the measurement behind them. The verdict
-matters: repeat_detection.min_quality is Acceptable, so a Poor clip cannot confirm an alert.
+Runs the seven SRS checks (silence, clipping, noise, low signal, duration, encoding
+problems, missing frames). A Poor clip can't confirm an alert on its own.
 """
 
 from __future__ import annotations
@@ -28,7 +27,7 @@ HOP_LENGTH = 512
 
 
 def meets_min_quality(verdict: str, minimum: str) -> bool:
-    """Is ``verdict`` at least as good as ``minimum``?  Used by the repeat-detection rule."""
+    """True if ``verdict`` is at least ``minimum``."""
     return QUALITY_ORDER.get(verdict, -1) >= QUALITY_ORDER.get(minimum, 99)
 
 
@@ -41,12 +40,10 @@ def estimate_snr_db(
     signal_fraction: float = 0.10,
     max_db: float = 120.0,
 ) -> float:
-    """Signal-to-noise estimate in dB: strongest spectral bins versus the median of the rest.
+    """SNR estimate in dB: strongest spectral bins against the median of the rest.
 
-    The textbook frame-percentile estimator (quietest frames = noise) was tried and rejected: a
-    steady siren or machine hum has no quiet frames, so a clean 440 Hz tone scored about -23 dB
-    and would have condemned exactly the tonal classes we detect. This estimator gives a clean
-    tone a high SNR and white noise about 0 dB. Returns 0.0 rather than NaN.
+    We don't use the quietest frames as the noise estimate because a steady siren or hum has
+    no quiet frames (a clean tone scored about -23 dB that way).
     """
     arr = to_mono(y)
     if arr.size == 0:
@@ -71,8 +68,7 @@ def estimate_snr_db(
     peak_power = float(np.mean(bin_power[peak_bins]))
 
     if floor_power <= EPS:
-        # A perfectly clean synthetic signal: no floor worth speaking of. Cap rather than
-        # return inf so the value survives JSON, the database column and the UI chart.
+        # Clean synthetic signal: cap instead of returning inf.
         return float(max_db) if peak_power > EPS else 0.0
     if peak_power <= floor_power:
         return 0.0
@@ -87,9 +83,7 @@ def frame_dynamic_range_db(
     low: float = 10.0,
     high: float = 90.0,
 ) -> float:
-    """Spread between quiet and loud frames in dB; reported only, never used in the verdict
-    (an intermittent gunshot and a steady siren can both be good recordings).
-    """
+    """Range between quiet and loud frames in dB. Reported only, not used in the verdict."""
     frames = _frame_powers(to_mono(y), frame_length=frame_length, hop_length=hop_length)
     if frames.size == 0 or float(np.max(frames)) <= EPS:
         return 0.0
@@ -103,7 +97,7 @@ def frame_dynamic_range_db(
 
 
 def _frame_powers(y: np.ndarray, *, frame_length: int, hop_length: int) -> np.ndarray:
-    """Mean power per frame, computed with a stride trick -- no librosa, no allocation churn."""
+    """Mean power per frame, using a strided view."""
     arr = np.asarray(y, dtype=np.float64).reshape(-1)
     if arr.size < frame_length:
         return np.array([float(np.mean(np.square(arr)))]) if arr.size else np.array([])
@@ -113,9 +107,7 @@ def _frame_powers(y: np.ndarray, *, frame_length: int, hop_length: int) -> np.nd
 
 
 def clipping_stats(y: np.ndarray, threshold: float = 0.99) -> dict[str, float]:
-    """Clipping ratio plus the longest run at full scale: real clipping gives long runs, a loud
-    signal only touches the rails.
-    """
+    """Clipping ratio and the longest run at full scale (real clipping gives long runs)."""
     arr = to_mono(y)
     if arr.size == 0:
         return {"clipping_ratio": 0.0, "clipped_samples": 0, "longest_run": 0, "peak_dbfs": float("-inf")}
@@ -144,15 +136,12 @@ def analyze_quality(
     decoded_with_error: bool = False,
     non_finite_count: int | None = None,
 ) -> dict[str, Any]:
-    """Measure the Step 13 signals and return verdict, problems, urgent problems, measurements,
-    thresholds and human-readable notes. ``decoded_with_error`` and ``non_finite_count`` report
-    decoder trouble (encoding problems, missing frames).
-    """
+    """Run the Step 13 checks and return the verdict, problems, measurements and notes."""
     settings = cfg or quality_config()
     arr = to_mono(y)
     n = int(arr.size)
 
-    # NaN/Inf samples are decoder gaps: zero them for measurement and count them as evidence.
+    # NaN/Inf samples are decoder gaps: zero them and count them.
     detected_missing = int(np.count_nonzero(~np.isfinite(arr))) if n else 0
     if detected_missing:
         arr = np.where(np.isfinite(arr), arr, np.float32(0.0)).astype(np.float32)
@@ -172,10 +161,8 @@ def analyze_quality(
     measurements["rms_dbfs"] = _clean(rms_db)
     measurements["peak_dbfs"] = _clean(peak_db)
     silence_max = float(settings.get("silence_rms_dbfs_max", -50.0))
-    # Silence means no part of the clip rises above the floor, judged on the loudest 50 ms
-    # frame. The whole-clip RMS was used until 26 Sep, and a gunshot followed by quiet
-    # averaged out as "silent" once it was 30 dB down: 102 of 150 test clips at -30 dB
-    # were refused although the models classified most of the rest correctly.
+    # Silence is judged on the loudest 50 ms frame, not the whole-clip RMS, which made a
+    # short gunshot followed by quiet look silent.
     frame = max(1, int(0.05 * sample_rate)) if sample_rate else max(1, n)
     usable = (n // frame) * frame
     if usable:
@@ -219,8 +206,7 @@ def analyze_quality(
     elif checks["noise_below_acceptable"]:
         notes.append(f"SNR {_fmt_db(snr_db)} is below the acceptable floor {acceptable_snr:.1f} dB")
 
-    # 4. low signal strength
-    # There is a signal, but it is close to the quantisation floor.
+    # 4. low signal strength (close to the quantisation floor)
     low_peak = float(settings.get("low_signal_peak_dbfs", -40.0))
     checks["low_signal"] = bool(not checks["silence"] and peak_db < low_peak)
     measurements["low_signal_peak_dbfs"] = low_peak
@@ -292,7 +278,7 @@ def _decide(
     clip: dict[str, float],
     clip_max: float,
 ) -> tuple[str, list[str], list[str]]:
-    """Map measurements to a verdict; ``urgent`` problems alone make a clip Unusable."""
+    """Measurements -> verdict. Only ``urgent`` problems make a clip Unusable."""
     problems: list[str] = []
     urgent: list[str] = []
 
@@ -318,14 +304,13 @@ def _decide(
     if urgent:
         return UNUSABLE, urgent, problems
 
-    # More than 5x the clipping tolerance: parts of the waveform are a square wave.
+    # More than 5x the clipping tolerance.
     severe_clip = checks.get("clipping") and clip["clipping_ratio"] > 5.0 * clip_max
     very_short = duration < max(min_dur, 0.6 * min_dur + 0.2) and duration < min_dur * 1.5
-    # A faint but real event is analysed and rated Poor: it reaches a reviewer, and the
-    # quality gate keeps it from raising an alert on its own.
+    # A faint event is still analysed, rated Poor, and goes to a reviewer.
     if severe_clip or snr_db < poor_snr or checks.get("duration_long") or very_short or checks.get("low_signal"):
         return POOR, urgent, problems
-    # Decoder gaps are never Acceptable: the waveform is not what the microphone heard.
+    # Decoder gaps are never Acceptable.
     if checks.get("missing_frames"):
         return POOR, urgent, problems
 
@@ -343,7 +328,7 @@ def _decide(
 
 
 def _clean(value: float) -> float | str:
-    """Make a dB value JSON-safe: ``inf``/``nan`` are not valid JSON and would break the API."""
+    """Make a dB value JSON-safe (no inf or nan)."""
     if value is None:
         return "n/a"
     if np.isnan(value):
@@ -364,7 +349,7 @@ def _fmt_db(value: float) -> str:
 
 
 def quality_summary(quality: dict[str, Any]) -> str:
-    """One-line human summary for the UI and the downloadable report."""
+    """One-line summary for the UI and report."""
     verdict = quality.get("verdict", "Unknown")
     problems = quality.get("problems") or []
     if not problems:

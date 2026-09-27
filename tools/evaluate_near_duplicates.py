@@ -2,14 +2,11 @@
 
     python tools/evaluate_near_duplicates.py      # ~3 min; writes reports/near_duplicates.json
 
-Positives: each chosen test recording is re-encoded to 64 kbit/s MP3, turned down 12 dB,
-trimmed to its middle 70 %, and mixed with pink noise at 20 dB SNR; each copy should be
-recognised as a near-duplicate of its source.
-Hard negatives: for the same recordings, the three clips from OTHER source recordings
-whose perceptual fingerprints are most similar. These are the clips most likely to be
-falsely flagged, so they are the fair test of a threshold.
+Positives: each test recording re-encoded to 64 kbit/s MP3, 12 dB quieter, trimmed to the
+middle 70% and mixed with pink noise at 20 dB SNR. Each should match its source.
+Hard negatives: the three clips from other recordings with the most similar fingerprints.
 
-Both stages run on the output of the serving preprocessor, as they do in the app.
+Both stages use the app's preprocessing.
 """
 
 from __future__ import annotations
@@ -91,8 +88,7 @@ def main() -> None:
                 continue
             copy_print = audio_fingerprint(pre.samples, RATE)
             stage1 = fingerprint_similarity(prints[r["audio_id"]], copy_print)
-            # Where the true source ranks among all 3,000 stored clips by fingerprint
-            # similarity: the app only runs stage 2 on the top SHORTLIST candidates.
+            # Rank of the true source by fingerprint; stage 2 only sees the top SHORTLIST.
             others = [fingerprint_similarity(copy_print, fp) or 0.0
                       for other, fp in prints.items() if other != r["audio_id"] and fp]
             rank = 1 + sum(o > (stage1 or 0.0) for o in others)

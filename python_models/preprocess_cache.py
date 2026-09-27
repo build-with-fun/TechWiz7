@@ -1,16 +1,14 @@
-"""Run every manifest recording through the serving preprocessor once and keep the result.
+"""Run every recording through the app's preprocessor once and cache the result.
 
-Both the transfer-learning trainer and the Teachable Machine import builder read from
-this cache. That is the point of it: the waveform a model is trained on comes out of the
-same ``AudioPipeline`` object the Flask app calls on an upload, so there is no second,
-slightly different copy of resampling / noise reduction / trimming to drift apart.
+The transfer trainer and the Teachable Machine import builder both read this cache, so
+models are trained on audio preprocessed exactly like an upload.
 
     python -m python_models.preprocess_cache            # all 3,000 originals, ~7 min
     python -m python_models.preprocess_cache --split test
 
 Output: ``data/cache/pre16k/<audio_id>.npy`` (float32, 16 kHz mono) and
 ``data/cache/pre16k/index.csv`` with the quality verdict and any rejection reason.
-The cache is ignored by Git; delete the folder to rebuild it from scratch.
+Not in Git; delete the folder to rebuild it.
 """
 
 from __future__ import annotations
@@ -28,9 +26,8 @@ ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "audio_dataset" / "manifest_with_split.csv"
 CACHE = ROOT / "data" / "cache" / "pre16k"
 
-# Preprocessing variants compared on the validation split (26 Sep). "current" is the
-# serving configuration at the time; "gentle" halves the noise gate and trims only what
-# is 45 dB below the peak, to keep the decay tail of impulsive sounds.
+# Variants compared on validation. "current" is the serving setup; "gentle" halves the
+# noise gate and trims only below -45 dB, to keep the tail of impulsive sounds.
 VARIANTS = {
     "current": {},
     "gentle": {"noise_reduction_strength": 0.4, "silence_trim_top_db": 45.0},
@@ -91,7 +88,7 @@ def build(split: str | None = None, *, force: bool = False,
                 quality = (pre.quality or {}).get("verdict", "")
                 version = (pre.preprocessing or {}).get("version", "")
                 rate = int(pre.sample_rate)
-            except Exception as exc:  # noqa: BLE001 - recorded per clip, run continues
+            except Exception as exc:  # noqa: BLE001 - record and carry on
                 rejected, reason, samples, quality, version, rate = True, str(exc), None, "Unusable", "", 0
         if samples is not None and samples.size:
             np.save(cached_path(audio_id, variant), samples)

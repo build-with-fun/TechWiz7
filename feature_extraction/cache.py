@@ -1,10 +1,8 @@
-"""Segment enumeration, the on-disk log-mel cache, and train-only normalisation statistics.
+"""Segment listing, the on-disk log-mel cache, and normalisation statistics.
 
-- log-mel uses a fixed ``ref=1.0`` (in features.segment_logmel): absolute level is signal here.
-- MelNormalizer.fit refuses any split but "train", so val/test statistics cannot leak in.
-- MelCache writes ``<root>/<audio_id>/<start_ms>-<end_ms>.npy`` plus an index CSV, so any
-  tensor traces back to its segment.
-- enumerate_segments is public: row i of the tensor stack is row i of the enumeration.
+- MelNormalizer.fit only accepts the train split, so val/test can't leak in.
+- MelCache writes ``<root>/<audio_id>/<start_ms>-<end_ms>.npy`` plus an index CSV.
+- Row i of the tensor stack is row i of enumerate_segments().
 """
 
 from __future__ import annotations
@@ -44,10 +42,7 @@ def enumerate_segments(
     *,
     feature_config: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
-    """The segment timeline as a list of dicts (index, start/end in s and ms, duration, n_samples).
-
-    The same enumeration the extractors iterate, so the i-th tensor and the i-th timestamp agree.
-    """
+    """Segments as dicts (index, start/end in s and ms, duration, n_samples)."""
     conf = _conf(feature_config)
     y, sr, _ = _signal(preprocessed_or_samples, sample_rate)
     if y.size == 0:
@@ -70,9 +65,7 @@ def enumerate_segments(
 
 
 def _conf(feature_config: dict[str, Any] | None) -> dict[str, Any]:
-    """Segment length and rate, by the same rule as ``features._fc``, so the cache and extractor
-    agree on segment i.
-    """
+    """Segment length and rate, same as ``features._fc``."""
     conf = dict(feature_config) if feature_config is not None else cfg_mod.feature_config()
     audio = conf.get("_audio_block")
     if not isinstance(audio, dict):
@@ -91,9 +84,7 @@ def _signal(source: Any, sample_rate: int | None) -> tuple[np.ndarray, int, list
 # Audio identity
 
 def audio_id_for(source: Any) -> str:
-    """Stable id for a recording: a hash of the file contents, or of the samples and rate for in-
-    memory audio.
-    """
+    """Hash of the file, or of the samples and rate for in-memory audio."""
     path = getattr(source, "path", None)
     if path is not None:
         try:
@@ -137,10 +128,7 @@ class MelCacheEntry:
 
 
 class MelCache:
-    """Content-addressed store of log-mel tensors: ``<root>/<audio_id>/<start_ms>-<end_ms>.npy`` plus index.csv.
-
-    One file per segment so a single segment loads alone; the index is rewritten sorted so it diffs cleanly.
-    """
+    """Log-mel tensors on disk, one .npy per segment, plus index.csv."""
 
     def __init__(self, root: str | Path = "data/features/mel", *, feature_version: str | None = None) -> None:
         from feature_extraction.features import FEATURE_SCHEMA_VERSION
@@ -175,8 +163,7 @@ class MelCache:
         return np.load(path)
 
     def load_by_id(self, audio_id: str, segment_index: int) -> np.ndarray:
-        """Load a segment's tensor from its ``audio_id`` + ``segment_index`` (the deep-model trainer: "I need
-        to reproduce a segment from its ID")."""
+        """Load one segment's tensor by ``audio_id`` and ``segment_index``."""
         for row in self.load_index():
             if row["audio_id"] == audio_id and int(row["segment_index"]) == int(segment_index):
                 return self.load_segment(audio_id, int(row["start_ms"]), int(row["end_ms"]))
@@ -184,9 +171,7 @@ class MelCache:
 
     # whole-recording IO
     def save_recording(self, source: Any, tensors: np.ndarray, *, source_path: str | None = None) -> list[MelCacheEntry]:
-        """Write every segment tensor plus its index rows; ``tensors`` must match
-        ``enumerate_segments`` order.
-        """
+        """Write all segment tensors and index rows (in ``enumerate_segments`` order)."""
         segments = enumerate_segments(source)
         arr = np.asarray(tensors, dtype=np.float32)
         if arr.ndim != 3:
@@ -219,9 +204,7 @@ class MelCache:
         return entries
 
     def get_or_compute(self, source: Any, *, force: bool = False) -> tuple[np.ndarray, list[dict[str, Any]], bool]:
-        """Return ``(tensors, segments, from_cache)``; a tensor from another feature version or
-        shape is recomputed.
-        """
+        """Return ``(tensors, segments, from_cache)``. Stale entries are recomputed."""
         from feature_extraction.features import extract_mel_segments
 
         segments = enumerate_segments(source)
@@ -243,7 +226,7 @@ class MelCache:
         return tensors, segments, False
 
     def load_index(self) -> list[dict[str, Any]]:
-        """The whole index.  Returns ``[]`` when the cache has never been written."""
+        """The whole index, or ``[]`` if empty."""
         if not self.index_path.exists():
             return []
         rows: list[dict[str, Any]] = []
@@ -264,7 +247,7 @@ class MelCache:
         return rows
 
     def _upsert_index(self, entries: Sequence[MelCacheEntry]) -> None:
-        """Replace this audio_id's rows and rewrite the whole index in deterministic order."""
+        """Replace this audio_id's rows and rewrite the index sorted."""
         existing = [r for r in self.load_index() if r["audio_id"] != entries[0].audio_id] if entries else self.load_index()
         merged = existing + [e.to_dict() for e in entries]
         merged.sort(key=lambda r: (str(r["audio_id"]), int(r["segment_index"])))
@@ -276,7 +259,7 @@ class MelCache:
                 writer.writerow({k: row.get(k, "") for k in MEL_INDEX_COLUMNS})
 
     def stats(self) -> dict[str, Any]:
-        """How much is cached, for the diagnostics page."""
+        """Cache size info."""
         rows = self.load_index()
         return {
             "root": str(self.root),
@@ -288,18 +271,14 @@ class MelCache:
 
 
 def _hash_tensor(tensor: np.ndarray) -> str:
-    """Content hash of one tensor, so a corrupted cache file is detectable."""
+    """Hash of a tensor, to detect corrupted cache files."""
     return hashlib.sha256(np.ascontiguousarray(tensor, dtype="<f4").tobytes()).hexdigest()[:16]
 
 
 
 @dataclass
 class MelNormalizer:
-    """Per-band z-score statistics for the log-mel tensor, fitted on the train split only.
-
-    ``fit`` needs an explicit ``split`` and refuses anything but "train". The statistics are saved
-    next to the model; loading ones from a different feature version is refused.
-    """
+    """Per-band mean/std for the log-mel tensor, fitted on the train split only."""
 
     mean: np.ndarray
     std: np.ndarray
@@ -329,7 +308,7 @@ class MelNormalizer:
         data = np.concatenate(stack, axis=0)
         if data.ndim != 3:
             raise ValueError(f"expected (n, n_mels, n_frames) tensors, got {data.shape}")
-        # Per mel band, pooled over frames and segments: the band axis is the physical one.
+        # Per mel band, over all frames and segments.
         mean = data.mean(axis=(0, 2))
         std = data.std(axis=(0, 2))
         std = np.where(std < 1e-6, 1.0, std)

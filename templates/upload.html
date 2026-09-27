@@ -8,8 +8,8 @@
 <section class="page-head">
   <div class="page-head__main">
     <h1 class="page-title">Upload audio</h1>
-    <p class="page-sub">Drop a recording and both models classify it independently — the
-      Python model and the Google Teachable Machine model. The result shows each
+    <p class="page-sub">Drop a recording and both models, the Python model and the
+      Google Teachable Machine model, classify it independently. The result shows each
       prediction, each confidence, the difference, and the consistency verdict.
       Listen to the recording before acting on a result.</p>
   </div>
@@ -34,7 +34,7 @@
 {% endif %}
 
 <div class="grid grid--2col">
-  {# ---- the dropzone. ------------------------------------------------------- #}
+  {# Dropzone #}
   <section class="panel">
     <div class="panel__head">
       <h2 class="panel__title">Add a recording</h2>
@@ -59,7 +59,7 @@
         <noscript><button class="btn btn--secondary" type="submit">Analyze selected file</button></noscript>
       </form>
 
-      {# ---- the queue: what is happening to each file. ----------------------- #}
+      {# Upload queue #}
       <h2 class="panel__title panel__title--sub">Queue</h2>
       <ol class="queue" data-upload-queue data-testid="upload-queue">
         <li class="queue__item queue__item--empty">Nothing queued yet.</li>
@@ -67,7 +67,7 @@
     </div>
   </section>
 
-  {# ---- how a file is judged. ---------------------------------------------- #}
+  {# How a file is judged #}
   <section class="panel">
     <div class="panel__head">
       <h2 class="panel__title">What happens to a file</h2>

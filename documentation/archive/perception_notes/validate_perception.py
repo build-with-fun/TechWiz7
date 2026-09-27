@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Validate the perception deliverables.
+"""Check the perception notes files. Archived.
 
-Reusable by a submission readiness check. Fails loudly on the mistakes that
-actually matter: a class name that does not match the SRS ten, a pair naming a class
-that does not exist, a live window that breaks the latency NFR, or a hop that makes
-the SRS consecutive-detection rule unsatisfiable.
+Catches class names that don't match the SRS ten, pairs naming unknown classes, a live
+window that breaks the latency NFR, and a hop that makes the consecutive-detection rule
+impossible to meet.
 
 Run:  python3 documentation/archive/perception_notes/validate_perception.py
 Exit: 0 = all checks pass, 1 = at least one failure (all failures printed).
@@ -93,11 +92,8 @@ def main():
         "classes_are_exactly_the_srs_ten must be true",
     )
 
-    # severity must NOT be a single static level per class: the SRS gives three
-    # classes a two-valued severity (Vehicle Horn Low or Medium; Aggression high or
-    # critical depending on confidence and repeated detection; Background Noise
-    # escalated above a configured limit). If everything is a singleton, the map has
-    # been flattened back into a hard-coded table.
+    # Some classes have two possible severities in the SRS (Vehicle Horn, Aggression,
+    # Background Noise), so not every class can have a single fixed level.
     multi = [c["class"] for c in conf["classes"] if len(c["severity"]["allowed"]) > 1]
     for expected in ("Vehicle Horn", "Aggression", "Background Noise"):
         check(
@@ -132,8 +128,7 @@ def main():
                 lvl in VALID_SEVERITIES,
                 "class %r allows unknown severity level %r" % (c.get("class"), lvl),
             )
-        # FR xliv / xlviii / l make severity context-dependent: a class with more than
-        # one allowed level MUST state what escalates it.
+        # FR xliv / xlviii / l: a class with several levels must say what escalates it.
         if len(allowed) > 1:
             check(
                 isinstance(sev.get("escalation_trigger"), str) and sev.get("escalation_trigger").strip(),

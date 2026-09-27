@@ -1,9 +1,8 @@
-"""Pipeline decision record -> database rows (FR lxv-lxxiv, lxxvi, lxxix, lxxx).
+"""Save pipeline results to the database (FR lxv-lxxiv, lxxvi, lxxix, lxxx).
 
-Every event is stored with both model versions and the audio file's SHA-256. Confidence
-scores are append-only, one row per (event, model, class). A Review row exists only when
-the queue is entered, and an Alert row only when the pipeline raised one, with the rule as
-it stood at the time (rules are editable). Nothing here decides anything.
+Each event stores both model versions and the file's SHA-256. Confidence scores get one
+row per event, model and class. Review and Alert rows are only created when the pipeline
+asks for them. No decisions are made here.
 """
 
 from __future__ import annotations
@@ -36,14 +35,13 @@ log = logging.getLogger(__name__)
 
 __all__ = ["EventStore", "store_analysis", "resolve_model_version", "make_persistence_callback"]
 
-#: Pipeline status -> FR lxii event status. The pipeline's words describe its own
-#: progress, not the event's lifecycle.
+# Pipeline status -> FR lxii event status.
 _EVENT_STATUS: Mapping[str, str] = {
     "analysed": "Classified",
     "error": "Uncertain",
 }
 
-#: Map the pipeline's origin word to the two the audio_files check constraint admits.
+# Pipeline source -> the two values audio_files allows.
 _AUDIO_SOURCE: Mapping[str, str] = {"upload": "upload", "live": "microphone", "microphone": "microphone"}
 
 _ALLOWED_EVENT_STATUSES = frozenset(
@@ -61,10 +59,9 @@ def resolve_model_version(
     feature_version: str | None = None,
     artifact_path: str | None = None,
 ) -> ModelVersion | None:
-    """Find or register the ModelVersion row a prediction names.
+    """Find the ModelVersion row for a prediction, creating it if needed.
 
-    Registering lazily is fine: a version becomes real when it makes a prediction. Changing
-    is_active is the admin API's job, not a side effect of storing an event.
+    Never changes is_active; that is up to the admin API.
     """
     if not version:
         return None
@@ -86,7 +83,7 @@ def resolve_model_version(
     session.add(row)
     try:
         session.flush()
-    except IntegrityError:  # pragma: no cover - raced by another concurrent request
+    except IntegrityError:  # pragma: no cover - another request created it first
         session.rollback()
         row = session.execute(
             select(ModelVersion).where(
@@ -98,7 +95,7 @@ def resolve_model_version(
 
 
 class EventStore:
-    """Applies the record-to-rows mapping inside a session the caller owns."""
+    """Writes a pipeline record into the caller's session."""
 
     def __init__(
         self,
@@ -113,7 +110,7 @@ class EventStore:
         self.storage = storage or StorageLayout()
         self.actor = actor
         self.request_id = request_id
-        # FR lxxiii: with consent, a hash hit means reuse the evidence, not refuse it.
+        # FR lxxiii: if the user allowed duplicates, reuse the stored file.
         self.allow_duplicate = allow_duplicate
 
 
@@ -134,8 +131,7 @@ class EventStore:
 
     @staticmethod
     def _utc() -> datetime:
-        # Naive UTC, like models.utcnow(); mixing aware and naive datetimes breaks the
-        # date comparisons in search.
+        # Naive UTC like models.utcnow(), otherwise date comparisons in search break.
         return datetime.now(timezone.utc).replace(tzinfo=None)
 
     @staticmethod
@@ -194,14 +190,13 @@ class EventStore:
 
 
     def store(self, record: Mapping[str, Any]) -> dict[str, Any]:
-        """Persist one record and return a small summary for ``record["stored"]``.
+        """Save one record and return a summary for ``record["stored"]``.
 
-        Never raises: a failed write rolls back and comes back as ``{"error": ...}``, because a
-        user is waiting on the analysis.
+        Doesn't raise: a failed write is rolled back and returned as ``{"error": ...}``.
         """
         try:
             return self._store(record)
-        except Exception as exc:  # noqa: BLE001 - documented above; the pipeline relies on it
+        except Exception as exc:  # noqa: BLE001 - see docstring
             log.exception("store_analysis failed (status=%s)", record.get("status"))
             try:
                 self.session.rollback()
@@ -214,9 +209,8 @@ class EventStore:
         audio = self._audio_block(record)
         meta = self._block(record, "meta")
 
-        # Exact duplicate by content hash (FR lxxiii). The API layer decides whether it is a
-        # 409; the unique constraint here makes it race-free. With allow_duplicate the file row
-        # is reused and the new analysis gets its own event.
+        # Exact duplicate by hash (FR lxxiii). The API decides on the 409; the unique
+        # constraint covers races. With allow_duplicate the new analysis gets its own event.
         existing = self._audio_file_by_hash(audio.get("sha256"))
         if existing is not None:
             if self.allow_duplicate:
@@ -229,7 +223,7 @@ class EventStore:
                 detail=f"bytes already stored as {existing.audio_id}",
                 after={"audio_id": existing.audio_id, "sha256": existing.sha256},
             )
-            # Commit so the refusal itself is audited.
+            # Commit so the refusal is audited.
             self.session.commit()
             return {
                 "audio_id": existing.audio_id,
@@ -245,14 +239,12 @@ class EventStore:
         audio_file = self._audio_row(record, audio_id=audio_id, stored_path=stored_path,
                                      near_duplicate_of_id=near_dup_id)
         session.add(audio_file)
-        session.flush()  # populate .id and enforce the unique sha256 constraint
+        session.flush()  # get .id and check the sha256 constraint
         self._audit_audio_upload(audio_file)
         return self._store_event_for(audio_file, record)
 
     def _reanalyse_existing(self, existing: AudioFile, record: Mapping[str, Any]) -> dict[str, Any]:
-        """FR lxxiii with consent: reuse the stored file row, but give the new analysis its own
-        event, alert, review and audit.
-        """
+        """FR lxxiii: reuse the stored file but create a new event for this analysis."""
         self._audit(
             action="audio_duplicate_allowed",
             target_type="audio_file",
@@ -263,14 +255,11 @@ class EventStore:
         return self._store_event_for(existing, record)
 
     def _store_event_for(self, audio_file: AudioFile, record: Mapping[str, Any]) -> dict[str, Any]:
-        """The event (or none, for a rejected clip), then alert, review and audit. Shared by first
-        and repeat uploads.
-        """
+        """Store the event (none for a rejected clip), then alert, review and audit rows."""
         session = self.session
         event_status = self._event_status(record)
         if event_status is None:
-            # A rejected clip is stored as a file, not an event: an event row would put an empty
-            # detection into the timeline.
+            # A rejected clip gets a file row but no event.
             session.commit()
             return {"audio_id": audio_file.audio_id, "event_ids": [], "audited": True}
 
@@ -281,17 +270,16 @@ class EventStore:
         for score in self._confidence_rows(event, predictions):
             session.add(score)
 
-        # The two side effects of the decision: an alert and a review queue entry.
+        # Alert and review queue entry.
         alert = self._maybe_alert(record, event)
         review = self._maybe_review(record, event)
         if review is not None:
-            # The queue entry's id only exists after the flush.
+            # The review id exists only after the flush.
             session.flush()
             self._audit_review_queued(review, event)
         self._audit_prediction(event, record, alert, review)
 
-        # One commit for everything: the audit rows are added (not flushed) after the rows they
-        # describe, so an earlier commit would drop them.
+        # Single commit, after the audit rows are added.
         session.commit()
 
         return {
@@ -330,8 +318,7 @@ class EventStore:
             near_duplicate_of_id=near_duplicate_of_id,
             size_bytes=self._size_bytes(record),
             duration_sec=audio.get("duration_sec"),
-            # FR x describes the file as received, so store its own rate; the processed
-            # rate (always the configured 16 kHz) is in the preprocessing record.
+            # FR x: store the original sample rate; the processed rate is always 16 kHz.
             sample_rate=audio.get("source_sample_rate") or audio.get("sample_rate"),
             channels=audio.get("source_channels") or 1,
             bit_depth=audio.get("source_bit_depth"),
@@ -346,7 +333,7 @@ class EventStore:
         )
 
     def _near_duplicate_link(self, duplicate: Mapping[str, Any]) -> int | None:
-        """FR lxxiv: link to the stored clip this sounds like, without merging them."""
+        """FR lxxiv: link to the similar stored clip (they are not merged)."""
         audio_id = duplicate.get("near_duplicate_of")
         if not audio_id:
             return None
@@ -356,10 +343,9 @@ class EventStore:
         return None if row is None else row.id
 
     def _write_bytes(self, record: Mapping[str, Any], *, audio_id: str) -> Path | None:
-        """Copy the uploaded bytes into storage and return the path.
+        """Copy the upload into storage and return its path relative to the storage root.
 
-        The path is stored relative to the storage root so the database survives the project
-        being moved. Live windows streamed from memory have no bytes to copy.
+        Live windows have no file to copy.
         """
         audio = self._audio_block(record)
         meta = self._block(record, "meta")
@@ -393,13 +379,13 @@ class EventStore:
 
 
     def _event_status(self, record: Mapping[str, Any]) -> str | None:
-        """FR lxii status for the record, or None when no event row should exist."""
+        """FR lxii status for the record, or None if no event should be stored."""
         status = record.get("status")
         if status not in _EVENT_STATUS:
             return None
         alert = self._block(record, "alert")
         review = self._block(record, "review")
-        # A queued review is the current state: the alert's action waits on its decision.
+        # If queued for review, that is the current status.
         if review.get("required"):
             return "Manual Review"
         if alert.get("raised"):
@@ -418,13 +404,13 @@ class EventStore:
         meta = self._block(record, "meta")
         alert = self._block(record, "alert")
 
-        assert status in _ALLOWED_EVENT_STATUSES  # noqa: S101 - a bug, not a user input
+        assert status in _ALLOWED_EVENT_STATUSES  # noqa: S101
         return Event(
             audio_file_id=audio_file.id,
             source=self._audio_source(record),
             status=status,
             predicted_class=py.get("predicted_class"),
-            # A review sets final_class; until then the models' output is the record.
+            # final_class is set by a review.
             final_class=None,
             severity=severity.get("severity_display") or severity.get("severity"),
             consistency_status=comparison.get("consistency_status"),
@@ -458,7 +444,7 @@ class EventStore:
 
     @staticmethod
     def _quality_detail(quality: Mapping[str, Any]) -> str | None:
-        """Quality problems in the vocabulary the preprocessing module produced."""
+        """Quality problems as reported by preprocessing."""
         problems = list(quality.get("problems") or [])
         summary = quality.get("summary")
         if not problems and not summary:
@@ -470,11 +456,7 @@ class EventStore:
     def _confidence_rows(
         self, event: Event, predictions: Mapping[str, Any]
     ) -> list[ConfidenceScore]:
-        """Both models' full score lists, one row per class.
-
-        The whole distribution is kept because a 0.04 gap means different things when the
-        runner-up is at 0.30 and when it is at 0.02.
-        """
+        """One row per class for both models (the full distribution, not just the top)."""
         rows: list[ConfidenceScore] = []
         for model_name in ("python", "gtm"):
             block = self._block(predictions, model_name)
@@ -483,7 +465,7 @@ class EventStore:
             top = block.get("predicted_class")
             confidences = dict(block.get("confidences") or {})
             if not confidences and top:
-                # A model that reported only its winner still gets a top row.
+                # Model returned only its top class.
                 confidences = {top: float(block.get("confidence") or 0.0)}
             ordered = sorted(confidences.items(), key=lambda kv: float(kv[1]), reverse=True)
             version_id = self._model_version_id(model_name, block)
@@ -546,11 +528,7 @@ class EventStore:
 
     @staticmethod
     def _dedup_key(event: Event) -> str | None:
-        """Collapse a burst of the same sound into one open alert (FR liv).
-
-        Content hash + class + severity identify the sound, so a repeat while the first alert is
-        still open updates it instead of stacking a second one.
-        """
+        """Key for grouping repeats of the same sound into one open alert (FR liv)."""
         cls = event.predicted_class
         if not cls:
             return None
@@ -647,7 +625,7 @@ def store_analysis(
     request_id: str | None = None,
     allow_duplicate: bool = False,
 ) -> dict[str, Any]:
-    """Store one record, opening a session if the caller did not supply one."""
+    """Store one record, opening a session if none is given."""
     if session is not None:
         return EventStore(
             session, storage=storage, actor=actor, request_id=request_id,
@@ -669,7 +647,7 @@ def make_persistence_callback(
     request_id: str | None = None,
     allow_duplicate: bool = False,
 ) -> Any:
-    """Build the ``persist(record)`` callback with the request's actor and id bound once."""
+    """Build a ``persist(record)`` callback bound to the current user and request id."""
 
     def _persist(record: Mapping[str, Any]) -> dict[str, Any]:
         return store_analysis(record, storage=storage, actor=actor,

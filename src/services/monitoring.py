@@ -1,8 +1,6 @@
-"""Operational anomaly checks for administrators (SRS FR lxxviii).
+"""Anomaly checks for administrators (SRS FR lxxviii).
 
-The SRS lists six things an administrator should be alerted about. Each check below
-reads rows the app already writes (audit records, events, alerts), so it needs no
-extra monitoring service and still works with the network down.
+Each check reads rows the app already writes (audit records, events, alerts):
 
     repeated failed uploads        audit: audio_upload with outcome=failure
     model failures                 audit: model_failure
@@ -12,9 +10,8 @@ extra monitoring service and still works with the network down.
     duplicate files                audit: audio_duplicate_rejected / _allowed
     failed login attempts          audit: login_failure, plus accounts currently locked
 
-Thresholds live in config/thresholds.json under "monitoring" so an administrator can
-tune them without a code change. The defaults are deliberately low for a demo: with a
-handful of users, ten failed logins in an hour is already unusual.
+Thresholds are under "monitoring" in config/thresholds.json. The defaults are low
+because this is a small demo deployment.
 """
 
 from __future__ import annotations
@@ -106,9 +103,8 @@ def compute_anomalies(session, thresholds: Mapping[str, Any] | None, *,
         flag("model_failures", "High", observed["model_failures"], cfg["model_failures"],
              f"A model failed to analyse audio {observed['model_failures']} time(s) "
              f"in the last {minutes} min. Check /api/health/ready.")
-    # A spike needs enough events to mean anything, a high share, and a clear jump from
-    # the usual level. The last condition stops a site that is always noisy from
-    # alerting every hour.
+    # Needs enough events, a high share, and a clear jump over the usual level (so an
+    # always-noisy site doesn't alert every hour).
     if (recent_n >= cfg["low_confidence_min_events"]
             and recent_share >= cfg["low_confidence_share"]
             and recent_share >= cfg["low_confidence_vs_baseline"] * max(baseline_share, 0.05)):

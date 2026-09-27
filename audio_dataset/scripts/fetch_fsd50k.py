@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
-"""Download real, openly licensed FSD50K recordings of the target classes and write one
-manifest row per file.
+"""Download openly licensed FSD50K recordings for our classes and write a manifest row each.
 
-- Licence is recorded per clip from FSD50K's clips_info metadata; clips not on the
-  accept-list (every CC-BY-NC clip) are never downloaded.
-- Multi-label clips go to exactly one class, the first match in priority order.
-- Within a class, uploaders are taken round-robin so no class is one recordist's mic and room.
-- Deterministic (sorted, no random), resumable, and duration/rate/channels are measured with
-  ffprobe.
-- dataset_split is left blank for build_split.py.
+- Licence comes from FSD50K's clips_info; CC-BY-NC clips are skipped.
+- A multi-label clip goes to the first matching class in priority order.
+- Uploaders are taken round-robin so one person's recordings don't dominate a class.
+- Deterministic and resumable. dataset_split is left blank for build_split.py.
 
     .venv/bin/python audio_dataset/scripts/fetch_fsd50k.py --check        # plan only
     .venv/bin/python audio_dataset/scripts/fetch_fsd50k.py --workers 8
@@ -48,15 +44,14 @@ STATS_PATH = MANIFESTS / "fsd50k_fetch_stats.json"
 FSD50K_BASE = "https://huggingface.co/datasets/Fhrozen/FSD50k/resolve/main/clips"
 FREESOUND_PAGE = "https://freesound.org/s/{fname}/"
 
-# Frozen manifest column order -- audio_dataset/manifest_schema.md
+# Manifest column order (audio_dataset/manifest_schema.md)
 FROZEN_COLUMNS = [
     "audio_id", "filename", "class_label", "source", "source_url", "licence", "author",
     "date_fetched", "duration_sec", "sampling_rate", "channels", "recording_environment",
     "recording_device", "approximate_distance", "original_or_augmented", "parent_audio_id",
     "segment_start_sec", "segment_end_sec", "sha256", "dataset_split",
 ]
-# Extra provenance columns, preserved by build_split.py, so a row can be checked without re-
-# downloading.
+# Extra source columns, kept by build_split.py.
 EXTRA_COLUMNS = ["freesound_id", "fsd50k_split", "fsd50k_labels", "licence_url",
                  "environment_basis", "fetch_batch"]
 
@@ -68,8 +63,8 @@ def log(msg: str) -> None:
         print(msg, flush=True)
 
 
-# Environment is inferred from the uploader's own title, description and tags; environment_basis
-# says how (stated, inferred_from_tags, unmatched).
+# Environment is guessed from the uploader's title, description and tags; environment_basis
+# records how (stated, inferred_from_tags, unmatched).
 
 ENV_RULES: list[tuple[str, tuple[str, ...]]] = [
     ("studio",   ("studio", "recording studio", "booth", "sound design", "sounddesign")),
@@ -85,7 +80,7 @@ ENV_RULES: list[tuple[str, tuple[str, ...]]] = [
 
 
 def infer_environment(meta: dict) -> tuple[str, str]:
-    """Return (environment, basis). Never invents: unmatched stays explicit."""
+    """Return (environment, basis)."""
     tags = " ".join(meta.get("tags") or []).lower()
     title = (meta.get("title") or "").lower()
     desc = (meta.get("description") or "").lower()
@@ -121,7 +116,7 @@ def load_corpus_info() -> dict[str, dict]:
 
 
 def load_ground_truth() -> list[dict]:
-    """Every (fname, labels, fsd50k_split) row from the dev and eval ground truth."""
+    """(fname, labels, fsd50k_split) rows from the dev and eval ground truth."""
     rows: list[dict] = []
     for split in ("dev", "eval"):
         path = GT_DIR / f"{split}.csv"
@@ -137,7 +132,7 @@ def load_ground_truth() -> list[dict]:
 
 def assign_and_select(cfg: dict, gt_rows: list[dict], info: dict[str, dict],
                       allowed: dict[str, str]) -> tuple[dict[str, list[dict]], dict]:
-    """Assign each licence-clean clip to one class, then pick targets round-robin by uploader."""
+    """Assign each usable clip to one class, then pick clips round-robin by uploader."""
     classes = cfg["classes"]
     priority = cfg["assignment_priority"]
     order = {c: i for i, c in enumerate(priority)}
@@ -157,7 +152,7 @@ def assign_and_select(cfg: dict, gt_rows: list[dict], info: dict[str, dict],
             stats["licence_rejected"] += 1
             continue
         label_set = set(row["labels"])
-        # first class in priority order that this clip matches -> assigned there only
+        # first matching class in priority order
         chosen = None
         for cls in sorted(classes, key=lambda c: order.get(c, 999)):
             if label_set & set(classes[cls]["labels"]):
@@ -190,8 +185,7 @@ def assign_and_select(cfg: dict, gt_rows: list[dict], info: dict[str, dict],
         by_uploader: dict[str, list[dict]] = defaultdict(list)
         for c in sorted(cands, key=lambda c: (c["uploader"], int(c["fname"]))):
             by_uploader[c["uploader"]].append(c)
-        # Rotate uploaders (most prolific first) so every recordist appears before any appears
-        # twice.
+        # Rotate through uploaders, most prolific first.
         uploaders = sorted(by_uploader, key=lambda u: (-len(by_uploader[u]), u))
         picked: list[dict] = []
         idx = 0
@@ -214,7 +208,7 @@ def assign_and_select(cfg: dict, gt_rows: list[dict], info: dict[str, dict],
 # Download
 
 def valid_wav(path: Path) -> bool:
-    """A file is reusable only if it is a real RIFF/WAVE container of non-trivial size."""
+    """True if the file is a real, non-empty WAV."""
     if not path.exists() or path.stat().st_size < 512:
         return False
     with path.open("rb") as fh:
@@ -223,7 +217,7 @@ def valid_wav(path: Path) -> bool:
 
 
 def probe(path: Path) -> dict:
-    """Measure duration / sample rate / channels with ffprobe. Never assume."""
+    """Duration, sample rate and channels from ffprobe."""
     out = subprocess.run(
         ["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries",
          "stream=sample_rate,channels,duration", "-of", "json", str(path)],
@@ -252,7 +246,7 @@ def sha256_of(path: Path) -> str:
 
 
 def download_one(session: requests.Session, item: dict) -> dict:
-    """Fetch one clip into the flat pool. Returns item + status."""
+    """Download one clip. Returns (item, status)."""
     fname = item["fname"]
     dest = POOL / f"{fname}.wav"
     if valid_wav(dest):
@@ -276,7 +270,7 @@ def download_one(session: requests.Session, item: dict) -> dict:
                 continue
             tmp.replace(dest)
             return {**item, "status": "downloaded", "pool_path": dest}
-        except Exception as exc:  # noqa: BLE001 - report, retry, never crash the batch
+        except Exception as exc:  # noqa: BLE001 - report and retry
             last = f"{type(exc).__name__}: {exc}"
             tmp.unlink(missing_ok=True)
             time.sleep(1.5 * (attempt + 1))
@@ -355,12 +349,11 @@ def main(argv: list[str] | None = None) -> int:
 
     # measure + place + build rows
     rows: list[dict] = []
-    # Ids are assigned after selection, per class, in deterministic order.
+    # Assign ids per class after selection.
     classes_cfg = json.loads((REPO_ROOT / "config" / "classes.json").read_text(encoding="utf-8"))
     code = {c["name"]: c["code"] for c in classes_cfg["classes"]}
     today = date.today().isoformat()
-    # This script numbers from 1001. The committed rows (manifests/fsd50k_real_rows.csv) use
-    # 0001-0150, so a re-run does not reproduce those ids.
+    # Numbering starts at 1001; the committed rows use 0001-0150.
     per_class_counter: dict[str, int] = defaultdict(lambda: 1000)
     measure_fail: list[str] = []
 
@@ -378,7 +371,7 @@ def main(argv: list[str] | None = None) -> int:
                 pass
             else:
                 try:
-                    os.link(src, target)          # hardlink: same bytes, no extra disk
+                    os.link(src, target)          # hardlink
                 except OSError:
                     shutil.copy2(src, target)
             try:
@@ -402,15 +395,15 @@ def main(argv: list[str] | None = None) -> int:
                 "sampling_rate": m["sampling_rate"],
                 "channels": m["channels"],
                 "recording_environment": r["environment"],
-                "recording_device": "unspecified",     # FSD50K metadata does not state the device
-                "approximate_distance": "n/a",         # not recorded by the uploader
+                "recording_device": "unspecified",     # not in FSD50K metadata
+                "approximate_distance": "n/a",
                 "original_or_augmented": "original",
                 "parent_audio_id": "",
                 "segment_start_sec": "",
                 "segment_end_sec": "",
                 "sha256": sha256_of(target),
                 "dataset_split": "",
-                # extras (preserved by build_split.py)
+                # extra columns
                 "freesound_id": r["fname"],
                 "fsd50k_split": r["fsd50k_split"],
                 "fsd50k_labels": r["fsd50k_labels"],
@@ -450,7 +443,7 @@ def main(argv: list[str] | None = None) -> int:
         "environment_basis": dict(env_basis),
     }, indent=2) + "\n", encoding="utf-8")
     if bad:
-        log(f"NOTE: {len(bad)} clips failed — see {STATS_PATH.name}; they are simply not in the manifest.")
+        log(f"{len(bad)} clips failed (see {STATS_PATH.name}); they are left out of the manifest.")
     return 0
 
 

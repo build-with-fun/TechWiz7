@@ -1,16 +1,10 @@
 {% extends "base.html" %}
 {% import "_macros.html" as ui %}
 {% import "_presentation.html" as pres %}
-{# ==========================================================================
-   templates/reviews.html — the manual-review queue (FR lvii–lxi).
-
-   Every queue entry says WHY it is queued: the fired conditions are rendered
-   from the reviewer-conditions config, so a reviewer can tell whether to
-   distrust the model, the microphone or the class definition. Decisions are
-   plain POST forms to the reviews API slice (CSP-safe, no inline JS).
-   ========================================================================== #}
+{# Manual review queue (FR lvii-lxi). Each item lists the conditions that queued it.
+   Decisions are plain POST forms to the reviews API. #}
 {% set page_id = "main.reviews" %}
-{% block title %}Manual review — {{ app_name }}{% endblock %}
+{% block title %}Manual review · {{ app_name }}{% endblock %}
 
 {% block content %}
 <header class="page-head">
@@ -73,7 +67,7 @@
               <ul class="tag-list">
                 {% for cid in review.condition_ids %}
                 {% set cond = conditions | selectattr('id', 'equalto', cid) | list | first %}
-                <li class="chip"><span class="chip__glyph" aria-hidden="true">☰</span><span class="chip__text">{{ cond.srs_phrase if cond else cid }}</span></li>
+                <li class="chip"><span class="chip__glyph" aria-hidden="true">{{ ui.icon('list', 11) }}</span><span class="chip__text">{{ cond.srs_phrase if cond else cid }}</span></li>
                 {% endfor %}
               </ul>
               {% endif %}
@@ -121,7 +115,7 @@
 <section class="panel">
   <div class="panel__head">
     <h2 class="panel__title">{{ ui.icon('clipboard', 14) }} Active review conditions</h2>
-    <p class="panel__note">From <span class="mono">alert_rules/manual_review_conditions.json</span> — every condition that fires is named on the item.</p>
+    <p class="panel__note">From <span class="mono">alert_rules/manual_review_conditions.json</span>. Each queued item names the conditions that fired.</p>
   </div>
   <div class="panel__body">
     <div class="table-wrap">
@@ -135,7 +129,7 @@
             <td>{{ cond.srs_phrase }}</td>
           </tr>
           {% else %}
-          <tr class="table-empty"><td colspan="3">{{ ui.empty_state('No enabled conditions', 'The manual-review file has no enabled conditions — nothing will be queued.') }}</td></tr>
+          <tr class="table-empty"><td colspan="3">{{ ui.empty_state('No enabled conditions', 'The manual-review file has no enabled conditions, so nothing will be queued.') }}</td></tr>
           {% endfor %}
         </tbody>
       </table>

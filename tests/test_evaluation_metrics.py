@@ -1,20 +1,7 @@
-"""Tests for the evaluation core.
+"""Tests for src/training/evaluation.py.
 
-The metric code is the part of this project that produces every number in the report, so
-it is the part where a bug is least visible and most expensive. Two things are checked
-that ordinary coverage would not:
-
-  CROSS-CHECK AGAINST SCIKIT-LEARN. My confusion matrix is hand-written so the axis order
-  is explicit rather than inherited. That is only safe if it agrees with the reference
-  implementation on identical inputs, so it is asserted against
-  `sklearn.metrics.confusion_matrix` (which is label-sorted) after aligning the order.
-
-  THE FLOORS CAN FAIL. A floor check that always passes is decoration. The tests include
-  a model that genuinely misses the accuracy floor and one that misses critical recall,
-  and assert the failure is reported with the numbers in it.
-
-Also covered: the leakage guards, because `assert_reportable_split` is the only thing
-standing between a stray val row and a meaningless "test accuracy".
+The confusion matrix is checked against scikit-learn, the SRS target checks are shown to
+actually fail on bad models, and the split guards are tested.
 """
 
 from __future__ import annotations
@@ -50,7 +37,7 @@ def perfect_predictions(n_per_class: int = 10):
 # The confusion matrix
 
 def test_confusion_matrix_axes_are_actual_rows_predicted_columns():
-    """The classic transposition bug, pinned down by an asymmetric example."""
+    """Rows are actual, columns predicted."""
     labels = ["A", "B", "C"]
     matrix = confusion_matrix(["A", "A", "B"], ["B", "A", "B"], labels)
 
@@ -63,7 +50,7 @@ def test_confusion_matrix_axes_are_actual_rows_predicted_columns():
 
 
 def test_confusion_matrix_agrees_with_scikit_learn():
-    """Cross-check against the reference implementation, order-aligned."""
+    """Same result as sklearn after aligning the label order."""
     from sklearn.metrics import confusion_matrix as sklearn_matrix
 
     rng = np.random.default_rng(11)
@@ -88,10 +75,7 @@ def test_confusion_matrix_rejects_duplicate_labels():
 
 
 def test_per_class_scores_are_zero_not_perfect_when_a_class_is_never_predicted():
-    """A never-predicted class must score 0, not be skipped.
-
-    Skipping it would let a model that abandons a hard class report a high macro-F1.
-    """
+    """A class that is never predicted scores 0 instead of being skipped."""
     matrix = np.asarray([[5, 0, 0], [0, 5, 0], [5, 0, 0]])  # C never predicted
     scores = per_class_scores(matrix)
 
@@ -117,7 +101,7 @@ def test_a_perfect_model_scores_one_everywhere():
 
 
 def test_accuracy_and_macro_f1_are_computed_by_hand():
-    """Two labels, one right and one wrong, checked arithmetically."""
+    """Small example checked by hand."""
     # 2 classes for arithmetic clarity; macro over 2 classes.
     labels = ["A", "B"]
     # actual: A A B B -> predicted: A B B B
@@ -130,11 +114,7 @@ def test_accuracy_and_macro_f1_are_computed_by_hand():
 
 
 def test_macro_f1_averages_over_all_configured_classes_not_just_observed_ones():
-    """The honest averaging choice for a 10-class mandate.
-
-    A model that predicts only two classes perfectly must not score 1.0: the eight it
-    never predicts have recall 0 and belong in the average.
-    """
+    """Macro-F1 averages over all 10 classes, including ones never seen."""
     y_true = ["Machinery Fault"] * 5 + ["Glass Breaking"] * 5
     y_pred = list(y_true)   # perfect on the two classes it was given
     result = compute_metrics(y_true, y_pred, CLASSES, CRITICAL)
@@ -146,7 +126,7 @@ def test_macro_f1_averages_over_all_configured_classes_not_just_observed_ones():
 
 
 def test_critical_recall_uses_only_the_critical_classes():
-    """Critical recall must not be diluted by Background Noise."""
+    """Critical recall only counts the critical classes."""
 
     def outcome(actual: str) -> str:
         # Every non-critical class is perfect; every critical class is missed.
@@ -159,7 +139,7 @@ def test_critical_recall_uses_only_the_critical_classes():
     assert result.critical_recall == pytest.approx(0.0)
     assert set(result.critical_recall_by_class) == set(CRITICAL)
     assert len(result.critical_recall_by_class) == len(CRITICAL)
-    # Overall accuracy is poor but not zero — the point is the two numbers differ.
+    # Accuracy isn't zero, but critical recall is.
     assert result.accuracy > 0.0
 
 
@@ -217,13 +197,12 @@ def test_empty_input_is_refused():
         compute_metrics([], [], CLASSES, CRITICAL)
 
 
-# Severe errors — ranked by consequence
+# Severe errors
 
 def test_severe_errors_separate_silent_misses_from_misattributed_alerts():
-    """A gunshot called 'Vehicle Horn' alerts someone. Called 'Background Noise', nobody
-    is told. Both are wrong; only one is dangerous."""
-    # "Aggression" is critical, "Background Noise" and "Vehicle Horn" are not — so the
-    # first is a wrong alert, the other two are wrong silences.
+    """A critical class predicted as another critical class still alerts; as a
+    non-critical class it doesn't. Both are counted separately."""
+    # Aggression is critical, the other two are not: one wrong alert, two missed alerts.
     y_true = ["Gunshot", "Gunshot", "Panic Scream"]
     y_pred = ["Aggression", "Background Noise", "Vehicle Horn"]
     result = compute_metrics(
@@ -237,7 +216,7 @@ def test_severe_errors_separate_silent_misses_from_misattributed_alerts():
     assert by_id["b"]["silent_miss"] is True
     assert by_id["b"]["misattributed_alert"] is False
 
-    # Sorted worst-first: the silent miss leads regardless of insertion order.
+    # Missed alerts come first.
     assert result.severe_errors[0]["silent_miss"] is True
 
 
@@ -254,7 +233,7 @@ def test_severe_errors_is_empty_when_no_critical_classes_are_configured():
     assert result.critical_recall == 0.0
 
 
-# The floors
+# SRS targets
 
 def test_a_strong_model_meets_the_floors():
     y_true, y_pred = perfect_predictions()
@@ -265,12 +244,11 @@ def test_a_strong_model_meets_the_floors():
 
 
 def test_a_model_below_the_accuracy_floor_fails_with_the_numbers_stated():
-    """A floor check that cannot fail is decoration."""
+    """Accuracy below the target fails, with the numbers in the message."""
     y_true, y_pred = [], []
     for i, name in enumerate(CLASSES):
         y_true.extend([name] * 10)
-        # 6 right, 4 wrong per class, misattributed to a rotating OTHER class so no
-        # class accidentally scores its own mistakes -> accuracy exactly 0.6.
+        # 6 right, 4 wrong per class, spread over other classes -> accuracy 0.6.
         y_pred.extend([name] * 6 + [CLASSES[(i + 1) % len(CLASSES)]] * 4)
     result = compute_metrics(y_true, y_pred, CLASSES, CRITICAL)
 
@@ -283,7 +261,7 @@ def test_a_model_below_the_accuracy_floor_fails_with_the_numbers_stated():
 
 
 def test_a_model_with_high_accuracy_but_poor_critical_recall_still_fails():
-    """This is the case the floor exists for: a model that looks fine and is not."""
+    """Good accuracy but low critical recall still fails."""
     y_true, y_pred = [], []
     for name in CLASSES:
         if name in CRITICAL:
@@ -301,7 +279,7 @@ def test_a_model_with_high_accuracy_but_poor_critical_recall_still_fails():
 
 
 def test_a_probe_can_never_be_certified_against_the_floors():
-    """Robustness numbers are worth having and are not test accuracy."""
+    """Probe results never pass the targets."""
     y_true, y_pred = perfect_predictions()
     result = compute_metrics(
         y_true, y_pred, CLASSES, CRITICAL,
@@ -320,7 +298,7 @@ def test_a_missing_floor_is_skipped_not_treated_as_zero():
     assert failures == []
 
 
-# The leakage guards
+# Split guards
 
 def _records(split: str, n: int = 3, status: str = "original"):
     return [
@@ -341,7 +319,7 @@ def test_the_guard_refuses_a_mixed_split():
 
 
 def test_the_guard_refuses_an_augmented_record():
-    """The rule I will halt other work over: augmented audio is not unseen data."""
+    """Augmented audio is refused."""
     with pytest.raises(EvaluationError, match="augmented"):
         assert_reportable_split(
             _records("test", 2, status="augmented"), "test"
@@ -377,7 +355,7 @@ def test_the_guard_message_names_the_evaluated_model():
         )
 
 
-# Driving a model through the harness
+# Running a model through evaluate_predictions
 
 def test_evaluate_predictions_accepts_a_bare_class_name():
     records = _records("test", 4)
@@ -402,7 +380,7 @@ def test_evaluate_predictions_accepts_a_prediction_result_shape():
     assert result.accuracy == pytest.approx(1.0)
     assert rows[0]["confidence"] == pytest.approx(0.9)
     assert rows[0]["confidences"][CLASSES[0]] == pytest.approx(0.9)
-    # Top-2 comes from the confidences, so a ranking is available without extra plumbing.
+    # Top-2 comes from the confidences.
     assert result.top2_accuracy == pytest.approx(1.0)
 
 
@@ -426,7 +404,7 @@ def test_evaluate_predictions_refuses_a_record_with_no_label():
 
 
 def test_the_split_can_be_bypassed_only_deliberately():
-    """Training code needs to score the train split; it must say so explicitly."""
+    """Scoring the train split has to be asked for explicitly."""
     records = _records("train", 3)
     result, _ = evaluate_predictions(
         records, lambda r: CLASSES[0], CLASSES, CRITICAL,
@@ -436,7 +414,7 @@ def test_the_split_can_be_bypassed_only_deliberately():
     assert result.accuracy == pytest.approx(1.0)
 
 
-# Serialisation — the report reads this
+# Serialisation
 
 def test_to_dict_round_trips_through_json():
     import json
@@ -457,7 +435,7 @@ def test_worst_classes_names_the_classes_with_the_lowest_f1():
     y_true, y_pred = [], []
     for i, name in enumerate(CLASSES):
         y_true.extend([name] * 10)
-        # Every class is perfect except the last, which is never recognised at all.
+        # All classes perfect except the last, which is never predicted.
         correct = 10 if i != len(CLASSES) - 1 else 0
         y_pred.extend([name] * correct + ["Machinery Fault"] * (10 - correct))
     result = compute_metrics(y_true, y_pred, CLASSES, CRITICAL)
@@ -467,7 +445,7 @@ def test_worst_classes_names_the_classes_with_the_lowest_f1():
 
 
 def test_config_snapshot_is_carried_into_the_result():
-    """Every metric must be traceable to the thresholds that produced it."""
+    """The result includes the config snapshot."""
     snapshot = {"min_confidence": 0.6, "segment_duration_sec": 3.0}
     result = compute_metrics(
         ["Gunshot"], ["Gunshot"], CLASSES, CRITICAL, config_snapshot=snapshot

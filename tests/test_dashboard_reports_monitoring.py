@@ -1,8 +1,7 @@
 """Dashboards (FR lxiii, lxv), analytics (lxviii), report (lxix), anomalies (lxxviii),
-metadata (x) and the live-window payload (xxxiv), through the real Flask app.
+metadata (x) and the live-window payload (xxxiv), through the Flask app.
 
-Inference is deterministic here (FixedPredictor); these tests check what the product
-does with a result, not how accurate the models are.
+Uses FixedPredictor, so these test what the app does with a result, not model accuracy.
 """
 
 import base64
@@ -91,7 +90,7 @@ def test_upload_stores_source_rate_and_bit_depth(app):
     with app.config["SST_SESSION_FACTORY"]() as session:
         audio = session.execute(select(AudioFile)).scalar_one()
         assert audio.bit_depth == 16
-        assert audio.sample_rate == 22050   # the file as received, not the 16 kHz working rate
+        assert audio.sample_rate == 22050   # original rate, not 16 kHz
 
 
 def test_normal_user_dashboard_shows_only_their_own_uploads(app):
@@ -154,7 +153,7 @@ def test_event_report_contains_every_fr_lxix_item(app):
                  "Audio quality", "Severity", "Alert status", "Review"):
         assert text in html, text
     assert html.count("data:image/png;base64,") == 2      # waveform + spectrogram
-    assert "Machinery Fault" in html                       # all ten classes are listed
+    assert "Machinery Fault" in html                       # all classes listed
 
 
 def test_analytics_page_reports_false_positive_and_alert_response_sections(app):
@@ -175,8 +174,7 @@ def test_live_window_payload_carries_consistency_and_top3(app):
         "sample_rate": 16000, "duration_sec": 2.0})
     assert window.status_code == 200, window.get_json()
     data = window.get_json()["data"]
-    # The models disagree (Gunshot vs Aggression), so the status must say so. Before the
-    # fix on 26 Sep this key was read from the wrong field and was always null.
+    # The models disagree (Gunshot vs Aggression). This used to be always null.
     assert data["consistency_status"] == "Model Disagreement"
     assert [x["class"] for x in data["top3"]["python"]][0] == "Gunshot"
     assert len(data["top3"]["gtm"]) == 3
@@ -203,8 +201,7 @@ def _signal_wav(kind: str, gain: float = 1.0) -> bytes:
 
 
 def test_two_stage_near_duplicate_flags_a_quieter_copy_but_not_a_different_sound(app):
-    """FR lxxiv: a volume-adjusted copy has different bytes (no SHA-256 match) but must
-    be recognised; an unrelated recording must not be."""
+    """FR lxxiv: a quieter copy is flagged, a different recording is not."""
     client = app.test_client()
     login(app, client, "user1")
     first = upload(client, _signal_wav("sweep"), "original.wav")
@@ -220,7 +217,7 @@ def test_two_stage_near_duplicate_flags_a_quieter_copy_but_not_a_different_sound
 
 
 def test_an_acknowledged_alert_can_still_be_escalated_then_dismissed(app):
-    """FR lv. Before 26 Sep any action on a non-Open alert returned 200 and changed nothing."""
+    """FR lv: an acknowledged alert can still be escalated and dismissed."""
     from src.models import Alert
 
     client = app.test_client()
@@ -245,8 +242,7 @@ def test_an_acknowledged_alert_can_still_be_escalated_then_dismissed(app):
 
 
 def test_an_agreed_confident_critical_upload_raises_one_alert(tmp_path):
-    """FR xlii/xlvi: uploads are confirmed by agreement, quality and confidence, not by
-    waiting for windows that will never come; a live window still needs a streak."""
+    """FR xlii/xlvi: an upload alerts on agreement, quality and confidence; live needs a streak."""
     app = create_app(TESTING=True, SST_DB_PATH=str(tmp_path / "a.db"),
                      SST_STORAGE_DIR=str(tmp_path / "s"), SST_LOAD_MODELS=False)
     classes = app.config["SST_CONFIG_STORE"].class_names()
@@ -263,8 +259,7 @@ def test_an_agreed_confident_critical_upload_raises_one_alert(tmp_path):
         session.commit()
     client = app.test_client()
     login(app, client, "u")
-    # An event over a quiet background, so the quality gate passes. (White noise is rightly
-    # rated Poor; so is a perfectly steady tone, a known limit of the SNR estimate.)
+    # A sound over a quiet background so the quality check passes.
     t = np.arange(32000) / 16000
     rng = np.random.default_rng(1)
     chirp = (np.where((t > 0.5) & (t < 1.2), 0.5 * np.sin(2 * np.pi * 900 * t), 0.0)
@@ -273,5 +268,5 @@ def test_an_agreed_confident_critical_upload_raises_one_alert(tmp_path):
     assert first["quality"]["verdict"] in {"Good", "Acceptable"}
     assert first["alert"]["raised"] is True
     live = pipeline.analyse_samples(chirp * 0.9, 16000, origin="live")
-    assert live["alert"]["needed"] >= 2        # live still waits for a streak
+    assert live["alert"]["needed"] >= 2
     set_pipeline(None)

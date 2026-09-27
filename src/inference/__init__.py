@@ -1,7 +1,6 @@
-"""
-The inference layer: the single contract both input modes and both models go through.
+"""Inference layer shared by both input modes and both models.
 
-Public surface the rest of the app builds against:
+Usage:
 
     from src.inference import (
         AudioSource, PreprocessedAudio, PredictionResult,
@@ -47,11 +46,7 @@ __all__ = [
 
 
 def load_gtm_predictor(*args, **kwargs):
-    """Lazy accessor — keeps tensorflow out of the import path of the web app.
-
-    The app must start even if the GTM network cannot be loaded, and report that fact in
-    the UI rather than refusing to boot.
-    """
+    """Lazy import so the web app doesn't load TensorFlow unless needed."""
     from .gtm_predictor import GtmModelPredictor
 
     return GtmModelPredictor.load(*args, **kwargs)

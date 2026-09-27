@@ -1,10 +1,7 @@
 /**
- * Event detail page: the audio player and its server-computed visuals.
- *
- * Everything here is presentation. The waveform peaks and the spectrogram come from
- * /api/events/<id>/visuals, which computes them from the SAME stored file the models
- * were given -- the browser never re-decodes the audio for drawing. The <audio>
- * element only supplies playback (current time, seeking, volume).
+ * Event page audio player. The waveform and spectrogram come from
+ * /api/events/<id>/visuals, computed from the same file the models saw; the
+ * <audio> element is only used for playback.
  */
 (function () {
   "use strict";
@@ -35,7 +32,7 @@
     return m + ":" + (s < 10 ? "0" : "") + s.toFixed(1);
   }
 
-  /* ---------------------------------------------------------------- audio element */
+  // Audio element
 
   function ensureAudio() {
     if (audio) return audio;
@@ -111,7 +108,7 @@
     });
   }
 
-  /* ---------------------------------------------------------------- canvas drawing */
+  // Canvas drawing
 
   function fit(canvas) {
     if (!canvas) return null;
@@ -212,7 +209,7 @@
     resizeTimer = setTimeout(function () { drawWaveform(); drawSpectrogram(); }, 150);
   });
 
-  /* ---------------------------------------------------------------- load visuals */
+  // Load visuals
 
   SST.api(visualsUrl)
     .then(function (data) {
@@ -221,14 +218,14 @@
       drawSpectrogram();
     })
     .catch(function (error) {
-      // Missing visuals must not break playback -- the player still works.
+      // Playback still works without the visuals.
       if (waveCanvas) {
         var f = fit(waveCanvas);
         if (f) {
           f.ctx.clearRect(0, 0, f.w, f.h);
           f.ctx.fillStyle = "rgba(148, 163, 184, 0.6)";
           f.ctx.font = "12px system-ui, sans-serif";
-          f.ctx.fillText("Visuals unavailable (" + (error.code || "error") + ") — playback still works.", 8, f.h / 2);
+          f.ctx.fillText("Visuals unavailable (" + (error.code || "error") + "). Playback still works.", 8, f.h / 2);
         }
       }
     });

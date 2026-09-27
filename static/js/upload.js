@@ -1,16 +1,9 @@
 /**
- * upload.js — the drag-and-drop upload queue (progressive enhancement).
+ * Drag-and-drop upload queue. Without JavaScript the form still posts normally.
+ * Each file goes to /api/audio/upload and its row shows the result: the event, a 409
+ * duplicate (with a button to send it anyway), a 422 refusal or a network error.
  *
- * Without JavaScript the file input still posts the form normally. With
- * JavaScript each chosen file is POSTed to /api/audio/upload with SST.api,
- * and the queue shows the outcome: the event (both models' predictions and
- * the consistency verdict), the 409 duplicate (with a one-click re-send that
- * allows duplicates), a 422 unusable-audio refusal, or a network failure.
- *
- * DOM contract (from upload.html):
- *   [data-dropzone]        the drop target
- *   [data-dropzone-input]  the file input, labelled by its visible picker
- *   [data-upload-queue]    the <ol> the queue items render into
+ * Elements (upload.html): [data-dropzone], [data-dropzone-input], [data-upload-queue]
  */
 "use strict";
 
@@ -19,11 +12,11 @@
   var input = document.querySelector("[data-dropzone-input]");
   var queue = document.querySelector("[data-upload-queue]");
   if (!dropzone || !input || !queue || typeof SST === "undefined") {
-    return; // progressive enhancement: plain form POST still works.
+    return; // the plain form POST still works
   }
   input.multiple = true;
 
-  /* ------------------------------------------------------------- queue ui - */
+  // Queue UI
 
   function addItem(name) {
     var empty = queue.querySelector(".queue__item--empty");
@@ -36,7 +29,7 @@
     return { li: li, region: SST.region(body) };
   }
 
-  /* ---------------------------------------------------------- result card - */
+  // Result card
 
   function chip(kind, value) {
     if (!value) return null;
@@ -129,7 +122,7 @@
     return card;
   }
 
-  /* ------------------------------------------------------------- requests - */
+  // Requests
 
   function send(file, allowDuplicate, slot) {
     slot.region.loading("Uploading and analysing…", 3);
@@ -168,7 +161,7 @@
       });
   }
 
-  /* ------------------------------------------------------------ file entry - */
+  // File entry
 
   function handleFiles(files) {
     Array.prototype.forEach.call(files || [], function (file) {

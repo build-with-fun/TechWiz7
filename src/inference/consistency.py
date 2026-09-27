@@ -1,10 +1,10 @@
-"""Compares the two models' outputs and assigns the SRS consistency status (Step 11).
+"""Compares the two models' outputs and assigns a consistency status (SRS Step 11).
 
     difference = |python_top_confidence - gtm_top_confidence|
 
-Strong / Acceptable / Weak Match when both name the same class (graded by the difference),
-Model Disagreement when they name different classes, Uncertain Result when either is not
-confident enough to rely on. Every threshold comes from config/thresholds.json.
+Same class: Strong, Acceptable or Weak Match depending on the difference. Different
+classes: Model Disagreement. Either model not confident enough: Uncertain Result.
+Thresholds come from config/thresholds.json.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from typing import Any, Mapping
 
 from .contract import PredictionResult
 
-# Consistency statuses — the exact vocabulary required by SRS Step 11 / FR xxv.
+# Consistency statuses (SRS Step 11, FR xxv).
 STRONG_MATCH = "Strong Match"
 ACCEPTABLE_MATCH = "Acceptable Match"
 WEAK_MATCH = "Weak Match"
@@ -28,7 +28,7 @@ CONSISTENCY_STATUSES = (
 
 @dataclass
 class ComparisonResult:
-    """The full cross-model verdict, as the UI, the audit trail and the report need it."""
+    """Result of comparing the two models."""
 
     python_class: str
     python_confidence: float
@@ -75,7 +75,7 @@ class ComparisonResult:
 
 
 def _top_two_margin(result: PredictionResult) -> float:
-    """Gap between the top two classes; near zero means the prediction is close to a coin toss."""
+    """Gap between the top two classes."""
     top = result.top_k(2)
     if len(top) < 2:
         return float(top[0][1]) if top else 0.0
@@ -87,10 +87,7 @@ def classify_consistency(
     gtm_result: PredictionResult,
     thresholds: Mapping[str, Any],
 ) -> ComparisonResult:
-    """Apply the consistency taxonomy to two independent model outputs.
-
-    The caller must guarantee the two results never saw each other; the TM model receives audio only.
-    """
+    """Compare two independent model outputs and return the consistency status."""
     conf = thresholds["confidence"]
     cons = thresholds["consistency"]
 
@@ -112,23 +109,22 @@ def classify_consistency(
         "weak_match_max_diff": float(cons["weak_match_max_diff"]),
     }
 
-    # Overlap: only meaningful when both models agree; then a strong Python runner-up suggests
-    # a second simultaneous event.
+    # If both agree, a strong Python runner-up suggests a second, overlapping event.
     secondary = None
     overlapping = False
     if agree and len(py_top3) >= 2 and float(py_top3[1]["confidence"]) >= overlap_conf:
         secondary = py_top3[1]["class"]
         overlapping = True
 
-    # Order matters:
-    # 1. Both unsure -> Uncertain, even if they agree: two agreeing guesses are not evidence.
+    # Checked in order:
+    # 1. Both unsure -> Uncertain, even if they agree.
     if py_conf < min_confidence and gtm_conf < min_confidence:
         status = UNCERTAIN_RESULT
         reason = (
             f"Neither model reached the {min_confidence:.2f} confidence floor "
             f"(Python {py_conf:.3f}, GTM {gtm_conf:.3f}). Routed to manual review."
         )
-    # 2. One model confident, the other not: too weak to act on, regardless of class.
+    # 2. Only one model confident -> also Uncertain.
     elif py_conf < min_confidence or gtm_conf < min_confidence:
         weaker = "Python" if py_conf < min_confidence else "GTM"
         status = UNCERTAIN_RESULT
@@ -136,14 +132,14 @@ def classify_consistency(
             f"{weaker} model below the {min_confidence:.2f} confidence floor "
             f"(Python {py_conf:.3f}, GTM {gtm_conf:.3f}). Routed to manual review."
         )
-    # 3. Different classes: report the conflict rather than pick a winner.
+    # 3. Different classes -> Disagreement.
     elif not agree:
         status = MODEL_DISAGREEMENT
         reason = (
             f"Python says '{python_result.predicted_class}' ({py_conf:.3f}) but GTM says "
             f"'{gtm_result.predicted_class}' ({gtm_conf:.3f}); difference {difference:.3f}."
         )
-    # 4. Same class and both confident: grade the agreement by how close the confidences are.
+    # 4. Same class, both confident -> grade by the confidence difference.
     else:
         if difference <= snapshot["strong_match_max_diff"]:
             status = STRONG_MATCH
@@ -194,7 +190,7 @@ def classify_consistency(
 
 
 def requires_manual_review(comparison: ComparisonResult, thresholds: Mapping[str, Any]) -> tuple[bool, str]:
-    """Quick check: does this comparison need a person, and why (the queue shows the reason)."""
+    """Whether this comparison needs manual review, and why."""
     reasons: list[str] = []
 
     if comparison.consistency_status in (MODEL_DISAGREEMENT, UNCERTAIN_RESULT):

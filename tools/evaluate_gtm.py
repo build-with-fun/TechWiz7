@@ -1,8 +1,4 @@
-"""Score the exported GTM model on a balanced, frozen held-out subset.
-
-This measures the server path. Browser/frontend parity is a separate check and this
-script does not mark ``frontend_verified`` true.
-"""
+"""Score the exported TM model on a balanced test subset (server-side path only)."""
 
 from __future__ import annotations
 

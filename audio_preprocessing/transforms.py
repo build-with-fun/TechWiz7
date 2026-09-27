@@ -1,6 +1,4 @@
-"""Signal transforms for SRS Step 4. All deterministic; any that can change the sample count says
-so.
-"""
+"""Signal transforms for SRS Step 4. All deterministic."""
 
 from __future__ import annotations
 
@@ -11,10 +9,10 @@ from .exceptions import AudioRejected, EMPTY_AUDIO
 EPS = 1e-12
 
 
-# Level measurement -- the units everything else is judged in
+# Level measurement
 
 def peak_dbfs(y: np.ndarray) -> float:
-    """Peak level in dBFS.  ``0.0`` is full scale; digital silence returns ``-inf``."""
+    """Peak level in dBFS (0.0 is full scale, silence is -inf)."""
     arr = np.asarray(y, dtype=np.float64).reshape(-1)
     if arr.size == 0:
         return float("-inf")
@@ -50,7 +48,7 @@ def amplitude_to_db(amplitude: float) -> float:
 # Rate and channel layout
 
 def to_mono(y: np.ndarray) -> np.ndarray:
-    """Downmix to mono float32 by averaging channels (an event in one channel keeps its energy)."""
+    """Downmix to mono float32 by averaging channels."""
     arr = np.asarray(y, dtype=np.float32)
     if arr.ndim == 2:
         arr = arr.mean(axis=1, dtype=np.float32)
@@ -71,7 +69,7 @@ def resample(y: np.ndarray, orig_sr: int, target_sr: int) -> np.ndarray:
 
 
 def ensure_min_amplitude(y: np.ndarray, floor: float = 1e-6) -> np.ndarray:
-    """Guard against an all-zero array reaching a transform that divides by its level."""
+    """Avoid division by zero on an all-zero array."""
     arr = to_mono(y)
     if arr.size and float(np.max(np.abs(arr))) < floor:
         return np.zeros_like(arr)
@@ -87,25 +85,24 @@ def normalize_amplitude(
     max_gain_db: float = 30.0,
     allow_boost: bool = True,
 ) -> np.ndarray:
-    """Peak-normalise to ``target_peak_dbfs`` without ever clipping.
+    """Peak-normalise to ``target_peak_dbfs`` without clipping.
 
-    Peak rather than RMS normalisation preserves the crest factor, which separates a gunshot
-    from a siren. Boost is capped by ``max_gain_db`` so a near-silent clip's noise floor is not
-    amplified into a false signal.
+    Peak (not RMS) normalisation keeps the crest factor, which helps tell a gunshot from a
+    siren. Gain is capped at ``max_gain_db`` so near-silent noise isn't blown up.
     """
     arr = to_mono(y)
     if arr.size == 0:
         return arr
     peak = float(np.max(np.abs(arr)))
     if peak <= EPS:
-        return arr  # silence has no level to normalise; leave it exactly zero
+        return arr  # leave silence alone
     target = db_to_amplitude(target_peak_dbfs)
     gain = target / peak
     if not allow_boost:
         gain = min(1.0, gain)
     gain = min(gain, db_to_amplitude(max_gain_db))
     out = arr * float(gain)
-    # Guarantee the stated peak even in the face of float32 rounding.
+    # float32 rounding can overshoot slightly.
     out_peak = float(np.max(np.abs(out))) if out.size else 0.0
     if out_peak > target and out_peak > EPS:
         out = out * float(target / out_peak)
@@ -113,9 +110,7 @@ def normalize_amplitude(
 
 
 def apply_highpass(y: np.ndarray, sample_rate: int, cutoff_hz: float = 50.0, order: int = 4) -> np.ndarray:
-    """Remove DC offset and rumble below ~50 Hz, where no class carries information but the energy
-    skews the mel bands.
-    """
+    """Remove DC offset and rumble below ~50 Hz."""
     arr = to_mono(y)
     nyquist = 0.5 * float(sample_rate)
     if arr.size == 0 or cutoff_hz <= 0 or cutoff_hz >= nyquist:
@@ -123,15 +118,14 @@ def apply_highpass(y: np.ndarray, sample_rate: int, cutoff_hz: float = 50.0, ord
     from scipy.signal import butter, sosfiltfilt
 
     sos = butter(order, cutoff_hz / nyquist, btype="highpass", output="sos")
-    # filtfilt doubles the order but has zero phase shift, so onset timing is preserved.
+    # filtfilt has zero phase shift, so onsets don't move.
     padlen = min(3 * (2 * len(sos) + 1), max(0, arr.size - 1))
     out = sosfiltfilt(sos, arr.astype(np.float64), padlen=padlen) if padlen > 0 else arr.astype(np.float64)
     return np.ascontiguousarray(out, dtype=np.float32)
 
 
 def preemphasis(y: np.ndarray, coef: float = 0.0) -> np.ndarray:
-    """First-order pre-emphasis.  Off by default (``coef=0``): MFCC of a log-Mel spectrogram
-    already applies the right perceptual weighting, and doubling it costs accuracy."""
+    """First-order pre-emphasis. Off by default (``coef=0``) because it hurt accuracy."""
     arr = to_mono(y)
     if coef <= 0.0 or arr.size < 2:
         return arr
@@ -151,9 +145,7 @@ def silence_mask(
     hop_length: int | None = None,
     top_db: float = 30.0,
 ) -> np.ndarray:
-    """Frame-level boolean mask: True where the frame carries signal above ``top_db``
-    below the peak frame.  Exposed separately so tests and the UI can show *what* was trimmed.
-    """
+    """Per-frame mask, True where the frame is within ``top_db`` of the loudest frame."""
     import librosa
 
     arr = to_mono(y)
@@ -177,9 +169,9 @@ def trim_silence(
     hop_length: int | None = None,
     min_keep_sec: float = 0.1,
 ) -> tuple[np.ndarray, tuple[int, int]]:
-    """Trim leading and trailing near-silence; interior pauses are kept.
+    """Trim leading and trailing silence (pauses in the middle are kept).
 
-    Returns ``(trimmed, (start, end))`` so trimmed time maps back to original time for the UI.
+    Returns ``(trimmed, (start, end))``.
     """
     arr = to_mono(y)
     if arr.size == 0:
@@ -190,13 +182,11 @@ def trim_silence(
         return arr, (0, arr.size)
 
     hop = hop_length or frame_length // 4
-    # librosa's centred RMS frames are 2048 samples, so a frame-edge span can be up to 128 ms
-    # off the real onset; the edges are refined to the sample below.
+    # Frame edges can be up to 128 ms off, so refine them to the sample.
     first, last = int(idx[0]), int(idx[-1])
     start = max(0, min(arr.size, first * hop - (frame_length // 2)))
     end = min(arr.size, max(start, last * hop + (frame_length // 2)))
-    # Tighten each edge to the first/last sample that clears the same margin (never widening
-    # the span). Edges already at the array boundary are left alone.
+    # Move each edge in to the first/last sample above the threshold.
     peak_sample = float(np.max(np.abs(arr))) if arr.size else 0.0
     if peak_sample > EPS and end > start:
         amp_threshold = peak_sample * db_to_amplitude(-abs(top_db))
@@ -209,7 +199,7 @@ def trim_silence(
             end = start + int(falling[-1]) + 1
     keep_floor = int(round(min_keep_sec * sample_rate))
     if end - start < keep_floor:
-        # Everything was near-silent or the signal is too short to trim safely.
+        # All silent, or too short to trim.
         centre = (start + end) // 2
         start = max(0, min(arr.size - keep_floor, centre - keep_floor // 2))
         end = min(arr.size, start + keep_floor)
@@ -229,11 +219,10 @@ def reduce_noise(
     noise_percentile: float = 20.0,
     prop_decrease: float = 1.0,
 ) -> np.ndarray:
-    """Deterministic spectral-gating noise reduction.
+    """Spectral-gating noise reduction (deterministic).
 
-    The noise floor comes from the quietest ``noise_percentile`` % of frames, so the same input
-    always gives the same output. ``strength`` 0 leaves the signal alone, 1 subtracts the whole
-    estimated floor; the residual is floored so a noisy clip never becomes digital silence.
+    The noise floor is estimated from the quietest ``noise_percentile`` % of frames.
+    ``strength`` goes from 0 (no change) to 1 (subtract the whole floor).
     """
     arr = to_mono(y)
     strength = float(np.clip(strength, 0.0, 1.0))
@@ -254,7 +243,7 @@ def reduce_noise(
         noise_frames = frame_energy <= float(np.min(frame_energy))
     noise_profile = np.mean(mag[:, noise_frames], axis=1, keepdims=True)
 
-    # Soft mask: proportional subtraction, floored so no bin is gated to exactly zero.
+    # Soft mask, floored so no bin goes to exactly zero.
     floor = 0.05
     ratio = (mag - strength * prop_decrease * noise_profile) / np.maximum(mag, EPS)
     mask = np.clip(ratio, floor, 1.0)
@@ -275,7 +264,7 @@ def reduce_noise(
     return np.ascontiguousarray(out, dtype=np.float32)
 
 
-# Fixed-duration segmentation (FR xv: start and end timestamps must be stored)
+# Fixed-length segments (FR xv)
 
 def segment_bounds(
     n_samples: int,
@@ -285,11 +274,10 @@ def segment_bounds(
     hop_seconds: float | None = None,
     mode: str = "cover",
 ) -> list[tuple[int, int]]:
-    """Sample bounds of fixed-duration segments.
+    """Sample bounds of fixed-length segments.
 
-    "cover" (uploads): ceil(n / segment) evenly spaced segments so every sample is covered and
-    the last one ends at the last sample. "grid" (datasets, live): a fixed hop from sample 0,
-    so boundaries stay put as a buffer grows.
+    "cover" (uploads): evenly spaced segments that cover every sample. "grid" (datasets,
+    live): a fixed hop from sample 0.
     """
     if n_samples <= 0:
         return []
@@ -333,7 +321,7 @@ def segment_timestamps(
     hop_seconds: float | None = None,
     mode: str = "cover",
 ) -> list[tuple[float, float]]:
-    """The same segmentation in seconds, the form stored and shown (FR xv)."""
+    """Segment bounds in seconds (FR xv)."""
     return [
         (round(s / sample_rate, 6), round(e / sample_rate, 6))
         for s, e in segment_bounds(
@@ -343,7 +331,7 @@ def segment_timestamps(
 
 
 def iter_segments(y: np.ndarray, sample_rate: int, segment_seconds: float, **kwargs):
-    """Yield ``(index, start_sec, end_sec, samples)`` per segment, for streaming use."""
+    """Yield ``(index, start_sec, end_sec, samples)`` per segment."""
     arr = to_mono(y)
     bounds = segment_bounds(
         arr.size, sample_rate, segment_seconds,
@@ -361,10 +349,7 @@ def pad_or_truncate(
     *,
     mode: str = "center",
 ) -> np.ndarray:
-    """Force an exact length for a fixed-input model, padding symmetrically by default.
-
-    There is no random mode: random padding would give a different answer for the same clip.
-    """
+    """Pad or cut to an exact length (symmetric padding by default, never random)."""
     arr = to_mono(y)
     if arr.size == target_length:
         return arr
@@ -384,7 +369,7 @@ def pad_or_truncate(
 
 
 def crop_or_pad_seconds(y: np.ndarray, sample_rate: int, seconds: float, **kwargs) -> np.ndarray:
-    """``pad_or_truncate`` expressed in seconds, which is how the spec states it."""
+    """``pad_or_truncate`` in seconds."""
     target = int(round(float(seconds) * sample_rate))
     if target <= 0:
         raise ValueError(f"seconds must be positive, got {seconds!r}")

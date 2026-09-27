@@ -7,20 +7,14 @@
 Backbones: ``cnn14`` (PANNs, feature_extraction/embeddings.py) and ``ast`` (Audio
 Spectrogram Transformer, feature_extraction/ast_embeddings.py).
 
-Protocol (the same rules the classical trainer follows):
+Same rules as the classical trainer: fit on the 2,100 training recordings (plus augmented
+copies with ``--augmented``), choose everything on the 450 validation recordings, and
+score the 450 test recordings once in ``final``, after the choice is saved to
+``python_models/metrics/transfer_selection.json``.
 
-* ``fit`` only ever sees the 2,100 training recordings, plus their augmented copies
-  when ``--augmented`` is given (copies inherit their parent's split, see
-  ``augmentation/augment_dataset.py``);
-* every hyper-parameter and the classifier family are chosen on the 450 validation
-  recordings, by the criterion in ``selection_score``;
-* the 450 test recordings are embedded and scored once, by ``final``, after the choice is
-  written down in ``python_models/metrics/transfer_selection.json``.
-
-Selection criterion, decided before looking at test numbers: mean of validation macro-F1
-and validation critical-class recall. Accuracy alone would let a model trade a missed
-gunshot for an extra correct vehicle horn, which is the wrong trade for this product.
-Ties within 0.005 go to the faster model.
+Selection score: mean of validation macro-F1 and critical-class recall, so a model can't
+win by trading a missed gunshot for an extra correct horn. Within 0.005, the faster
+model wins.
 """
 
 from __future__ import annotations
@@ -105,8 +99,7 @@ def embed(variant: str, splits: list[str], *, include_augmented: bool = False,
             print(f"  {n}/{len(todo)} embedded, {time.time() - started:.0f}s", flush=True)
 
     if include_augmented and "train" in splits:
-        # Augmented copies are raw audio, so they go through the serving preprocessor
-        # first, exactly like an upload would.
+        # Augmented copies are raw audio, so preprocess them like an upload.
         pipeline = AudioPipeline(audio_cfg={**cfg_mod.audio_config(), **VARIANTS[variant]})
         rows = augmented_rows()
         for n, row in enumerate(rows, 1):
@@ -143,7 +136,7 @@ def load_split(variant: str, split: str, *, include_augmented: bool = False,
 # candidates
 
 def candidates() -> list[tuple[str, dict, object]]:
-    """(family, params, unfitted estimator). Every estimator exposes predict_proba."""
+    """(family, params, unfitted estimator) for each candidate."""
     from sklearn.linear_model import LogisticRegression
     from sklearn.neural_network import MLPClassifier
     from sklearn.pipeline import make_pipeline
@@ -223,7 +216,7 @@ def select(variant: str, include_augmented: bool, backbone: str = "cnn14") -> di
 
 
 def run_tag(backbone: str, variant: str, include_augmented: bool) -> str:
-    # CNN14 runs keep their original file names so the earlier evidence still resolves.
+    # CNN14 runs keep their old file names.
     prefix = "" if backbone == "cnn14" else f"{backbone}_"
     return f"{prefix}{variant}{'_aug' if include_augmented else ''}"
 
@@ -236,8 +229,8 @@ def build_estimator(family: str, params: dict):
 
 
 def final(variant: str, include_augmented: bool, out_dir: Path, backbone: str = "cnn14") -> None:
-    """Refit the chosen configuration on train, score test once, save the bundle."""
-    import joblib  # noqa: F401  (save_bundle uses it; import here to fail early)
+    """Refit the chosen configuration, score test once and save the bundle."""
+    import joblib  # noqa: F401  (fail early if missing)
 
     from src.inference.predictor import save_bundle
 

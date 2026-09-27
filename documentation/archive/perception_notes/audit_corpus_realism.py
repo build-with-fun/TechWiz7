@@ -1,32 +1,19 @@
 #!/usr/bin/env python3
-"""Perceptual audit of the procedural corpus (`data/generate_corpus.py`).
+"""Checks on the early procedurally generated corpus (`data/generate_corpus.py`). Archived.
 
-WHY THIS EXISTS
----------------
-The dataset is procedurally synthesised, which is honest and reproducible, but
-it means every acoustic cue in the training data was written by *our own code*.
-If the synthesis does not carry the cue a class is defined by, the model learns
-the artefact instead of the phenomenon, and the whole comparison report is
-measuring a DSP bug.
+When the whole dataset was synthetic, every acoustic cue came from our own code, so this
+measured whether the generated audio actually had the cues each class depends on:
 
-This script does not read the generator's intent; it measures the audio that
-comes out of it and asks the questions an auditory physiologist would ask:
-
-  1. TIMING      -- does generating 3,000 clips fit in the build budget?
-                    (the `reverb` function has a per-sample Python loop)
-  2. DISTANCE    -- is `approx_distance_m` recoverable from the waveform, or
-                    is it metadata with no acoustic correlate?  And is the
-                    separately-drawn intensity a PHYSICALLY CONTRADICTORY
-                    combination (a 60 m source at clipping level)?
-  3. TRANSIENCE  -- do the four transient classes actually have the crest
-                    factor that separates them from the six sustained ones?
-  4. P03         -- is the siren-vs-horn modulation-spectrum discriminator
-                    (0.5-4 Hz) actually present in the synthesised signals?
-  5. P01/P10     -- are the two pairs my map calls irreducible/priority
-                    genuinely overlapping in short-time spectrum?
+  1. Timing: does generating 3,000 clips fit in the time we had?
+  2. Distance: can `approx_distance_m` be heard in the waveform, and does the separately
+     chosen intensity ever give odd combinations (a 60 m source at clipping level)?
+  3. Transience: do the four impulsive classes have a higher crest factor than the six
+     sustained ones?
+  4. P03: is the 0.5-4 Hz siren-vs-horn modulation cue present?
+  5. P01/P10: do the two hardest pairs really overlap in short-time spectrum?
 
 Run:  .venv/bin/python documentation/archive/perception_notes/audit_corpus_realism.py
-Exit code 0 always; it is an audit, not a gate.  Findings go in the report.
+Always exits 0; it only reports.
 """
 from __future__ import annotations
 
@@ -75,13 +62,13 @@ def make(label: str, seed: int, **over) -> np.ndarray:
 
 
 def crest_db(y: np.ndarray) -> float:
-    """Peak-to-RMS in dB -- the impulsive/sustained axis."""
+    """Peak-to-RMS in dB (impulsive vs sustained)."""
     rms = float(np.sqrt(np.mean(y ** 2)))
     return 20 * np.log10(float(np.max(np.abs(y))) / max(rms, 1e-12))
 
 
 def hf_ratio(y: np.ndarray, split_hz: float = 4000.0) -> float:
-    """Fraction of energy above `split_hz` -- the distance/air-absorption cue."""
+    """Fraction of energy above `split_hz` (drops with distance)."""
     spec = np.abs(np.fft.rfft(y)) ** 2
     f = np.fft.rfftfreq(len(y), 1.0 / SR)
     total = float(spec.sum()) + 1e-20
@@ -95,10 +82,9 @@ def centroid_hz(y: np.ndarray) -> float:
 
 
 def mod_spectrum_peak(y: np.ndarray, lo: float = 0.5, hi: float = 4.0) -> float:
-    """Peak of the amplitude-envelope modulation spectrum in [lo,hi] Hz.
+    """Peak of the envelope modulation spectrum in [lo, hi] Hz.
 
-    This is the siren-vs-horn discriminator from class_confusability.json P03:
-    a siren sweeps/warbles at 0.5-4 Hz, a horn is a steady tone.
+    A siren sweeps at 0.5-4 Hz while a horn is steady (P03 in class_confusability.json).
     """
     env = np.abs(y)
     # smooth to ~50 Hz envelope bandwidth before taking the modulation spectrum
@@ -114,11 +100,7 @@ def mod_spectrum_peak(y: np.ndarray, lo: float = 0.5, hi: float = 4.0) -> float:
 
 
 def short_time_spectrum_corr(a: np.ndarray, b: np.ndarray) -> float:
-    """Cosine similarity of mean log-Mel-ish spectra (0..1).
-
-    A crude stand-in for 'how alike are these two sounds to an auditory
-    front end', used to sanity-check the irreducible pairs.
-    """
+    """Cosine similarity of the mean log-mel-like spectra (0..1), a rough similarity measure."""
     n = min(len(a), len(b), SR * 3)
     A = np.abs(np.fft.rfft(a[:n] * np.hanning(n)))
     B = np.abs(np.fft.rfft(b[:n] * np.hanning(n)))
@@ -139,12 +121,7 @@ def banner(t: str) -> None:
 
 
 def assert_mode() -> int:
-    """Exit non-zero when a measured perceptual property fails.
-
-    These are properties the corpus must have for the classes to be learnable
-    for the right reason. They are not stylistic: each one, if false, means a
-    feature the team is building rests on nothing.
-    """
+    """Exit non-zero if one of the measured properties fails."""
     failures: list[str] = []
     n = SR * 3
 
@@ -158,9 +135,7 @@ def assert_mode() -> int:
         if not ok:
             failures.append(f"{label}: non-finite, out of range, or wrong length")
 
-    # (b) HF energy must fall with distance -- otherwise the corpus has no
-    #     distance cue at all and every 'distant source' claim in the report
-    #     is unsupportable.
+    # (b) high-frequency energy should fall with distance
     hf = {}
     for band, d in (("near_0.5-2m", 1.0), ("mid_3-15m", 8.0), ("far_20-60m", 40.0)):
         vals = [hf_ratio(make("Glass Breaking", 3000 + i, environment="outdoor_open",
@@ -173,9 +148,7 @@ def assert_mode() -> int:
     if not ok:
         failures.append("HF energy does not fall monotonically with distance")
 
-    # (c) absolute peak must NOT encode distance: intensity is drawn
-    #     independently and clips are re-normalised. This documents the
-    #     deliberately level-free corpus so no feature may use absolute level.
+    # (c) absolute peak should not encode distance, since clips are re-normalised
     peaks = []
     for band, d in (("near_0.5-2m", 1.0), ("far_20-60m", 40.0)):
         vals = [20 * np.log10(np.max(np.abs(make("Glass Breaking", 4000 + i,
@@ -188,8 +161,7 @@ def assert_mode() -> int:
     if not ok:
         failures.append("absolute peak varies with distance: corpus is not level-free")
 
-    # (d) the transient/sustained axis must exist and be large for the two
-    #     transient critical classes.
+    # (d) the two impulsive critical classes should have a high crest factor
     crest = {}
     for label in ("Gunshot", "Glass Breaking", "Alarm or Siren", "Vehicle Horn",
                   "Person Asking for Help"):
@@ -205,17 +177,14 @@ def assert_mode() -> int:
     if not ok:
         failures.append("Gunshot is not the most impulsive class")
 
-    # (e) Person Asking for Help is a SUSTAINED critical class -- a threshold
-    #     or feature design that assumes 'critical implies impulsive' breaks it.
+    # (e) Person Asking for Help is critical but sustained, not impulsive
     ok = crest["Person Asking for Help"] < crest["Gunshot"]
     print(f"  {'PASS' if ok else 'FAIL'}  Person Asking for Help is less impulsive than "
           f"Gunshot ({crest['Person Asking for Help']:.2f} < {crest['Gunshot']:.2f} dB)")
     if not ok:
         failures.append("Person Asking for Help is unexpectedly impulsive")
 
-    # (f) P03: the corpus must actually carry a spectral cue separating siren
-    #     from horn, since the amplitude-modulation cue the map first named is
-    #     confounded by the honk gate.
+    # (f) P03: there should be a spectral cue separating siren from horn
     sh = [hf_ratio(make("Alarm or Siren", 6000 + i)) for i in range(8)]
     hh = [hf_ratio(make("Vehicle Horn", 7000 + i)) for i in range(8)]
     ratio = float(np.mean(sh)) / max(float(np.mean(hh)), 1e-9)
@@ -236,12 +205,7 @@ def assert_mode() -> int:
 
 
 def generator_revision() -> str:
-    """The corpus generator is being edited while we measure it.
-
-    Every number in this audit is only true of ONE revision of
-    data/generate_corpus.py, so the revision is printed with the report and
-    must be quoted alongside any measured claim in the deliverable.
-    """
+    """Git revision of data/generate_corpus.py, printed with the results."""
     import hashlib
     p = ROOT / "data" / "generate_corpus.py"
     return hashlib.sha256(p.read_bytes()).hexdigest()[:12]
@@ -252,7 +216,7 @@ def main() -> int:
     print(f"generator: {ROOT / 'data' / 'generate_corpus.py'}")
     print(f"generator revision (sha256/12): {generator_revision()}  (at {time.strftime('%H:%M:%S')})")
 
-    # ---------------------------------------------------------------- 1. timing
+    # 1. timing
     banner("1. TIMING -- does 3,000 clips fit the build budget?")
     t0 = time.time()
     N = 12
@@ -269,7 +233,7 @@ def main() -> int:
     print(f"  => extrapolated for 3,000 clips at the reverb-path cost: {est_h:.1f} h")
     print(f"  => extrapolated at the dry cost:                          {dt_dry * 3000 / 3600.0:.1f} h")
 
-    # -------------------------------------------------------------- 2. distance
+    # 2. distance
     banner("2. DISTANCE -- is approx_distance_m recoverable from the audio?")
     print("  profile: outdoor_open, smartphone_builtin, intensity='normal'")
     print(f"  {'band':<14}{'d(m)':>7}{'peak dBFS':>11}{'>4kHz %':>10}{'centroid Hz':>13}")
@@ -296,7 +260,7 @@ def main() -> int:
             peak = np.mean([20 * np.log10(np.max(np.abs(y)) + 1e-12) for y in ys])
             print(f"  {band:<14}{inten:<10}{peak:>11.1f}")
 
-    # ------------------------------------------------------------ 3. transience
+    # 3. transience
     banner("3. TRANSIENCE -- crest factor separates transient from sustained?")
     print("  profile: outdoor_street, mid_3-15m, intensity='normal'")
     print(f"  {'class':<26}{'crest dB (mean)':>17}{'sd':>7}")
@@ -312,7 +276,7 @@ def main() -> int:
         print(f"    crest({a}) - crest({b}) = {gap:+.2f} dB"
               + ("   <- separable" if gap > 3 else "   <- !! TOO CLOSE"))
 
-    # ------------------------------------------------------------------ 4. P03
+    # 4. P03
     banner("4. P03 Siren vs Horn -- is the 0.5-4 Hz modulation cue present?")
     print(f"  {'class':<18}{'mod peak Hz':>13}{'crest dB':>10}{'>4kHz %':>9}")
     for label in ("Alarm or Siren", "Vehicle Horn"):
@@ -327,7 +291,7 @@ def main() -> int:
     print(f"  horn mod-peak spread: {min(stab):.2f}-{max(stab):.2f} Hz "
           f"(a steady horn should NOT show a low-rate peak)")
 
-    # ------------------------------------------------------------ 5. confusables
+    # 5. confusable pairs
     banner("5. SHORT-TIME SPECTRAL OVERLAP of the pairs the map calls hard")
     pairs = [
         ("P01 Gunshot vs Vehicle Horn (map: irreducible-ish)", "Gunshot", "Vehicle Horn"),

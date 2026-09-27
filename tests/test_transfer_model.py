@@ -43,7 +43,7 @@ def test_served_bundle_declares_its_embedding_version_and_lineage():
     assert features["feature_version"] == backbone.EMBEDDING_VERSION
     assert len(features["columns"]) == backbone.EMBEDDING_DIM
     assert sorted(labels) == sorted(classes)
-    # The bundle must say what it was trained on and how it was chosen.
+    # The bundle records its training data and selection.
     assert meta["selection_criterion"].startswith("0.5*val_macro_f1")
     assert len(meta["train_ids_sha256"]) == 64
     assert meta["metrics"]["split"] == "test" and meta["metrics"]["n_records"] == 450

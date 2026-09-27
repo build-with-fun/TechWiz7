@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Move defective originals (shorter than 0.5 s or quieter than -50 dBFS RMS) to
-data/dataset_overflow/, drop their manifest rows and report the freed slots. Nothing is deleted.
+"""Move bad originals (under 0.5 s or quieter than -50 dBFS RMS) to data/dataset_overflow/,
+drop their manifest rows and report the free slots. Nothing is deleted.
 
 Backfill afterwards:
 

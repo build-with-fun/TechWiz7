@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""Fill the remaining shortfall in Aggression, Glass Breaking and Panic Scream with the
-procedural synthesiser once the real pools were exhausted. Only the shortfall is generated,
-and never in the real recordings' id range. (The synthetic glass clips were later dropped by
-audio_dataset/scripts/trim_to_300.py; 50 Aggression and 25 Panic Scream remain.)
+"""Top up Aggression, Glass Breaking and Panic Scream with synthetic clips after the real
+sources ran out. (The glass clips were dropped later by trim_to_300.py; 50 Aggression and
+25 Panic Scream remain.)
 
     python data/topup_synthetic.py --check        # print the plan, write nothing
 """
@@ -22,10 +21,9 @@ import csv  # noqa: E402
 REPO_ROOT = Path(__file__).resolve().parent.parent
 AUDIO_DATASET = REPO_ROOT / "audio_dataset"
 
-#: band name -> the frozen manifest enum value (assemble_manifest.py DIST_ENUM)
+# band name -> manifest value (assemble_manifest.py DIST_ENUM)
 DIST_ENUM_MAP = {"near_0.5-2m": "near", "mid_3-15m": "medium", "far_20-60m": "far"}
 
-# Real ids start at 0501; synthetic ids sit well clear of them.
 SYNTH_ID_OFFSET = 699  # synthetic ids start at SS-<CODE>-0700
 
 
@@ -48,14 +46,14 @@ def main(argv=None) -> int:
 
     cfg = load_class_config()
 
-    # what is on disk vs the frozen floor
+    # what is on disk vs the target
     plan: dict[str, int] = {}
     for c in cfg["classes"]:
         label = c["name"]
         slug = label.lower().replace(" ", "_")
         have = len(list((AUDIO_DATASET / "originals" / slug).glob("*.wav"))) \
             if (AUDIO_DATASET / "originals" / slug).exists() else 0
-        # Existing synthetic originals count toward the floor, as the verifier counts them.
+        # Existing synthetic clips count too.
         for rows_csv in (AUDIO_DATASET / "manifests" / "help_tts_rows.csv",
                          AUDIO_DATASET / "manifests" / "synthetic_topup_rows.csv"):
             if not rows_csv.exists():
@@ -78,7 +76,7 @@ def main(argv=None) -> int:
     if args.check:
         return 0
 
-    # Continue past the highest existing id per class (defect removal left holes).
+    # Continue after the highest existing id (there are gaps).
     existing_synth: dict[str, int] = {}
     top_existing: dict[str, int] = {}
     for label in plan:
@@ -92,7 +90,7 @@ def main(argv=None) -> int:
                   f"(ids up to SS-{CLASS_CODES[label]}-{max(nums):04d}); "
                   f"new ids continue above that")
 
-    # build() writes every class, so build in a temp root and move only the kept clips.
+    # build() writes every class, so use a temp folder and move only what we need.
     import tempfile, shutil
     tmp_root = Path(tempfile.mkdtemp(prefix="ss_topup_"))
     rows = build(max(plan.values()), tmp_root, args.seed, None,
@@ -114,7 +112,7 @@ def main(argv=None) -> int:
         used[label] = k + 1
         keep.append(r)
 
-    # Holes can leave the first batch short; emit a second batch above the highest id.
+    # Gaps can leave the first batch short; make a second batch.
     shortfall = {label: plan[label] - used.get(label, 0) for label in plan}
     shortfall = {label: n for label, n in shortfall.items() if n > 0}
     if shortfall:
@@ -138,18 +136,18 @@ def main(argv=None) -> int:
     manifest = AUDIO_DATASET / "manifests" / "synthetic_topup_rows.csv"
     manifest.parent.mkdir(parents=True, exist_ok=True)
     keep.sort(key=lambda r: (r["class_label"], r["audio_id"]))
-    # map the generator's internal distance band to the frozen manifest enum
+    # generator distance band -> manifest value
     for r in keep:
         r["approximate_distance"] = {"near_0.5-2m": "near", "mid_3-15m": "medium",
                                      "far_20-60m": "far"}.get(r["approximate_distance"],
                                                               r["approximate_distance"])
-    # move the kept clips out of the temp root before it is deleted
+    # move the kept clips out before the temp folder is deleted
     for r in keep:
         src = tmp_root / r["filename"]
         dst = AUDIO_DATASET / r["filename"]
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(src), str(dst))
-        # the sha256 was computed over the same bytes; bytes are unchanged by move
+        # moving doesn't change the sha256
     shutil.rmtree(tmp_root, ignore_errors=True)
     with manifest.open("w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=MANIFEST_FIELDS)

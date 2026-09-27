@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-"""Cut short Teachable Machine samples out of the same train recordings the Python model uses.
+"""Cut short Teachable Machine samples from the training recordings.
 
-Aborts if any parent is in val or test. Each sample id is ``<parent_audio_id>S<n>`` with
-parent_audio_id and segment times, so build_split.py keeps it in its parent's split.
-Positions are fixed fractions of the parent, so output is byte-identical on re-run.
+Stops if any parent is in val or test. Sample ids are ``<parent_audio_id>S<n>`` so they
+keep their parent's split. Cut positions are fixed fractions, so re-runs give the same files.
 
     .venv/bin/python audio_dataset/scripts/cut_gtm_samples.py --check
 
-The TM model that ships was trained from make_gtm_imports.py's output instead.
+The served TM model was trained on make_gtm_imports.py's output instead.
 """
 
 from __future__ import annotations
@@ -38,12 +37,12 @@ FROZEN_COLUMNS = [
 ]
 EXTRA_COLUMNS = ["parent_class_label", "gtm_batch"]
 
-SEGMENT_SEC = 2.0          # every GTM sample is exactly this long when the parent allows
-MIN_SEGMENT_SEC = 0.6      # a shorter parent still yields a usable (if short) sample
+SEGMENT_SEC = 2.0          # sample length when the parent is long enough
+MIN_SEGMENT_SEC = 0.6      # shortest sample we still keep
 TARGET_RATE = 16000
 TARGET_CHANNELS = 1
 
-# fixed fractions of the parent duration at which samples start (deterministic)
+# where samples start, as fractions of the parent's length
 START_FRACTIONS = (0.10, 0.50, 0.85, 0.30, 0.70)
 
 
@@ -102,15 +101,15 @@ def main(argv: list[str] | None = None) -> int:
     split = json.loads(args.split.read_text(encoding="utf-8"))
     assign = split["assignments"]
 
-    # select parents: originals in the TRAIN split
+    # parents: originals in the train split
     train_originals = [aid for aid, a in assign.items()
                        if a["split"] == "train" and a["role"] == "original"]
     if not train_originals:
-        raise SystemExit("no originals assigned to train -- is the split built?")
+        raise SystemExit("no originals assigned to train; has the split been built?")
 
-    # hard guarantee: nothing here may be val/test
+    # double-check nothing is from val/test
     illegal = [aid for aid in train_originals if assign[aid]["split"] != "train"]
-    if illegal:  # defensive; cannot happen given the filter above, but never trust it
+    if illegal:
         raise CutError(f"refusing: {len(illegal)} parents are not in train")
 
     by_class: dict[str, list[str]] = defaultdict(list)
@@ -179,7 +178,7 @@ def main(argv: list[str] | None = None) -> int:
                     "segment_start_sec": f"{start:.3f}",
                     "segment_end_sec": f"{end:.3f}",
                     "sha256": "" if args.check else sha256_of(dest),
-                    "dataset_split": "",          # build_split.py owns this. never here.
+                    "dataset_split": "",          # set by build_split.py
                     "parent_class_label": cls,
                     "gtm_batch": "gtm_train_v1",
                 })

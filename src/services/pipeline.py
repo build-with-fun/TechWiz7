@@ -1,12 +1,8 @@
-"""One clip or live window in, one decision record out.
+"""Analysis pipeline: one clip or live window in, one decision record out.
 
-Uploads and live windows both go through AnalysisPipeline.analyse, so the two paths cannot
-drift apart: preprocess and rate quality, score with the Python and Teachable Machine
-models, compare, apply the class rule and repeated-detection confirmation, decide whether a
-person must review it, then persist.
-
-The TM model never sees the Python result. Both predictors receive the same
-PreprocessedAudio and nothing else; the comparison is the first place their outputs meet.
+Uploads and live windows share AnalysisPipeline.analyse: preprocess, rate quality, run
+both models, compare them, apply the alert and review rules, then save. The two models
+get the same preprocessed audio and never see each other's output.
 """
 
 from __future__ import annotations
@@ -22,14 +18,14 @@ import numpy as np
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-#: Overridable by the app factory.
+# The app factory can override these.
 DEFAULT_PYTHON_MODEL_DIR = REPO_ROOT / "python_models" / "best"
 DEFAULT_GTM_DIR = REPO_ROOT / "gtm_model"
 
-#: Bump when the bit layout changes, so old stored fingerprints are not compared with new ones.
+# Bump when the bit layout changes so old fingerprints are not compared with new ones.
 FINGERPRINT_VERSION = "perceptual-fp-1.0.0"
 
-#: A frame counts as silence when it sits this far below the clip's own loudest frame.
+# Frames this far below the clip's loudest frame count as silence.
 SILENCE_DROP_DB = 25.0
 
 
@@ -38,15 +34,14 @@ class PipelineError(RuntimeError):
 
 
 class ModelsUnavailable(PipelineError):
-    """A model could not be loaded. Raised at start-up, never per request, naming the missing file.
-    """
+    """A model could not be loaded. Raised at start-up, not per request."""
 
 
 # Repeated-detection confirmation (FR xl, FR xlvi)
 
 @dataclass
 class Detection:
-    """One window's opinion, as the confirmation counter sees it."""
+    """One window's result, as seen by RepeatTracker."""
 
     class_name: str
     at: float
@@ -59,9 +54,7 @@ class Detection:
 class RepeatTracker:
     """Counts consecutive qualifying detections of one class (FR xl, xlvi).
 
-    A window that names a different class, or fails the agreement or quality gate, ends the
-    streak. "Three in a row" is the rule; "three in the last eight seconds" could confirm a
-    class from unrelated hits.
+    A different class, or a window that fails the agreement or quality check, ends the streak.
     """
 
     def __init__(self, thresholds: Mapping[str, Any], *, store: Any = None) -> None:
@@ -80,11 +73,11 @@ class RepeatTracker:
             return True
         try:
             return bool(self._store.quality_at_least(quality, self.min_quality))
-        except Exception:  # unknown quality name: refuse to confirm rather than assume
+        except Exception:  # unknown quality name: don't confirm
             return False
 
     def qualifies(self, det: Detection) -> tuple[bool, str]:
-        """Whether this window may contribute to a streak, and why not if it may not."""
+        """Return (ok, reason) for whether this window can count toward a streak."""
         if self.requires_agreement and not det.agreed:
             return False, "the two models named different classes"
         if not self._quality_ok(det.quality):
@@ -106,7 +99,7 @@ class RepeatTracker:
     ) -> dict[str, Any]:
         """Record one window and return its confirmation state.
 
-        ``confirmed`` stays set for the rest of the streak so the caller raises the alert once.
+        ``confirmed`` stays set for the rest of the streak, so the alert is raised once.
         """
         now = float(at if at is not None else time.time())
         det = Detection(class_name, now, float(confidence), bool(agreed), str(quality), source)
@@ -116,7 +109,7 @@ class RepeatTracker:
         quality_floor = min_quality or self.min_quality
 
         with self._lock:
-            # Any streak for a different class is over: this is what "consecutive" means.
+            # A new class ends every other streak.
             for other in list(self._streaks):
                 if other != class_name:
                     self._streaks.pop(other, None)
@@ -129,7 +122,7 @@ class RepeatTracker:
             else:
                 ok, why = True, ""
             if not ok:
-                # A disqualifying window does not merely fail to add -- it breaks the streak.
+                # A window that doesn't qualify breaks the streak.
                 self._streaks.pop(class_name, None)
                 self._confirmed.pop(class_name, None)
                 return {
@@ -144,7 +137,7 @@ class RepeatTracker:
 
             streak = self._streaks.setdefault(class_name, [])
             if streak and (now - streak[-1].at) > self.window_seconds:
-                streak.clear()  # the gap was too long to call these detections consecutive
+                streak.clear()  # gap too long to count as consecutive
                 self._confirmed.pop(class_name, None)
             streak.append(det)
 
@@ -165,7 +158,7 @@ class RepeatTracker:
                     f"Confirmed after {consecutive} consecutive detections within "
                     f"{self.window_seconds:.0f} s (required {required})."
                 )
-                streak.clear()  # start counting for a fresh alert after this one
+                streak.clear()  # start over for the next alert
             else:
                 note = (
                     f"{consecutive} of {required} consecutive detections; "
@@ -204,12 +197,12 @@ class RepeatTracker:
 
 def audio_fingerprint(samples: Any, sample_rate: int, *, bands: int = 16,
                       frame_ms: float = 64.0, max_frames: int = 32) -> str | None:
-    """Coarse perceptual fingerprint used to shortlist near-duplicates (FR lxxiv).
+    """Coarse perceptual fingerprint for shortlisting near-duplicates (FR lxxiv).
 
-    Band energies on a fixed grid, each compared with its band's median and reduced to one
-    bit, so a quieter copy or a re-encode keeps most bits. On real recordings it is too coarse
-    to decide alone (short impulses collide), so confirm_near_duplicate re-checks the shortlist
-    with spectral_match. Returns hex, or None when the clip is too short.
+    Each cell of a band-energy grid becomes one bit (above or below its band's median), so a
+    quieter copy or a re-encode keeps most bits. Too coarse to decide on its own, so
+    confirm_near_duplicate checks the shortlist with spectral_match. Returns hex, or None
+    when the clip is too short.
     """
     y = np.asarray(samples, dtype=np.float64)
     if y.ndim > 1:
@@ -217,8 +210,7 @@ def audio_fingerprint(samples: Any, sample_rate: int, *, bands: int = 16,
     if y.size == 0:
         return None
 
-    # A coarse magnitude spectrogram. Small n_fft keeps this cheap enough to sit inside a
-    # 3 s live-window budget; the fingerprint compares shapes, not detail.
+    # Small n_fft keeps this cheap enough for the 3 s live-window budget.
     n_fft = 1024
     hop = max(1, int(sample_rate * frame_ms / 1000.0))
     if y.size < n_fft * 2:
@@ -232,8 +224,7 @@ def audio_fingerprint(samples: Any, sample_rate: int, *, bands: int = 16,
         return None
     power = np.asarray(frames)
 
-    # Collapse the frequency axis into mel-spaced bands: energy concentrated where a human
-    # hears it, rather than where FFT bins happen to fall.
+    # Group the FFT bins into roughly mel-spaced bands.
     edges = np.unique(np.floor(
         n_fft / 2 * (np.linspace(0, 1, bands + 1) ** 2)  # ~mel spacing, cheaply
     ).astype(int))
@@ -241,21 +232,18 @@ def audio_fingerprint(samples: Any, sample_rate: int, *, bands: int = 16,
     for i in range(len(edges) - 1):
         lo, hi = edges[i], max(edges[i + 1], edges[i] + 1)
         banded_db[:, i] = power[:, lo:hi].mean(axis=1)
-    # dB, so "25 dB below the loudest frame" means the same thing for every clip.
+    # Work in dB so the silence threshold means the same for every clip.
     banded_db = 10.0 * np.log10(banded_db + 1e-12)
 
-    # Fingerprint the *sound*, not the silence around it: trim head and tail frames more than
-    # ``SILENCE_DROP_DB`` below this clip's loudest frame. Without this, the same recording
-    # with a second of padding -- which any recorder, and any re-share, may add -- shifts the
-    # whole time axis and reads as a different sound.
+    # Trim leading and trailing silence, otherwise the same recording with a second of
+    # padding shifts the time axis and looks like a different sound.
     frame_level = banded_db.max(axis=1)
     loud = frame_level >= (frame_level.max() - SILENCE_DROP_DB)
     active = np.flatnonzero(loud)
     if active.size >= 2:
         banded_db = banded_db[active[0]:active[-1] + 1]
 
-    # Resample the time axis to a fixed length so a 2.9 s and a 3.1 s recording of the same
-    # event still line up.
+    # Fixed number of time steps so 2.9 s and 3.1 s copies still line up.
     if banded_db.shape[0] != max_frames:
         idx = np.linspace(0, banded_db.shape[0] - 1, max_frames)
         resampled = np.empty((max_frames, banded_db.shape[1]))
@@ -264,10 +252,8 @@ def audio_fingerprint(samples: Any, sample_rate: int, *, bands: int = 16,
         banded_db = resampled
     banded = banded_db
 
-    # Compare each cell with its band's median: robust to level changes and spectral tilt.
-    # The band set must depend on the parameters only. An earlier version dropped
-    # flat bands per clip, so two copies of one sound got different layouts and
-    # scored near chance.
+    # Comparing with the band median ignores level changes and spectral tilt. The band
+    # layout must not depend on the clip, or two copies end up with different layouts.
     median = np.median(banded, axis=0, keepdims=True)
     bits_array = (banded > median).astype(np.uint8).reshape(-1)
     if bits_array.size % 4:
@@ -293,7 +279,7 @@ def fingerprint_similarity(a: str | None, b: str | None) -> float | None:
 
 
 def _source_sha256(path: str | Path | None) -> str | None:
-    """sha256 of the clip's bytes on disk -- the exact-duplicate key in pipeline step 3."""
+    """sha256 of the file, used for exact-duplicate detection."""
     if not path:
         return None
     try:
@@ -306,12 +292,12 @@ def _source_sha256(path: str | Path | None) -> str | None:
         return None
 
 
-#: Fallback when config/thresholds.json has no duplicate_detection block.
+# Used when config/thresholds.json has no duplicate_detection block.
 DEFAULT_NEAR_DUPLICATE_SIMILARITY = 0.92
 
 
 def duplicate_config(thresholds: Mapping[str, Any] | None = None) -> dict[str, Any]:
-    """The duplicate-detection settings, with documented defaults if config is silent."""
+    """Duplicate-detection settings, falling back to the defaults above."""
     block = ((thresholds or {}).get("duplicate_detection") or {})
     return {
         "enabled": bool(block.get("enabled", True)),
@@ -319,9 +305,8 @@ def duplicate_config(thresholds: Mapping[str, Any] | None = None) -> dict[str, A
             block.get("near_duplicate_similarity", DEFAULT_NEAR_DUPLICATE_SIMILARITY)
         ),
         "fingerprint_version": str(block.get("fingerprint_version", FINGERPRINT_VERSION)),
-        # Two-stage check (26 Sep): the fingerprint shortlists, spectral_match decides.
-        # Measured in reports/near_duplicates.json: stage-1-only flagged 19% of hard
-        # negatives; shortlist 5 + spectral match >= 0.9 flagged 0.6%.
+        # Fingerprint shortlists, spectral_match decides. On hard negatives this cut false
+        # flags from 19% to 0.6% (reports/near_duplicates.json).
         "shortlist": int(block.get("shortlist", 5)),
         "spectral_match_min": float(block.get("spectral_match_min", 0.9)),
         "source": "config/thresholds.json" if block else "built-in default (config has no duplicate_detection block)",
@@ -362,15 +347,14 @@ def _log_mel_frames(samples: Any, sample_rate: int) -> np.ndarray:
         y = librosa.resample(y, orig_sr=sample_rate, target_sr=16000)
     mel = librosa.feature.melspectrogram(y=y, sr=16000, n_fft=1024, hop_length=320, n_mels=40)
     logmel = np.log(mel + 1e-6).T                       # (frames, bands), 20 ms per frame
-    # Subtracting the clip's own mean makes a volume-adjusted copy identical in this
-    # representation: a gain is a constant added to every log-mel cell.
+    # In log-mel a gain change is a constant offset, so removing the mean ignores volume.
     return logmel - logmel.mean()
 
 
 def spectral_match(a: Any, sr_a: int, b: Any, sr_b: int) -> float:
-    """Best-aligned Pearson correlation of two log-mel images (1.0 means the same sound).
+    """Best-aligned correlation of two log-mel images (1.0 means the same sound).
 
-    The shorter clip slides along the longer one, so a trimmed copy lines up with its source.
+    The shorter clip slides along the longer one so a trimmed copy still matches.
     """
     left, right = _log_mel_frames(a, sr_a), _log_mel_frames(b, sr_b)
     short, long_ = (left, right) if len(left) <= len(right) else (right, left)
@@ -401,11 +385,10 @@ def confirm_near_duplicate(
     exclude: Any = (),
     load: Callable[[Any], tuple[Any, int]] | None = None,
 ) -> dict[str, Any] | None:
-    """Shortlist candidates by fingerprint, then confirm the shortlist with spectral_match.
+    """Shortlist candidates by fingerprint, then confirm them with spectral_match.
 
-    ``load`` must condition the stored file the way ``samples`` was conditioned: comparing a
-    preprocessed upload with a raw stored file scored an identical sound 0.86 instead of 1.0.
-    Candidates whose file has gone (retention) are skipped.
+    ``load`` must preprocess the stored file the same way as ``samples``, otherwise an
+    identical sound scores about 0.86. Candidates whose file was purged are skipped.
     """
     if not fingerprint:
         return None
@@ -425,7 +408,7 @@ def confirm_near_duplicate(
     for similarity, audio_id, path in ranked:
         try:
             other, rate = load(path)
-        except Exception:  # noqa: BLE001 - an unreadable stored file just isn't compared
+        except Exception:  # noqa: BLE001 - skip unreadable files
             continue
         match = spectral_match(samples, sample_rate, other, rate)
         if match >= min_match and (best is None or match > best["spectral_match"]):
@@ -448,11 +431,11 @@ def severity_block(
     consecutive: int = 0,
     noise_level_dbfs: float | None = None,
 ) -> dict[str, Any]:
-    """Severity for the event record, and whether it may raise an alert.
+    """Severity for the event, and whether it may raise an alert.
 
-    Severity is recorded for every detection. Alert eligibility is a separate set of gates
-    (confidence, margin, agreement, quality, minimum alert severity): a Gunshot at 0.61 where
-    the models disagree is stored as a Gunshot event but pages nobody.
+    Every detection gets a severity. Raising an alert also needs enough confidence, margin,
+    agreement and quality, so a low-confidence Gunshot the models disagree on is stored but
+    does not alert.
     """
     rule = store.rule_for_class(class_name)
     recorded = str(rule.get("severity", "Informational"))
@@ -507,9 +490,8 @@ def severity_block(
             rule = {**rule, "recommended_action": escalation.get("to_action", rule.get("recommended_action"))}
             break
 
-    # FR xliv/xlv: a vehicle horn or an animal is stored as an event, not raised as an
-    # alert. Checked after escalation, so loud background noise escalated to Medium
-    # (FR l) still alerts. The floor comes from the rules file ("min_alert_severity").
+    # FR xliv/xlv: horns and animals are stored but don't alert. Checked after escalation so
+    # loud background noise escalated to Medium (FR l) still alerts.
     floor = rule.get("min_alert_severity")
     if floor:
         ok = store.severity_rank(recorded) >= store.severity_rank(str(floor))
@@ -532,7 +514,7 @@ def severity_block(
 
 
 def _escalation_matches(conditions: Mapping[str, Any], observed: Mapping[str, Any]) -> bool:
-    """Evaluate only conditions backed by measurements in this decision record."""
+    """Check only the conditions this record has measurements for."""
     if "all" in conditions:
         return all(_escalation_matches(item, observed) for item in conditions["all"])
     fields = {
@@ -557,9 +539,7 @@ def _escalation_matches(conditions: Mapping[str, Any], observed: Mapping[str, An
 # Manual review (Step 17, FR lvii, li, xxxviii, xxxix)
 
 class _SafeDict(dict):
-    """format_map helper: an unknown template key renders as {key} instead of crashing a live
-    window.
-    """
+    """Leaves unknown template keys as {key} instead of raising."""
 
     def __missing__(self, key: str) -> str:  # pragma: no cover - exercised via tests
         return "{" + key + "}"
@@ -580,8 +560,8 @@ def _template_context(ctx: Mapping[str, Any]) -> _SafeDict:
 def _eval_predicate(when: Mapping[str, Any], ctx: Mapping[str, Any]) -> bool:
     """Evaluate one ``when`` clause from manual_review_conditions.json.
 
-    The vocabulary is closed on purpose: an administrator-editable condition language that
-    could run code would be remote code execution. Unknown keys fail closed.
+    Only a fixed set of keys is supported, so the admin-editable file can't run code.
+    Unknown keys evaluate to False.
     """
     for key, expected in when.items():
         if key == "any":
@@ -621,7 +601,7 @@ def _eval_predicate(when: Mapping[str, Any], ctx: Mapping[str, Any]) -> bool:
         elif key == "consistency_status_in":
             if str(ctx.get("consistency_status")) not in [str(s) for s in expected]:
                 return False
-        else:  # unknown key: a condition we cannot evaluate must not silently pass
+        else:  # unknown key
             raise PipelineError(
                 f"manual_review_conditions.json uses an unknown condition '{key}'. "
                 "Refusing to run: a review gate that is not evaluated is worse than none."
@@ -647,7 +627,7 @@ def evaluate_review(
     reviewed_class: str | None = None,
     near_duplicate: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Which review conditions fired, each with its own reason and recommended action."""
+    """Review conditions that fired, each with its reason and recommended action."""
     thresholds = store.thresholds()
     primary = predicted_class or python_class
     known = set(store.class_names())
@@ -698,8 +678,8 @@ def evaluate_review(
                 }
             )
 
-    # FR lxxiv: a likely copy is surfaced for review, never merged or dropped. A condition
-    # with id near_duplicate in manual_review_conditions.json overrides this fallback.
+    # FR lxxiv: a likely copy goes to review, it is never merged or dropped. A near_duplicate
+    # condition in manual_review_conditions.json overrides this default.
     if near_duplicate and "near_duplicate" not in {str(m["id"]) for m in matched}:
         configured = next(
             (c for c in store.review_conditions() if str(c.get("id")) == "near_duplicate"), None
@@ -728,7 +708,7 @@ def evaluate_review(
                     "srs_phrase": "Near-Duplicate Detection (FR lxxiv)",
                     "reason": (
                         f"This recording is {similarity:.0%} similar to an existing analysis "
-                        f"({audio_id}) -- it looks like a re-encoded, trimmed or "
+                        f"({audio_id}). It looks like a re-encoded, trimmed or "
                         "volume-adjusted copy rather than a new event."
                     ),
                     "recommended_action": (
@@ -754,8 +734,7 @@ def evaluate_review(
         and float(python_confidence) >= ctx["low_confidence_band"]
         and float(gtm_confidence) >= ctx["low_confidence_band"]
         and float(top_two_margin) >= ctx["margin_min"]
-        # A clip flagged as a probable re-share is not a "clean result" even if the models
-        # are certain: the question on the table is provenance, not accuracy.
+        # A probable copy still needs a look, however confident the models are.
         and not near_duplicate
     )
 
@@ -766,7 +745,7 @@ def evaluate_review(
         "priority": top_priority if matched else None,
         "conditions_evaluated": len(store.review_conditions()),
         "clean_result": clean,
-        # A clean result with no firing condition is the only shape that stays out of the queue.
+        # Only a clean result with no conditions stays out of the queue.
         "never_auto_review_ok": (not clean) or not matched,
     }
 
@@ -774,7 +753,7 @@ def evaluate_review(
 # The pipeline
 
 def _extractor_for_bundle(model_dir: Path) -> Any:
-    """The feature extractor the saved bundle was trained with, from its feature_config.json."""
+    """Build the feature extractor described by the bundle's feature_config.json."""
     import json as _json
 
     from feature_extraction.features import FeatureExtractor
@@ -803,7 +782,7 @@ def _extractor_for_bundle(model_dir: Path) -> Any:
 
 @dataclass
 class PipelineModels:
-    """The two independent models, held together only so they are loaded once."""
+    """Both models plus the preprocessing they share, loaded once."""
 
     python: Any  # src.inference.predictor.PythonModelPredictor
     gtm: Any  # src.inference.gtm_predictor.GtmModelPredictor
@@ -823,7 +802,7 @@ class PipelineModels:
 class AnalysisPipeline:
     """Runs one analysis and returns the decision record.
 
-    ``persist`` is optional so the pipeline can be tested and timed without a database.
+    ``persist`` is optional so tests and benchmarks can run without a database.
     """
 
     def __init__(
@@ -860,7 +839,7 @@ class AnalysisPipeline:
     ) -> "AnalysisPipeline":
         """Load both models, the preprocessor and the extractor, or raise ModelsUnavailable.
 
-        There is deliberately no single-model fallback.
+        There is no fallback to a single model.
         """
         from audio_preprocessing.pipeline import AudioPipeline
         from src.inference.gtm_predictor import GtmModelPredictor
@@ -910,8 +889,7 @@ class AnalysisPipeline:
                 f"the Teachable Machine model at {gtm_dir} could not be loaded: {exc}"
             ) from exc
 
-        # The two models must name the same ten classes in the same terms, or the
-        # comparison report would be comparing different questions.
+        # Both models must use the same class names or the comparison means nothing.
         py_classes = list(python_predictor.class_names)
         gtm_classes = list(gtm_predictor.class_names)
         wanted = store.class_names()
@@ -941,9 +919,7 @@ class AnalysisPipeline:
 
     # start-up
     def warm(self) -> dict[str, Any]:
-        """Pay librosa/numba and first-model-call costs at start-up rather than in the first
-        request.
-        """
+        """Run one dummy analysis so librosa/numba warm-up doesn't hit the first request."""
         from audio_preprocessing.pipeline import warm_up
 
         started = time.perf_counter()
@@ -969,7 +945,7 @@ class AnalysisPipeline:
                 t0 = time.perf_counter()
                 self.models.gtm.predict_from_preprocessed(pre)
                 model_warm_ms["gtm_predict"] = round((time.perf_counter() - t0) * 1000.0, 3)
-        except Exception as exc:  # a warm-up failure must not stop the app from starting
+        except Exception as exc:  # warm-up failure shouldn't stop start-up
             model_warm_ms["error"] = f"{type(exc).__name__}: {exc}"
 
         self._warmed = {**timings, **model_warm_ms}
@@ -992,9 +968,8 @@ class AnalysisPipeline:
     ) -> dict[str, Any]:
         """Classify one AudioSource and return the full decision record.
 
-        Bad audio never raises: a rejected clip comes back with ``ok=False``, the reason and
-        whatever quality measurements exist, so the UI can show it. ``meta`` is stored but never
-        affects a prediction.
+        Bad audio doesn't raise: the result has ``ok=False``, the reason and any quality
+        measurements. ``meta`` is stored but doesn't affect the prediction.
         """
         started = time.perf_counter()
         meta = dict(meta or {})
@@ -1067,14 +1042,14 @@ class AnalysisPipeline:
         record["audio"] = {
             "duration_sec": round(float(preprocessed.duration_sec), 4),
             "sample_rate": int(preprocessed.sample_rate),
-            # Source rate/channels: the report shows what was received as well as what was analysed.
+            # Keep the original rate/channels for the report.
             "source_sample_rate": (preprocessed.preprocessing or {}).get("source_sample_rate"),
             "source_channels": (preprocessed.preprocessing or {}).get("source_channels"),
             "source_bit_depth": (preprocessed.preprocessing or {}).get("source_bit_depth"),
             "n_segments": len(preprocessed.segments or []),
             "source_path": str(preprocessed.source_path) if preprocessed.source_path else None,
-            # sha256 identifies the bytes, the fingerprint the sound. The exact-duplicate 409 needs
-            # the database, so the caller does it.
+            # sha256 matches identical bytes, the fingerprint similar sound. The caller does
+            # the exact-duplicate check since it needs the database.
             "sha256": meta.get("sha256") or _source_sha256(preprocessed.source_path),
             "fingerprint": audio_fingerprint(
                 preprocessed.samples,
@@ -1153,16 +1128,15 @@ class AnalysisPipeline:
         comparison_dict = comparison.to_dict()
         mark("compare", t0)
         record["comparison"] = comparison_dict
-        # The older one-line verdict is kept next to the condition-based one; they answer
-        # slightly different questions.
+        # The older one-line verdict is kept alongside the condition-based one.
         legacy_required, legacy_reason = requires_manual_review(comparison, thresholds)
         record["comparison"]["requires_review_quick_check"] = bool(legacy_required)
         record["comparison"]["quick_check_reason"] = legacy_reason
 
         # Severity, alert eligibility and repeated-detection confirmation.
         t0 = time.perf_counter()
-        primary = py_result.predicted_class  # the Python model drives the decision; the
-        #                                       GTM result grades it (SRS Step 11)
+        # The Python model drives the decision; the TM result grades it (SRS Step 11).
+        primary = py_result.predicted_class
         rule = self.store.rule_for_class(primary)
         confirmation = self.tracker.observe(
             class_name=primary,
@@ -1171,9 +1145,8 @@ class AnalysisPipeline:
             confidence=float(py_result.confidence),
             at=at,
             source=origin,
-            # A live stream can wait for the next window; an uploaded recording is finished,
-            # so it is confirmed by the other SRS gates (agreement and quality here,
-            # confidence and margin in severity_block) with required_for_uploads windows.
+            # An upload has no next window to wait for, so it uses required_for_uploads and
+            # relies on the other checks (agreement, quality, confidence, margin).
             needed=(int((thresholds.get("repeat_detection") or {}).get("required_for_uploads", 1))
                     if origin == "upload" else rule.get("required_consecutive_detections")),
             min_quality=rule.get("min_audio_quality"),
@@ -1209,15 +1182,15 @@ class AnalysisPipeline:
         mark("rules", t0)
 
         t0 = time.perf_counter()
-        # Candidates come from the caller (the database); without them nothing is claimed.
+        # Candidates come from the caller (the database).
         duplicate_settings = duplicate_config(thresholds)
         near_duplicate = None
         candidates = list(meta.get("near_duplicate_candidates") or ())
         exclude = {meta.get("audio_id")} if meta.get("audio_id") else ()
         if duplicate_settings["enabled"] and record.get("audio", {}).get("fingerprint"):
             if candidates and len(candidates[0]) == 3:
-                # The upload route passes stored file paths, so the stronger two-stage
-                # check can run; callers with fingerprints only get stage 1.
+                # With stored file paths we can run the two-stage check; otherwise only
+                # the fingerprint.
                 near_duplicate = confirm_near_duplicate(
                     preprocessed.samples, int(preprocessed.sample_rate),
                     record["audio"]["fingerprint"], candidates,
@@ -1233,8 +1206,7 @@ class AnalysisPipeline:
         record["duplicate"] = {
             "sha256": record.get("audio", {}).get("sha256"),
             "exact_duplicate_of": meta.get("exact_duplicate_of"),
-            # None means "we did not find a match", which is a different statement from
-            # "we did not look" -- `checked` says which.
+            # `checked` tells "no match found" apart from "didn't look".
             "near_duplicate_of": (near_duplicate or {}).get("audio_id"),
             "near_duplicate_similarity": (near_duplicate or {}).get("similarity"),
             "near_duplicate_threshold": duplicate_settings["near_duplicate_similarity"],
@@ -1260,8 +1232,8 @@ class AnalysisPipeline:
             predicted_class=primary,
             near_duplicate=near_duplicate,
         )
-        # A critical class detected without agreement must be reviewed even if no
-        # condition happened to name it -- the queue is the safety net for exactly that.
+        # A critical class without agreement always goes to review, even if no condition
+        # named it.
         if severity["critical_class"] and not comparison.classes_agree and not review["required"]:
             review["required"] = True
             review["matched"] = list(review["matched"]) + ["critical_manual_review"]
@@ -1321,8 +1293,7 @@ class AnalysisPipeline:
                     record["stored"] = {"event_id": stored}
                     record["event_id"] = stored
             except Exception as exc:
-                # Losing the write must not lose the analysis the user is waiting for; it is
-                # recorded so the failure is visible instead of silently dropped.
+                # Return the analysis anyway, but record that saving failed.
                 record["stored"] = {"error": f"{type(exc).__name__}: {exc}"}
             mark("persist", t0)
 
@@ -1357,14 +1328,12 @@ class AnalysisPipeline:
         persist: Callable[[dict[str, Any]], Any] | None = None,
         **extra_meta: Any,
     ) -> dict[str, Any]:
-        """Analyse uploaded bytes (written to a content-addressed temp file so FFmpeg can read it).
-        """
+        """Analyse uploaded bytes, via a temp file so FFmpeg can read them."""
         from src.inference.contract import AudioSource
 
         tmp_dir = REPO_ROOT / "data" / "tmp" / "uploads"
         tmp_dir.mkdir(parents=True, exist_ok=True)
-        # Content-addressed name: two uploads of the same bytes cannot collide, and purge
-        # by prefix stays simple.
+        # Name the file by its hash so identical uploads can't collide.
         digest = hashlib.sha256(data).hexdigest()[:16]
         suffix = Path(filename).suffix or ".wav"
         tmp_path = tmp_dir / f"{digest}{suffix}"
@@ -1410,7 +1379,7 @@ class AnalysisPipeline:
 
 
 def _prediction(result: Any) -> dict[str, Any]:
-    """One model's output, with every class's confidence -- the UI shows all ten."""
+    """One model's output with the confidence for every class."""
     return {
         "model_name": result.model_name,
         "model_version": result.model_version,
@@ -1425,7 +1394,7 @@ def _prediction(result: Any) -> dict[str, Any]:
 
 
 def _final_decision(primary: str, review: Mapping[str, Any]) -> str:
-    """The wording the UI shows: Likely Valid / Likely Invalid / Manual Review Required."""
+    """Likely Valid, Likely Invalid or Manual Review Required."""
     if review.get("required"):
         return "Manual Review Required"
     return "Likely Valid"
@@ -1442,7 +1411,7 @@ def _iso(epoch: float) -> str:
     )
 
 
-# Process-wide pipeline (the app factory builds it once; endpoints ask for it)
+# One pipeline per process, built by the app factory
 
 _PIPELINE: AnalysisPipeline | None = None
 _PIPELINE_LOCK = threading.RLock()
@@ -1464,7 +1433,7 @@ def set_pipeline(pipeline: AnalysisPipeline | None) -> None:
 
 
 def pipeline_status() -> dict[str, Any]:
-    """What ``/api/health`` and the admin dashboard report about the live pipeline."""
+    """Pipeline status for /api/health and the admin dashboard."""
     if _PIPELINE is None:
         return {"ready": False, "reason": "pipeline not initialised"}
     return {

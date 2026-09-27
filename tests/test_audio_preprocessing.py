@@ -1,9 +1,7 @@
 """Decoding, validation, preprocessing and segmentation (SRS Steps 3-4, FR viii-xv, xxii).
 
-Every signal is synthesised (sine, silence, two-tone mix, clipped square) so each assertion
-is on a number with an acoustic meaning. Segment length is read from the same config the
-pipeline reads; test_segment_duration_comes_from_the_config_not_the_code checks that a live
-config change moves both the segmentation and the model input shape.
+All test signals are synthetic (sine, silence, two tones, clipped square) so the expected
+values are known exactly.
 """
 
 from __future__ import annotations
@@ -47,10 +45,10 @@ CONFIG_DIR = REPO_ROOT / "config"
 SR = int(cfg_mod.audio_config()["target_sample_rate"])
 
 
-# Synthetic material — deterministic, tiny, and explainable
+# Test signals
 
 def sine(seconds: float, freq: float = 440.0, amplitude: float = 0.5, sr: int = SR) -> np.ndarray:
-    """A pure tone.  Its peak and RMS are known analytically: peak=A, RMS=A/sqrt(2)."""
+    """Pure tone: peak = A, RMS = A/sqrt(2)."""
     t = np.arange(int(round(seconds * sr)), dtype=np.float64) / sr
     return (amplitude * np.sin(2.0 * np.pi * freq * t)).astype(np.float32)
 
@@ -60,19 +58,19 @@ def silence(seconds: float, sr: int = SR) -> np.ndarray:
 
 
 def two_tone(seconds: float, low: float = 440.0, high: float = 3000.0, sr: int = SR) -> np.ndarray:
-    """Two tones an octave and a half apart: has two clear spectral peaks."""
+    """Two tones an octave and a half apart."""
     t = np.arange(int(round(seconds * sr)), dtype=np.float64) / sr
     return (0.4 * np.sin(2 * np.pi * low * t) + 0.3 * np.sin(2 * np.pi * high * t)).astype(np.float32)
 
 
 def clipped_square(seconds: float, freq: float = 440.0, sr: int = SR) -> np.ndarray:
-    """A square wave: every sample sits at +-1, so the clipping detector must see it."""
+    """Square wave at +-1 (fully clipped)."""
     t = np.arange(int(round(seconds * sr)), dtype=np.float64) / sr
     return np.sign(np.sin(2 * np.pi * freq * t)).astype(np.float32)
 
 
 def write_wav(path: Path, samples: np.ndarray, sr: int = SR, channels: int = 1) -> Path:
-    """16-bit PCM WAV, the format every decoder on this box can read."""
+    """Write a 16-bit PCM WAV."""
     data = np.clip(np.asarray(samples, dtype=np.float64), -1.0, 1.0)
     pcm = (data * 32767.0).astype("<i2")
     with wave.open(str(path), "wb") as fh:
@@ -84,11 +82,7 @@ def write_wav(path: Path, samples: np.ndarray, sr: int = SR, channels: int = 1) 
 
 
 def temp_config(tmp_path: Path, **audio_overrides) -> Path:
-    """A full config directory with selected ``audio`` keys changed.
-
-    Whole-directory copies, not a stub: the point of the config-driven test is that the
-    *real* loader, with the *real* file names, honours an edited value.
-    """
+    """Copy of the real config folder with some ``audio`` keys changed."""
     directory = tmp_path / "config"
     directory.mkdir()
     for name in ("classes.json", "thresholds.json", "features.json"):
@@ -101,14 +95,10 @@ def temp_config(tmp_path: Path, **audio_overrides) -> Path:
     return directory
 
 
-# 1. Level arithmetic — the units everything else is judged in
+# 1. Levels
 
 def test_peak_and_rms_dbfs_match_the_analytic_values():
-    """A sine of amplitude 0.5 is -6.02 dBFS peak and -9.03 dBFS RMS (per definition).
-
-    These two numbers are the calibration for the whole quality layer: if they are wrong,
-    every verdict downstream is wrong by the same offset.
-    """
+    """A sine of amplitude 0.5 is -6.02 dBFS peak and -9.03 dBFS RMS."""
     y = sine(1.0, amplitude=0.5)
     assert peak_dbfs(y) == pytest.approx(-6.0206, abs=0.01)
     assert ap.transforms.rms_dbfs(y) == pytest.approx(-9.0309, abs=0.01)
@@ -122,18 +112,13 @@ def test_db_amplitude_round_trip():
 # 2. Channel handling and resampling
 
 def test_to_mono_averages_stereo_channels_rather_than_summing():
-    """Averaging is the safe downmix: summing two full-scale channels clips at the addition.
-
-    Two opposite-phase channels must cancel to near-zero.  A summing implementation would
-    also cancel, so the discriminating case is two *identical* channels: the average keeps
-    the amplitude, the sum doubles it and overflows.
-    """
+    """Two identical channels keep their amplitude (summing would double it)."""
     left = sine(0.5, amplitude=0.8)
     stereo = np.stack([left, left], axis=1)
     mono = to_mono(stereo)
     assert mono.ndim == 1
     assert np.max(np.abs(mono)) == pytest.approx(0.8, abs=1e-6), (
-        "identical channels should average, not sum — summing clips at 1.6"
+        "identical channels should average, not sum (summing clips at 1.6)"
     )
 
     anti = np.stack([left, -left], axis=1)
@@ -141,8 +126,7 @@ def test_to_mono_averages_stereo_channels_rather_than_summing():
 
 
 def test_resample_preserves_duration_and_the_tone():
-    """Duration in seconds is invariant under resampling.  A change here is a silent
-    time-base bug: every stored timestamp would be wrong by that factor."""
+    """Resampling keeps the duration and the tone."""
     y = sine(1.0, freq=440.0)
     for target in (8000, 16000, 22050, 44100):
         out = resample(y, SR, target)
@@ -162,10 +146,8 @@ def test_resample_is_a_no_op_at_the_same_rate():
 def test_normalize_hits_the_target_peak_and_never_clips():
     y = sine(1.0, amplitude=0.02)
     target = -3.0
-    # The tone peak sits 33.98 dB below the target, so the default 30 dB boost cap
-    # deliberately bites here -- the cap is the feature under test in
-    # ``test_normalize_gain_is_capped``, and the point of this case is that an
-    # attenuation toward the target still lands on it.
+    # The 30 dB boost cap applies here (tested separately below); this case checks
+    # that turning a loud signal down lands on the target.
     out = normalize_amplitude(y, target, max_gain_db=60.0)
     assert peak_dbfs(out) == pytest.approx(target, abs=0.01)
     assert np.max(np.abs(out)) <= db_to_amplitude(target) + 1e-6
@@ -178,12 +160,7 @@ def test_normalize_hits_the_target_peak_and_never_clips():
 
 
 def test_normalize_preserves_crest_factor():
-    """Peak, not RMS, normalisation: the crest factor must survive the step.
-
-    Crest factor (peak - RMS in dB) separates an impulsive Gunshot from a sustained Siren.
-    An RMS-normalising implementation flattens it, and the distinction disappears before
-    the model ever sees the audio.
-    """
+    """Peak normalisation keeps the crest factor (useful for gunshot vs siren)."""
     impulsive = np.concatenate([sine(0.02, amplitude=0.05), sine(0.9, amplitude=0.005)])
     crest_before = peak_dbfs(impulsive) - ap.transforms.rms_dbfs(impulsive)
     out = normalize_amplitude(impulsive, -3.0)
@@ -192,14 +169,13 @@ def test_normalize_preserves_crest_factor():
 
 
 def test_normalize_leaves_digital_silence_exactly_zero():
-    """Silence has no level to normalise.  Boosting it by max_gain_db would invent a signal."""
+    """Silence stays zero."""
     out = normalize_amplitude(silence(0.5), -3.0)
     assert np.all(out == 0.0)
 
 
 def test_normalize_gain_is_capped():
-    """A near-silent recording must not be amplified so hard that the noise floor becomes
-    the signal — the cap is what stops that."""
+    """A near-silent recording is not boosted past max_gain_db."""
     y = sine(0.5, amplitude=1e-4)
     out = normalize_amplitude(y, -3.0, max_gain_db=20.0)
     assert peak_dbfs(out) == pytest.approx(-60.0, abs=0.5), "gain cap of 20 dB was exceeded"
@@ -219,8 +195,7 @@ def test_highpass_removes_dc_and_keeps_the_tone():
 
 
 def test_highpass_leaves_the_length_alone():
-    """Zero-phase (filtfilt) filtering, so no group delay is added and the length is exact.
-    A length change here would shift every onset timestamp."""
+    """filtfilt adds no delay and keeps the length."""
     for seconds in (0.5, 3.0):
         y = sine(seconds)
         assert apply_highpass(y, SR).size == y.size
@@ -240,8 +215,7 @@ def test_silence_mask_is_false_on_silence_and_true_on_a_tone():
 
 
 def test_trim_silence_reports_where_it_cut():
-    """The trim must return its (start, end) mapping.  Without it, a timestamp shown in the
-    UI would refer to the trimmed timeline and point at the wrong moment of the original."""
+    """trim_silence returns (start, end) in the original timeline."""
     body = sine(1.0, amplitude=0.5)
     y = np.concatenate([silence(0.5), body, silence(0.5)])
     trimmed, (start, end) = trim_silence(y, SR, top_db=30.0)
@@ -254,7 +228,7 @@ def test_trim_silence_reports_where_it_cut():
 
 
 def test_trim_silence_keeps_a_pure_tone_untouched():
-    """Nothing to trim: the endpoints are the recording's endpoints."""
+    """Nothing to trim."""
     y = sine(1.0)
     trimmed, (start, end) = trim_silence(y, SR)
     assert (start, end) == (0, y.size)
@@ -262,8 +236,7 @@ def test_trim_silence_keeps_a_pure_tone_untouched():
 
 
 def test_trim_silence_never_returns_an_empty_signal():
-    """Trimming everything would produce a zero-length window that the segmenter then
-    happily reports as "no events" — a silent false negative."""
+    """All-silent input still returns something."""
     out, span = trim_silence(silence(1.0), SR)
     assert out.size > 0
     assert span[1] >= span[0]
@@ -272,15 +245,13 @@ def test_trim_silence_never_returns_an_empty_signal():
 # 6. Noise reduction
 
 def test_reduce_noise_is_deterministic():
-    """A learned denoiser would be a second undeclared model; a random one would make the
-    same clip give two different confidences.  Same input, bit-identical output."""
+    """Same input, identical output."""
     y = two_tone(1.0) + (0.02 * np.random.default_rng(7).standard_normal(SR)).astype(np.float32)
     assert np.array_equal(reduce_noise(y, SR), reduce_noise(y, SR))
 
 
 def test_reduce_noise_never_returns_pure_zeros():
-    """A signal of all zeros carries no information and would score as silence downstream.
-    The floor is what stops the gate from silencing a quiet recording completely."""
+    """The noise gate never zeroes a quiet recording completely."""
     for y in (sine(1.0, amplitude=0.01), silence(1.0), two_tone(1.0)):
         out = reduce_noise(y, SR, strength=1.0)
         assert out.size == y.size
@@ -289,7 +260,7 @@ def test_reduce_noise_never_returns_pure_zeros():
 
 
 def test_reduce_noise_lowers_the_noise_floor_between_two_tones():
-    """The tone content must survive while the broadband floor between the tones drops."""
+    """Tones survive, the noise between them drops."""
     t = np.arange(SR, dtype=np.float64) / SR
     tone = (0.4 * np.sin(2 * np.pi * 440 * t)).astype(np.float32)
     noisy = (tone + 0.05 * np.random.default_rng(3).standard_normal(SR)).astype(np.float32)
@@ -312,8 +283,7 @@ def test_reduce_noise_is_a_no_op_when_disabled_or_too_short():
 # 7. Segmentation and timestamps (FR xv)
 
 def test_segment_bounds_cover_every_sample():
-    """"cover" mode must leave no region unanalysed — the SRS event-coverage requirement.
-    The first segment starts at 0 and the last ends at the final sample."""
+    """"cover" mode covers every sample, from 0 to the end."""
     seg_sec = float(cfg_mod.audio_config()["segment_duration_sec"])
     for seconds in (1.0, 3.0, 7.0, 10.0, 30.0):
         n = int(seconds * SR)
@@ -330,7 +300,7 @@ def test_segment_bounds_cover_every_sample():
 
 
 def test_segment_bounds_uses_the_configured_length():
-    """The number of segments follows from config, not from a literal in the code."""
+    """Segment count follows the configured length."""
     seg_sec = float(cfg_mod.audio_config()["segment_duration_sec"])
     n = int(seg_sec * 3 * SR)  # exactly three segment lengths
     bounds = segment_bounds(n, SR, seg_sec, mode="cover")
@@ -341,8 +311,7 @@ def test_segment_bounds_uses_the_configured_length():
 
 
 def test_short_recording_yields_one_short_segment_not_a_padding_lie():
-    """A recording shorter than one segment is one segment.  Padding it to a full segment
-    here would claim audio that was never recorded."""
+    """A recording shorter than one segment gives one short segment (no padding)."""
     seg_sec = float(cfg_mod.audio_config()["segment_duration_sec"])
     n = int(seg_sec * SR / 2)
     bounds = segment_bounds(n, SR, seg_sec, mode="cover")
@@ -350,7 +319,7 @@ def test_short_recording_yields_one_short_segment_not_a_padding_lie():
 
 
 def test_grid_mode_has_stable_boundaries():
-    """Live capture needs segment starts that do not move as the buffer grows."""
+    """Segment starts don't move as the buffer grows."""
     seg_sec = float(cfg_mod.audio_config()["segment_duration_sec"])
     seg_len = int(seg_sec * SR)
     first = segment_bounds(seg_len * 4, SR, seg_sec, mode="grid")
@@ -360,9 +329,7 @@ def test_grid_mode_has_stable_boundaries():
 
 
 def test_segment_timestamps_are_seconds_in_fr_xv_form():
-    """FR xv: start and end timestamps must be stored.  Seconds, because the database, the
-    timeline and the report all speak seconds — a raw sample index is meaningless without
-    the rate, and the rate is itself configurable."""
+    """FR xv: timestamps are in seconds."""
     seg_sec = float(cfg_mod.audio_config()["segment_duration_sec"])
     stamps = segment_timestamps(int(seg_sec * 2 * SR), SR, seg_sec)
     assert len(stamps) == 2
@@ -391,9 +358,7 @@ def test_pad_or_truncate_returns_exactly_the_target_length():
 
 
 def test_pad_or_truncate_center_keeps_the_signal_centred():
-    """Centre padding keeps an event's position relative to the window centre, which is
-    what the model was trained with.  Random padding is deliberately not implemented: it
-    would make a re-run of the same clip give a different answer."""
+    """Centre padding keeps the signal in the middle."""
     short = sine(1.0)
     target = 4 * short.size
     out = pad_or_truncate(short, target, mode="center")
@@ -404,7 +369,7 @@ def test_pad_or_truncate_center_keeps_the_signal_centred():
         pad_or_truncate(short, target, mode="random")
 
 
-# 9. File validation (SRS Step 3, FR viii) — every rejection has a reason code
+# 9. File validation (SRS Step 3, FR viii)
 
 def test_validates_a_real_tone_and_reports_fr_x_metadata(tmp_path):
     path = write_wav(tmp_path / "tone.wav", sine(2.0))
@@ -428,8 +393,7 @@ def test_zero_byte_file_is_rejected_as_empty_audio(tmp_path):
 
 
 def test_a_text_file_is_reported_as_unsupported_not_as_corrupt(tmp_path):
-    """'This is not audio' and 'this audio is damaged' are different messages to a user.
-    Magic bytes decide: no audio signature at all -> unsupported format."""
+    """No audio signature means unsupported format, not a corrupt file."""
     path = tmp_path / "notes.txt"
     path.write_text("this is not an audio file at all\n", encoding="utf-8")
     info = ap.validate_file(path)
@@ -438,8 +402,7 @@ def test_a_text_file_is_reported_as_unsupported_not_as_corrupt(tmp_path):
 
 
 def test_a_wav_renamed_to_txt_is_still_validated_as_audio(tmp_path):
-    """Content wins over extension.  Rejecting a real recording because someone renamed it
-    is a false negative the evaluator will find."""
+    """The content decides, not the extension."""
     path = write_wav(tmp_path / "renamed.txt", sine(1.0))
     info = ap.validate_file(path)
     assert info["ok"] is True, info["detail"]
@@ -447,8 +410,7 @@ def test_a_wav_renamed_to_txt_is_still_validated_as_audio(tmp_path):
 
 
 def test_random_bytes_with_a_wav_extension_are_rejected_as_a_corrupt_header(tmp_path):
-    """Undecodable audio must be refused loudly, never silently dropped or replaced by
-    zeros — a zero-filled clip would be classified as Background Noise with confidence."""
+    """Undecodable audio is rejected, not replaced by zeros."""
     path = tmp_path / "broken.wav"
     path.write_bytes(b"RIFF" + b"\x00" * 32 + bytes(range(200)))
     info = ap.validate_file(path)
@@ -472,18 +434,16 @@ def test_too_short_file_is_rejected(tmp_path):
 
 
 def test_digital_silence_is_rejected_for_absence_of_signal(tmp_path):
-    """FR viii 'presence of audio signal'.  A silent container is a valid file holding no
-    event, so it is refused at the door rather than classified later."""
+    """FR viii: a silent file is rejected."""
     path = write_wav(tmp_path / "quiet.wav", silence(2.0))
     info = ap.validate_file(path)
     assert info["ok"] is False
     assert info["reason"] == SILENT
-    assert info["rms_dbfs"] is None  # -inf dBFS, reported as unavailable, not as a number
+    assert info["rms_dbfs"] is None  # -inf, reported as None
 
 
 def test_validating_samples_matches_validating_a_file(tmp_path):
-    """The live path has no container to inspect, but the presence-of-signal rule is the
-    same rule.  A docstring claiming a check that does not run is worse than no check."""
+    """Live windows get the same signal check as files."""
     tone = ap.validate_samples(sine(1.0), SR)
     assert tone["ok"] is True
     assert tone["rms_dbfs"] == pytest.approx(-9.03, abs=0.05)
@@ -497,8 +457,7 @@ def test_validating_samples_matches_validating_a_file(tmp_path):
 
 @pytest.mark.parametrize("target", ["mp3", "flac", "ogg", "m4a"])
 def test_convert_format_round_trips_through_the_target_codec(tmp_path, target):
-    """The SRS lists WAV/MP3/FLAC/OGG/M4A as accepted uploads, so the decoders must actually
-    handle each one, not merely be configured for it."""
+    """Each accepted format actually decodes."""
     src = write_wav(tmp_path / "source.wav", sine(1.0))
     out = ap.convert_format(src, target, out_dir=tmp_path / "converted")
     assert out.exists() and out.suffix == f".{target}"
@@ -510,7 +469,7 @@ def test_convert_format_round_trips_through_the_target_codec(tmp_path, target):
     y, sr = ap.load_audio(out, sample_rate=SR, mono=True)
     assert sr == SR
     assert y.size / SR == pytest.approx(1.0, abs=0.05)
-    # The 440 Hz tone is still there: the dominant FFT bin is at 440 Hz.
+    # The strongest FFT bin is still 440 Hz.
     spec = np.abs(np.fft.rfft(y.astype(np.float64)))
     freqs = np.fft.rfftfreq(y.size, 1.0 / SR)
     assert freqs[int(np.argmax(spec))] == pytest.approx(440.0, abs=15.0), (
@@ -530,7 +489,7 @@ def test_load_audio_rejects_an_unknown_format_instead_of_returning_zeros():
         ap.load_audio_bytes(b"not audio" * 10, filename="thing.wav")
 
 
-# 11. The whole pipeline, and the config-driven segment duration
+# 11. Full pipeline and config-driven segment length
 
 def test_pipeline_preprocesses_a_file_end_to_end(tmp_path):
     path = write_wav(tmp_path / "clip.wav", sine(1.5))
@@ -542,7 +501,7 @@ def test_pipeline_preprocesses_a_file_end_to_end(tmp_path):
     assert len(result.segments) >= 1
     assert all(len(seg) == 2 and seg[0] < seg[1] for seg in result.segments)
     assert result.preprocessing["version"] == ap.preprocessing_version()
-    # Every conditioning step is reported, so the report can show what was done.
+    # Every step is listed.
     applied = {s["step"] for s in result.preprocessing["steps"]}
     assert {"decode", "normalize_amplitude", "resample", "trim_silence"} <= applied
 
@@ -564,14 +523,13 @@ def test_pipeline_rejects_a_too_short_file_with_a_reason(tmp_path):
 
 
 def test_pipeline_accepts_a_bare_path(tmp_path):
-    """The app sometimes has a path and no AudioSource; that must not be a second code path."""
+    """A plain path works too."""
     path = write_wav(tmp_path / "clip.wav", sine(1.0))
     assert ap.AudioPipeline()(path).duration_sec == pytest.approx(1.0, abs=0.05)
 
 
 def test_pipeline_is_deterministic(tmp_path):
-    """Two runs over the same file must give bit-identical samples.  A non-deterministic
-    preprocessing step would make every stored confidence unreproducible."""
+    """Two runs on the same file give identical samples."""
     path = write_wav(tmp_path / "clip.wav", two_tone(1.0))
     a = ap.preprocess_file(path)
     b = ap.preprocess_file(path)
@@ -581,9 +539,7 @@ def test_pipeline_is_deterministic(tmp_path):
 
 
 def test_segment_duration_comes_from_the_config_not_the_code(tmp_path):
-    """Change the segment duration in a temporary config: segment length, timestamps and segment
-    count must all follow with no code edit.
-    """
+    """Changing the segment length in config changes the segments, timestamps and count."""
     original = float(cfg_mod.audio_config()["segment_duration_sec"])
     shorter = original / 2.0
     directory = temp_config(tmp_path, segment_duration_sec=shorter)
@@ -592,7 +548,7 @@ def test_segment_duration_comes_from_the_config_not_the_code(tmp_path):
         assert pipeline.segment_seconds == pytest.approx(shorter)
         assert pipeline.describe()["segment_duration_sec"] == pytest.approx(shorter)
 
-        samples = sine(original * 2)  # two of the ORIGINAL segments
+        samples = sine(original * 2)  # two original segments
         result = pipeline.preprocess_samples(samples, SR)
         assert result.rejected is False
         assert result.preprocessing["segment_duration_sec"] == pytest.approx(shorter)
@@ -607,13 +563,12 @@ def test_segment_duration_comes_from_the_config_not_the_code(tmp_path):
     finally:
         cfg_mod.clear_cache()
 
-    # And the repository config is untouched by the experiment.
+    # The real config is unchanged.
     assert ap.AudioPipeline().segment_seconds == pytest.approx(original)
 
 
 def test_unknown_config_values_are_refused_rather_than_guessed(tmp_path):
-    """A missing config file must not silently become a set of defaults the app then
-    reports as if they were configured."""
+    """A missing config file raises instead of using defaults."""
     report = ap.config_dir_report(CONFIG_DIR)
     assert report["directory"] == str(CONFIG_DIR)
     assert report["files"]["thresholds.json"]["exists"] is True
@@ -622,8 +577,7 @@ def test_unknown_config_values_are_refused_rather_than_guessed(tmp_path):
 
 
 def test_warm_up_returns_timings_for_every_hot_step():
-    """The web app calls this at startup; it must touch every transform that librarises
-    numba JIT-compiles, or the first upload pays the compilation cost."""
+    """warm_up runs every numba-compiled step."""
     timings = ap.warm_up()
     assert set(timings) >= {
         "to_mono", "apply_highpass", "reduce_noise", "trim_silence",

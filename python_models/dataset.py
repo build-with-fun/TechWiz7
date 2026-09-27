@@ -1,8 +1,4 @@
-"""Dataset access for training: the only place that resolves a manifest row to a file.
-
-The manifest stores relative paths and several roots are plausible, so one resolver with an
-explicit error beats every script guessing.
-"""
+"""Dataset access for training, including resolving manifest rows to audio files."""
 
 from __future__ import annotations
 
@@ -15,7 +11,7 @@ from typing import Any, Iterable, Mapping, Sequence
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-#: Roots a manifest ``filename`` may be relative to, tried in order.
+# Roots a manifest ``filename`` may be relative to, tried in order.
 _AUDIO_ROOTS: tuple[Path, ...] = (
     REPO_ROOT / "audio_dataset",
     REPO_ROOT,
@@ -25,14 +21,14 @@ AUDIO_SUFFIXES = {".wav", ".mp3", ".flac", ".ogg", ".m4a", ".aiff", ".aif"}
 
 
 class DatasetError(RuntimeError):
-    """Raised when the corpus cannot be read the way training requires."""
+    """Raised when the dataset can't be read."""
 
 
 # Path resolution
 
 
 def resolve_audio_path(record: Mapping[str, Any]) -> Path:
-    """Absolute path to a manifest row's audio; the error lists every location tried."""
+    """Absolute path of a row's audio file. The error lists every place it looked."""
     raw = str(record.get("filename") or record.get("filepath") or "").strip()
     if not raw:
         raise DatasetError(f"record {record.get('audio_id')!r} has no filename field")
@@ -60,7 +56,7 @@ def resolve_audio_path(record: Mapping[str, Any]) -> Path:
 
 @dataclass
 class SplitData:
-    """A split's records, plus the class counts, so a thin class is visible immediately."""
+    """A split's records and class counts."""
 
     name: str
     records: list[dict[str, str]]
@@ -81,7 +77,7 @@ class SplitData:
 
 
 def read_manifest(path: str | Path) -> list[dict[str, str]]:
-    """All rows of a manifest CSV, or a clear error explaining what is wrong with it."""
+    """All rows of a manifest CSV."""
     manifest = Path(path)
     if not manifest.is_absolute():
         manifest = REPO_ROOT / manifest
@@ -104,9 +100,7 @@ def read_manifest(path: str | Path) -> list[dict[str, str]]:
 
 
 def load_all_splits(manifest_path: str | Path) -> dict[str, SplitData]:
-    """Every split, keyed train/val/test; refuses a manifest without ``dataset_split`` rather than
-    re-deriving one.
-    """
+    """All splits keyed train/val/test. Needs a ``dataset_split`` column."""
     rows = read_manifest(manifest_path)
     if not rows:
         raise DatasetError(f"manifest {manifest_path} has no data rows")
@@ -137,7 +131,7 @@ def load_records_for_split(manifest_path: str | Path, split: str) -> SplitData:
     return splits[split]
 
 
-# Training-only rows
+# Training rows
 
 
 def training_records(
@@ -146,10 +140,9 @@ def training_records(
     exclude_augmented: bool = False,
     require_originals: bool = True,
 ) -> list[dict[str, str]]:
-    """Rows of a split that are legal to train on.
+    """Rows of a split that can be used for training.
 
-    ``require_originals`` only records how much of the training set is augmented;
-    ``exclude_augmented`` is for evaluation, where augmented audio must never be scored.
+    Use ``exclude_augmented`` for evaluation.
     """
     records = list(split.records)
     if exclude_augmented:
@@ -169,7 +162,7 @@ def training_records(
 
 
 def describe_split(split: SplitData) -> dict[str, Any]:
-    """Counts the training artefact records, so the report never asserts them from memory."""
+    """Counts for the training report."""
     counts = split.class_counts()
     augmented = sum(
         1
@@ -189,8 +182,7 @@ def describe_split(split: SplitData) -> dict[str, Any]:
 
 
 def class_imbalance_report(split: SplitData, class_names: Sequence[str]) -> dict[str, Any]:
-    """Counts per class, largest/smallest ratio, and any configured class that is missing entirely.
-    """
+    """Counts per class, the largest/smallest ratio, and any missing classes."""
     counts = Counter(split.labels)
     present = {name: int(counts.get(name, 0)) for name in class_names}
     absent = [name for name, n in present.items() if n == 0]
@@ -203,11 +195,11 @@ def class_imbalance_report(split: SplitData, class_names: Sequence[str]) -> dict
     }
 
 
-# Integrity helpers used by tests
+# Used by tests
 
 
 def file_sha256(path: str | Path, chunk: int = 1 << 20) -> str:
-    """Content hash, for duplicate detection."""
+    """SHA-256 of a file."""
     digest = hashlib.sha256()
     with Path(path).open("rb") as fh:
         while block := fh.read(chunk):

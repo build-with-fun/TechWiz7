@@ -43,7 +43,7 @@
   </div>
 {% endif %}
 
-{# ---- the consent gate. FR lxxix: capture is consent-gated. ----------------- #}
+{# Consent gate (FR lxxix) #}
 <section class="panel" data-consent-panel>
   <div class="panel__head">
     <h2 class="panel__title">Microphone consent</h2>
@@ -64,7 +64,7 @@
   </div>
 </section>
 
-{# ---- the console. ---------------------------------------------------------- #}
+{# Console #}
 <section class="live" data-live-root data-analysis-ready="{{ '1' if analysis_ready else '0' }}" aria-live="polite">
   <div class="live__controls">
     <div class="live__identity">
@@ -94,11 +94,10 @@
     <div class="live__meter-cap" data-live-meter-peak>-&nbsp;dB</div>
   </div>
 
-  {# Filled by live.js only when a confirmed alert is raised; role=alert makes a
-     screen reader announce it immediately. #}
+  {# live.js fills this when an alert is confirmed; role=alert makes screen readers announce it. #}
   <div class="banner banner--critical live__alert" data-live-alert role="alert" hidden></div>
 
-  {# ---- the verdict line: the first thing a person reads. ------------------- #}
+  {# Verdict #}
   <div class="verdict" data-live-verdict data-testid="live-verdict">
     <div class="verdict__class" data-live-class>
       <span class="verdict__label">Nothing detected yet</span>
@@ -108,7 +107,7 @@
     </div>
   </div>
 
-  {# ---- the two models, side by side. The reason this screen exists. -------- #}
+  {# Both models #}
   <div class="duo" data-live-duo>
     <article class="model-card model-card--python" data-model-card="python">
       <header class="model-card__head">
@@ -144,7 +143,7 @@
     </article>
   </div>
 
-  {# ---- the run distribution: what this session has heard. ------------------ #}
+  {# Class counts for this session #}
   <section class="panel">
     <div class="panel__head">
       <h2 class="panel__title">This session so far</h2>
@@ -166,7 +165,7 @@
     </div>
   </section>
 
-  {# ---- the window tape: recent windows in chronological order. ------------- #}
+  {# Recent windows, oldest first #}
   <section class="panel">
     <div class="panel__head">
       <h2 class="panel__title">Recent windows</h2>
@@ -181,7 +180,7 @@
   </section>
 </section>
 
-{# ---- past sessions. --------------------------------------------------------- #}
+{# Past sessions #}
 <section class="panel" data-live-sessions-panel>
   <div class="panel__head">
     <h2 class="panel__title">Past sessions</h2>

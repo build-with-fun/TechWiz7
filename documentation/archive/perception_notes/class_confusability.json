@@ -91,7 +91,7 @@
       "perceptual_signature": "Sustained dual-tone harmonic stack, fundamental roughly 350-600 Hz with strong 2nd-5th harmonics, steady (no sweep), short-to-medium duration (0.2-2 s). Often two tones a few tens of Hz apart beating.",
       "human_cue": "A steady, non-modulated blare at the pitch range of a human shout - which is exactly why it confuses with speech energy and with alarms.",
       "key_features": ["chroma", "spectral_centroid", "spectral_flatness", "modulation spectrum (flat = horn, peak = siren)", "tonnetz"],
-      "literature": "Automotive horn acoustics: dual-tone pairs (e.g. 400 + 500 Hz) per ECE R28-type specifications; verify exact regulatory figures with sofia before quoting."
+      "literature": "Automotive horn acoustics: dual-tone pairs (e.g. 400 + 500 Hz) per ECE R28-type specifications; check the exact regulatory figures before quoting."
     },
     {
       "class": "Animal Sound",
@@ -152,7 +152,7 @@
       "perceptual_signature": "Speech at raised intensity with elevated and unstable F0, fast speech rate, sharp prosodic contours, often overlapping voices; distinct from a scream by still being linguistically structured speech.",
       "human_cue": "Prosody plus content. Humans use BOTH; a model that has only acoustics will confuse this with any loud speech, which is exactly SRS Step 14's 'Aggression vs normal conversation' pair.",
       "key_features": ["F0 statistics (mean, range, slope)", "speech_rate estimate", "mfcc_delta", "rms energy variance", "spectral_flux"],
-      "literature": "Prosody of anger/aggression in speech: consistent pattern of raised F0 and increased intensity variance across languages; verify specific study citation with sofia."
+      "literature": "Prosody of anger/aggression in speech: consistent pattern of raised F0 and increased intensity variance across languages; find the specific study before citing."
     },
     {
       "class": "Person Asking for Help",

@@ -1,7 +1,6 @@
-"""One-off repair (already applied): two crashed acquire_corpus.py runs both started at
-SS-*-0501 and overwrote each other's files. Each damaged row's clip is re-harvested from the
-raw caches (ESC-50, UrbanSound8K, FSD50K.eval), verified against the row's sha256 and
-written back.
+"""One-off fix (already applied): two crashed acquire_corpus.py runs both started at
+SS-*-0501 and overwrote each other's files. Each damaged clip is taken again from the raw
+datasets, checked against its sha256 and written back.
 
     .venv/bin/python data/repair_collided_blobs.py
 """
@@ -30,7 +29,7 @@ def sha256_of(p: Path) -> str:
 
 
 def find_collided() -> tuple[dict[str, dict], dict[str, list[str]]]:
-    """Recompute the verifier's two checks; return rows keyed by id + digest groups."""
+    """Run the verifier's two checks; return rows by id and hash groups."""
     rows: dict[str, dict] = {}
     with MANIFEST.open(newline="", encoding="utf-8") as fh:
         for r in csv.DictReader(fh):
@@ -68,7 +67,7 @@ def ensure_eval_labels() -> None:
 
 
 def harvest_needed(needed: dict[str, set[str]]) -> dict[str, bytes]:
-    """Stream the raw caches once, keeping only the needed blobs (source tag -> corpus keys)."""
+    """Read the raw datasets once and keep only the clips we need."""
     import pandas as pd
 
     blobs: dict[str, bytes] = {}

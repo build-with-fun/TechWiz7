@@ -1,4 +1,4 @@
-"""Authentication endpoints.  SRS FR i."""
+"""Authentication endpoints (FR i)."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ bp = Blueprint("auth_api", __name__, url_prefix="/api/auth")
 
 
 def _user_payload(user) -> dict:
-    """What the client is told about itself. Never the hash, never the lockout internals."""
+    """User info returned to the client (no hash or lockout details)."""
     return {
         "id": user.id,
         "username": user.username,
@@ -44,10 +44,9 @@ def _user_payload(user) -> dict:
 
 @bp.post("/login")
 def login():
-    """Exchange a username and password for a session.
+    """Sign in with username and password.
 
-    Each failure has a stable code, but an unknown username gets exactly the same response as a
-    wrong password; the difference is recorded only in the audit trail.
+    Unknown username and wrong password get the same response; only the audit log differs.
     """
     payload = request.get_json(silent=True) or request.form or {}
     username = str(payload.get("username", "")).strip()
@@ -66,7 +65,7 @@ def login():
     store = current_app.config["SST_CONFIG_STORE"]
     request_id = getattr(g, "request_id", None)
 
-    # The per-IP and per-username login limits from config/auth.json (FR lxxviii).
+    # Per-IP and per-username limits (FR lxxviii).
     limiter_ip = current_app.extensions["sst_limiter_login_ip"]
     limiter_user = current_app.extensions["sst_limiter_login_user"]
     for limiter, key, label in (
@@ -105,7 +104,7 @@ def login():
     if not outcome.ok:
         outcome.raise_if_failed()
 
-    # A good sign-in clears the username limiter, so a typo spree does not throttle the operator.
+    # Reset the username limit after a successful sign-in.
     limiter_user.reset(username.lower())
     sign_in(outcome.user, remember=remember)
 
@@ -118,7 +117,7 @@ def login():
 @bp.post("/logout")
 @login_required
 def logout():
-    """End the session and record it (FR lxxvi logs sign-outs too)."""
+    """Sign out (audited, FR lxxvi)."""
     user = current_user
     factory = current_app.config["SST_SESSION_FACTORY"]
     with session_scope(factory) as session:
@@ -131,9 +130,7 @@ def logout():
 @bp.get("/me")
 @login_required
 def me():
-    """The current user and their capabilities (the same matrix the server checks), for building
-    menus.
-    """
+    """Current user and their capabilities."""
     return jsonify({
         "user": _user_payload(current_user.row),
         "role": current_user.role,
@@ -150,7 +147,7 @@ def me():
 @bp.post("/password")
 @login_required
 def change_password():
-    """Change your own password; the current password is required even for administrators."""
+    """Change your own password. The current password is always required."""
     from werkzeug.security import check_password_hash
 
     payload = request.get_json(silent=True) or request.form or {}

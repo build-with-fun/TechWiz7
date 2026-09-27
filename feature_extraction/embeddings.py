@@ -1,23 +1,14 @@
-"""Pretrained audio embeddings for the transfer-learning Python model.
+"""CNN14 embeddings for the transfer-learning Python model.
 
-Why this exists: the hand-crafted 254-column vector in ``features.py`` topped out at
-about 0.70 test accuracy (HistGradientBoosting, Sep 25 run). Most of the remaining errors
-were between classes that share a spectral envelope, such as a door slam against a
-gunshot, or a scream against an aggressive shout. A network pretrained on a large audio
-corpus has already learned to separate that kind of texture, so we reuse its penultimate
-layer as a 2048-number description of a clip and train only a small classifier on top of
-it with our 2,100 training recordings.
+The hand-made features in features.py stopped at about 0.70 test accuracy, mostly failing
+on classes with similar spectra (door slam vs gunshot, scream vs shout). CNN14 from PANNs
+(Kong et al., 2020), pretrained on AudioSet, handles those better, so we take its
+2048-value penultimate layer and train a small classifier on it.
 
-The network is CNN14 from PANNs (Kong et al., 2020, "PANNs: Large-Scale Pretrained Audio
-Neural Networks for Audio Pattern Recognition"), the 16 kHz checkpoint, trained on
-AudioSet (YouTube audio). Our corpus comes from Freesound (ESC-50, FSD50K, UrbanSound8K)
-plus our own synthetic clips, so the pretraining data does not include our test
-recordings. The weights are not committed (about 300 MB). ``tools/fetch_pretrained.py``
-downloads them and checks the SHA-256.
-
-The layer definitions below were written against the paper and the checkpoint's key
-names. Only the backbone and ``fc1`` are loaded. The 527-way AudioSet head is ignored,
-so no AudioSet label ever reaches our decision.
+AudioSet is YouTube audio and our clips come from Freesound datasets plus our own, so the
+pretraining data doesn't include our test set. Weights (~300 MB) are not in Git;
+tools/fetch_pretrained.py downloads and checks them. Only the backbone and fc1 are
+loaded, not the AudioSet classification head.
 """
 
 from __future__ import annotations
@@ -33,8 +24,7 @@ import numpy as np
 EMBEDDING_VERSION = "panns-cnn14-16k-emb-1.0.0"
 EMBEDDING_DIM = 2048
 
-# The 16 kHz checkpoint's front end. These must match the checkpoint exactly: the first
-# batch-norm layer holds statistics for 64 mel bands built with this STFT.
+# Front-end settings of the 16 kHz checkpoint. They must match it exactly.
 SAMPLE_RATE = 16000
 WINDOW = 512
 HOP = 160
@@ -46,15 +36,11 @@ CHECKPOINT_NAME = "Cnn14_16k_mAP=0.438.pth"
 CHECKPOINT_URL = (
     "https://zenodo.org/records/3987831/files/Cnn14_16k_mAP%3D0.438.pth?download=1"
 )
-# Zenodo publishes md5 362fc5ff18f1d6ad2f6d464b45893f2c for this file; our download
-# matched it on 26 Sep 2026 and this is the SHA-256 of that verified copy. A truncated or
-# swapped file is refused rather than silently producing different embeddings.
+# SHA-256 of our copy, which matched Zenodo's md5 (362fc5ff18f1d6ad2f6d464b45893f2c).
 CHECKPOINT_MD5 = "362fc5ff18f1d6ad2f6d464b45893f2c"
 CHECKPOINT_SHA256 = "e2ee543a27919542c2ea03eabaa70b24dcd4e6c8e05621de6b67a94e4c5058e6"
 
-# CNN14 has five 2x2 average pools on the time axis, so anything shorter than about
-# 32 frames (0.32 s) collapses to nothing. We pad to one second, which also matches the
-# shortest clips the upload validator accepts.
+# CNN14's pooling needs at least ~0.32 s of input; pad to one second.
 MIN_SAMPLES = SAMPLE_RATE
 
 
@@ -107,8 +93,8 @@ def _build_network():
             self.fc1 = nn.Linear(2048, 2048)
 
         def log_mel(self, wave):
-            # Same maths as the checkpoint's conv-based STFT: centred, reflect-padded,
-            # periodic Hann, power spectrum, then 10*log10 with a 1e-10 floor.
+            # Same as the checkpoint's STFT: centred, reflect-padded, periodic Hann,
+            # power, then 10*log10 with a 1e-10 floor.
             spec = torch.stft(wave, n_fft=WINDOW, hop_length=HOP, win_length=WINDOW,
                               window=self.window, center=True, pad_mode="reflect",
                               return_complex=True)
@@ -123,8 +109,7 @@ def _build_network():
                 x = getattr(self, f"conv_block{i}")(x, (2, 2))
             x = self.conv_block6(x, (1, 1))
             x = x.mean(dim=3)                                # collapse frequency
-            # Max + mean over time: the max keeps a single short impulse (a gunshot in a
-            # long clip) from being averaged away, the mean keeps sustained sounds stable.
+            # Max + mean over time: max keeps short impulses, mean helps sustained sounds.
             x = x.max(dim=2).values + x.mean(dim=2)
             return F.relu(self.fc1(x))
 
@@ -132,7 +117,7 @@ def _build_network():
 
 
 class PannsEmbedder:
-    """Turns a 16 kHz mono waveform into a 2048-d CNN14 embedding (eval mode, no grad)."""
+    """16 kHz mono waveform -> 2048-d CNN14 embedding."""
 
     _lock = threading.Lock()
 
@@ -172,12 +157,10 @@ class PannsEmbedder:
 
             y = librosa.resample(y, orig_sr=sample_rate, target_sr=SAMPLE_RATE)
         if y.size < MIN_SAMPLES:
-            # Centre-pad rather than end-pad so a short transient keeps silence on both
-            # sides, which is how the longer training clips look after trimming.
+            # Centre-pad so short sounds have silence on both sides, like the training clips.
             total = MIN_SAMPLES - y.size
             y = np.pad(y, (total // 2, total - total // 2))
-        # A single lock keeps concurrent Flask requests from fighting over torch's thread
-        # pool; one forward pass on a 30 s clip is well under a second on the test laptop.
+        # One request at a time through torch.
         with self._lock, torch.inference_mode():
             out = self.net(torch.from_numpy(y).unsqueeze(0))
         return out.squeeze(0).numpy().astype(np.float64)
@@ -188,7 +171,7 @@ _shared_lock = threading.Lock()
 
 
 def shared_embedder() -> PannsEmbedder:
-    """One embedder per process; loading CNN14 takes a couple of seconds."""
+    """Shared embedder (loading takes a couple of seconds)."""
     global _shared
     with _shared_lock:
         if _shared is None:
@@ -201,10 +184,9 @@ def embedding_columns() -> list[str]:
 
 
 class EmbeddingFeatureExtractor:
-    """Feature extractor for bundles whose feature_version is an embedding version.
+    """Feature extractor for bundles that use CNN14 embeddings.
 
-    Mirrors ``FeatureExtractor.extract``: it receives the SAME PreprocessedAudio the GTM
-    model receives, so upload and live windows are embedded from identical samples.
+    Same interface as FeatureExtractor, and gets the same PreprocessedAudio as the TM model.
     """
 
     feature_version = EMBEDDING_VERSION

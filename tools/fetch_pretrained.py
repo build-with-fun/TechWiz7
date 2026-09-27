@@ -1,12 +1,12 @@
-"""Download the pretrained audio networks the Python model's embeddings come from.
+"""Download the pretrained networks used for the Python model's embeddings.
 
     python tools/fetch_pretrained.py            # PANNs CNN14, ~358 MB into ~/.cache/sonicsentinel/
     python tools/fetch_pretrained.py --ast      # AST (AudioSet), ~350 MB into the Hugging Face cache
     SST_PANNS_CHECKPOINT=/path/file.pth ...     # use a CNN14 copy somewhere else instead
 
-CNN14: Zenodo record 3987831 (Kong et al., PANNs), CC BY 4.0, checked against Zenodo's
-MD5 and the SHA-256 pinned in feature_extraction/embeddings.py. Zenodo can be slow (about
-100 KB/s on one connection), so it is fetched in parallel byte ranges that resume.
+CNN14: Zenodo record 3987831 (Kong et al., PANNs), CC BY 4.0, checked against the MD5
+and SHA-256 in feature_extraction/embeddings.py. Zenodo is slow, so it downloads in
+parallel, resumable chunks.
 
 AST: MIT/ast-finetuned-audioset-10-10-0.4593 on Hugging Face (BSD-3-Clause), at the revision
 pinned in feature_extraction/ast_embeddings.py.
@@ -57,7 +57,7 @@ def digest(path: Path, algorithm: str) -> str:
 def fetch_ast() -> None:
     from feature_extraction.ast_embeddings import AST_MODEL, AST_REVISION, AstEmbedder
 
-    AstEmbedder()  # downloads into the Hugging Face cache on first use
+    AstEmbedder()  # downloads on first use
     print(f"AST {AST_MODEL}@{AST_REVISION[:8]} is in the Hugging Face cache")
 
 

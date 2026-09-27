@@ -1,8 +1,7 @@
-"""Decoding and file-level validation (SRS Step 3; FR iv, viii, x).
+"""Decoding and file validation (SRS Step 3; FR iv, viii, x).
 
-soundfile first (WAV, FLAC, OGG, MP3), FFmpeg for M4A/AAC and anything soundfile declines.
-Undecodable input raises AudioRejected with a reason code; validate_file reports the reason
-without raising, so a batch upload can list every bad file.
+soundfile handles WAV, FLAC, OGG and MP3; FFmpeg handles M4A/AAC and anything else.
+load_audio raises AudioRejected; validate_file returns the reason instead of raising.
 """
 
 from __future__ import annotations
@@ -57,19 +56,18 @@ EXTENSION_ALIASES = {
     "mpga": "mp3",
 }
 
-# Extensions worth handing to a decoder. A renamed text file is then reported as not audio,
-# not as a corrupt audio file. The configured supported-format check comes later.
+# Extensions we try to decode. The supported-format check comes later.
 DECODABLE_EXTENSIONS = frozenset({
     "wav", "wave", "mp3", "mpeg", "mpga", "flac", "ogg", "oga", "opus",
     "m4a", "mp4", "aac", "aiff", "aif", "wma", "amr", "au", "w64", "caf",
 })
 
-# Bytes we sniff to spot a damaged container before handing it to a decoder.
+# Magic bytes for format detection.
 SNIFF_BYTES = 16
 
 
 def _sniff_format(path: Path) -> str | None:
-    """Guess a format from magic bytes.  ``m4a``/``mp4`` use a size-prefixed ``ftyp`` box."""
+    """Guess the format from magic bytes."""
     try:
         with path.open("rb") as fh:
             head = fh.read(SNIFF_BYTES)
@@ -85,8 +83,7 @@ def _sniff_format(path: Path) -> str | None:
 
 
 def detect_format(path: str | Path) -> str | None:
-    """File format by content first, extension second (a .wav that is really an MP3 still decodes).
-    """
+    """File format from the content, falling back to the extension."""
     p = Path(path)
     sniffed = _sniff_format(p)
     if sniffed is not None:
@@ -96,7 +93,7 @@ def detect_format(path: str | Path) -> str | None:
 
 
 def sha256_file(path: str | Path, chunk: int = 1 << 20) -> str:
-    """Content hash, used for FR lxxiii duplicate detection."""
+    """SHA-256 of the file (FR lxxiii)."""
     h = hashlib.sha256()
     with Path(path).open("rb") as fh:
         while True:
@@ -108,9 +105,7 @@ def sha256_file(path: str | Path, chunk: int = 1 << 20) -> str:
 
 
 def ffprobe_metadata(path: str | Path) -> dict[str, Any]:
-    """ffprobe metadata (duration of a truncated file, codec, whether there is an audio stream), or
-    {} without ffprobe.
-    """
+    """Duration, codec and audio stream info from ffprobe, or {} if ffprobe is missing."""
     binary = shutil.which(ffprobe_binary()) or ffprobe_binary()
     cmd = [
         binary, "-v", "error", "-print_format", "json",
@@ -121,7 +116,7 @@ def ffprobe_metadata(path: str | Path) -> dict[str, Any]:
     except (OSError, subprocess.SubprocessError):
         return {}
     if proc.returncode != 0:
-        # ffprobe failed: that is a decode failure, not an absence of information.
+        # ffprobe failing counts as a decode failure.
         return {"_error": (proc.stderr or "ffprobe failed").strip()[:400]}
     import json
 
@@ -136,7 +131,7 @@ def _audio_streams(probe: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _wave_metadata(path: Path) -> dict[str, Any]:
-    """Bit depth and true frame count from the WAV header (FR x asks for bit depth)."""
+    """Bit depth and frame count from the WAV header (FR x)."""
     try:
         with wave.open(str(path), "rb") as wf:
             return {
@@ -156,15 +151,14 @@ _SUBTYPE_BITS = {"PCM_S8": 8, "PCM_U8": 8, "PCM_16": 16, "PCM_24": 24, "PCM_32":
 
 
 def source_bit_depth(path: str | Path) -> int | None:
-    """Bits per sample as uploaded (FR x); None for lossy formats, which have no per-sample depth.
-    """
+    """Bits per sample of the upload (FR x), or None for lossy formats."""
     try:
         import soundfile
 
         subtype = soundfile.info(str(path)).subtype
         if subtype in _SUBTYPE_BITS:
             return _SUBTYPE_BITS[subtype]
-    except Exception:  # noqa: BLE001 - not a soundfile format; ask ffprobe instead
+    except Exception:  # noqa: BLE001 - try ffprobe instead
         pass
     for stream in _audio_streams(ffprobe_metadata(path)):
         bits = stream.get("bits_per_raw_sample") or stream.get("bits_per_sample")
@@ -194,7 +188,7 @@ def _decode_with_soundfile(path: Path, *, offset: float, duration: float | None)
 
 
 def _decode_with_ffmpeg(path: Path, *, offset: float, duration: float | None) -> tuple[np.ndarray, int]:
-    """Decode anything ffmpeg can read into a temporary WAV, then load that."""
+    """Decode with ffmpeg to a temporary WAV and load it."""
     import soundfile as sf
 
     binary = shutil.which(ffmpeg_binary()) or ffmpeg_binary()
@@ -225,11 +219,10 @@ def load_audio(
     duration: float | None = None,
     max_seconds: float | None = None,
 ) -> tuple[np.ndarray, int]:
-    """Load an audio file as float32 (1-D unless mono=False and the file has several channels).
+    """Load an audio file as float32 (mono unless mono=False).
 
-    ``sample_rate=None`` keeps the file's rate. ``offset``/``duration`` decode a slice.
-    ``max_seconds`` is also a hard read limit, so a mislabelled 3-hour file cannot exhaust
-    memory before the duration check. Raises AudioRejected, never returns an empty array.
+    ``sample_rate=None`` keeps the file's rate. ``offset``/``duration`` load a slice.
+    ``max_seconds`` limits how much is read. Raises AudioRejected instead of returning empty.
     """
     p = Path(path)
     if not p.exists():
@@ -252,7 +245,7 @@ def load_audio(
 
     try:
         data, sr = _decode_with_soundfile(p, offset=offset, duration=read_duration)
-    except Exception as exc:  # soundfile raises several unrelated exception types
+    except Exception as exc:  # soundfile raises various exception types
         errors.append(f"soundfile: {type(exc).__name__}: {exc}"[:300])
 
     if data is None or data.size == 0:
@@ -288,7 +281,7 @@ def load_audio(
 
     finite = np.isfinite(y)
     if not finite.all():
-        # NaN/Inf from the decoder means damaged data: zero it and record that we did.
+        # NaN/Inf means damaged data: zero it and note it.
         y = np.where(finite, y, np.float32(0.0))
 
     return np.ascontiguousarray(y, dtype=np.float32), int(sr)
@@ -300,7 +293,7 @@ def load_audio_bytes(
     filename: str = "upload",
     **kwargs: Any,
 ) -> tuple[np.ndarray, int]:
-    """Load in-memory upload bytes.  The suffix is preserved so format detection works."""
+    """Load audio from bytes (keeps the suffix for format detection)."""
     suffix = Path(filename).suffix or ".bin"
     with tempfile.TemporaryDirectory(prefix="sonicsentinel_upload_") as tmp:
         tmp_path = Path(tmp) / f"upload{suffix}"
@@ -316,9 +309,7 @@ def validate_file(
     cfg: dict[str, Any] | None = None,
     probe: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Validate an upload without raising: ok, reason, detail, and the FR x metadata where
-    available.
-    """
+    """Validate an upload without raising. Returns ok, reason, detail and FR x metadata."""
     settings = cfg or audio_config()
     supported = [str(s).lower() for s in settings.get("supported_formats", [])]
     max_mb = float(settings.get("max_upload_mb", 50))
@@ -356,7 +347,7 @@ def validate_file(
         info.update(reason=TOO_LARGE, detail=f"{size / 1048576:.1f} MB exceeds the {max_mb:.0f} MB limit")
         return info
 
-    # Magic bytes before extension: a WAV renamed to .txt is still audio.
+    # Check magic bytes before the extension.
     if _sniff_format(p) is None:
         fmt_ext = (info["format"] or "").lower()
         if fmt_ext not in DECODABLE_EXTENSIONS:
@@ -417,7 +408,7 @@ def validate_file(
             except (TypeError, ValueError):
                 pass
 
-    # Format gate last, so a damaged file is reported as damaged, not as unsupported.
+    # Format check last, so a damaged file is reported as damaged.
     fmt = (info["format"] or "").lower()
     if supported and fmt not in supported:
         info.update(
@@ -426,7 +417,7 @@ def validate_file(
         )
         return info
 
-    # Duration gate.  Prefer the decoded truth: a truncated file's header lies.
+    # Duration check, using the decoded length (a truncated file's header is wrong).
     duration = info["duration_sec"]
     if duration is None:
         try:
@@ -451,7 +442,7 @@ def validate_file(
         )
         return info
 
-    # Integrity: does it actually decode, and is there a signal in it?
+    # Does it decode, and does it contain a signal?
     try:
         y, _ = load_audio(p, sample_rate=None, mono=True)
     except AudioRejected as exc:
@@ -471,7 +462,7 @@ def validate_file(
     info["peak"] = peak
     info["rms"] = rms
 
-    # FR viii/xii: a silent recording is a valid container with no event, so refuse it here.
+    # FR viii/xii: refuse silent recordings.
     silence_max = float(quality_settings().get("silence_rms_dbfs_max", -50.0))
     rms_db = amplitude_to_db(rms) if rms > 0 else -np.inf
     info["rms_dbfs"] = None if not np.isfinite(rms_db) else float(rms_db)
@@ -491,7 +482,7 @@ def validate_file(
 
 
 def validate_samples(y: np.ndarray, sample_rate: int, *, cfg: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Validation for a live window: signal presence and duration only (there is no container)."""
+    """Validate a live window (signal and duration only)."""
     settings = cfg or audio_config()
     silence_max = float(quality_settings().get("silence_rms_dbfs_max", -50.0))
     arr = np.asarray(y, dtype=np.float32).reshape(-1)
@@ -526,7 +517,7 @@ def validate_samples(y: np.ndarray, sample_rate: int, *, cfg: dict[str, Any] | N
     rms = float(np.sqrt(np.mean(np.square(arr, dtype=np.float64))))
     info["peak"] = float(np.max(np.abs(arr)))
     info["rms"] = rms
-    # Presence of signal -- the docstring above promises this check, so it must exist.
+    # Is there a signal?
     rms_db = amplitude_to_db(rms) if rms > 0 else -np.inf
     info["rms_dbfs"] = None if not np.isfinite(rms_db) else float(rms_db)
     if not np.isfinite(rms_db) or rms_db <= silence_max:
@@ -547,13 +538,12 @@ def convert_format(
     mono: bool = True,
     bit_depth: int = 16,
 ) -> Path:
-    """Convert a file with FFmpeg (SRS Step 4 format conversion); raises AudioRejected on failure.
-    """
+    """Convert a file with FFmpeg (SRS Step 4). Raises AudioRejected on failure."""
     src_path = Path(src)
     if not src_path.exists():
         raise AudioRejected(NO_SUCH_FILE, f"no file at {src_path}")
     fmt = str(target_format).lower().lstrip(".")
-    # target_format may be a filename; use its suffix, never the stem.
+    # target_format may be a filename; use its suffix.
     if "." in Path(fmt).name:
         fmt = Path(fmt).suffix.lstrip(".")
     if fmt not in {"wav", "mp3", "flac", "ogg", "m4a", "aiff"}:

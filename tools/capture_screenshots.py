@@ -1,12 +1,9 @@
-"""Capture fresh screenshots of the CURRENT UI for the submission.
+"""Take screenshots of the current UI.
 
 Usage:
     .venv/bin/python tools/capture_screenshots.py [--out screenshots] [--base http://127.0.0.1:5055]
 
-Everything here is deterministic: same viewport, same login, same data. A stale
-screenshot is worse than none -- it is evidence the UI was not as submitted. If a
-page renders an error the capture fails loudly rather than saving a picture of an
-error page.
+Same viewports, logins and data every time. Fails if a page shows an error.
 """
 
 from __future__ import annotations
@@ -31,18 +28,15 @@ CREDS = [
     ("user", "User#Sonic2026", "normal_user"),
 ]
 
-# Desktop, and the two breakpoints the CSS actually branches at.
+# Desktop plus the two CSS breakpoints.
 VIEWPORTS = [
     ("desktop", 1440, 900),
     ("tablet", 900, 1100),
     ("mobile", 390, 844),
 ]
 
-# (filename, path, username, extra wait). Wait is for charts/tables, not for load.
-# /models/ has a trailing slash: the blueprint prefix is "/models" and the route is "/",
-# so "/models" 308-redirects and the capture would show a redirect page.
-# Public pages are captured signed out: a signed-in visitor is redirected away from them,
-# so capturing them inside a role's context saved the wrong page.
+# (filename, path, username, extra wait for charts). Note the trailing slash on /models/,
+# otherwise it redirects. Public pages are captured signed out.
 PUBLIC_PAGES = [
     ("00_home", "/", 2600, True),
     ("01_login", "/login", 800, False),
@@ -62,8 +56,7 @@ PAGES = [
     ("11_admin_config", "/admin/config", "admin", 800),
     ("12_admin_users", "/admin/users", "admin", 800),
     ("13_profile", "/profile", "admin", 500),
-    # Role-scoped views: same template, different capability set, so the role
-    # boundary is visible in the evidence rather than asserted in prose.
+    # Same pages seen by different roles.
     ("15_evaluator_dashboard", "/dashboard", "evaluator", 1500),
     ("16_operator_alerts", "/alerts", "operator", 1000),
     ("17_user_dashboard", "/dashboard", "user", 1500),
@@ -95,8 +88,7 @@ def login(base: str, session: requests.Session, username: str, password: str) ->
 
 
 def first_event_id(base: str, session: requests.Session) -> str:
-    """Pick an event to open. Tried as admin first: /api/events is scoped to the
-    viewer, so only an all-events role sees anything to link to."""
+    """Pick an event to open (as admin, who can see all events)."""
     response = session.get(f"{base}/api/events?limit=1", timeout=30)
     response.raise_for_status()
     payload = response.json()
@@ -114,15 +106,14 @@ def first_event_id(base: str, session: requests.Session) -> str:
 
 
 def admin_event_id(base: str) -> str:
-    """The event detail page is admin-only in the capture set; resolve it once,
-    up front, from an admin session that can see every event."""
+    """Event id for the event detail capture, looked up once as admin."""
     session = requests.Session()
     login(base, session, "admin", "Admin#Sonic2026")
     return first_event_id(base, session)
 
 
 def fail_on_browser_error(page) -> None:
-    """A screenshot of a 500 page is not evidence. Fail instead."""
+    """Fail if the page shows an error."""
     problems = []
     for problem in page.query_selector_all("text=/Exception|Traceback|Internal Server Error/"):
         problems.append(problem.inner_text()[:200])
@@ -138,8 +129,7 @@ def main() -> int:
     args = parser.parse_args()
 
     out: Path = (REPO / args.out).resolve()
-    # Only this script's own folder is cleared: screenshots/ also holds the Teachable
-    # Machine training evidence and the browser acceptance run, which it cannot recreate.
+    # Only clear screenshots/ui; the other folders hold TM and acceptance screenshots.
     ui = out / "ui"
     if ui.exists():
         shutil.rmtree(ui)
@@ -167,7 +157,7 @@ def main() -> int:
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(args=["--no-sandbox"])
 
-        # One browser context per (role, viewport) so cookies and theme are isolated.
+        # One browser context per role and viewport.
         for vp_name, width, height in VIEWPORTS:
             for username, _password, _role in CREDS:
                 context = browser.new_context(
@@ -175,7 +165,7 @@ def main() -> int:
                     base_url=args.base,
                 )
                 session = sessions[username]
-                # Playwright wants url *or* domain+path, not both; url alone is enough here.
+                # Playwright wants url or domain+path, not both.
                 context.add_cookies(
                     [
                         {"name": name, "value": value, "url": args.base}
@@ -186,7 +176,7 @@ def main() -> int:
                 page = context.new_page()
                 page.set_default_timeout(20000)
 
-                # Default to the dark product theme; capture a light-theme pass too.
+                # Admin on desktop gets the dark theme, tablet the light one.
                 if vp_name == "desktop" and username == "admin":
                     page.add_init_script(
                         "localStorage.setItem('sst-theme', 'dark');"
@@ -235,7 +225,7 @@ def main() -> int:
             for filename, path, wait_ms, full in PUBLIC_PAGES:
                 page.goto(path, wait_until="networkidle")
                 if full:
-                    # Scroll through once so every scroll-revealed block has appeared.
+                    # Scroll through so the scroll animations run.
                     total = page.evaluate("() => document.documentElement.scrollHeight")
                     for y in range(0, total, 500):
                         page.evaluate(f"() => window.scrollTo(0, {y})")

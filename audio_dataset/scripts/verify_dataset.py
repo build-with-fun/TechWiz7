@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Dataset gate: can every claim about the dataset be checked against the files on disk?
+"""Check the dataset against the files on disk.
 
 manifest  one row per file, frozen columns, unique ids matching their class code, the ten
           classes, licence and author present, sha256 matches, no two originals share content
@@ -56,7 +56,7 @@ class Report:
         mark = "PASS" if ok else "FAIL"
         line = f"  [{mark}] {name}"
         if detail:
-            line += f" -- {detail}"
+            line += f": {detail}"
         print(line)
         return ok
 
@@ -68,13 +68,13 @@ class Report:
         n = len(self.checks)
         bad = len(self.failed)
         print(f"\n{'='*78}\n{n - bad}/{n} checks passed" +
-              (f", {bad} FAILED" if bad else " -- ALL CHECKS PASSED"))
+              (f", {bad} FAILED" if bad else ", all checks passed"))
         for name, _, detail in self.failed:
-            print(f"  FAILED: {name} -- {detail}")
+            print(f"  FAILED: {name}: {detail}")
 
 
 def wav_info(path: Path) -> tuple[int, int, float]:
-    """Sample rate, channels and duration from the WAV header (no ffprobe launch per file)."""
+    """Sample rate, channels and duration from the WAV header."""
     with path.open("rb") as fh:
         head = fh.read(12)
         if head[:4] != b"RIFF" or head[8:12] != b"WAVE":
@@ -276,7 +276,7 @@ def main(argv: list[str] | None = None) -> int:
                   not unassigned,
                   f"{len(unassigned)} unassigned, e.g. {unassigned[:3]}")
 
-        # a derived row whose parent is in the frozen split must agree with it
+        # a derived row must have its parent's split
         via_parent_mism = [r["audio_id"] for r in rows
                            if r["audio_id"] not in assign
                            and r["parent_audio_id"].strip() in assign

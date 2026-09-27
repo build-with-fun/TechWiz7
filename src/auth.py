@@ -1,9 +1,7 @@
 """Authentication and role-based access control (FR i, FR ii).
 
-ROLE_CAPABILITIES is the permission matrix, checked on the server for every endpoint;
-hiding a link in a template is not access control. A wrong role gets 403. Handlers that
-must not reveal whether another user's row exists answer 404 instead. load_user re-reads
-the account on every request, so locking or deactivating it takes effect immediately.
+ROLE_CAPABILITIES is the permission matrix, checked on the server for every endpoint.
+The user is reloaded on every request, so locking an account takes effect at once.
 """
 
 from __future__ import annotations
@@ -27,8 +25,7 @@ logger = logging.getLogger("sonicsentinel.auth")
 F = TypeVar("F", bound=Callable[..., Any])
 
 
-#: Capability -> roles. Keyed by capability so a new one needs an explicit decision for
-#: every role.
+# Capability -> roles that have it.
 ROLE_CAPABILITIES: Mapping[str, frozenset[str]] = {
     # Everyone signed in
     "view_own_events": frozenset(ROLES),
@@ -49,15 +46,14 @@ ROLE_CAPABILITIES: Mapping[str, frozenset[str]] = {
     "export_data": frozenset({"administrator"}),
     "download_report": frozenset({"audio_reviewer", "security_operator",
                                   "maintenance_operator", "administrator"}),
-    # Manual review -- FR lvii-lxi. Maintenance keeps out on purpose: they change how the
-    # system judges, not what it concluded.
+    # Manual review (FR lvii-lxi). Maintenance is left out on purpose.
     "review_queue": frozenset({"audio_reviewer", "administrator"}),
     "review_decide": frozenset({"audio_reviewer", "administrator"}),
-    # Alerts -- FR liv-lvi.
+    # Alerts (FR liv-lvi)
     "view_alerts": frozenset({"security_operator", "administrator"}),
     "acknowledge_alerts": frozenset({"security_operator", "administrator"}),
     "alert_history": frozenset({"security_operator", "administrator"}),
-    # Configuration and models -- FR liii, lxxv, lxxx.
+    # Configuration and models (FR liii, lxxv, lxxx)
     "manage_models": frozenset({"maintenance_operator", "administrator"}),
     "edit_config": frozenset({"maintenance_operator", "administrator"}),
     # Administration.
@@ -66,7 +62,7 @@ ROLE_CAPABILITIES: Mapping[str, frozenset[str]] = {
     "retention_purge": frozenset({"administrator"}),
 }
 
-#: The reverse view, for rendering menus and for the test that checks the contract table.
+# Role -> capabilities, for menus and tests.
 ROLE_GRANTS: Mapping[str, frozenset[str]] = {
     role: frozenset(cap for cap, roles in ROLE_CAPABILITIES.items() if role in roles)
     for role in ROLES
@@ -74,7 +70,7 @@ ROLE_GRANTS: Mapping[str, frozenset[str]] = {
 
 
 def has_capability(role: str | None, capability: str) -> bool:
-    """The single question the whole authorisation layer asks."""
+    """True if the role has the capability."""
     if not role:
         return False
     return role in ROLE_CAPABILITIES.get(capability, frozenset())
@@ -83,9 +79,7 @@ def has_capability(role: str | None, capability: str) -> bool:
 
 
 class AuthUser:
-    """Flask-Login view of a User row: templates keep reading row attributes, and ``can()`` answers
-    capability questions.
-    """
+    """Flask-Login wrapper around a User row, with ``can()`` for capability checks."""
 
     __slots__ = ("row",)
 
@@ -138,7 +132,7 @@ class AuthUser:
 
 
 def get_db_factory():
-    """The session factory the request is using. Set by the factory, overridable in tests."""
+    """The session factory for this app (tests can override it)."""
     factory = getattr(g, "db_session_factory", None)
     if factory is None:
         factory = current_app.config["SST_SESSION_FACTORY"]
@@ -166,7 +160,7 @@ def _register_login_manager(app) -> LoginManager:
     manager.login_view = "auth.login"
     manager.login_message = "Sign in to continue."
     manager.login_message_category = "warning"
-    manager.session_protection = "strong"  # a stolen cookie is invalidated, not silently reused
+    manager.session_protection = "strong"
 
     @manager.user_loader
     def _user_loader(user_id: str):  # type: ignore[unused-ignore]
@@ -184,7 +178,7 @@ def _register_login_manager(app) -> LoginManager:
 
         if wants_json():
             raise ApiError("not_authenticated")
-        # A person following a link gets the sign-in page and comes back to where they were.
+        # Send browsers to sign in, then back to the page they wanted.
         return redirect(url_for("auth.login", next=request.full_path.rstrip("?")))
 
     return manager
@@ -219,9 +213,7 @@ def roles_required(*roles: str) -> Callable[[F], F]:
 
 
 def capability_required(capability: str) -> Callable[[F], F]:
-    """Restrict an endpoint to holders of a capability. Preferred over roles_required, so moving a
-    capability is a one-line change.
-    """
+    """Restrict an endpoint to users with a capability. Prefer this over roles_required."""
     if capability not in ROLE_CAPABILITIES:
         raise ValueError(
             f"capability_required got unknown capability {capability!r}; add it to "
@@ -250,10 +242,9 @@ def capability_required(capability: str) -> Callable[[F], F]:
 
 
 def owner_or_capability(capability: str, owner_attr: str = "created_by_id") -> Callable[[F], F]:
-    """Allow a capability holder or the row's creator (FR lxvii: normal users see only their own events).
+    """Allow users with the capability, or the owner of the row (FR lxvii).
 
-    The handler compares the owner and answers 404, not 403, so a refusal does not confirm that
-    someone else's event exists.
+    The handler checks ownership and returns 404, not 403.
     """
 
     def decorator(view: F) -> F:
@@ -277,8 +268,7 @@ def is_admin() -> bool:
 
 
 def password_problems(password: str, store=None) -> list[str]:
-    """Every way the password breaks the configured policy, so the form can flag them all at once.
-    """
+    """List every way the password breaks the policy."""
     from src.services.config import get_store
 
     store = store or get_store()
@@ -298,14 +288,14 @@ def password_problems(password: str, store=None) -> list[str]:
 
 
 def hash_password(password: str) -> str:
-    """PBKDF2-SHA256. The only way a password is ever written to the database."""
+    """Hash a password with PBKDF2-SHA256."""
     return generate_password_hash(password, method="pbkdf2:sha256")
 
 
 
 
 class LoginOutcome:
-    """The result of an attempt: either a user row, or the code and message to return."""
+    """Result of a login attempt: a user, or an error code and message."""
 
     def __init__(self, user: User | None = None, code: str | None = None,
                  message: str | None = None) -> None:
@@ -323,11 +313,10 @@ class LoginOutcome:
 
 
 def authenticate(session, username: str, password: str, *, store=None) -> LoginOutcome:
-    """Check a username and password with the configured per-account lockout.
+    """Check a username and password, with per-account lockout.
 
-    A wrong password and an unknown account get the same message, so sign-in cannot be used to
-    list usernames; the audit trail records the difference. The lockout is per account so an
-    attack spread across addresses is still stopped (FR lxxviii).
+    Wrong password and unknown user get the same message so usernames can't be probed;
+    the audit log records which it was.
     """
     from src.services.config import get_store
 
@@ -339,8 +328,7 @@ def authenticate(session, username: str, password: str, *, store=None) -> LoginO
                           ).scalar_one_or_none()
 
     if row is None:
-        # Spend about as long as a real verification, so timing does not reveal whether the
-        # username exists.
+        # Take as long as a real check so timing doesn't reveal unknown usernames.
         check_password_hash(
             "pbkdf2:sha256:600000$abcdefghijklmnop$"
             + "0" * 64,
@@ -391,7 +379,7 @@ def authenticate(session, username: str, password: str, *, store=None) -> LoginO
 
 
 def sign_in(user_row: User, *, remember: bool = False) -> None:
-    """Establish the session for a verified user row."""
+    """Log the verified user in."""
     login_user(AuthUser(user_row), remember=remember, fresh=True)
 
 
@@ -400,7 +388,7 @@ def sign_out() -> None:
 
 
 def absolute_session_expiry() -> str | None:
-    """When this session expires (ISO-8601), read from the session the server will enforce."""
+    """When this session expires, as ISO-8601."""
     from flask import session as flask_session
 
     if not flask_session:
@@ -410,12 +398,10 @@ def absolute_session_expiry() -> str | None:
 
 
 def client_ip() -> str:
-    """The caller's address, used for per-IP rate limits and the audit trail.
+    """Client address for rate limits and the audit log.
 
-    X-Forwarded-For is only trusted when SST_TRUSTED_PROXY_HOPS says proxies are in front,
-    and then the entry our own proxy appended is used (counting from the right). The first
-    entry is whatever the client chose to send: trusting it, as this function did until
-    26 Sep, let a client dodge the per-IP login limit with a new fake address per attempt.
+    X-Forwarded-For is only used when SST_TRUSTED_PROXY_HOPS is set, and then we take the
+    entry our proxy added (counting from the right). The leftmost entry is client-controlled.
     """
     hops = int(current_app.config.get("SST_TRUSTED_PROXY_HOPS", 0) or 0)
     forwarded = [part.strip() for part in request.headers.get("X-Forwarded-For", "").split(",")
@@ -428,9 +414,7 @@ def client_ip() -> str:
 def audit_login(session, *, action: str, username: str, role: str | None = None,
                 outcome: str = "success", detail: str | None = None,
                 user_id: int | None = None, request_id: str | None = None) -> None:
-    """Write a sign-in or refusal to the audit trail; takes plain values because a failed login has
-    no user row.
-    """
+    """Audit a sign-in or refusal. Takes plain values since a failed login may have no user."""
     from src.db import record_audit
 
     record_audit(
@@ -444,7 +428,7 @@ def audit_login(session, *, action: str, username: str, role: str | None = None,
         ip_address=client_ip(),
         request_id=request_id,
     )
-    # Failed attempts have no row, so the denormalised actor columns are filled in by hand.
+    # No user row for failed attempts, so fill in the actor columns by hand.
     if user_id is None:
         from src.models import AuditRecord
 
@@ -456,7 +440,7 @@ def audit_login(session, *, action: str, username: str, role: str | None = None,
 
 
 class _ActorStub:
-    """The minimum ``record_audit`` needs from an actor, for rows we do not have a User for."""
+    """Stand-in actor for record_audit when there is no User."""
 
     __slots__ = ("id", "username", "role")
 

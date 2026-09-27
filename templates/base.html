@@ -1,9 +1,8 @@
-{# Gate navigation by capability. Keep executable scripts and styles external for the CSP. #}
+{# Scripts and styles stay in external files because of the CSP. #}
 {% import "_macros.html" as ui with context %}
 {% import "_presentation.html" as pres with context %}
 
-{# One access check, used everywhere. A user object without `can` (or no user at
-   all) sees only public chrome. #}
+{# Without a user (or a user without `can`), only the public parts are shown. #}
 {% macro _can(capability) -%}
 {{ 'true' if (current_user is defined and current_user and current_user.can and current_user.can(capability)) else 'false' }}
 {%- endmacro %}
@@ -19,7 +18,7 @@
   <meta name="color-scheme" content="dark light">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>{% block title %}{{ app_name | default('SonicSentinel AI') }}{% endblock %}</title>
-  <meta name="description" content="{% block description %}SonicSentinel AI — real-time sound event detection with a dual-model consistency check. Every prediction is shown from the project's own Python model and from a separately trained Teachable Machine model so the two can be compared on the same clip.{% endblock %}">
+  <meta name="description" content="{% block description %}SonicSentinel AI: real-time sound event detection with a dual-model consistency check. Every prediction is shown from the project's own Python model and from a separately trained Teachable Machine model so the two can be compared on the same clip.{% endblock %}">
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo.svg') }}">
   <link rel="preload" href="{{ url_for('static', filename='fonts/geist-latin-wght-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}">
@@ -93,8 +92,7 @@
       </div>
     </header>
 
-    {# Navigation is rendered from pres.nav_entries() and gated item by item: an item the
-       user cannot open is not rendered at all. #}
+    {# Items the user cannot open are left out. #}
     <nav class="nav" id="app-nav" aria-label="Main navigation">
       <div class="nav__head">
         <a class="nav__brand" href="{{ url_for('main.dashboard') if _signed_in else url_for('main.index') }}">
@@ -153,11 +151,8 @@
     <div class="nav-scrim" data-nav-scrim hidden></div>
 
     <main class="main" id="main" tabindex="-1">
-      {# ------------------------------------------------------------------
-         The shared error region. Every client-side failure writes here rather
-         than replacing the page, so a 500 on one panel never takes the console
-         down with it (the SRS's "no page kill" rule for batch upload).
-         ------------------------------------------------------------------ #}
+      {# Client-side errors are shown here instead of replacing the page, so one failing
+         panel does not take the rest down. #}
       <div id="page-error" data-api-error hidden></div>
 
       {% with messages = get_flashed_messages(with_categories=true) %}
@@ -189,18 +184,8 @@
 
   <div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="false"></div>
 
-  {# ---------------------------------------------------------------------
-     Data handoff to the browser.
-
-     `type="application/json"` is inert: the browser parses it as data and CSP
-     does not treat it as script, so `script-src 'self'` stays unrelaxed.
-
-     Everything the client-side code needs that a human configured — endpoints,
-     thresholds, class list, display vocabulary — is emitted here exactly once.
-     Nothing is typed a second time in JavaScript. If an evaluator changes
-     `config/thresholds.json`, the browser-side behaviour changes with the
-     server's, because both read the same values from the same file.
-     --------------------------------------------------------------------- #}
+  {# Config for the browser scripts (endpoints, thresholds, classes, labels). A JSON
+     script tag is data, not code, so the CSP stays at script-src 'self'. #}
   {% set thresholds = (config.thresholds() if config is defined and config and config.thresholds else {}) %}
   <script type="application/json" id="app-config">
   {

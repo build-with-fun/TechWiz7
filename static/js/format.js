@@ -1,15 +1,5 @@
-/* ============================================================================
- * static/js/format.js — presentation of values, in one place.
- *
- * Loaded before every page script. Pure functions, no DOM, no globals beyond
- * `window.SST`. Nothing here decides a threshold; it only renders a number the
- * server already decided.
- *
- * Why its own file: the same value is rendered from Jinja, from a fetch
- * response, and from the live loop. If confidence formatting lived in three
- * places, the live console and the event page would eventually disagree, and
- * that disagreement would be read as a model inconsistency.
- * ========================================================================== */
+/* Value formatting shared by all page scripts, so the live console and the event
+ * page always show numbers the same way. Pure functions on window.SST. */
 (function (SST) {
   'use strict';
 
@@ -17,8 +7,7 @@
 
   function isNum(v) { return typeof v === 'number' && isFinite(v); }
 
-  /* Confidence, always three decimals: consistent width stops a table of
-     confidences from jittering as values update live. */
+  /* Always three decimals so live values do not jump around. */
   function confidence(v, places) {
     if (!isNum(v)) return '--';
     return v.toFixed(places === undefined ? 3 : places);
@@ -48,7 +37,7 @@
     return Math.round(v) + ' ms';
   }
 
-  /* m:ss.s — the form the player and the live console both use. */
+  /* m:ss.s, as used by the player and the live console. */
   function duration(seconds) {
     if (!isNum(seconds)) return '--';
     var sign = seconds < 0 ? '-' : '';
@@ -58,9 +47,7 @@
     return sign + m + ':' + (rest < 10 ? '0' : '') + rest.toFixed(1);
   }
 
-  /* Timestamps arrive as ISO-8601 UTC with a trailing Z (API contract §1).
-     Rendered in the operator's own timezone, with the zone named, so an
-     incident timeline cannot be misread across a shift change. */
+  /* The API sends ISO-8601 UTC. Show it in the local timezone and name the zone. */
   function timestamp(iso, opts) {
     if (!iso) return '--';
     var d = new Date(iso);
@@ -82,8 +69,7 @@
     return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   }
 
-  /* "4 minutes ago" for a timeline the eye can scan; the exact stamp stays in
-     the title attribute so nothing is lost. */
+  /* "4 minutes ago"; the exact time goes in the title attribute. */
   function relative(iso) {
     if (!iso) return '--';
     var d = new Date(iso);
@@ -111,8 +97,7 @@
     return d.getFullYear() + '-' + m + '-' + day;
   }
 
-  /* A filename is user input. It reaches the DOM through textContent, never
-     innerHTML; this only shortens it for a table cell, keeping the extension. */
+  /* Shortens a filename for a table cell but keeps the extension. */
   function truncateFilename(name, max) {
     if (!name) return '';
     var limit = max || 42;
@@ -123,9 +108,8 @@
     return stem.slice(0, Math.max(4, limit - ext.length - 1)) + '\u2026' + ext;
   }
 
-  /* Signed difference for the |Python − Teachable Machine| figure. The sign is
-     carried because direction is informative ("Teachable Machine was the more
-     confident one"), while the magnitude is what the thresholds test. */
+  /* Signed Python minus Teachable Machine difference. The thresholds use the
+     magnitude; the sign shows which model was more confident. */
   function signed(v, places) {
     if (!isNum(v)) return '--';
     var text = v.toFixed(places === undefined ? 3 : places);

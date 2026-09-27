@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
-"""Render the five SRS-mandated UML diagrams as PNGs into diagrams/.
+"""Draw the five UML diagrams the SRS asks for as PNGs in diagrams/.
 
-Every diagram is laid out on a fixed grid with straight arrows; ``label_spot`` keeps edge
-labels off the boxes. ``--check`` verifies structurally that no two boxes overlap, every
-edge stays clear of the boxes it does not connect, and all five PNGs exist.
-
-Pure matplotlib, no plantuml/java/graphviz binary required.
+Diagrams use a fixed grid with straight arrows. ``--check`` makes sure no boxes overlap,
+no edge crosses a box it doesn't connect, and all five PNGs exist. Only needs matplotlib.
 """
 from __future__ import annotations
 
@@ -30,10 +27,10 @@ ACTOR_LINE = "#42526b"
 EDGES = []   # routed polylines of the current diagram, for --check
 
 
-# ------------------------------------------------------------------ geometry
+# geometry
 @dataclass
 class Box:
-    """Axis-aligned node with named ports used for edge attachment."""
+    """A box with named ports for attaching edges."""
     cx: float
     cy: float
     w: float
@@ -61,7 +58,7 @@ class Box:
                 "N": (self.cx, self.y1), "S": (self.cx, self.y0)}[side]
 
     def facing(self, other: "Box"):
-        """Port of this box that best faces another box's centre."""
+        """The port facing another box's centre."""
         dx, dy = other.cx - self.cx, other.cy - self.cy
         return "E" if dx >= 0 else "W" if abs(dx) > abs(dy) else ("N" if dy >= 0 else "S")
 
@@ -96,7 +93,7 @@ def seg_clear_box(p, q, b, pad=0.02):
 
 
 def path_clear(pts, boxes, pad=0.02):
-    """Every segment of a routed path must miss every box."""
+    """True if no segment of the path hits a box."""
     for b in boxes:
         for p, q in zip(pts, pts[1:]):
             if not seg_clear_box(p, q, b, pad):
@@ -105,7 +102,7 @@ def path_clear(pts, boxes, pad=0.02):
 
 
 def label_spot(pts, boxes, w_label=1.9, h_label=0.34):
-    """Find a label anchor that does not overlap any node box."""
+    """Find a label position that doesn't overlap a box."""
     for k in range(len(pts) - 1):
         (x0, y0), (x1, y1) = pts[k], pts[k + 1]
         mx, my = (x0 + x1) / 2, (y0 + y1) / 2
@@ -121,10 +118,10 @@ def label_spot(pts, boxes, w_label=1.9, h_label=0.34):
     return (cx, (pts[0][1] + pts[-1][1]) / 2 + 0.18)
 
 
-# ------------------------------------------------------------------ drawing
+# drawing
 def edge(ax, pts, label="", boxes=(), color=INK, lw=1.2, rad=0.0, fs=7.6,
         dashed=False, arrow="-|>"):
-    """Draw a routed orthogonal path with an arrowhead and safe label."""
+    """Draw a path with an arrowhead and a label."""
     if len(pts) >= 2:
         EDGES.append(list(pts))
         ax.plot([p[0] for p in pts], [p[1] for p in pts],
@@ -157,18 +154,14 @@ def save(fig, name):
     print(f"  wrote {OUT / name}")
 
 
-# --------------------------------------------------------------------- DFD
+# DFD
 def dfd():
-    """Level-1 data flow: entities left, processes in the middle, stores right.
-
-    Redrawn on 26 Sep with a fixed grid so that every flow is a straight horizontal or
-    vertical arrow; the routed version overlapped labels and crossed its own lines.
-    """
+    """Level-1 data flow: entities left, processes in the middle, stores right."""
     fig, ax = plt.subplots(figsize=(14.5, 11.5))
     W, H = 17.0, 13.2
     ax.set_xlim(0, W), ax.set_ylim(0.6, H)
     ax.axis("off")
-    title(ax, "Data Flow Diagram — level 1",
+    title(ax, "Data Flow Diagram: level 1",
           "Rectangles: people outside the system · blue: processes · beige: data stores")
 
     def entity(cx, cy, label):
@@ -236,10 +229,10 @@ def dfd():
     straight(ax, (p3.cx - 1.2, p3.y0), (p4.cx - 1.2, p4.y1), "confirmed alert", boxes)
     h_pair(security, p4, "ack / dismiss / escalate", "open alerts")
     one(p4, d3, "alert state + audit")
-    # Review items bypass alert handling: a straight line to the right of P4.
+    # Review items skip alert handling.
     xr = p4.x1 + 0.45
     ax.plot([p3.x1 - 0.3, p3.x1 - 0.3, xr], [p3.y0, p3.y0 - 0.35, p3.y0 - 0.35], color=INK, lw=1.2, zorder=2)
-    # The line passes under the P4 -> D3 arrow; the gap marks a crossing, not a join.
+    # The gap marks a crossing, not a join.
     gap = 0.14
     ax.plot([xr, xr], [p3.y0 - 0.35, p4.cy + gap], color=INK, lw=1.2, zorder=2)
     ax.plot([xr, xr], [p4.cy - gap, p5.cy + 0.25], color=INK, lw=1.2, zorder=2)
@@ -261,13 +254,9 @@ def FancyBboxRaw(b, fc, ec):
                      joinstyle="round", zorder=4)
 
 
-# --------------------------------------------------------------- use case
+# use case
 def use_case():
-    """Five SRS roles and what each may do, taken from ROLE_CAPABILITIES in src/auth.py.
-
-    Redrawn on 26 Sep: the earlier version put the use cases outside the system
-    boundary, on top of the actors, and showed only four of the five roles.
-    """
+    """The five roles and what each can do (from ROLE_CAPABILITIES in src/auth.py)."""
     groups = [
         ("Normal user", ["Register, sign in, edit profile", "Upload audio (one or a batch)",
                          "Live microphone monitoring", "View own events: playback,\nwaveform, spectrogram, both models"]),
@@ -323,7 +312,7 @@ def stick(ax, x, y, s=0.26):
 
 
 def ellipse_boundary(e: Box, px, py):
-    """Point on ellipse `e` nearest the ray from its centre toward (px, py)."""
+    """Point where the ray from the ellipse centre toward (px, py) meets the ellipse."""
     dx, dy = px - e.cx, py - e.cy
     a, b = e.w / 2, e.h / 2
     denom = math.hypot(dx / a, dy / b) or 1.0
@@ -331,13 +320,13 @@ def ellipse_boundary(e: Box, px, py):
     return e.cx + dx * t, e.cy + dy * t
 
 
-# ---------------------------------------------------------------- activity
+# activity
 def activity():
     fig, ax = plt.subplots(figsize=(10.4, 16.4))
     W, H = 11.6, 19.4
     ax.set_xlim(-0.2, W), ax.set_ylim(0.8, H)
     ax.axis("off")
-    title(ax, "Activity Diagram — clip evaluation, end to end",
+    title(ax, "Activity Diagram: clip evaluation, end to end",
           "Filled circle = start · ring = end · diamond = decision")
 
     X = 5.4
@@ -364,16 +353,14 @@ def activity():
     nodes["start"] = Box(X, top, 0.42, 0.42, "start")
     boxes.append(nodes["start"])
 
-    # Order follows AudioPipeline._run and AnalysisPipeline.analyse (corrected 26 Sep:
-    # the usable check happens before any model runs, and the Python model now uses
-    # CNN14 embeddings rather than the 254 hand-made features).
+    # Same order as AudioPipeline._run and AnalysisPipeline.analyse.
     flow = ["receive", "validate", "quality"]
     labels = {
         "receive": "Receive upload / 2 s live window",
         "validate": "Decode and validate\n(format, size, duration, integrity)",
         "quality": "Audio quality verdict\n(Good / Acceptable / Poor / Unusable)",
         "preprocess": "Preprocess: high-pass, denoise, trim,\nnormalise, 16 kHz mono",
-        "py": "Python model: CNN14 embedding -> MLP\n(scores for all ten classes)",
+        "py": "Python model: AST embedding -> logistic regression\n(scores for all ten classes)",
         "gtm": "Teachable Machine: loudest 1 s -> browser FFT\n(never sees the Python output)",
         "compare": "Compare both models; send to manual review\nif they disagree or confidence/quality is low",
     }
@@ -429,13 +416,13 @@ def activity():
     return boxes
 
 
-# ---------------------------------------------------------------- sequence
+# sequence
 def sequence():
     fig, ax = plt.subplots(figsize=(13.2, 9.0))
     W, H = 15.8, 11.2
     ax.set_xlim(-0.2, W), ax.set_ylim(-0.2, H)
     ax.axis("off")
-    title(ax, "Sequence Diagram — upload → dual inference → comparison → alert",
+    title(ax, "Sequence Diagram: upload, dual inference, comparison, alert",
           "Dotted lifelines · numbered messages top to bottom · GTM never sees Python output")
 
     lanes = [("User", 1.5), ("Web App", 4.7), ("Preproc\nService", 7.7),
@@ -456,7 +443,7 @@ def sequence():
         ("User", "Web App", 9.6, "1. POST /api/audio/upload (clip)"),
         ("Web App", "Preproc Service", 8.8, "2. decode + resample to 16 kHz"),
         ("Preproc Service", "Web App", 8.0, "3. samples + quality verdict"),
-        ("Web App", "Python Model", 7.1, "4. CNN14 embedding -> predict_proba"),
+        ("Web App", "Python Model", 7.1, "4. AST embedding -> predict_proba"),
         ("Python Model", "Web App", 6.3, "5. class + per-class confidence"),
         ("Web App", "GTM Model", 5.4, "6. predict(samples)  [no Python output]"),
         ("GTM Model", "Web App", 4.6, "7. gtm_class + confidences"),
@@ -488,14 +475,11 @@ def sequence():
     return boxes
 
 
-# ---------------------------------------------------------- decision flow
+# decision flow
 def decision_flow():
     """The decision path of AnalysisPipeline.analyse(), top to bottom.
 
-    Redrawn on 26 Sep: the earlier version showed an auto-acknowledge step, a timeout
-    and a feedback-to-dataset arrow that the app does not have, and its routed edges
-    crossed. This one only uses straight arrows, and every box matches a step in
-    src/services/pipeline.py or src/api/alerts_api.py.
+    Each box matches a step in src/services/pipeline.py or src/api/alerts_api.py.
     """
     fig, ax = plt.subplots(figsize=(12.5, 13.5))
     W, H = 14.0, 15.2
@@ -570,7 +554,7 @@ def decision_flow():
     return boxes
 
 
-# -------------------------------------------------------------------- check
+# check
 def check(boxes_by_diag, edges_by_diag=None):
     import os
     ok = True
@@ -584,8 +568,7 @@ def check(boxes_by_diag, edges_by_diag=None):
         if bad:
             ok = False
         edges = (edges_by_diag or {}).get(name, [])
-        # an edge may only touch the boxes it terminates at; every interior
-        # segment must clear every other node (segment-rect intersection).
+        # an edge may only touch the boxes at its ends
         bad_e = []
         for pts in edges:
             ends = [b for b in boxes

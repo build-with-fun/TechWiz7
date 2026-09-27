@@ -2,18 +2,15 @@
 
     .venv/bin/python tools/benchmark_scale.py            # ~10 min; writes reports/scale.json
 
-The run builds a throwaway database (``database/init_db.py`` plus 20,000 synthetic events
-spread over 60 days, every class, severity, status, quality and source), serves it with
-gunicorn as the README recommends (one worker, eight threads), and sends real HTTP requests from signed-in
-users: the events list, each search filter, the Events, Dashboard and Analytics pages, the
-dashboard APIs and the CSV export. It then repeats the four-client 30-second upload test
-from ``tools/benchmark_latency.py`` against the same server. The demo database is never
-touched, and the synthetic rows carry ``scale-test`` as their location.
+Builds a temporary database with 20,000 synthetic events over 60 days, serves it with
+gunicorn (one worker, eight threads, as in the README) and sends HTTP requests from
+signed-in users: event list and filters, the main pages, the dashboard APIs and the CSV
+export. Then it repeats the four-client upload test from benchmark_latency.py. The demo
+database is not touched.
 
-Pass line, fixed before the first run: with 10 users at once, the 95th-percentile response
-of every page and API read is at most 1 s and no request fails. The CSV export is reported
-separately: an all-rows export must be refused (the app caps exports at 10,000 events) and the
-largest allowed export must finish within 10 s. Results are written whether or not they pass.
+Pass: with 10 users at once, p95 of every page and API read is at most 1 s and nothing
+fails. An all-rows CSV export must be refused (limit 10,000) and the largest allowed one
+must finish within 10 s.
 """
 
 from __future__ import annotations
@@ -42,7 +39,7 @@ sys.path.insert(0, str(ROOT))
 N_EVENTS = 20_000
 LEVELS = (1, 10, 20)
 ROUNDS = 3
-WORKERS, THREADS = 1, 8  # one worker: live-window streaks are per process
+WORKERS, THREADS = 1, 8  # one worker since live streaks are per process
 READ_P95_LIMIT_S = 1.0
 LOGIN_SPACING_S = 3.5
 EXPORT_LIMIT_S = 10.0
@@ -55,7 +52,7 @@ CONSISTENCY = ["Strong Match", "Acceptable Match", "Weak Match", "Model Disagree
                "Uncertain Result"]
 QUALITY = ["Good", "Acceptable", "Poor"]
 
-# (name, path, capability). Every role can list its own events; the rest follow the grants.
+# (name, path, capability)
 READS = [
     ("events_list", "/api/events?per_page=50", "view_own_events"),
     ("filter_class", "/api/events?sound_class=Gunshot", "view_own_events"),
@@ -93,7 +90,7 @@ def summary(values: list[float]) -> dict:
             "max_s": round(values[-1], 4)}
 
 
-# database --------------------------------------------------------------------------
+# database
 
 def seed(db_path: Path) -> dict:
     from sqlalchemy import func, select
@@ -154,7 +151,7 @@ def seed(db_path: Path) -> dict:
             "db_file_mb": round(db_path.stat().st_size / 1e6, 1)}
 
 
-# HTTP ------------------------------------------------------------------------------
+# HTTP
 
 def sign_in(base: str, username: str, password: str) -> tuple[requests.Session, str]:
     s = requests.Session()
@@ -168,9 +165,7 @@ def sign_in(base: str, username: str, password: str) -> tuple[requests.Session, 
 
 
 def session_pool(base: str, accounts: list[dict], size: int) -> list[tuple[requests.Session, list]]:
-    """Sign ``size`` users in once, spaced to stay under the login rate limits
-    (config/auth.json: 20 per IP and 10 per username per minute; every request here comes
-    from 127.0.0.1). The load levels then reuse them, as signed-in users would."""
+    """Sign in ``size`` users once, slowly enough to stay under the login rate limits."""
     from src.auth import ROLE_GRANTS
 
     pool = []
@@ -226,8 +221,7 @@ def read_load(base: str, pool: list, users: int) -> dict:
 
 
 def export_timing(base: str, admin: dict) -> dict:
-    """The export refuses more than 10,000 rows (src/api/reports_api.py), so time both the
-    refusal of an all-rows export and the largest export it allows (one date range)."""
+    """Time the refused all-rows export and the largest allowed export (10,000 row limit)."""
     s, _ = sign_in(base, admin["username"], admin["password"])
     out = {}
     for name, query in (("all_rows", ""), ("date_range", "?date_from=2026-07-28&date_to=2026-08-24")):
@@ -259,7 +253,7 @@ def upload_load(base: str, admin: dict) -> dict:
         return time.perf_counter() - t0
 
     s, token = sign_in(base, admin["username"], admin["password"])
-    for _ in range(WORKERS * 2):  # every worker loads its models on its first request
+    for _ in range(WORKERS * 2):  # let each worker load its models
         upload(s, token)
     sequential = [upload(s, token) for _ in range(3)]
     concurrent: list[float] = []
@@ -288,8 +282,7 @@ def main() -> None:
     db_path = tmp / "scale.db"
     env = {**os.environ, "SST_DB_PATH": str(db_path), "SST_STORAGE_DIR": str(tmp / "storage"),
            "SST_PRODUCTION": "0", "SST_LOAD_MODELS": "1",
-           # One PyTorch thread per physical core: 8 threads on this 4-core, 8-thread laptop
-           # made a 30 s upload 40 % slower than 4 did.
+           # One torch thread per physical core; 8 threads on this 4-core laptop was 40% slower.
            "SST_TORCH_THREADS": str(max(1, (os.cpu_count() or 2) // 2))}
     subprocess.run([sys.executable, "database/init_db.py"], cwd=ROOT, env=env, check=True,
                    stdout=subprocess.DEVNULL)
@@ -320,7 +313,7 @@ def main() -> None:
         admin = next(a for a in accounts if a["role"] == "administrator")
         print(f"signing in {max(LEVELS)} users ...", flush=True)
         pool = session_pool(base, accounts, max(LEVELS))
-        for s, mix in pool[:len(accounts)]:  # warm every worker's templates and query caches
+        for s, mix in pool[:len(accounts)]:  # warm-up
             for _name, path, _cap in mix:
                 s.get(f"{base}{path}", timeout=60)
 

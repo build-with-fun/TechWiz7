@@ -1,15 +1,14 @@
-"""Train and compare the classical models on the 254-column feature matrix (SRS Step 7).
+"""Train and compare the classical models on the 254 hand-made features (SRS Step 7).
 
-Reads the frozen split, tunes every candidate (plus a critical-class-weighted variant) on
-validation, cross-validates the winner on train, refits on train+val, scores test once, and
-saves the bundle plus metrics and confusion matrices under python_models/metrics/.
+Tunes each candidate (with and without critical-class weights) on validation,
+cross-validates the winner, refits on train+val, scores test once, and saves the bundle
+and metrics under python_models/metrics/.
 
     .venv/bin/python python_models/train_classical.py                  # full run
     .venv/bin/python python_models/train_classical.py --smoke          # tiny generated corpus
     .venv/bin/python python_models/train_classical.py --candidates xgboost
 
-The served model is the CNN14 transfer model (train_transfer.py); these are the comparison
-candidates.
+These are comparison candidates; the served model comes from train_transfer.py.
 """
 
 from __future__ import annotations
@@ -32,7 +31,7 @@ from python_models import classical, dataset, tuning  # noqa: E402
 
 DEFAULT_MANIFEST = "audio_dataset/manifest_with_split.csv"
 METRICS_DIR = "python_models/metrics"
-BEST_DIR = "python_models/best"  # contract: src/services/pipeline.py DEFAULT_PYTHON_MODEL_DIR
+BEST_DIR = "python_models/best"  # what src/services/pipeline.py loads
 FEATURE_CACHE = "python_models/.cache/features_{version}.json"
 MODEL_VERSION = "1.0.0"
 
@@ -41,7 +40,7 @@ MODEL_VERSION = "1.0.0"
 
 
 def load_classes_config() -> tuple[list[str], list[str]]:
-    """``(class_names, critical_classes)`` from config/classes.json, the same file the app reads."""
+    """``(class_names, critical_classes)`` from config/classes.json."""
     path = REPO_ROOT / "config" / "classes.json"
     if not path.exists():
         raise SystemExit(f"config/classes.json not found at {path}")
@@ -54,7 +53,7 @@ def load_classes_config() -> tuple[list[str], list[str]]:
 
 
 def load_floors() -> dict[str, float]:
-    """The SRS performance floors, from config so they are auditable next to the results."""
+    """SRS performance targets from config."""
     path = REPO_ROOT / "config" / "thresholds.json"
     floors = {"accuracy": 0.85, "macro_f1": 0.80, "critical_recall": 0.85}
     if path.exists():
@@ -66,7 +65,7 @@ def load_floors() -> dict[str, float]:
     return floors
 
 
-# Money path: candidates -> selection -> test
+# Candidates -> selection -> test
 
 
 def build_candidate_grid(
@@ -77,9 +76,7 @@ def build_candidate_grid(
     weight_boost: float = 2.0,
     with_weighted: bool = True,
 ) -> tuple[list[tuple[str, dict[str, Any]]], dict[str, dict[str, float]]]:
-    """Every ``(candidate_name, params)`` to try, each once unweighted and once with critical
-    classes boosted.
-    """
+    """All ``(candidate_name, params)`` to try, with and without critical-class weights."""
     weights = classical.critical_class_weights(class_names, critical, boost=weight_boost)
     grid: list[tuple[str, dict[str, Any]]] = []
     weight_map: dict[str, dict[str, float]] = {}
@@ -92,15 +89,14 @@ def build_candidate_grid(
             grid.append((tag, base))
             if with_weighted:
                 wtag = f"{tag}+cw"
-                # Weights travel separately from params (class_weight or sample_weight, per
-                # estimator).
+                # Weights are passed separately from params.
                 grid.append((wtag, {**base, "_weighted": True}))
                 weight_map[wtag] = weights
     return grid, weight_map
 
 
 def _expand_grid(grid: dict[str, Any]) -> list[dict[str, Any]]:
-    """Cartesian product of a param grid, as a list of dicts (small grids only)."""
+    """All combinations of a param grid."""
     import itertools
 
     if not grid:
@@ -120,7 +116,7 @@ def _param_tag(params: dict[str, Any]) -> str:
 
 
 def _resolve_spec(tag: str) -> classical.CandidateSpec:
-    """Map a tagged candidate name back to its spec (``xgboost[max_depth=6]+cw`` -> xgboost)."""
+    """Spec for a tagged name, e.g. ``xgboost[max_depth=6]+cw`` -> xgboost."""
     base = tag.split("[")[0]
     return classical.get_candidate(base)
 
@@ -136,13 +132,13 @@ def run_training(
     allow_weighting: bool = False,
     tag: str = "",
 ) -> dict[str, Any]:
-    """Full train/compare/save run. Returns the summary dict it also writes to disk."""
+    """Full train/compare/save run. Returns the summary (also written to disk)."""
     class_names, critical = load_classes_config()
     floors = load_floors()
     names = candidate_names or list(classical.CLASSICAL_CANDIDATES)
 
     print("=" * 78)
-    print("SonicSentinel AI -- classical model training (SRS Step 7)")
+    print("SonicSentinel AI: classical model training (SRS Step 7)")
     print("=" * 78)
     print(f"  python      : {sys.version.split()[0]} ({platform.machine()})")
     print(f"  classes     : {len(class_names)}  critical: {len(critical)}")
@@ -168,13 +164,13 @@ def run_training(
         )
         if imbalance["absent_classes"]:
             print(
-                f"          WARNING absent classes: {imbalance['absent_classes']} -- "
-                "macro-F1 will be depressed by their zero recall, correctly."
+                f"          WARNING absent classes: {imbalance['absent_classes']} "
+                "(their zero recall will lower macro-F1)"
             )
 
     train = dataset.training_records(splits["train"])
     val = dataset.training_records(splits["val"])
-    # Test rows drop augmented copies: a variant of a training clip is not a test.
+    # No augmented copies in the test set.
     test = dataset.training_records(splits["test"], exclude_augmented=True)
 
     # 2. features
@@ -257,7 +253,7 @@ def run_training(
             f"across {cv['folds']} folds"
         )
 
-    # 6. refit on train+val, score test ONCE
+    # 6. refit on train+val, score test once
     print("\n[final] refitting winner on train+val")
     winner_spec = _resolve_spec(selection.winner)
     # Keep ``_candidate`` for the refit; drop the other underscore keys.
@@ -315,7 +311,7 @@ def run_training(
     )
     print(f"\n[save] best model -> {_rel(out_dir)}")
 
-    # Per-candidate metrics artefact + confusion matrix PNG.
+    # Per-candidate metrics and confusion matrix PNG.
     per_candidate = _per_candidate_metrics(
         protocol, selection, class_names, critical
     )
@@ -344,7 +340,7 @@ def run_training(
             "train_test_overlap": len(set(train_ids) & set(test_ids)),
             "val_test_overlap": len(set(val_ids) & set(test_ids)),
         },
-        # Recordings the quality gate rejected; reported so the denominators are visible.
+        # Recordings rejected by the quality check.
         "unusable_recordings": {
             "n": len(unusable),
             "by_split": _count_by(unusable, "split"),
@@ -377,7 +373,7 @@ def run_training(
         f"{selection.winner} (test split, n={artifact['test']['n_records']})",
     )
 
-    # 8. verdict
+    # 8. summary
     ok, failures = final.result.meets_floors(floors)
     print("\n" + "=" * 78)
     if ok:
@@ -390,13 +386,11 @@ def run_training(
     return artifact
 
 
-# Fit / score callables handed to the harness
+# Fit function for the tuning code
 
 
 def _fit_callable(X, y, params, seed, class_weights):
-    """Adapt the zoo to the harness's ``fit(X, y) -> estimator``; the family name travels as
-    ``params['_candidate']``.
-    """
+    """``fit(X, y) -> estimator`` for the tuning code; the family is ``params['_candidate']``."""
     resolved = {k: v for k, v in params.items() if not k.startswith("_")}
     name = str(params.get("_candidate") or "")
     if not name:
@@ -418,7 +412,7 @@ def _predict_proba_callable(estimator, X) -> np.ndarray:
     return np.asarray(proba)
 
 
-# Saving and reporting helpers
+# Saving and reporting
 
 
 def classical_save(estimator, out_dir, **kwargs):
@@ -448,7 +442,7 @@ def print_result(result, floors) -> None:
 
 
 def _count_by(rows: list[dict[str, Any]], field: str) -> dict[str, int]:
-    """Small tally helper for the artefact's rejection summaries."""
+    """Count rows by a key."""
     counts: dict[str, int] = {}
     for row in rows:
         key = str(row.get(field, ""))
@@ -457,7 +451,7 @@ def _count_by(rows: list[dict[str, Any]], field: str) -> dict[str, int]:
 
 
 def _per_candidate_metrics(protocol, selection, class_names, critical) -> list[dict[str, Any]]:
-    """Validation metrics for every candidate tried, winner first -- the tuning table."""
+    """Validation metrics for every candidate, winner first."""
     rows: list[dict[str, Any]] = []
     for trial in selection.ranked:
         rows.append(
@@ -506,7 +500,7 @@ def _write_comparison_csv(path: Path, rows: list[dict[str, Any]], floors) -> Non
 
 
 def _plot_confusion(matrix, class_names, out_path: Path, title: str) -> None:
-    """Confusion matrix PNG generated from the real matrix, not drawn by hand."""
+    """Save the confusion matrix as a PNG."""
     try:
         import matplotlib
 
@@ -517,7 +511,7 @@ def _plot_confusion(matrix, class_names, out_path: Path, title: str) -> None:
         return
 
     data = np.asarray(matrix, dtype=np.float64)
-    # Row-normalised so classes with different support are comparable by eye.
+    # Row-normalised so classes of different sizes compare.
     row_sums = data.sum(axis=1, keepdims=True)
     normalised = np.divide(data, row_sums, out=np.zeros_like(data), where=row_sums > 0)
 
@@ -551,11 +545,11 @@ def _plot_confusion(matrix, class_names, out_path: Path, title: str) -> None:
 
 
 def _measure_latency(estimator, X: np.ndarray, repeats: int = 5) -> dict[str, float]:
-    """Single-row inference latency on this CPU -- the SRS's 3-second live budget is real."""
+    """Single-row prediction latency on this CPU."""
     import time as _time
 
     row = X[:1]
-    # Warm up (first call pays lazy imports / thread-pool setup, not real inference).
+    # Warm up first.
     estimator.predict_proba(row)
     samples: list[float] = []
     for _ in range(repeats):
@@ -581,10 +575,9 @@ def _rel(path: Path) -> str:
 
 
 def make_smoke_manifest(out_root: Path, per_class: int, seed: int) -> Path:
-    """Generate a tiny corpus and freeze its split through the same generate_corpus.py and
-    build_split.py path as the real run. The metrics mean nothing; it proves the code path.
+    """Generate a tiny corpus and split it, to test the code path (the metrics mean nothing).
 
-    Files go under audio_dataset/smoke/ and are removed when the run finishes.
+    Files go under audio_dataset/smoke/ and are deleted afterwards.
     """
     import csv
     import shutil
@@ -614,7 +607,7 @@ def make_smoke_manifest(out_root: Path, per_class: int, seed: int) -> Path:
     if not generated.exists():
         raise SystemExit(f"generator did not write {generated}")
 
-    # Prefix the relative filenames so they resolve under audio_dataset/ like the real corpus.
+    # Make filenames relative to audio_dataset/ like the real corpus.
     with generated.open(newline="", encoding="utf-8") as fh:
         reader = csv.DictReader(fh)
         fieldnames = list(reader.fieldnames or [])
@@ -628,8 +621,7 @@ def make_smoke_manifest(out_root: Path, per_class: int, seed: int) -> Path:
         writer.writeheader()
         writer.writerows(rows)
 
-    # build_split.py always writes the canonical manifest, so the real one is moved aside and
-    # restored.
+    # build_split.py overwrites the real manifest, so move it aside and restore it after.
     canonical = REPO_ROOT / "audio_dataset" / "manifest_with_split.csv"
     split_manifest = out_root / "manifest_with_split.csv"
     saved_canonical: bytes | None = canonical.read_bytes() if canonical.exists() else None
@@ -692,7 +684,7 @@ def main(argv: list[str] | None = None) -> int:
             make_smoke_manifest(smoke_root, per_class=args.smoke_per_class, seed=1234)
         )
         tag = tag or "smoke"
-        # A handful of originals per class cannot support 5 folds across 10 classes.
+        # Too few clips for 5 folds.
         args.cv_folds = min(args.cv_folds, 2)
         print(
             f"[smoke] per-class={args.smoke_per_class} => metrics are NOT meaningful; "

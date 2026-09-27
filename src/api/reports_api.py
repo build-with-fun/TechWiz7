@@ -1,9 +1,7 @@
 """Reports and exports (FR lix, lxx).
 
-The event report renders the stored event (it never re-runs a model), the period report
-aggregates stored columns, and the CSV/XLSX export reuses the search filters so it contains
-exactly what the page showed. Exports are administrator-only and audited. XLSX is written
-with the standard library, not a renamed CSV.
+Reports use stored data only; no model is re-run. CSV/XLSX exports use the same filters as
+the event search, are admin-only and audited. XLSX is written with the standard library.
 """
 
 from __future__ import annotations
@@ -54,10 +52,7 @@ _CSV_COLUMNS = [
 @bp.get("/reports/event/<int:event_id>")
 @capability_required("view_analytics")
 def event_report(event_id: int):
-    """FR lxix: one event's full analysis as a standalone, printable HTML file.
-
-    ``?format=json`` returns the same data without the pictures.
-    """
+    """FR lxix: one event as a standalone, printable HTML page (``?format=json`` for data only)."""
     from src.models import User
 
     fmt = (request.args.get("format") or "json").lower()
@@ -89,7 +84,7 @@ def event_report(event_id: int):
             from src.services.visuals import report_figures
 
             figures = report_figures(current_app.config["SST_STORAGE"].resolve(stored_path))
-        except Exception:  # noqa: BLE001 - a missing picture must not lose the report
+        except Exception:  # noqa: BLE001 - report still works without the images
             current_app.logger.warning("report figures failed for event %s", event_id,
                                        exc_info=True)
     html = _event_report_html(data, figures)
@@ -101,7 +96,7 @@ def event_report(event_id: int):
 
 
 def _event_report_html(event: dict, figures: dict[str, str] | None = None) -> str:
-    """A standalone HTML document with every item FR lxix lists. Printable to PDF."""
+    """Standalone HTML with everything FR lxix lists."""
     esc = lambda v: _xml_escape("" if v is None else str(v))  # noqa: E731
     fmt = lambda v, n=3: "" if v is None else f"{float(v):.{n}f}"  # noqa: E731
     quality = event.get("quality") or {}
@@ -178,7 +173,7 @@ def _event_report_html(event: dict, figures: dict[str, str] | None = None) -> st
 
 
 def _now_iso() -> str:
-    # _dtm is the datetime CLASS; the module object lives on _dt.
+    # _dtm is the datetime class, _dt the module.
     return _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
@@ -210,7 +205,7 @@ def period_report():
                 Event.created_at < end.replace(tzinfo=None),
             )
         ).scalars().all()
-        # The aggregates stay simple and named; the report is a summary, not a dump.
+        # Keep the aggregates simple.
         by_class: dict[str, int] = {}
         by_severity: dict[str, int] = {}
         by_consistency: dict[str, int] = {}
@@ -294,7 +289,7 @@ def _period_report_html(data: dict) -> str:
 @bp.get("/export/events.csv")
 @capability_required("export_data")
 def export_csv():
-    """FR lxxi: CSV of the events the active filters select, streamed, audited."""
+    """FR lxxi: CSV of the filtered events (streamed, audited)."""
     store = get_store()
     filters = parse_filters(request.args, store, viewer=current_user._get_current_object())
     if filters.problems:
@@ -316,7 +311,7 @@ def export_csv():
 @bp.get("/export/events.xlsx")
 @capability_required("export_data")
 def export_xlsx():
-    """Same rows as the CSV, as a real (stdlib-written) XLSX workbook."""
+    """Same rows as the CSV, as an XLSX file."""
     import xml.etree.ElementTree as ET
 
     with session_scope(current_app.config["SST_SESSION_FACTORY"]) as session:
@@ -407,7 +402,7 @@ def _csv_cell(value) -> str:
 
 
 def _export_rows(session, filters, store) -> tuple[list[dict], int]:
-    """Export all matching rows up to a bounded size, using the search scope and filters."""
+    """Matching rows for export, up to a size limit."""
     output: list[dict] = []
     page = 1
     total = 0

@@ -1,16 +1,8 @@
-"""The alert-rule files and the config loader are the contract the whole backend reads.
+"""Alert rule files and the config loader (SRS FR xxxv, xxxvi, liii, lxxx; 1.8 rule 5).
 
-SRS FR xxxv, xxxvi, liii, lxxx; SRS 1.10 deliverable 7; SRS 1.8 rule 5.
-
-Two things are under test, and they are the two things an evaluator will poke at:
-
-1. **The shipped files are complete and consistent.** Every one of the ten classes has a
-   rule, every severity is on the active scale, every escalation condition is in the
-   documented vocabulary -- so a demonstration cannot fail because a rule was missing.
-2. **The loader actually reads the files.** A threshold edited on disk changes what the
-   loader returns on the next call, with no restart and no cache-clearing call. If the
-   loader cached for the lifetime of the process, the SRS "change a threshold live"
-   requirement would fail in front of the evaluator, which is the worst possible place.
+1. The shipped files are complete: every class has a rule, every severity is valid, every
+   condition is known.
+2. Editing a file on disk changes what the loader returns on the next call, no restart.
 """
 
 from __future__ import annotations
@@ -34,7 +26,7 @@ def store() -> ConfigStore:
 
 @pytest.fixture()
 def sandbox(tmp_path: Path) -> ConfigStore:
-    """A copy of the real config, so a test may edit it without touching the repo."""
+    """Copy of the real config that tests can edit."""
     for src in (CONFIG_DIR, RULES_DIR):
         shutil.copytree(src, tmp_path / src.name)
     return ConfigStore(tmp_path / "config", tmp_path / "alert_rules")
@@ -62,14 +54,14 @@ def test_every_class_has_exactly_one_rule(store: ConfigStore):
 
 
 def test_critical_categories_match_classes_json_by_default(store: ConfigStore):
-    """FR liii lets an administrator override; with no override we must inherit."""
+    """Without an override, critical classes come from classes.json (FR liii)."""
     assert store.alert_rules()["critical_categories"]["override"] == []
     assert sorted(store.critical_classes()) == sorted(store.classes_config()["critical_classes"])
     assert len(store.critical_classes()) == 5
 
 
 def test_severity_per_class_matches_the_srs_step_16_examples(store: ConfigStore):
-    """Step 16 works through all ten classes; the file must reproduce it exactly."""
+    """Severities match the SRS Step 16 examples."""
     expected = {
         "Background Noise": "Informational",
         "Vehicle Horn": "Low",          # Step 16 allows "Low or Medium"
@@ -87,21 +79,20 @@ def test_severity_per_class_matches_the_srs_step_16_examples(store: ConfigStore)
 
 
 def test_five_level_scale_is_active_and_ordered(store: ConfigStore):
-    """Step 16 lists five levels; FR lii lists four. Five is active because the SRS's
-    own worked examples use 'High'."""
+    """The five-level scale is active (the SRS examples use 'High')."""
     assert store.severity_scale() == ["Informational", "Low", "Medium", "High", "Critical"]
     assert store.severity_rank("Critical") > store.severity_rank("Informational")
 
 
 def test_four_level_fallback_covers_every_five_level_severity(store: ConfigStore):
-    """Switching to the FR lii scale must not orphan a stored severity."""
+    """Every five-level severity maps onto the four-level scale."""
     levels = store.severity_levels()
     mapping = levels["mapping_between_scales"]["five_level_to_four_level"]
     four = set(levels["scales"]["four_level_fr_lii"])
     for name in levels["scales"]["five_level"]:
         assert name in mapping, f"{name} has no mapping onto the four-level scale"
         assert mapping[name] in four
-    # The mapping must not silently downgrade a security alert into a routine one.
+    # High must not become a routine level.
     assert mapping["High"] == "Critical"
 
 
@@ -114,7 +105,7 @@ def test_recommended_action_is_present_and_specific(store: ConfigStore):
 
 
 def test_every_srs_manual_review_trigger_is_covered(store: ConfigStore):
-    """SRS Step 17 lists eight triggers; each must map to an enabled condition."""
+    """All eight SRS Step 17 triggers have an enabled condition."""
     ids = set(store.review_condition_ids())
     for required in (
         "model_disagreement",
@@ -130,7 +121,7 @@ def test_every_srs_manual_review_trigger_is_covered(store: ConfigStore):
 
 
 def test_review_condition_reason_templates_name_their_variables(store: ConfigStore):
-    """A reason_template that references an unknown field would raise at queue time."""
+    """reason_template only uses known fields."""
     allowed = {
         "python_class", "python_confidence", "gtm_class", "gtm_confidence",
         "confidence_difference", "quality", "quality_detail", "margin",
@@ -147,14 +138,12 @@ def test_review_condition_reason_templates_name_their_variables(store: ConfigSto
 
 
 def test_repeat_detection_defaults_inherit_the_thresholds_file(store: ConfigStore):
-    """Rule files state only deliberate per-class deviations from thresholds.json; this pins the
-    set.
-    """
+    """Only these per-class overrides of thresholds.json exist."""
     thresholds = store.thresholds()
     expected_deviations = {
-        # class -> which fields it is allowed to state itself, and the SRS reason
-        "Gunshot": {"min_confidence", "min_top_two_margin"},   # FR xlvi: confirm before a critical alert
-        "Glass Breaking": {"min_top_two_margin"},              # FR xlii: high-severity security alert
+        # class -> fields it overrides
+        "Gunshot": {"min_confidence", "min_top_two_margin"},   # FR xlvi
+        "Glass Breaking": {"min_top_two_margin"},              # FR xlii
     }
     inheritable = ("min_confidence", "min_top_two_margin",
                    "required_consecutive_detections", "window_seconds")
@@ -186,7 +175,7 @@ def test_repeat_detection_defaults_inherit_the_thresholds_file(store: ConfigStor
 
 
 def test_editing_the_shared_threshold_file_moves_every_inheriting_rule(sandbox: ConfigStore):
-    """The strongest form of the requirement: one edit, nine rules change with it."""
+    """One edit to thresholds.json changes every rule that inherits it."""
     assert sandbox.rule_for_class("Glass Breaking")["min_confidence"] == 0.60
 
     path = sandbox.config_dir / "thresholds.json"
@@ -196,13 +185,12 @@ def test_editing_the_shared_threshold_file_moves_every_inheriting_rule(sandbox: 
 
     assert sandbox.rule_for_class("Glass Breaking")["min_confidence"] == 0.88
     assert sandbox.rule_for_class("Alarm or Siren")["min_confidence"] == 0.88
-    # The explicit per-class override is untouched -- it is a stated deviation, not an
-    # inherited value, which is exactly why it was written as a literal.
+    # The explicit override stays as it is.
     assert sandbox.rule_for_class("Gunshot")["min_confidence"] == 0.75
 
 
 def test_gunshot_is_stricter_than_the_global_default(store: ConfigStore):
-    """FR xlvi: a critical alert needs confirmation, so Gunshot deliberately deviates."""
+    """FR xlvi: Gunshot has stricter thresholds."""
     rule = store.rule_for_class("Gunshot")
     assert rule["min_confidence"] > store.thresholds()["confidence"]["min_confidence"]
     assert rule["requires_model_agreement"] is True
@@ -210,14 +198,14 @@ def test_gunshot_is_stricter_than_the_global_default(store: ConfigStore):
 
 
 def test_help_phrases_class_accepts_poor_quality_with_a_recorded_reason(store: ConfigStore):
-    """A deliberate trade-off is fine; an undocumented one is not."""
+    """The help class accepts Poor quality and says why."""
     rule = store.rule_for_class("Person Asking for Help")
     assert rule["min_audio_quality"] == "Poor"
     assert "rationale_for_looser_quality" in rule
 
 
 def test_background_noise_carries_a_configurable_ambient_limit(store: ConfigStore):
-    """FR l: non-critical UNLESS the noise level exceeds a configured limit."""
+    """FR l: background noise escalates above a configured level."""
     rule = store.rule_for_class("Background Noise")
     assert rule["severity"] == "Informational"
     assert "noise_level_dbfs_limit" in rule["thresholds"]
@@ -233,13 +221,13 @@ def test_retention_defaults_cover_the_required_artifact_classes(store: ConfigSto
 
 
 def test_retention_never_truncates_a_critical_event(store: ConfigStore):
-    """A severity override may extend retention, never shorten it."""
+    """Severity overrides only extend retention."""
     retention = store.retention()
     base = retention["defaults"]["event_records_days"]
     assert retention["overrides_by_severity"]["Critical"]["event_records_days"] >= base
 
 
-# Live editing -- the SRS "change a threshold in front of the evaluator" requirement
+# Live editing
 
 def test_changing_min_confidence_on_disk_changes_what_the_loader_returns(sandbox: ConfigStore):
     before = sandbox.thresholds()["confidence"]["min_confidence"]
@@ -267,7 +255,7 @@ def test_changing_a_rule_severity_on_disk_changes_the_verdict(sandbox: ConfigSto
 
 
 def test_changing_the_severity_scale_on_disk_changes_the_display(sandbox: ConfigStore):
-    """Satisfies an evaluator who quotes FR lii's four-level list."""
+    """Switching to the four-level scale (FR lii) changes the display."""
     assert sandbox.display_severity("High") == "High"
 
     path = sandbox.alert_rules_dir / "severity_levels.json"
@@ -281,12 +269,12 @@ def test_changing_the_severity_scale_on_disk_changes_the_display(sandbox: Config
 
 
 def test_a_renamed_class_is_caught_by_validation_not_ignored(sandbox: ConfigStore):
-    """Renaming a class in the rule file must fail loudly, not drop its alert."""
+    """A misspelled class name fails validation."""
     path = sandbox.alert_rules_dir / "alert_rules.json"
     doc = json.loads(path.read_text())
     for rule in doc["rules"]:
         if rule["class"] == "Gunshot":
-            rule["class"] = "Gun Shot"          # a plausible paraphrase, a real bug
+            rule["class"] = "Gun Shot"
     path.write_text(json.dumps(doc, indent=2))
 
     problems = sandbox.validate()
@@ -313,7 +301,7 @@ def test_an_unknown_severity_is_caught(sandbox: ConfigStore):
 
 
 def test_an_unresolvable_threshold_reference_is_a_loud_error(sandbox: ConfigStore):
-    """A typo in a reference must not silently become a string in a float comparison."""
+    """A bad $thresholds reference is an error."""
     path = sandbox.alert_rules_dir / "alert_rules.json"
     doc = json.loads(path.read_text())
     doc["defaults"]["min_confidence"] = "$thresholds.confidence.min_confidnce"
@@ -334,7 +322,7 @@ def test_an_unknown_escalation_condition_is_caught(sandbox: ConfigStore):
 
 
 def test_disabling_a_critical_class_rule_is_caught(sandbox: ConfigStore):
-    """A critical class that can never alert is a safety hole; validation must find it."""
+    """Disabling a critical class's rule fails validation."""
     path = sandbox.alert_rules_dir / "alert_rules.json"
     doc = json.loads(path.read_text())
     for rule in doc["rules"]:
@@ -370,7 +358,7 @@ def test_a_typo_in_the_critical_override_is_refused(sandbox: ConfigStore):
         sandbox.critical_classes()
 
 
-# The snapshot the audit trail stores
+# Config snapshot
 
 def test_snapshot_records_a_hash_per_file_and_survives_json(store: ConfigStore):
     snap = store.snapshot()

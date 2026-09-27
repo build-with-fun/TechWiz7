@@ -1,8 +1,7 @@
-"""Contract tests for the deep candidates (SRS Step 7), not accuracy tests.
+"""Interface tests for the deep candidates (SRS Step 7). Accuracy is measured elsewhere.
 
-Each candidate builds, fits and predicts on the locked feature vector, returns probabilities
-in config class order, and reloads through PythonModelPredictor without label or feature
-drift. Accuracy is measured by the training scripts on the untouched test split.
+Each candidate should fit and predict on the feature vector, return probabilities in the
+config class order, and reload through PythonModelPredictor.
 """
 
 from __future__ import annotations
@@ -43,12 +42,7 @@ CLASS_NAMES, CRITICAL = _load_classes()
 
 
 def _synthetic_matrix(seed: int) -> tuple[np.ndarray, list[str]]:
-    """A matrix with genuine class structure in the melband block.
-
-    The classes are given distinct mel profiles, so a model that reads the spatial block can
-    actually learn something -- which distinguishes 'the model is broken' from 'the model has
-    nothing to learn' when a test checks prediction shape only.
-    """
+    """Synthetic features where each class has its own mel profile, so there is something to learn."""
     rng = np.random.default_rng(seed)
     cols = feature_columns()
     idx = deep.melband_columns(cols)
@@ -69,11 +63,7 @@ def synthetic() -> tuple[np.ndarray, list[str]]:
 
 @pytest.fixture(scope="module")
 def fitted_models(synthetic) -> dict[str, Any]:
-    """Every candidate, fitted on the synthetic matrix once and reused across the module.
-
-    Built with small epoch counts on purpose: these tests are about the contract, and a
-    contract test that takes minutes to run gets skipped.
-    """
+    """Every candidate fitted once (few epochs, to keep the tests fast)."""
     X, y = synthetic
     fitted: dict[str, Any] = {}
     for name, spec in deep.DEEP_CANDIDATES.items():
@@ -88,8 +78,7 @@ def fitted_models(synthetic) -> dict[str, Any]:
 
 
 def test_registry_has_at_least_three_deep_candidates():
-    """The SRS requires at least three models trained and compared. Fewer than three means the
-    requirement is not met by construction, so this is checked before anything is fitted."""
+    """The SRS asks for at least three compared models."""
     assert len(deep.DEEP_CANDIDATES) >= 3, (
         "SRS Step 7 requires >=3 models; the deep zoo has " f"{len(deep.DEEP_CANDIDATES)}"
     )
@@ -100,28 +89,26 @@ def test_every_candidate_is_registered_and_documented(name):
     spec = deep.get_candidate(name)
     assert spec.name == name
     assert spec.backend in {"torch", "keras"}, f"{name}: unknown backend {spec.backend!r}"
-    # A candidate with no notes cannot be explained to an evaluator who asks what it tests.
+    # Every candidate needs notes.
     assert spec.notes, f"{name}: the zoo must document the hypothesis each model tests"
 
 
 def test_get_candidate_rejects_unknown_names():
-    """An unknown name must raise, not return a half-built model."""
+    """Unknown names raise."""
     with pytest.raises(KeyError, match="unknown deep candidate"):
         deep.get_candidate("definitely_not_a_model")
 
 
-# Feature-vector contract
+# Feature vector
 
 
 def test_feature_vector_is_locked_width():
-    """The extractor's width is what the app feeds an estimator; a change here is a contract
-    break between features and every trained model, so it is pinned."""
+    """The feature vector has the expected width."""
     assert len(feature_columns()) == 254
 
 
 def test_melband_block_is_present_and_contiguous():
-    """The spatial models slice the melband columns out of the locked vector and treat them as
-    a spectrum. A non-contiguous or missing block means the slice reads the wrong columns."""
+    """The melband columns exist and are contiguous."""
     idx = deep.melband_columns(feature_columns())
     assert len(idx) == 128, "the CNN/CRNN frequency axis is the 128-band mel block"
     assert idx == list(range(idx[0], idx[0] + len(idx))), "the mel block must be contiguous"
@@ -132,17 +119,12 @@ def test_melband_columns_raises_on_missing_block():
         deep.melband_columns(["mfcc_00_mean", "zcr_mean"])
 
 
-# Fit / predict contract
+# Fit and predict
 
 
 @pytest.mark.parametrize("name", sorted(deep.DEEP_CANDIDATES))
 def test_fit_then_predict_proba_shape_and_order(fitted_models, name):
-    """``predict_proba`` must give one probability per class in the config order.
-
-    ``TuningProtocol`` indexes confidence columns positionally, and the app's consistency
-    verdict subtracts the GTM model's confidence from a specific class's -- a silent column
-    reorder between the two would produce a wrong verdict, not an error.
-    """
+    """predict_proba gives one column per class, in config order."""
     X, _ = _synthetic_matrix(1)
     estimator = fitted_models[name]
     proba = estimator.predict_proba(X)
@@ -165,11 +147,7 @@ def test_predict_agrees_with_predict_proba(fitted_models, name):
 
 @pytest.mark.parametrize("name", sorted(deep.DEEP_CANDIDATES))
 def test_fit_is_deterministic_under_a_fixed_seed(synthetic, name):
-    """Two estimators of the same candidate on the same seed must agree exactly.
-
-    Seeding is what makes the frozen split reproducible and the comparison report
-    re-generable; a model that ignores its seed cannot be re-run for an evaluator.
-    """
+    """Same seed, same result."""
     X, y = synthetic
     params = {"epochs": 3, "channels": 16, "hidden": 32, "head_units": 24}
     a = deep.build_estimator(deep.get_candidate(name), params, seed=7)
@@ -181,8 +159,7 @@ def test_fit_is_deterministic_under_a_fixed_seed(synthetic, name):
 
 @pytest.mark.parametrize("name", sorted(deep.DEEP_CANDIDATES))
 def test_sample_weight_changes_the_fit(synthetic, name):
-    """Critical-class weighting is a first-class knob in the protocol, so it must actually be
-    wired through -- a fit that ignores ``sample_weight`` would silently discard the boost."""
+    """sample_weight actually affects the fit."""
     X, y = synthetic
     params = {"epochs": 4, "channels": 16, "hidden": 32, "head_units": 24}
     plain = deep.build_estimator(deep.get_candidate(name), params, seed=0)
@@ -197,8 +174,7 @@ def test_sample_weight_changes_the_fit(synthetic, name):
 
 @pytest.mark.parametrize("name", sorted(deep.DEEP_CANDIDATES))
 def test_feature_drift_is_rejected(fitted_models, name):
-    """The app raises on a width mismatch; a deep model must raise the same way rather than
-    silently misreading the vector."""
+    """A wrong feature width raises."""
     X, _ = _synthetic_matrix(3)
     truncated = X[:, :100]
     estimator = fitted_models[name]
@@ -206,14 +182,12 @@ def test_feature_drift_is_rejected(fitted_models, name):
         estimator.predict_proba(truncated)
 
 
-# The save/load round-trip the web app performs at startup
+# Save and reload
 
 
 @pytest.mark.parametrize("name", sorted(deep.DEEP_CANDIDATES))
 def test_save_and_reload_through_the_app_predictor(tmp_path, fitted_models, name):
-    """The bundle reloads through ``PythonModelPredictor``, the app's only load path (Keras weights
-    included).
-    """
+    """The bundle reloads through PythonModelPredictor (Keras weights included)."""
     X, y = _synthetic_matrix(4)
     estimator = fitted_models[name]
     model_dir = tmp_path / f"bundle_{name}"
@@ -232,9 +206,7 @@ def test_save_and_reload_through_the_app_predictor(tmp_path, fitted_models, name
 
     predictor = PythonModelPredictor.load(Path(out_dir), FeatureExtractor())
 
-    # ``_predict_features`` is the exact path ``predict`` takes after feature extraction, so
-    # feeding it the vector directly isolates the round-trip from the audio pipeline: if the
-    # reloaded estimator disagrees with the one that was saved, this is where it shows.
+    # _predict_features skips the audio pipeline, so this only tests the round trip.
     result = predictor._predict_features(X[0], origin="test")
     assert set(result.confidences) == set(CLASS_NAMES)
     total = sum(result.confidences.values())
@@ -249,8 +221,7 @@ def test_save_and_reload_through_the_app_predictor(tmp_path, fitted_models, name
 
 
 def test_predictor_class_order_matches_the_config(tmp_path, fitted_models):
-    """The bundle's class order must match the estimator's fitted order, which the loader
-    preserves and the app verifies against config/classes.json at load time."""
+    """The bundle's class order matches the estimator's."""
     estimator = fitted_models["cnn1d"]
     out_dir = save_bundle(
         estimator,

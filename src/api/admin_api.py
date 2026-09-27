@@ -1,8 +1,7 @@
-"""Administration API: configuration, users, audit, monitoring and retention (FR lxxv-lxxx).
+"""Admin API: configuration, users, audit, monitoring and retention (FR lxxv-lxxx).
 
-A config edit is written to a temporary file and run through the same validator the app uses
-at startup; only a clean result replaces the real file. Edits are audited with before and
-after, including rejected ones.
+A config edit is validated on a temp copy first and only replaces the real file if it
+passes. All edits are audited, including rejected ones.
 """
 
 from __future__ import annotations
@@ -28,7 +27,7 @@ bp = Blueprint("admin_api", __name__)
 
 _LOGGER = logging.getLogger(__name__)
 
-#: Which files the PUT endpoint accepts, and where they live.
+# Files the PUT endpoint accepts.
 EDITABLE_FILES: dict[str, str] = {
     "thresholds": "config",
     "alert-rules": "alert_rules",
@@ -49,7 +48,7 @@ EDITABLE_FILES: dict[str, str] = {
 @bp.get("/config")
 @capability_required("edit_config")
 def config_overview():
-    """FR liii: every live config value with its source resolved."""
+    """FR liii: current config values and where they come from."""
     store = get_store()
     snapshot = store.snapshot()
     data = {
@@ -80,7 +79,7 @@ def _path_for(store, file_key: str) -> Path:
 @bp.put("/config/<file_key>")
 @capability_required("edit_config")
 def put_config(file_key: str):
-    """FR liii / FR lxxx: an edited config file, validated before anything touches disk."""
+    """FR liii / FR lxxx: replace a config file after validating it."""
     store = get_store()
     path = _path_for(store, file_key)
     body = request.get_json(silent=True)
@@ -89,7 +88,7 @@ def put_config(file_key: str):
 
     before = path.read_text(encoding="utf-8") if path.exists() else ""
     if not before:
-        # A file the store reads with defaults is still editable, but only whole.
+        # Files are replaced whole.
         raise not_found(f"configuration file {file_key}")
 
     directory = path.parent
@@ -126,7 +125,7 @@ def put_config(file_key: str):
     finally:
         temp_name.unlink(missing_ok=True)
 
-    with store._lock:  # same cache the readers use; drop stale entries now
+    with store._lock:  # clear cached entries
         store._cache.clear()
         store._hashes.clear()
     after = path.read_text(encoding="utf-8")
@@ -154,7 +153,7 @@ def put_config(file_key: str):
 @bp.get("/config/history")
 @capability_required("read_audit")
 def config_history():
-    """FR lxx: who changed which config value, when, from what to what."""
+    """FR lxx: config change history."""
     return _audit_response(extra_clauses=[AuditRecord.action == "config_edited"])
 
 
@@ -375,9 +374,7 @@ def audit_trail():
 @bp.get("/monitoring/anomalies")
 @capability_required("read_audit")
 def monitoring_anomalies():
-    """FR lxxviii anomaly checks (from src/services/monitoring.py, which the dashboard also uses)
-    plus disk space.
-    """
+    """FR lxxviii anomaly checks (src/services/monitoring.py) plus disk space."""
     from src.services.monitoring import compute_anomalies
 
     with session_scope(current_app.config["SST_SESSION_FACTORY"]) as session:
@@ -390,7 +387,7 @@ def monitoring_anomalies():
             result["anomalies"].append(
                 {"kind": "disk_free", "severity": "High", "value": round(free_gb, 3),
                  "threshold": 1.0, "message": f"Only {free_gb:.2f} GB free where the database lives."})
-    except Exception:  # pragma: no cover - disk check must never fail the endpoint
+    except Exception:  # pragma: no cover
         _LOGGER.debug("disk check skipped", exc_info=True)
     return jsonify({"data": {"anomalies": result["anomalies"]},
                     "meta": {k: v for k, v in result.items() if k != "anomalies"}})
@@ -399,14 +396,14 @@ def monitoring_anomalies():
 @bp.post("/retention/preview")
 @capability_required("manage_users")
 def retention_preview():
-    """FR lxxx: what a purge *would* delete. Reads only; nothing is removed."""
+    """FR lxxx: what a purge would delete, without deleting anything."""
     return _retention(dry_run=True)
 
 
 @bp.post("/retention/purge")
 @capability_required("manage_users")
 def retention_purge():
-    """FR lxxx: execute the purge. ``?dry_run=1`` is the default, on purpose."""
+    """FR lxxx: run the purge. Defaults to ``?dry_run=1``."""
     dry_run = request.args.get("dry_run", "1") not in {"0", "false"}
     return _retention(dry_run=dry_run)
 

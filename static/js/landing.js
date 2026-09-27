@@ -1,6 +1,5 @@
-/* Public page motion: scroll reveals, count-ups and the navigation's scrolled state.
-   Everything is progressive: without this file, or with reduced motion, the page is
-   complete and static. */
+/* Scroll reveals, count-ups and the sticky nav on the public page. The page works
+   without this file and with reduced motion. */
 (function () {
   'use strict';
 

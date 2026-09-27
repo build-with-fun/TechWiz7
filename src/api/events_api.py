@@ -1,8 +1,7 @@
-"""Events API: list and search, detail, evidence, audio stream, flag and delete.
+"""Events API: search, detail, evidence, audio, flag and delete.
 
-A viewer without view_all_events sees only their own uploads, enforced inside the query.
-Another user's event is a 404, not a 403. An unknown filter value is a 422 naming the
-parameter, not silently ignored.
+Without view_all_events a user only sees their own uploads; other events return 404.
+Unknown filter values return 422.
 """
 
 from __future__ import annotations
@@ -25,7 +24,7 @@ bp = Blueprint("events_api", __name__)
 
 _LOGGER = logging.getLogger(__name__)
 
-# Contract §3.2's sort names, mapped to the ones the search service knows.
+# API sort names -> search service sort names.
 _SORT_BY_NAME = {
     "created_at": "newest",
     "confidence": "confidence",
@@ -43,12 +42,9 @@ def _viewer_scope() -> tuple[int | None, bool]:
 
 
 def _actor_dict(store) -> dict:
-    """Who the pipeline acted for, when the record does not yet carry it.
+    """The current user as the event's creator, since the pipeline record doesn't carry it.
 
-    A freshly uploaded clip is persisted with ``created_by_id`` before the response is built,
-    but the pipeline record itself never embeds the actor — so the caller would otherwise see
-    ``null`` for an event that clearly belongs to somebody. Falls back to nulls for anonymous
-    live windows, which are allowed by FR lxii.
+    Nulls for anonymous live windows (allowed by FR lxii).
     """
     actor = getattr(store, "actor", None)
     if actor is None or not getattr(actor, "id", None):
@@ -57,9 +53,7 @@ def _actor_dict(store) -> dict:
 
 
 def event_to_dict(record: dict, store) -> dict:
-    """Shape a pipeline record as the API's Event; values are copied from the record, never derived
-    here.
-    """
+    """Pipeline record -> API Event."""
     audio = record.get("audio") or {}
     quality = record.get("quality") or {}
     predictions = record.get("predictions") or {}
@@ -80,7 +74,7 @@ def event_to_dict(record: dict, store) -> dict:
             "version": version,
             "predicted_class": pred.get("predicted_class"),
             "confidence": pred.get("confidence"),
-            # The full distribution, so the frontend never guesses at runner-up classes.
+            # All classes, not just the top one.
             "confidences": pred.get("confidences"),
             "latency_sec": pred.get("latency_sec"),
         }
@@ -139,9 +133,7 @@ def event_to_dict(record: dict, store) -> dict:
 
 
 def _event_row_to_dict(event: Event, store) -> dict:
-    """Shape a stored Event row the same way, so a stored row and a fresh analysis look identical to
-    the frontend.
-    """
+    """Stored Event row -> API Event, same shape as event_to_dict."""
     audio = event.audio_file
     alert = event.alerts[0] if event.alerts else None
     py = event.python_model_version
@@ -215,11 +207,11 @@ def _event_row_to_dict(event: Event, store) -> dict:
 @bp.get("/events")
 @capability_required("view_own_events")
 def list_events():
-    """Search and filter events, FR lxvii. The full validated filter set is accepted."""
+    """Search and filter events (FR lxvii)."""
     store = get_store()
     viewer_id, sees_all = _viewer_scope()
 
-    # Sort names differ between the API and the search service; unknown values are a 422.
+    # Translate the sort name; unknown values are a 422.
     sort = (request.args.get("sort") or "created_at").strip().lower()
     if sort not in _SORT_BY_NAME:
         raise validation_error(
@@ -232,7 +224,7 @@ def list_events():
     filters = parse_filters(args, store, viewer=current_user._get_current_object(),
                             default_page_size=25, max_page_size=200)
     if filters.problems:
-        # An unknown value in a validated parameter is a 422 naming it.
+        # 422 naming the bad parameter.
         raise validation_error(
             "Some filters were not understood",
             problems=filters.problems,
@@ -259,7 +251,7 @@ def list_events():
 @bp.get("/events/<int:event_id>")
 @capability_required("view_own_events")
 def get_event(event_id: int):
-    """One event, with its models' versions and its evidence pointer."""
+    """One event with its model versions and evidence link."""
     store = get_store()
     event = _visible_event(event_id)
     return jsonify({"data": _event_row_to_dict(event, store)})
@@ -268,9 +260,7 @@ def get_event(event_id: int):
 @bp.get("/events/<int:event_id>/evidence")
 @capability_required("view_own_events")
 def event_evidence(event_id: int):
-    """Evidence for a reviewer: both models' full distributions and the quality measurements, as
-    stored for this event.
-    """
+    """Both models' full scores and the quality measurements for an event."""
     event = _visible_event(event_id)
     scores: dict[str, list] = {"python": [], "gtm": []}
     for score in sorted(event.confidence_scores, key=lambda s: (s.model_name, s.rank)):
@@ -320,7 +310,7 @@ def event_evidence(event_id: int):
 @bp.get("/events/<int:event_id>/audio")
 @capability_required("view_own_events")
 def event_audio(event_id: int):
-    """Stream the stored audio. The owner, or anyone who can see all events."""
+    """Stream the stored audio (owner or view_all_events)."""
     event = _visible_event(event_id)
     audio = event.audio_file
     if audio is None:
@@ -346,7 +336,7 @@ def event_audio(event_id: int):
 @bp.post("/events/<int:event_id>/flag")
 @capability_required("view_own_events")
 def flag_event(event_id: int):
-    """Flag an event for a reviewer's attention (audited). Does not change the classification."""
+    """Flag an event for review. Doesn't change the classification."""
     from src.db import record_audit
 
     event = _visible_event(event_id)
@@ -376,7 +366,7 @@ def flag_event(event_id: int):
 @bp.delete("/events/<int:event_id>")
 @capability_required("view_all_events")
 def delete_event(event_id: int):
-    """Delete an event and its audio (reviewer and above), audited with a before-image."""
+    """Delete an event and its audio (reviewer and above). Audited."""
     from src.db import record_audit
 
     event = _visible_event(event_id)
@@ -418,9 +408,7 @@ def _now_iso() -> str:
 
 
 def _visible_event(event_id: int) -> Event:
-    """The event if this caller may see it, else 404 (single-resource routes bypass the search
-    scoping).
-    """
+    """The event if the user may see it, else 404."""
     viewer_id, sees_all = _viewer_scope()
     factory = current_app.config["SST_SESSION_FACTORY"]
     with session_scope(factory) as session:
@@ -442,7 +430,6 @@ def _visible_event(event_id: int) -> Event:
         event = session.execute(statement).scalar_one_or_none()
         if event is None:
             raise ApiError("not_found", "No event has that id.")
-        # Relationships are loaded while the session is open, so serialising after it closes is
-        # safe.
+        # Relationships are loaded here, before the session closes.
         session.expunge(event)
     return event

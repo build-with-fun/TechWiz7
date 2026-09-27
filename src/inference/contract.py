@@ -1,8 +1,7 @@
-"""The shapes both input modes and both models share: AudioSource, PreprocessedAudio, PredictionResult.
+"""Data types shared by both input modes and both models.
 
-An upload and a live window both become an AudioSource and go through the same preprocessing
-and the same predictors. Nothing here imports a model framework, so the web app can start
-without loading one.
+Uploads and live windows both become an AudioSource and go through the same preprocessing
+and predictors. No ML framework is imported here.
 """
 
 from __future__ import annotations
@@ -15,11 +14,11 @@ from typing import Any, Mapping, Protocol, Sequence, runtime_checkable
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-# Class list — loaded from config, never hard-coded
+# Class list, loaded from config
 
 
 def load_class_config(config_path: Path | None = None) -> dict[str, Any]:
-    """Read the canonical class list. Evaluators may add a category (SRS surprise mod)."""
+    """Read the class list from config/classes.json."""
     path = config_path or REPO_ROOT / "config" / "classes.json"
     with path.open(encoding="utf-8") as fh:
         return json.load(fh)
@@ -45,9 +44,7 @@ def load_thresholds(config_path: Path | None = None) -> dict[str, Any]:
 
 @dataclass
 class AudioSource:
-    """Audio entering the system: exactly one of ``path`` (upload) or ``samples`` (live window) is
-    set.
-    """
+    """Input audio: either ``path`` (upload) or ``samples`` (live window)."""
 
     path: Path | None = None
     samples: Any | None = None            # numpy float32 mono, nominally -1..1
@@ -79,8 +76,7 @@ class AudioSource:
 
 @dataclass
 class PreprocessedAudio:
-    """Output of preprocessing, input to both models. ``quality`` feeds the UI and the review rules.
-    """
+    """Preprocessed audio, given to both models."""
 
     samples: Any                                     # numpy float32 mono, target sample rate
     sample_rate: int
@@ -95,7 +91,7 @@ class PreprocessedAudio:
 
 @runtime_checkable
 class Preprocessor(Protocol):
-    """The single preprocessing path. Both input modes must use the SAME instance."""
+    """Preprocessing used by both input modes (share one instance)."""
 
     def __call__(self, source: AudioSource) -> PreprocessedAudio: ...
 
@@ -104,9 +100,7 @@ class Preprocessor(Protocol):
 
 @dataclass
 class PredictionResult:
-    """One model's opinion about one input. ``confidences`` must have every configured class; a
-    missing class would silently become a zero in the comparison.
-    """
+    """One model's prediction. ``confidences`` must include every class."""
 
     model_name: str
     model_version: str
@@ -119,7 +113,7 @@ class PredictionResult:
     extra: dict[str, Any] = field(default_factory=dict)
 
     def top_k(self, k: int = 3) -> list[tuple[str, float]]:
-        """Top-k by confidence, deterministic on ties (alphabetical by class name)."""
+        """Top k by confidence, ties broken alphabetically."""
         ranked = sorted(self.confidences.items(), key=lambda kv: (-kv[1], kv[0]))
         return ranked[:k]
 
@@ -143,9 +137,7 @@ class ModelLoadError(RuntimeError):
 
 
 def audio_fingerprint(source: AudioSource) -> str:
-    """Stable identity of an input: SHA-256 of a file's bytes, or of a live window's samples and
-    rate.
-    """
+    """SHA-256 of a file, or of a live window's samples and rate."""
     if source.path is not None:
         digest = hashlib.sha256()
         with source.path.open("rb") as fh:
@@ -163,9 +155,7 @@ def audio_fingerprint(source: AudioSource) -> str:
 
 
 def normalise_confidences(raw: Sequence[float], labels: Sequence[str]) -> dict[str, float]:
-    """Turn raw scores into {class: confidence} summing to 1; renormalising is logged, NaN and
-    negatives are clamped.
-    """
+    """Raw scores -> {class: confidence} summing to 1. NaN and negatives become 0."""
     import math
 
     if len(raw) != len(labels):
@@ -180,7 +170,7 @@ def normalise_confidences(raw: Sequence[float], labels: Sequence[str]) -> dict[s
 
     total = sum(cleaned)
     if total <= 0.0:
-        # All zeros means the model is broken; uniform is the honest 'I know nothing'.
+        # All zeros: fall back to uniform.
         uniform = 1.0 / len(labels)
         return {label: uniform for label in labels}
     return {label: value / total for label, value in zip(labels, cleaned, strict=True)}

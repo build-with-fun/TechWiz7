@@ -1,26 +1,17 @@
 /**
- * live.js: the live microphone monitor (FR vi, vii, lxiv, lxxix).
+ * Live microphone monitor (FR vi, vii, lxiv, lxxix).
  *
- * Capture design, and why it changed on 26 Sep:
- *   The first version recorded one window, sent it, waited for the verdict and only
- *   then recorded the next. Every round trip (0.5-1 s of inference) was a gap in
- *   which the microphone was not being listened to, so a gunshot during inference
- *   was simply never heard. Now the microphone is read continuously into a buffer,
- *   a timer cuts a window every `live_window_sec`, and a small queue feeds the
- *   server one request at a time.
+ * The microphone is read continuously into a buffer and a timer cuts a window every
+ * live_window_sec. Windows wait in a small queue and go to the server one at a time.
+ * (The first version recorded, sent and waited in turn, so anything that happened
+ * during inference was missed.) If the server falls behind, the oldest window is
+ * dropped and the count shown on screen.
  *
- *   The queue is bounded (MAX_QUEUE). If the server falls behind, the OLDEST
- *   waiting window is dropped and counted on screen. Keeping the newest audio is
- *   the right trade for monitoring, and a visible counter is better than a
- *   backlog that makes "live" results a minute old without anyone noticing.
+ * Microphone states (FR vii): Available, Active, Paused, Disconnected, Permission
+ * denied, plus "Not available" when there is no microphone.
  *
- * Microphone states shown to the user (FR vii), exactly the SRS words:
- *   Available, Active, Paused, Disconnected, Permission denied
- *   (plus "Not available" when the browser has no microphone API or device).
- *
- * Privacy (FR lxxix): nothing is captured before the consent box is ticked and
- * the session is opened; while capturing, the status pill says Active and the tab
- * title starts with a red dot. Stop releases the device immediately.
+ * Nothing is captured before consent is given. While capturing, the tab title starts
+ * with a red dot, and Stop releases the device.
  */
 "use strict";
 
@@ -89,7 +80,7 @@
     }
   }
 
-  /* ------------------------------------------------------------ status -- */
+  // Status
 
   var MIC_TONES = {
     "Available": "ok", "Active": "live", "Paused": "warn",
@@ -124,8 +115,7 @@
     if (node) { node.textContent = String(value); }
   }
 
-  // Before any consent: say whether a microphone exists and whether the browser
-  // has already been told "no". This never opens the device.
+  // Check for a microphone and an earlier "no" without opening the device.
   function probeMicrophone() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       setMic("Not available");
@@ -158,7 +148,7 @@
     });
   }
 
-  /* ----------------------------------------------------------- consent -- */
+  // Consent
 
   if (consentCheck && consentGrant) {
     consentCheck.addEventListener("change", function () {
@@ -218,7 +208,7 @@
     });
   }
 
-  /* ----------------------------------------------------------- capture -- */
+  // Capture
 
   function startCapture() {
     source = audioContext.createMediaStreamSource(stream);
@@ -355,7 +345,7 @@
     return new Uint8Array(buffer);
   }
 
-  /* ------------------------------------------------------------ render -- */
+  // Render
 
   function fmtConf(v) {
     return (v == null) ? "-" : Number(v).toFixed(3);
@@ -468,7 +458,7 @@
     }
   }
 
-  /* -------------------------------------------------------- start/stop -- */
+  // Start / stop
 
   function start() {
     if (running || !session || !stream) { return; }
@@ -523,8 +513,7 @@
   }
 
   function onDisconnected() {
-    // The device was unplugged or another app took it. Do not silently keep a
-    // session open that is no longer listening.
+    // Device unplugged or taken by another app: end the session.
     running = false;
     releaseDevice();
     closeSession();

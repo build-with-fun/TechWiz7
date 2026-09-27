@@ -1,8 +1,6 @@
-"""Checks on the real committed artifacts (audio_dataset/manifest.csv, data/splits/split.json).
+"""Checks on the real manifest and split (audio_dataset/manifest.csv, data/splits/split.json).
 
-test_split_integrity.py proves the split logic on a synthetic manifest; this file checks the
-actual repository, including that every row's sha256 matches the file on disk. If the
-artifacts are missing the tests skip with a reason (visible in the report, not a pass).
+Includes checking every sha256 against the file on disk. Skips if the files are missing.
 """
 
 from __future__ import annotations
@@ -31,14 +29,14 @@ CRITICAL_CLASSES = {
     "Gunshot", "Glass Breaking", "Panic Scream", "Aggression", "Person Asking for Help",
 }
 
-# SRS Step 5 / hint: 300 originals per class -> 210/45/45 per class.
+# 300 originals per class -> 210/45/45.
 TRAIN_TOTAL, VAL_TOTAL, TEST_TOTAL = 2100, 450, 450
 
 
-# Fixtures: load the real artifacts once, skip if absent
+# Fixtures
 
 def _require(path: Path) -> Path:
-    """Return `path` if it exists, else pytest.skip with an actionable reason."""
+    """Return `path` if it exists, else skip."""
     if not path.exists():
         pytest.skip(
             f"frozen artifact missing: {path}\n"
@@ -79,10 +77,10 @@ def split(split_path: Path) -> dict:
         return json.load(fh)
 
 
-# Criterion 1 — all 10 classes, >=300 unique originals each
+# All 10 classes, at least 300 originals each
 
 def test_all_ten_mandatory_classes_present(classes: dict, records: list[dict[str, str]]):
-    """No class may be dropped, and no phantom class invented."""
+    """Exactly the ten configured classes."""
     present = {r["class_label"].strip() for r in records}
     assert present == set(classes), (
         f"manifest classes differ from config/classes.json: "
@@ -99,7 +97,7 @@ def test_three_thousand_originals(records: list[dict[str, str]]):
 
 
 def test_at_least_300_originals_per_class(classes: dict, records: list[dict[str, str]]):
-    """The number an evaluator counts. Augmented/derived rows do not count."""
+    """At least 300 originals per class (augmented rows don't count)."""
     per_class = Counter(
         r["class_label"].strip()
         for r in records
@@ -115,10 +113,10 @@ def test_audio_ids_are_unique(records: list[dict[str, str]]):
     assert not dupes, f"{len(dupes)} duplicate audio_id, e.g. {sorted(dupes)[:5]}"
 
 
-# Criterion 2 — exactly 2100 / 450 / 450 over originals
+# 2100 / 450 / 450
 
 def test_frozen_split_totals_are_exactly_2100_450_450(split: dict):
-    """Overall stratified totals for ORIGINALS (SRS hint)."""
+    """Totals over originals."""
     totals = Counter(
         info["split"] for info in split["assignments"].values()
         if info["role"] == ORIGINAL
@@ -129,7 +127,7 @@ def test_frozen_split_totals_are_exactly_2100_450_450(split: dict):
 
 
 def test_every_class_contributes_210_45_45(classes: dict, split: dict):
-    """Stratification is per class, not just overall — a thin class must be visible."""
+    """Per-class counts."""
     by_class: dict[str, Counter] = defaultdict(Counter)
     for info in split["assignments"].values():
         if info["role"] == ORIGINAL:
@@ -143,17 +141,17 @@ def test_every_class_contributes_210_45_45(classes: dict, split: dict):
 
 
 def test_split_is_exhaustive_over_manifest(records: list[dict[str, str]], split: dict):
-    """Every manifest row is assigned; no phantom id invented."""
+    """Every manifest row is in the split, and nothing else."""
     manifest_ids = {r["audio_id"] for r in records}
     assigned = set(split["assignments"])
     assert not (manifest_ids - assigned), f"{len(manifest_ids - assigned)} rows unassigned"
     assert not (assigned - manifest_ids), f"{len(assigned - manifest_ids)} phantom ids"
 
 
-# Criterion 3 — zero val/test leakage into training
+# Leakage
 
 def test_no_audio_id_in_two_splits(split: dict):
-    """An id in train and test is the textbook leak."""
+    """No id is in two splits."""
     seen: dict[str, set] = defaultdict(set)
     for audio_id, info in split["assignments"].items():
         seen[audio_id].add(info["split"])
@@ -162,7 +160,7 @@ def test_no_audio_id_in_two_splits(split: dict):
 
 
 def test_no_val_or_test_id_in_train(split: dict):
-    """The train bucket must contain no id that val or test also claims."""
+    """No val or test id is in train."""
     buckets = {name: set() for name in SPLIT_NAMES}
     for audio_id, info in split["assignments"].items():
         buckets[info["split"]].add(audio_id)
@@ -175,8 +173,7 @@ def test_no_val_or_test_id_in_train(split: dict):
 def test_manifest_split_column_matches_frozen_split_json(
     records: list[dict[str, str]], split: dict,
 ):
-    """Two sources of truth must agree. A manifest column that disagrees with split.json
-    means the manifest was written before the split was frozen (or after it changed)."""
+    """The manifest's dataset_split column matches split.json."""
     by_manifest = {r["audio_id"]: str(r.get("dataset_split", "")).strip() for r in records}
     disagree = {
         a: (by_manifest[a], split["assignments"][a]["split"])
@@ -189,8 +186,7 @@ def test_manifest_split_column_matches_frozen_split_json(
 
 
 def test_lineage_never_crosses_a_split_boundary(records: list[dict[str, str]], split: dict):
-    """SRS Step 5: all segments derived from one recording stay in the same split.
-    A derived clip whose parent sits in train while it sits in test is leakage by proxy."""
+    """Derived clips are in the same split as their parent (SRS Step 5)."""
     assignment = {a: info["split"] for a, info in split["assignments"].items()}
     crossed = []
     for r in records:
@@ -198,7 +194,7 @@ def test_lineage_never_crosses_a_split_boundary(records: list[dict[str, str]], s
         status = r["original_or_augmented"].strip().lower()
         if not parent or parent == r["audio_id"]:
             continue
-        if status == ORIGINAL:  # an original cannot have a parent
+        if status == ORIGINAL:
             continue
         if parent in assignment and r["audio_id"] in assignment:
             if assignment[parent] != assignment[r["audio_id"]]:
@@ -209,10 +205,10 @@ def test_lineage_never_crosses_a_split_boundary(records: list[dict[str, str]], s
     )
 
 
-# Criterion 4 — the feature matrix basis: files exist and hashes are honest
+# Files and hashes
 
 def test_every_manifest_file_exists_on_disk(records: list[dict[str, str]]):
-    """A row pointing at a missing file is a row the extractor cannot consume."""
+    """Every manifest file exists."""
     missing = []
     for r in records:
         rel = (r.get("filename") or "").strip()
@@ -225,7 +221,7 @@ def test_every_manifest_file_exists_on_disk(records: list[dict[str, str]]):
 
 
 def _augmented_files() -> set[str]:
-    """Training-only augmented copies are listed in their own manifest, not manifest.csv."""
+    """Augmented copies (listed in their own manifest)."""
     path = REPO_ROOT / "audio_dataset" / "manifests" / "augmented_rows.csv"
     if not path.exists():
         return set()
@@ -234,8 +230,7 @@ def _augmented_files() -> set[str]:
 
 
 def test_no_audio_file_on_disk_is_unlisted(records: list[dict[str, str]]):
-    """A clip that exists but is in no manifest row is invisible to the split —
-    it could be an unsplit training file, so it must be surfaced."""
+    """Every audio file on disk is in a manifest."""
     listed = {(r.get("filename") or "").strip() for r in records}
     listed.discard("")
     unlisted = []
@@ -243,12 +238,10 @@ def test_no_audio_file_on_disk_is_unlisted(records: list[dict[str, str]]):
         rel = str(path.relative_to(AUDIO_ROOT))
         if rel in listed or "/__pycache__/" in rel:
             continue
-        # raw_downloads/ is unprocessed acquisition inventory, never part of a split.
+        # raw_downloads/ is not part of the dataset.
         if rel.startswith("raw_downloads/"):
             continue
-        # gtm_samples/ holds the one-second windows Teachable Machine trains on, written by
-        # make_gtm_imports.py from training recordings and listed in
-        # manifests/gtm_segment_rows.csv (checked in test_augmentation.py).
+        # gtm_samples/ is checked in test_augmentation.py.
         if rel.startswith("augmented/") and rel in _augmented_files():
             continue
         if rel.startswith("gtm_samples/"):
@@ -269,12 +262,7 @@ def _sha256(path: Path) -> str:
 
 @pytest.mark.slow
 def test_manifest_sha256_matches_file_bytes(records: list[dict[str, str]]):
-    """The QA check nobody else runs.
-
-    verify_split.py --check-duplicates asserts no two rows share a sha256; it does NOT
-    assert the hash describes the file the row points at. A renamed, truncated or swapped
-    clip would sail through every other gate and land in the feature matrix. This hashes
-    the real bytes and compares. Marked slow: it is O(n) disk reads over 3,000 clips."""
+    """Each row's sha256 matches the file on disk (slow: reads all 3,000 files)."""
     mismatches = []
     checked = 0
     for r in records:
@@ -288,7 +276,7 @@ def test_manifest_sha256_matches_file_bytes(records: list[dict[str, str]]):
         if _sha256(path) != claimed:
             mismatches.append((r["audio_id"], rel))
         checked += 1
-    assert checked > 0, "no row had both a filename and a sha256 — nothing was verified"
+    assert checked > 0, "no row had both a filename and a sha256, so nothing was checked"
     assert not mismatches, (
         f"{len(mismatches)}/{checked} files do not match their manifest sha256, "
         f"e.g. {mismatches[:5]}"
@@ -296,8 +284,7 @@ def test_manifest_sha256_matches_file_bytes(records: list[dict[str, str]]):
 
 
 def test_no_two_rows_share_a_sha256(records: list[dict[str, str]]):
-    """Two rows, one file: a duplicate is the same clip counted twice toward the
-    300-per-class floor."""
+    """No two rows have the same sha256."""
     hashes = Counter(
         (r.get("sha256") or "").strip()
         for r in records
@@ -308,7 +295,7 @@ def test_no_two_rows_share_a_sha256(records: list[dict[str, str]]):
 
 
 def test_critical_classes_are_all_populated(records: list[dict[str, str]]):
-    """A critical class at zero means the 85% recall NFR is unmeetable for it."""
+    """Every critical class has clips."""
     per_class = Counter(
         r["class_label"].strip()
         for r in records
@@ -319,8 +306,7 @@ def test_critical_classes_are_all_populated(records: list[dict[str, str]]):
 
 
 def test_no_source_recording_or_tts_phrase_spans_two_splits():
-    """Leakage guard added 26 Sep: slices/takes of one Freesound upload, and one synthetic
-    voice saying one phrase, must all sit in the same partition (split algorithm v2)."""
+    """Clips from one Freesound upload, or one TTS voice + phrase, are in the same split."""
     import sys
 
     sys.path.insert(0, str(REPO_ROOT / "audio_dataset"))

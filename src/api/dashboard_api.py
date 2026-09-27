@@ -1,5 +1,6 @@
-"""Dashboard and analytics JSON (FR lxiv-lxviii). Every number comes from stored columns, so a
-card and the CSV export of the same period agree. Windows are ``hours`` (1-8760, default a week).
+"""Dashboard and analytics JSON (FR lxiv-lxviii).
+
+The window is ``hours`` (1-8760, default one week).
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def _window() -> tuple[int, "t.Any"]:
-    """Parse the shared ``hours`` parameter; 422 rather than silently clamping."""
+    """Parse ``hours``; out of range is a 422."""
     raw = request.args.get("hours")
     if raw is None:
         hours = 24 * 7
@@ -53,7 +54,7 @@ def _counts(session, column, since=None) -> list[dict]:
 @bp.get("/dashboard/summary")
 @capability_required("view_dashboards")
 def summary():
-    """FR lxiv: the card totals -- events, open alerts, queue depth, consistency mix."""
+    """FR lxiv: totals for the dashboard cards."""
     hours_window, since = _window()
     with session_scope(current_app.config["SST_SESSION_FACTORY"]) as session:
         totals = {
@@ -98,9 +99,7 @@ def summary():
 @bp.get("/dashboard/timeline")
 @capability_required("view_dashboards")
 def timeline():
-    """Events per day for the trend chart, bucketed in Python (SQLite date functions are not
-    portable).
-    """
+    """Events per day for the trend chart."""
     hours, since = _window()
     bucket = request.args.get("bucket") or "hour"
     if bucket not in {"hour", "day"}:
@@ -131,7 +130,7 @@ def timeline():
 @bp.get("/analytics/classes")
 @capability_required("view_analytics")
 def analytics_classes():
-    """FR lxviii: per-class counts and average confidences, both models' difference."""
+    """FR lxviii: counts and average confidences per class."""
     hours, since = _window()
     with session_scope(current_app.config["SST_SESSION_FACTORY"]) as session:
         rows = session.execute(
@@ -159,7 +158,7 @@ def analytics_classes():
 @bp.get("/analytics/model-comparison")
 @capability_required("view_analytics")
 def analytics_model_comparison():
-    """FR lxix: agreement rate, disagreement count, confidence-difference distribution."""
+    """FR lxix: agreement rate, disagreements and confidence differences."""
     hours, since = _window()
     with session_scope(current_app.config["SST_SESSION_FACTORY"]) as session:
         total = session.execute(
@@ -202,7 +201,7 @@ def analytics_model_comparison():
 @bp.get("/analytics/consistency")
 @capability_required("view_analytics")
 def analytics_consistency():
-    """FR xxxiii: the five consistency statuses, in the configured reporting order."""
+    """FR xxxiii: counts per consistency status."""
     hours, since = _window()
     store = get_store()
     with session_scope(current_app.config["SST_SESSION_FACTORY"]) as session:
@@ -228,7 +227,7 @@ def analytics_consistency():
 @bp.get("/analytics/alerts")
 @capability_required("view_analytics")
 def analytics_alerts():
-    """FR lxx: alerts by severity and status, plus the false-alarm rate (FR lvi)."""
+    """FR lxx: alerts by severity and status, and the false-alarm rate."""
     hours, since = _window()
     with session_scope(current_app.config["SST_SESSION_FACTORY"]) as session:
         by_severity = session.execute(
@@ -268,7 +267,7 @@ def analytics_alerts():
 @bp.get("/analytics/quality")
 @capability_required("view_analytics")
 def analytics_quality():
-    """FR lxx: quality distribution and its effect on model agreement."""
+    """FR lxx: audio quality and how it affects agreement."""
     hours, since = _window()
     with session_scope(current_app.config["SST_SESSION_FACTORY"]) as session:
         rows = session.execute(
@@ -296,7 +295,7 @@ def analytics_quality():
 @bp.get("/analytics/reviews")
 @capability_required("view_analytics")
 def analytics_reviews():
-    """FR lxx: review outcomes, override rate, per-reviewer decision counts."""
+    """FR lxx: review outcomes and decisions per reviewer."""
     hours, since = _window()
     with session_scope(current_app.config["SST_SESSION_FACTORY"]) as session:
         outcomes = session.execute(

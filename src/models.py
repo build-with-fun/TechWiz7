@@ -1,10 +1,8 @@
 """SQLAlchemy models (FR lxxi, lxxii, lxxv, lxxvi, lxxx).
 
-Three rules shape the schema. Each event holds foreign keys to the model versions that
-produced it, so activating a new model never rewrites history. A reviewer's override never
-erases model output: confidence_scores is append-only and the originals are also copied onto
-the review row. Audit rows copy the actor's name and role, so deleting a user leaves the
-trail readable. Datetimes are naive UTC; to_iso() adds the Z.
+Events point at the model versions that produced them, so a new model doesn't change old
+results. Reviewer overrides don't erase model output, and audit rows copy the actor's name
+and role so they stay readable after a user is deleted. Datetimes are naive UTC.
 """
 
 from __future__ import annotations
@@ -31,7 +29,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 # Vocabulary shared with the rest of the system
 
-#: FR ii. The five roles. Stored as these exact strings.
+# FR ii. The five roles, stored as these strings.
 ROLES = (
     "normal_user",
     "audio_reviewer",
@@ -47,7 +45,7 @@ ROLE_LABELS = {
     "administrator": "Administrator",
 }
 
-#: FR lxii. The event lifecycle. Order matters: it is the forward-only progression.
+# FR lxii. Event statuses, in the order an event moves through them.
 EVENT_STATUSES = (
     "Uploaded",
     "Classified",
@@ -58,10 +56,10 @@ EVENT_STATUSES = (
     "Closed",
 )
 
-#: FR xxxvii.
+# FR xxxvii.
 QUALITY_VERDICTS = ("Good", "Acceptable", "Poor", "Unusable")
 
-#: FR xxxiii.
+# FR xxxiii.
 CONSISTENCY_STATUSES = (
     "Strong Match",
     "Acceptable Match",
@@ -70,19 +68,19 @@ CONSISTENCY_STATUSES = (
     "Uncertain Result",
 )
 
-#: FR liii-lvi, plus the terminal states a closed alert can reach.
+# FR liii-lvi, plus the final states of a closed alert.
 ALERT_STATUSES = ("Open", "Acknowledged", "Dismissed", "Escalated", "Closed")
 
 REVIEW_STATUSES = ("Pending Review", "In Review", "Reviewed")
 REVIEW_DECISIONS = ("confirm", "override", "reject", "pending")
 
-#: The two independent models. Not user-editable; the SRS fixes this at two.
+# The two models. Fixed at two by the SRS.
 MODEL_NAMES = ("python", "gtm")
 MODEL_LABELS = {"python": "Python Classification Model", "gtm": "Google Teachable Machine"}
 
 AUDIO_SOURCES = ("upload", "microphone")
 
-#: Extension -> MIME type for accepted formats; AudioFile.content_type uses it.
+# Extension -> MIME type for accepted formats; AudioFile.content_type uses it.
 AUDIO_MIME_TYPES = {
     ".wav": "audio/wav",
     ".wave": "audio/wav",
@@ -100,7 +98,7 @@ AUDIO_MIME_TYPES = {
 
 
 def utcnow() -> _dt.datetime:
-    """Naive UTC 'now'. Single definition so every writer agrees on the convention."""
+    """Current time as naive UTC."""
     return _dt.datetime.now(_dt.timezone.utc).replace(tzinfo=None)
 
 
@@ -114,7 +112,7 @@ def to_iso(value: _dt.datetime | None) -> str | None:
 
 
 def sha256_file(path: str) -> str:
-    """Streaming SHA-256. FR lxxiii: the exact-duplicate key."""
+    """SHA-256 of a file, read in chunks (FR lxxiii)."""
     digest = hashlib.sha256()
     with open(path, "rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
@@ -123,7 +121,7 @@ def sha256_file(path: str) -> str:
 
 
 class Base(DeclarativeBase):
-    """Declarative base. ``Base.metadata`` is the single definition of the schema."""
+    """Declarative base for all tables."""
 
     def to_dict(self, *, exclude: tuple[str, ...] = ()) -> dict[str, Any]:
         out: dict[str, Any] = {}
@@ -139,7 +137,7 @@ def _stamp() -> Mapped[_dt.datetime]:
     return mapped_column(DateTime, default=utcnow, nullable=False)
 
 
-# Users and identity -- FR i, FR ii
+# Users (FR i, FR ii)
 
 
 class User(Base):
@@ -149,11 +147,11 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
     email: Mapped[str | None] = mapped_column(String(255), unique=True)
     display_name: Mapped[str | None] = mapped_column(String(128))
-    #: PBKDF2-SHA256 via werkzeug. Never a plaintext column exists anywhere.
+    # PBKDF2-SHA256 hash from werkzeug.
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    #: SRS FR i / the login rate limit: lock the account, not just the IP.
+    # Lockout is per account, not just per IP (FR i).
     failed_login_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     locked_until: Mapped[_dt.datetime | None] = mapped_column(DateTime)
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -184,24 +182,23 @@ class User(Base):
         return f"<User {self.username} ({self.role})>"
 
 
-# Audio -- FR lxxi, lxxiii, lxxiv
+# Audio (FR lxxi, lxxiii, lxxiv)
 
 
 class AudioFile(Base):
-    """The stored media record. Kept separate from ``Event`` so one file may be re-analysed
-    by a new model version without duplicating the bytes or breaking the first event."""
+    """A stored recording. Separate from Event so a file can be re-analysed later."""
 
     __tablename__ = "audio_files"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    #: Human-facing identifier used in reports and the UI, e.g. SST-2026-09-23-00004821.
+    # Human-facing identifier used in reports and the UI, e.g. SST-2026-09-23-00004821.
     audio_id: Mapped[str] = mapped_column(String(32), unique=True, nullable=False, index=True)
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
-    #: Relative to the storage root, never absolute: the DB must survive a move (FR lxxi).
+    # Relative to the storage root so the data folder can be moved (FR lxxi).
     stored_path: Mapped[str] = mapped_column(String(512), nullable=False)
-    #: FR lxxiii. Unique: the exact-duplicate check is a database guarantee, not a query.
+    # FR lxxiii. Unique, so the database itself rejects exact duplicates.
     sha256: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
-    #: FR lxxiv. Coarse perceptual fingerprint; near-duplicates are matched on this.
+    # FR lxxiv. Perceptual fingerprint for near-duplicate matching.
     perceptual_fingerprint: Mapped[str | None] = mapped_column(String(64), index=True)
     near_duplicate_of_id: Mapped[int | None] = mapped_column(ForeignKey("audio_files.id"))
 
@@ -219,13 +216,13 @@ class AudioFile(Base):
     created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
     created_at: Mapped[_dt.datetime] = _stamp()
 
-    #: FR lxxix: microphone capture is consent-gated; the consent is recorded, not assumed.
+    # FR lxxix: microphone consent is recorded.
     consent_acknowledged: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     consent_recorded_at: Mapped[_dt.datetime | None] = mapped_column(DateTime)
 
-    #: FR lxxx: when the purge may remove the bytes. Null means retain indefinitely.
+    # FR lxxx: when the purge may delete the file. Null means keep forever.
     retention_expires_at: Mapped[_dt.datetime | None] = mapped_column(DateTime, index=True)
-    #: FR lxi / retention legal hold: an event under investigation is never purged.
+    # Legal hold: never purged while set.
     flagged_for_investigation: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
 
     created_by: Mapped["User | None"] = relationship(back_populates="audio_files")
@@ -240,9 +237,7 @@ class AudioFile(Base):
 
     @property
     def content_type(self) -> str:
-        """MIME type for downloads, from the stored file's suffix (or the recorded format once the
-        bytes are purged).
-        """
+        """MIME type for downloads, from the file suffix or the recorded format."""
         suffix = Path(self.stored_path or "").suffix.lower()
         if suffix not in AUDIO_MIME_TYPES:
             recorded = (self.container_format or self.original_format or "").lower().lstrip(".")
@@ -250,11 +245,11 @@ class AudioFile(Base):
         return AUDIO_MIME_TYPES.get(suffix, "application/octet-stream")
 
 
-# Model versions -- FR lxxv
+# Model versions (FR lxxv)
 
 
 class ModelVersion(Base):
-    """One trained artifact. Superseded versions are never deleted: events point at them."""
+    """One trained model. Old versions are kept because events refer to them."""
 
     __tablename__ = "model_versions"
 
@@ -264,7 +259,7 @@ class ModelVersion(Base):
     label: Mapped[str | None] = mapped_column(String(128))
     artifact_path: Mapped[str | None] = mapped_column(String(512))
     feature_version: Mapped[str | None] = mapped_column(String(64))
-    #: Provenance for the report: which library/algorithms and what it scored.
+    # For the report: library, algorithm and scores.
     algorithm: Mapped[str | None] = mapped_column(String(128))
     metrics: Mapped[dict | None] = mapped_column(JSON)
     trained_at: Mapped[_dt.datetime | None] = mapped_column(DateTime)
@@ -272,7 +267,7 @@ class ModelVersion(Base):
     registered_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
     notes: Mapped[str | None] = mapped_column(Text)
-    #: FR lxxv / SRS 1.8: evidence that the version was trained the documented way.
+    # FR lxxv / SRS 1.8: how this version was trained.
     dataset_manifest_hash: Mapped[str | None] = mapped_column(String(64))
 
     __table_args__ = (
@@ -285,11 +280,11 @@ class ModelVersion(Base):
         return MODEL_LABELS.get(self.model_name, self.model_name)
 
 
-# Events -- FR lxii (statuses), FR xxxi-xxxiii (comparison), FR lxxii
+# Events (FR lxii, FR xxxi-xxxiii, FR lxxii)
 
 
 class Event(Base):
-    """One analysed sound event. The object every dashboard, alert and review refers to."""
+    """One analysed sound event."""
 
     __tablename__ = "events"
 
@@ -300,14 +295,14 @@ class Event(Base):
 
     # what was decided
     predicted_class: Mapped[str | None] = mapped_column(String(64), index=True)
-    #: The final agreed class after any human override. Null until decided.
+    # Final class after any human override. Null until decided.
     final_class: Mapped[str | None] = mapped_column(String(64), index=True)
     severity: Mapped[str | None] = mapped_column(String(24), index=True)
-    #: FR xxxiii.
+    # FR xxxiii.
     consistency_status: Mapped[str | None] = mapped_column(String(32), index=True)
-    #: FR xxxii: |python top confidence - gtm top confidence|.
+    # FR xxxii: |python top confidence - gtm top confidence|.
     confidence_difference: Mapped[float | None] = mapped_column(Float, index=True)
-    #: The agreeing top-class confidence, used by every confidence-range filter.
+    # Top-class confidence used by the confidence filters.
     top_confidence: Mapped[float | None] = mapped_column(Float, index=True)
 
     # FR xxxvii audio quality
@@ -315,7 +310,7 @@ class Event(Base):
     quality_score: Mapped[float | None] = mapped_column(Float)
     quality_detail: Mapped[str | None] = mapped_column(Text)
 
-    # FR lxxv: the versions that produced THIS result
+    # FR lxxv: model versions that produced this result
     python_model_version_id: Mapped[int | None] = mapped_column(ForeignKey("model_versions.id"), index=True)
     gtm_model_version_id: Mapped[int | None] = mapped_column(ForeignKey("model_versions.id"), index=True)
 
@@ -323,15 +318,14 @@ class Event(Base):
     alert_rule_class: Mapped[str | None] = mapped_column(String(64))
     requires_manual_review: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
     review_reason: Mapped[str | None] = mapped_column(Text)
-    #: The exact threshold/rule content hashes in force, so any result can be explained
-    #: against the configuration that produced it rather than today's (SRS 1.8 rule 5).
+    # Hashes of the thresholds and rules in force at the time (SRS 1.8 rule 5).
     config_snapshot: Mapped[dict | None] = mapped_column(JSON)
-    #: FR xxxix overlapping detections: secondary classes above the configured threshold.
+    # FR xxxix: other classes above the overlap threshold.
     overlapping_classes: Mapped[list | None] = mapped_column(JSON)
 
     location: Mapped[str | None] = mapped_column(String(255), index=True)
     live_session_id: Mapped[str | None] = mapped_column(ForeignKey("live_sessions.id"), index=True)
-    #: FR xl: how many consecutive confirming windows backed this event.
+    # FR xl: number of consecutive windows that confirmed this event.
     consecutive_detections: Mapped[int | None] = mapped_column(Integer)
 
     created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
@@ -366,14 +360,14 @@ class Event(Base):
             "('Strong Match','Acceptable Match','Weak Match','Model Disagreement','Uncertain Result')",
             name="ck_event_consistency",
         ),
-        # The search/filter endpoint (FR lxvii) sorts and filters on this combination.
+        # Used by the event search (FR lxvii).
         Index("ix_events_search", "created_at", "predicted_class", "severity", "status"),
         Index("ix_events_review_queue", "requires_manual_review", "status", "created_at"),
     )
 
     @property
     def effective_class(self) -> str | None:
-        """The human decision wins; the agreed model class is the fallback."""
+        """The reviewer's class if there is one, otherwise the model class."""
         return self.final_class or self.predicted_class
 
     @property
@@ -381,7 +375,7 @@ class Event(Base):
         return (self.severity or "") == "Critical"
 
     def audit_ready(self) -> dict[str, Any]:
-        """A compact, JSON-safe summary for an audit before/after payload."""
+        """Small JSON-safe summary for audit records."""
         return {
             "id": self.id,
             "status": self.status,
@@ -393,11 +387,11 @@ class Event(Base):
         }
 
 
-# Confidence scores -- FR lxxii (confidence scores), FR lxxv, FR lxi
+# Confidence scores (FR lxxii, FR lxxv, FR lxi)
 
 
 class ConfidenceScore(Base):
-    """Append-only; one row per model per class per event. ``is_top`` marks each model's winner."""
+    """One row per model, class and event. Never updated. ``is_top`` marks each model's pick."""
 
     __tablename__ = "confidence_scores"
 
@@ -422,7 +416,7 @@ class ConfidenceScore(Base):
     )
 
 
-# Alerts -- FR liii-lvi
+# Alerts (FR liii-lvi)
 
 
 class Alert(Base):
@@ -433,12 +427,12 @@ class Alert(Base):
     severity: Mapped[str] = mapped_column(String(24), nullable=False, index=True)
     status: Mapped[str] = mapped_column(String(16), default="Open", nullable=False, index=True)
     rule_class: Mapped[str | None] = mapped_column(String(64))
-    #: The rule as it stood when the alert fired, because rules are editable (FR liii).
+    # Copy of the rule when the alert fired, since rules can be edited (FR liii).
     rule_snapshot: Mapped[dict | None] = mapped_column(JSON)
     recommended_action: Mapped[str | None] = mapped_column(Text)
     message: Mapped[str | None] = mapped_column(Text)
     escalated_to_severity: Mapped[str | None] = mapped_column(String(24))
-    #: Collapses a burst of identical events into one alert (FR liv, dedup window).
+    # Groups repeated identical events into one alert (FR liv).
     dedup_key: Mapped[str | None] = mapped_column(String(128), index=True)
 
     created_at: Mapped[_dt.datetime] = _stamp()
@@ -446,10 +440,10 @@ class Alert(Base):
     acknowledged_at: Mapped[_dt.datetime | None] = mapped_column(DateTime)
     resolved_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     resolved_at: Mapped[_dt.datetime | None] = mapped_column(DateTime)
-    #: FR lvi: recording *why* an alert was dismissed is what makes the false-alarm rate real.
+    # FR lvi: why the alert was dismissed, for the false-alarm rate.
     resolution_note: Mapped[str | None] = mapped_column(Text)
     is_false_alarm: Mapped[bool | None] = mapped_column(Boolean)
-    #: The notification channels actually attempted, for the audit trail.
+    # Notification channels that were tried.
     notified_channels: Mapped[list | None] = mapped_column(JSON)
 
     event: Mapped["Event"] = relationship(back_populates="alerts")
@@ -467,13 +461,11 @@ class Alert(Base):
         return self.status in ("Open", "Escalated")
 
 
-# Reviews -- FR lvii-lxi
+# Reviews (FR lvii-lxi)
 
 
 class Review(Base):
-    """A manual-review queue entry and its outcome, kept in one row so a decision cannot lose the
-    reason it was queued.
-    """
+    """A manual-review item and its outcome, in one row."""
 
     __tablename__ = "reviews"
 
@@ -481,7 +473,7 @@ class Review(Base):
     event_id: Mapped[int] = mapped_column(ForeignKey("events.id"), nullable=False, index=True)
     status: Mapped[str] = mapped_column(String(16), default="Pending Review", nullable=False, index=True)
     priority: Mapped[str] = mapped_column(String(16), default="normal", nullable=False, index=True)
-    #: FR lvii: which of the Step 17 conditions put this item in the queue.
+    # FR lvii: conditions that queued this item.
     condition_ids: Mapped[list | None] = mapped_column(JSON)
     reason_text: Mapped[str | None] = mapped_column(Text)
     recommended_action: Mapped[str | None] = mapped_column(Text)
@@ -497,8 +489,7 @@ class Review(Base):
     decided_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
     decided_at: Mapped[_dt.datetime | None] = mapped_column(DateTime)
 
-    #: FR lxi: the override must not erase what the models said. Snapshotted here as well as
-    #: in confidence_scores, so a decision is readable on its own.
+    # FR lxi: copy of what the models said, so the review row reads on its own.
     original_python_class: Mapped[str | None] = mapped_column(String(64))
     original_python_confidence: Mapped[float | None] = mapped_column(Float)
     original_gtm_class: Mapped[str | None] = mapped_column(String(64))
@@ -524,13 +515,13 @@ class Review(Base):
         return self.status == "Reviewed"
 
 
-# Live microphone sessions -- FR xxxvi, FR lxxix
+# Live microphone sessions (FR xxxvi, FR lxxix)
 
 
 class LiveSession(Base):
     __tablename__ = "live_sessions"
 
-    #: UUID4 from the client-facing contract, so a session id leaks nothing.
+    # Random UUID, so ids can't be guessed.
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     device_label: Mapped[str | None] = mapped_column(String(128))
@@ -538,13 +529,13 @@ class LiveSession(Base):
     status: Mapped[str] = mapped_column(String(16), default="active", nullable=False, index=True)
     started_at: Mapped[_dt.datetime] = _stamp()
     ended_at: Mapped[_dt.datetime | None] = mapped_column(DateTime)
-    #: FR lxxix: the consent got at session start, recorded with its own timestamp.
+    # FR lxxix: consent given at session start.
     consent_acknowledged: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     consent_recorded_at: Mapped[_dt.datetime | None] = mapped_column(DateTime)
     window_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     detection_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     alert_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    #: Per-window rolling buffer state, so a page reload resumes rather than restarts.
+    # Rolling buffer state per window.
     consecutive_state: Mapped[dict | None] = mapped_column(JSON)
 
     windows: Mapped[list["LiveWindow"]] = relationship(
@@ -557,9 +548,7 @@ class LiveSession(Base):
 
 
 class LiveWindow(Base):
-    """One analysed live window; kept so the consecutive-detection count behind an alert can be
-    inspected.
-    """
+    """One analysed live window, kept so the detections behind an alert can be checked."""
 
     __tablename__ = "live_windows"
 
@@ -583,7 +572,7 @@ class LiveWindow(Base):
     consecutive: Mapped[int | None] = mapped_column(Integer)
     needed: Mapped[int | None] = mapped_column(Integer)
     latency_ms: Mapped[float | None] = mapped_column(Float)
-    #: Set once this window contributed to a persisted event (or an alert).
+    # Set once this window is part of a saved event or alert.
     event_id: Mapped[int | None] = mapped_column(ForeignKey("events.id"), index=True)
     audio_file_id: Mapped[int | None] = mapped_column(ForeignKey("audio_files.id"))
 
@@ -594,18 +583,17 @@ class LiveWindow(Base):
     )
 
 
-# Audit trail -- FR lxxvi
+# Audit trail (FR lxxvi)
 
 
 class AuditRecord(Base):
-    """Append-only audit record; the actor's name and role are copied so the row survives the user.
-    """
+    """Append-only audit record. Keeps the actor's name and role in case the user is deleted."""
 
     __tablename__ = "audit_records"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     timestamp: Mapped[_dt.datetime] = _stamp()
-    #: SET NULL so the trail survives a deleted user; actor_username/actor_role keep it readable.
+    # SET NULL so deleting a user keeps their audit rows.
     actor_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), index=True
     )
@@ -620,7 +608,7 @@ class AuditRecord(Base):
     after: Mapped[dict | None] = mapped_column(JSON)
     ip_address: Mapped[str | None] = mapped_column(String(45))
     user_agent: Mapped[str | None] = mapped_column(String(255))
-    #: Correlates the audit row with the response the user saw, and with the server log.
+    # Links the row to the response and the server log.
     request_id: Mapped[str | None] = mapped_column(String(32), index=True)
     sha256: Mapped[str | None] = mapped_column(String(64))
 
@@ -629,7 +617,7 @@ class AuditRecord(Base):
         Index("ix_audit_target", "target_type", "target_id"),
     )
 
-    #: FR lxxvi actions, kept as a tuple so a typo in a handler is caught by the test suite.
+    # FR lxxvi actions. The tests check handlers only use these.
     KNOWN_ACTIONS = (
         "login_success", "login_failure", "logout", "account_locked", "password_change",
         "user_create", "user_update", "user_deactivate", "role_change",

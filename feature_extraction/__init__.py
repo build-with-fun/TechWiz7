@@ -1,7 +1,6 @@
 """Acoustic feature extraction (SRS Step 6, FR xx).
 
-``feature_columns()`` is the frozen schema shared with the model trainers; bump
-``FEATURE_SCHEMA_VERSION`` whenever a column's name, order or meaning changes.
+Bump ``FEATURE_SCHEMA_VERSION`` whenever a column's name, order or meaning changes.
 """
 
 from __future__ import annotations
@@ -48,7 +47,7 @@ __all__ = [
     "estimate_tempo",
     "waveform_envelope",
     "spectrogram_db",
-    # segment enumeration + cache + normalisation (deep-model conditions 2, 3, 4)
+    # segments, cache, normalisation
     "enumerate_segments",
     "audio_id_for",
     "MelCache",

@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 """Merge per-source row CSVs into audio_dataset/manifest.csv and write corpus_statistics.json.
 
-Fails if any row carries a dataset_split (only build_split.py assigns splits), on a
-duplicate audio_id, an id whose code does not match its class, or a missing required column.
-Extra columns pass through.
+Fails if a row already has a dataset_split, on duplicate ids, on an id whose code doesn't
+match its class, or on a missing column.
 
-The built-in default sources are from an early stage (manifest_generated.csv no longer
-exists). The current 3,000 originals come from the four *_rows.csv files in
-audio_dataset/manifests/ (fsd50k_real, acquired, help_tts, synthetic_topup), each passed
-with --source.
+The default sources are out of date. The current 3,000 originals come from the four
+*_rows.csv files in audio_dataset/manifests/, each passed with --source.
 """
 
 from __future__ import annotations
@@ -44,8 +41,7 @@ DEFAULT_SOURCES = [
 DEFAULT_OUT = AUDIO_DATASET / "manifest.csv"
 STATS_OUT = AUDIO_DATASET / "manifests" / "corpus_statistics.json"
 
-# 'unspecified' is allowed: FSD50K has no environment metadata, and guessing would fabricate
-# provenance.
+# 'unspecified' is allowed since FSD50K has no environment metadata.
 ENV_ENUM = {"indoor", "outdoor", "vehicle", "studio", "synthetic", "unspecified"}
 DIST_ENUM = {"near", "medium", "far", "n/a"}
 
@@ -79,7 +75,7 @@ def load_classes() -> dict[str, dict]:
 
 
 def load_class_codes() -> dict[str, str]:
-    """class name -> 3-letter code, from the same frozen config the split builder uses."""
+    """class name -> 3-letter code."""
     cfg = json.loads((REPO_ROOT / "config" / "classes.json").read_text(encoding="utf-8"))
     return {c["name"]: c["code"] for c in cfg["classes"]}
 
@@ -97,7 +93,7 @@ def assemble(source_paths: list[Path]) -> tuple[list[str], list[dict], dict]:
         try:
             label = str(path.relative_to(REPO_ROOT))
         except ValueError:
-            label = str(path)  # out-of-tree source (tests, ad-hoc runs)
+            label = str(path)  # outside the repo (tests)
         provenance[label] = len(rows)
         for c in fields:
             if c not in FROZEN_COLUMNS and c not in extra_cols:
@@ -106,7 +102,7 @@ def assemble(source_paths: list[Path]) -> tuple[list[str], list[dict], dict]:
         for i, r in enumerate(rows, start=2):
             where = f"{path.name}:{i} ({r.get('audio_id','?')})"
 
-            # 1. the hard rule: no source may carry a split
+            # 1. no source may have a split
             if (r.get("dataset_split") or "").strip():
                 problems.append(
                     f"{where}: carries dataset_split={r['dataset_split']!r}. "
@@ -120,20 +116,19 @@ def assemble(source_paths: list[Path]) -> tuple[list[str], list[dict], dict]:
                 problems.append(f"{where}: class_label {label!r} is not one of the ten")
                 continue
 
-            # 3. normalise the optional schema fields so downstream readers can rely on them
+            # 3. normalise the optional fields
             row = {c: (r.get(c) or "").strip() for c in FROZEN_COLUMNS}
             for c in extra_cols:
                 row[c] = (r.get(c) or "").strip()
             row["class_label"] = label
 
-            # 2a. the id must name its own class (SS-<CODE>-<NNNN>), or per-class counts go wrong
+            # 2a. the id must match its class (SS-<CODE>-<NNNN>)
             aid = row["audio_id"]
             if not aid:
                 problems.append(f"{where}: empty audio_id")
                 continue
             parts = aid.split("-")
-            # A trailing S<n> (SS-AGG-0013S2) marks a TM sample of that parent; strip it before
-            # checking.
+            # Strip a trailing S<n> (TM sample of a parent) before checking.
             if len(parts) == 3 and re.search(r"S\d+$", parts[2]):
                 parts = parts[:-1] + [re.sub(r"S\d+$", "", parts[2])]
             if len(parts) != 3 or parts[0] != "SS" or not parts[2].isdigit():
@@ -145,7 +140,7 @@ def assemble(source_paths: list[Path]) -> tuple[list[str], list[dict], dict]:
                     f"{where}: audio_id code {parts[1]!r} does not match class {label!r} (code {want_code!r})"
                 )
 
-            # 2b. licence is the integrity column: never blank, never non-commercial.
+            # 2b. licence must be set and not non-commercial
             lic = row["licence"]
             if not lic:
                 problems.append(f"{where}: empty licence (the SRS requires a licence for every file)")
@@ -189,7 +184,7 @@ def assemble(source_paths: list[Path]) -> tuple[list[str], list[dict], dict]:
 
 
 def statistics(rows: list[dict], classes: dict[str, dict]) -> dict:
-    """Deliverable 3: corpus statistics, split by real vs synthetic and by class."""
+    """Corpus statistics by class and by real vs synthetic."""
     per_class: dict[str, dict] = {}
     for name in classes:
         sub = [r for r in rows if r["class_label"] == name]
@@ -219,7 +214,7 @@ def statistics(rows: list[dict], classes: dict[str, dict]) -> dict:
         "generated": date.today().isoformat(),
         "generated_by": "audio_dataset/scripts/assemble_manifest.py",
         "manifest": "audio_dataset/manifest.csv",
-        "manifest_sha256": None,  # filled by the caller once written
+        "manifest_sha256": None,  # set by the caller
         "note": ("One row per audio file on disk. 'originals' counts towards the SRS >=3000 "
                  "unique-original floor; augmented rows and derived segments do not. "
                  "'originals_synthetic' are generated by this project's own code and are "

@@ -1,14 +1,8 @@
-"""The alert console and the review queue must render rows that came from the database.
+"""The alerts and review pages render rows loaded from the database.
 
-Both pages detach (``expunge``) the rows they read so the template can render after the
-session has been closed, then the template reads ``alert.event`` / ``review.event``. When
-that relationship was never loaded, SQLAlchemy tries a lazy load on a detached instance and
-raises ``DetachedInstanceError`` -> HTTP 500.
-
-The blind spot this closes: every other page test builds its rows in the same session the
-assertions use, so the relationship is already cached in ``__dict__`` and the lazy load is
-never attempted. These tests deliberately read the rows back through a *fresh* session, the
-way a request does.
+The pages expunge their rows and the templates then read alert.event / review.event. If
+that wasn't loaded first, SQLAlchemy raises DetachedInstanceError (a 500). These tests
+read the rows through a fresh session, like a real request.
 """
 
 from sqlalchemy import select
@@ -19,7 +13,7 @@ from src.models import Alert, AudioFile, Event, Review, User
 
 
 def _seed_app(tmp_path):
-    """An app whose database holds one classified critical event, alert and review."""
+    """App with one critical event, alert and review."""
     app = create_app(TESTING=True, SST_DB_PATH=str(tmp_path / "app.db"),
                      SST_STORAGE_DIR=str(tmp_path / "storage"), SST_LOAD_MODELS=False)
     factory = app.config["SST_SESSION_FACTORY"]
@@ -58,7 +52,7 @@ def _signed_in_client(app, user_id):
 
 def test_alerts_page_renders_an_alert_whose_event_was_never_loaded(tmp_path):
     app, factory, admin_id = _seed_app(tmp_path)
-    # Force the database to hand back a row with nothing cached on it, as a request would.
+    # Nothing cached on the row.
     with factory() as session:
         session.execute(select(Alert)).scalars().all()
         session.expunge_all()
@@ -68,7 +62,7 @@ def test_alerts_page_renders_an_alert_whose_event_was_never_loaded(tmp_path):
     assert response.status_code == 200
     body = response.get_data(as_text=True)
     assert "Gunshot detected" in body
-    # The template reads alert.event.predicted_class; that must survive the expunge.
+    # The template reads alert.event.predicted_class.
     assert "Gunshot" in body
 
 

@@ -1,12 +1,4 @@
-"""
-Tests for the comparison-report format and integrity rules.
-
-SRS Deliverable 3, Step 11, Step 14.
-
-These tests are written to fail loudly if any of the disqualifying integrity rules
-break: GTM seeing Python's confidence, invented confidences, a report that silently
-drops a class, or a schema an evaluator cannot diff.
-"""
+"""Comparison report format and integrity (SRS Deliverable 3, Step 11, Step 14)."""
 
 from __future__ import annotations
 
@@ -29,21 +21,21 @@ from src.training.comparison_report import (
 )
 
 
-# ---------------------------------------------------------------- fixtures
+# fixtures
 
 
 def make_result(predicted: str, conf: float, classes: tuple[str, ...]) -> PredictionResult:
-    """A deterministic PredictionResult with a full per-class confidence map."""
+    """PredictionResult with confidences for every class."""
     confidences = {c: 0.0 for c in classes}
     confidences[predicted] = conf
-    # spread the remainder so the map sums to 1 (as the contract requires)
+    # spread the rest so it sums to 1
     rest = 1.0 - conf
     others = [c for c in classes if c != predicted]
     if others:
         share = rest / len(others)
         for c in others:
             confidences[c] = round(share, 6)
-        # fix rounding drift on the predicted class
+        # fix rounding on the predicted class
         confidences[predicted] = round(1.0 - sum(v for k, v in confidences.items() if k != predicted), 6)
     return PredictionResult(
         model_name="test",
@@ -89,27 +81,22 @@ def make_report(n_per_class: int = 10) -> ComparisonReport:
     )
 
 
-# ---------------------------------------------------------------- integrity
+# integrity
 
 
 def test_gtm_result_is_built_independently_of_python():
-    """Integrity rule 1: the GTM prediction must never be derived from Python's.
-
-    classify_consistency takes the two results as separate arguments. If a caller
-    tried to feed the Python confidence into the GTM path, the two results would
-    be identical objects -- this test catches that wiring.
-    """
+    """The TM result is a separate object from the Python one."""
     py = make_result("Gunshot", 0.9, CLASSES)
     gtm = make_result("Gunshot", 0.9, CLASSES)
     assert py is not gtm
     comp = classify_consistency(py, gtm, THRESHOLDS)
-    # confidences come from the respective inputs, never copied across
+    # each confidence comes from its own model
     assert comp.python_confidence == 0.9
     assert comp.gtm_confidence == 0.9
 
 
 def test_no_hardcoded_predictions_in_rows():
-    """Every row's class comes from the contract objects, not a literal."""
+    """Row classes come from the prediction objects."""
     r = make_row("SS-GUN-0001", "Gunshot", "Gunshot", 0.9, "Gunshot", 0.9)
     assert r.comparison.python_class == "Gunshot"
     assert r.comparison.gtm_class == "Gunshot"
@@ -118,7 +105,7 @@ def test_no_hardcoded_predictions_in_rows():
 
 
 def test_confidences_are_never_nan_or_infinite():
-    """Integrity rule 2: invented/garbage confidences must not reach the report."""
+    """No NaN or infinite confidences."""
     r = make_row("SS-GUN-0001", "Gunshot", "Gunshot", 0.9, "Gunshot", 0.9)
     import math
     for v in (r.comparison.python_confidence, r.comparison.gtm_confidence,
@@ -126,11 +113,11 @@ def test_confidences_are_never_nan_or_infinite():
         assert math.isfinite(v)
 
 
-# ---------------------------------------------------------------- format
+# format
 
 
 def test_csv_columns_are_stable_and_complete():
-    """An evaluator diffs two runs of this report; the schema must not move."""
+    """CSV columns are fixed."""
     assert CSV_COLUMNS == (
         "audio_id", "true_class", "python_predicted_class", "python_confidence",
         "gtm_predicted_class", "gtm_confidence", "classes_agree",
@@ -146,7 +133,7 @@ def test_row_csv_has_every_column():
 
 
 def test_report_meets_floor_at_10_per_class():
-    """The SRS floor: >=100 clips, >=10 per class."""
+    """At least 100 clips and 10 per class."""
     rep = make_report(n_per_class=10)
     assert rep.n_clips == 100
     ok, problems = rep.meets_report_floor()
@@ -171,7 +158,7 @@ def test_report_fails_floor_below_100_clips():
 
 
 def test_agreement_and_accuracy():
-    """Correctness is measured against the true label, both models independently."""
+    """Each model is scored against the true label."""
     rep = ComparisonReport(classes=CLASSES)
     # agree and both right
     rep.rows.append(make_row("a", "Gunshot", "Gunshot", 0.9, "Gunshot", 0.9))
@@ -188,11 +175,11 @@ def test_accuracy_rejects_unknown_model_name():
         rep.accuracy("unknown-model")
 
 
-# ---------------------------------------------------------------- round-trip
+# round trip
 
 
 def test_write_and_read_back(tmp_path: Path):
-    """The CSV and JSON round-trip: what we write is what an evaluator reads."""
+    """CSV and JSON read back the same."""
     rep = make_report(n_per_class=10)
     out_csv = tmp_path / "comparison.csv"
     out_json = tmp_path / "comparison_summary.json"
@@ -215,7 +202,7 @@ def test_write_and_read_back(tmp_path: Path):
 
 
 def test_summary_records_provenance(tmp_path: Path):
-    """The report is evidence: it must say which split and which artifacts."""
+    """The summary names the split and the models."""
     rep = make_report(n_per_class=10)
     out_csv = tmp_path / "c.csv"
     out_json = tmp_path / "c.json"
@@ -228,10 +215,10 @@ def test_summary_records_provenance(tmp_path: Path):
 
 
 def test_consistency_status_is_from_the_srs_taxonomy():
-    """Only the five documented statuses may appear."""
+    """Only the five known statuses appear."""
     rep = make_report(n_per_class=1)
     statuses = {r.comparison.consistency_status for r in rep.rows}
-    # allow any of the five, none may be a made-up string
+    # any of the five
     assert statuses.issubset({
         "Strong Match", "Acceptable Match", "Weak Match",
         "Model Disagreement", "Uncertain Result",
@@ -239,7 +226,7 @@ def test_consistency_status_is_from_the_srs_taxonomy():
 
 
 def test_disagreement_row_is_labelled():
-    """Model Disagreement must surface in the CSV exactly as named."""
+    """Disagreement rows are labelled "Model Disagreement"."""
     r = make_row("SS-GUN-0002", "Gunshot", "Gunshot", 0.9, "Glass Breaking", 0.8)
     row = r.to_csv_row()
     assert row["classes_agree"] == "false"

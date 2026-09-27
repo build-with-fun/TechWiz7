@@ -1,9 +1,8 @@
-"""AudioPipeline: one AudioSource in, one PreprocessedAudio out (SRS Steps 3, 4, 13).
+"""AudioPipeline: AudioSource in, PreprocessedAudio out (SRS Steps 3, 4, 13).
 
-Order: decode; measure quality on the raw signal (measured after noise reduction and
-normalisation, a bad recording would score Good); reject if unusable; high-pass, noise gate,
-trim ends, peak-normalise, resample; segment with timestamps. Parameters come from config and
-are captured when the pipeline is built.
+Steps: decode, rate quality on the raw signal (before cleanup, or bad audio would look
+Good), reject if unusable, then high-pass, noise gate, trim, normalise, resample and split
+into timestamped segments. Settings are read from config when the pipeline is built.
 """
 
 from __future__ import annotations
@@ -29,12 +28,12 @@ PREPROCESSING_VERSION = "audio-preprocessing-1.0.0"
 
 
 def preprocessing_version() -> str:
-    """Version string recorded on every result (integrity: results must be reproducible)."""
+    """Version string stored with every result."""
     return PREPROCESSING_VERSION
 
 
 def _import_contract():
-    """Import the inference contract lazily so the audio modules stay importable standalone."""
+    """Lazy import so this package also works on its own."""
     try:
         from src.inference.contract import AudioSource, PreprocessedAudio
 
@@ -44,7 +43,7 @@ def _import_contract():
 
 
 class AudioPipeline:
-    """Configurable preprocessing; ``AudioPipeline()(source)`` returns a PreprocessedAudio."""
+    """Preprocessing pipeline. ``AudioPipeline()(source)`` returns a PreprocessedAudio."""
 
     def __init__(
         self,
@@ -60,13 +59,12 @@ class AudioPipeline:
         self.quality_cfg = quality_cfg if quality_cfg is not None else cfg_mod.quality_config(directory)
         self.target_sample_rate = int(self.audio["target_sample_rate"])
         self.segment_seconds = float(self.audio["segment_duration_sec"])
-        # A live window may be shorter than a training segment; use the configured live window
-        # length.
+        # Live windows can be shorter than a training segment.
         self.window_seconds = float(window_seconds if window_seconds is not None else self.audio.get("live_window_sec", self.segment_seconds))
         self.max_seconds = float(self.audio.get("max_duration_sec", 300.0))
 
     def describe(self) -> dict[str, Any]:
-        """What this pipeline will do, for the config page and the report appendix."""
+        """Summary of the settings, for the config page and the report."""
         return {
             "preprocessing_version": PREPROCESSING_VERSION,
             "target_sample_rate": self.target_sample_rate,
@@ -89,7 +87,7 @@ class AudioPipeline:
         return self.preprocess(source)
 
     def preprocess(self, source: Any) -> Any:
-        """Preprocess an ``AudioSource`` (or a bare path, for convenience)."""
+        """Preprocess an ``AudioSource`` or a path."""
         AudioSource, PreprocessedAudio = _import_contract()
         if AudioSource is None:  # pragma: no cover
             raise RuntimeError("src.inference.contract is not importable from this checkout")
@@ -249,7 +247,7 @@ class AudioPipeline:
             "from_hz": int(raw_sr), "to_hz": self.target_sample_rate,
         })
 
-        # Peak re-check: resampling can overshoot slightly (interpolation ringing).
+        # Resampling can overshoot the peak slightly.
         y = np.clip(y, -1.0, 1.0).astype(np.float32)
 
         # 5. segmentation with timestamps (FR xv)
@@ -308,7 +306,7 @@ class AudioPipeline:
         metrics: dict[str, Any] | None = None,
         started: float,
     ) -> Any:
-        """A rejected result that keeps whatever was measured, so the UI can say why."""
+        """Rejected result, keeping whatever was measured."""
         timings["total"] = round((time.perf_counter() - started) * 1000.0, 3)
         from .exceptions import message_for
 
@@ -341,10 +339,10 @@ class AudioPipeline:
         )
 
 
-# Module-level convenience
+# Shortcuts
 
 def preprocess(source: Any, **kwargs: Any) -> Any:
-    """Preprocess with a default pipeline.  Equivalent to ``AudioPipeline(**kwargs)(source)``."""
+    """Same as ``AudioPipeline(**kwargs)(source)``."""
     return AudioPipeline(**kwargs).preprocess(source)
 
 
@@ -357,16 +355,14 @@ def preprocess_samples(samples: np.ndarray, sample_rate: int, **kwargs: Any) -> 
 
 
 def quality_meets(quality: dict[str, Any], minimum: str) -> bool:
-    """Re-exported so the alert layer does not need to import the analyser module."""
+    """Re-export of quality.meets_min_quality."""
     return meets_min_quality(str(quality.get("verdict", UNUSABLE)), minimum)
 
 
 def warm_up(sample_rate: int | None = None) -> dict[str, float]:
-    """Run every transform once on a generated tone and return the timings.
+    """Run every transform once on a test tone and return the timings.
 
-    The first call in a fresh process spends seconds in numba compilation (resampler, filters,
-    noise gate); the app calls this at startup so the first real upload is not the slow one.
-    Warm, preprocessing averaged 0.06 s per clip over the 3,000-clip corpus (26 Sep).
+    The first call spends seconds compiling numba code, so the app does this at start-up.
     """
     import time
 

@@ -1,9 +1,7 @@
-"""Loads the saved Python model bundle and turns features into per-class confidences.
+"""Loads the saved Python model bundle and turns features into class confidences.
 
-The class order and the feature columns are saved inside the bundle and checked when it
-loads: a bundle whose estimator.classes_ disagree with label_encoder.json, or whose feature
-width differs from what the extractor produces, is refused rather than allowed to map
-predictions onto the wrong names or columns.
+The class order and feature columns are stored in the bundle and checked on load, so a
+mismatched bundle is refused instead of mislabelling predictions.
 """
 
 from __future__ import annotations
@@ -35,7 +33,7 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 @dataclass
 class ModelBundle:
-    """A saved model plus everything needed to use it correctly."""
+    """A saved model and its metadata."""
 
     estimator: Any
     class_names: list[str]              # in the estimator's own fitted order
@@ -55,7 +53,7 @@ class ModelBundle:
 
 
 class PythonModelPredictor:
-    """Wraps a saved model bundle as the SRS's `predict(audio) -> {class: confidence}`."""
+    """Wraps a model bundle as `predict(audio) -> {class: confidence}`."""
 
     def __init__(self, bundle: ModelBundle, feature_extractor: Callable[[PreprocessedAudio], Any]):
         self.bundle = bundle
@@ -86,11 +84,10 @@ class PythonModelPredictor:
             meta = {}
 
         saved_classes = [str(c) for c in labels_doc["class_names"]]
-        # classes_ are numpy strings for most sklearn estimators; plain str keeps np.str_ out of
-        # JSON.
+        # Convert numpy strings to str for JSON.
         fitted_classes = [str(c) for c in getattr(estimator, "classes_", [])]
 
-        # The check that stops silent mislabelling.
+        # Class order must match the label file.
         if fitted_classes and len(fitted_classes) == len(saved_classes):
             if set(fitted_classes) != set(saved_classes):
                 raise ModelLoadError(
@@ -98,7 +95,7 @@ class PythonModelPredictor:
                     f"{fitted_classes} but label_encoder.json says {saved_classes}. "
                     "Predictions would be mapped to the wrong class names."
                 )
-            # Preserve the estimator's own order — that is what argmax indexes into.
+            # Keep the estimator's order, since argmax indexes into it.
             saved_classes = fitted_classes
         elif fitted_classes and len(fitted_classes) != len(saved_classes):
             raise ModelLoadError(
@@ -121,7 +118,7 @@ class PythonModelPredictor:
 
 
     def predict(self, source: AudioSource, preprocessor: Any) -> PredictionResult:
-        """Classify one audio input. `preprocessor` is the SAME object for upload and live."""
+        """Classify one audio input."""
         started = time.perf_counter()
 
         preprocessed = preprocessor(source)
@@ -141,7 +138,7 @@ class PythonModelPredictor:
     def predict_from_preprocessed(
         self, preprocessed: PreprocessedAudio, *, origin: str = "upload", extra: Mapping[str, Any] | None = None
     ) -> PredictionResult:
-        """Classify already-preprocessed audio (segments, batch, cached features)."""
+        """Classify audio that has already been preprocessed."""
         started = time.perf_counter()
         vector = self._extract(preprocessed)
         return self._predict_features(
@@ -177,8 +174,7 @@ class PythonModelPredictor:
         if hasattr(self.bundle.estimator, "predict_proba"):
             raw = np.asarray(self.bundle.estimator.predict_proba(x))[0]
         else:
-            # No probabilities: report the hard decision as one-hot rather than invent a
-            # distribution.
+            # No probabilities available: return one-hot.
             decision = self.bundle.estimator.predict(x)[0]
             raw = np.array([1.0 if c == decision else 0.0 for c in self.bundle.class_names])
         inference_sec = time.perf_counter() - started
@@ -208,7 +204,7 @@ class PythonModelPredictor:
         return list(self.bundle.class_names)
 
     def describe(self) -> dict[str, Any]:
-        """What the admin dashboard and the audit trail record about the live model."""
+        """Model info for the admin dashboard and audit log."""
         return {
             "model_name": self.bundle.model_name,
             "model_version": self.bundle.model_version,
@@ -232,7 +228,7 @@ def save_bundle(
     metrics: Mapping[str, Any] | None = None,
     metadata: Mapping[str, Any] | None = None,
 ) -> Path:
-    """Save a model with the sidecar files (labels, feature config, metadata) that load() checks."""
+    """Save a model with its labels, feature config and metadata."""
     import joblib
 
     out_dir = Path(out_dir)
@@ -244,7 +240,7 @@ def save_bundle(
 
     fitted = list(getattr(estimator, "classes_", []))
     if fitted and len(fitted) == len(class_names) and set(fitted) == set(class_names):
-        # Store the estimator's own order — this is the order predict_proba returns.
+        # Store the estimator's order, which is what predict_proba uses.
         ordered = fitted
     else:
         ordered = list(class_names)

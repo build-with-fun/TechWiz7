@@ -1,9 +1,8 @@
--- SonicSentinel AI -- canonical database schema.
+-- SonicSentinel AI database schema.
 --
--- GENERATED from src/models.py. Do not hand-edit this file: change the models and run
+-- Generated from src/models.py; don't edit by hand. After changing the models run
 --   .venv/bin/python database/init_db.py --emit-schema
--- tests/test_database.py fails if this file and the ORM models disagree, so the two
--- definitions can never drift apart.
+-- tests/test_database.py checks that this file matches the models.
 --
 -- Dialect: SQLite 3. Datetimes are UTC, stored naive (no offset). See database/README.md.
 -- SRS FR lxxi-lxxii, FR lxxv, FR lxxvi, FR lxxx.

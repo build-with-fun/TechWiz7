@@ -1,17 +1,14 @@
 """Deep candidates for the Python model comparison (SRS Step 7, FR xxiii).
 
-Three families: a 1-D CNN over the mel axis, a CNN + bidirectional GRU (CRNN), and a
-frozen ImageNet MobileNetV3Small with a new head. All three take the same locked 254-column
-feature vector as the classical models and slice the 128 mel-band columns out of it, so
-every candidate is compared on the same input and the same split.
+A 1-D CNN over the mel axis, a CNN + bidirectional GRU, and a frozen MobileNetV3Small with
+a new head. They use the 128 mel-band columns of the same 254-column feature vector as the
+classical models, and the same split.
 
-Each is a sklearn-shaped estimator (fit, predict, predict_proba, classes_) so the tuning
-harness and save_bundle treat it like any other model. Standardisation is fitted inside
-fit() on training rows only. Keras 3 models are not joblib-picklable, so the Keras wrapper
-stores its weights as bytes and rebuilds the architecture on load.
+Each has the sklearn interface (fit, predict, predict_proba, classes_) so the tuning code
+treats it like any other model. The Keras model stores its weights as bytes because Keras 3
+models can't be pickled.
 
-These models were compared and not selected; the served model is CNN14 embeddings + MLP
-(python_models/train_transfer.py).
+None of these were selected; the served model is in train_transfer.py.
 """
 
 from __future__ import annotations
@@ -25,12 +22,11 @@ import torch
 from torch import nn
 
 
-# The spatial slice: which of the 254 columns form the mel spectrum
+# Which of the 254 columns are the mel bands
 
 
 def melband_columns(columns: Sequence[str]) -> list[int]:
-    """Indices of the melband_* columns, looked up by name so a moved block is caught, not misread.
-    """
+    """Indices of the melband_* columns, found by name."""
     idx = [i for i, name in enumerate(columns) if str(name).startswith("melband_")]
     if len(idx) < 8:
         raise ValueError(
@@ -46,12 +42,12 @@ def default_mel_indices() -> list[int]:
     return melband_columns(feature_columns())
 
 
-# Candidate specification (mirrors classical.CandidateSpec so the grid builders are shared)
+# Candidate spec (same shape as classical.CandidateSpec)
 
 
 @dataclass
 class CandidateSpec:
-    """One comparable deep model: how to build it, what to search, and what it costs."""
+    """One deep candidate: how to build it and what to search."""
 
     name: str
     builder: Callable[[Mapping[str, Any], int, np.random.Generator | None], Any]
@@ -65,12 +61,11 @@ class CandidateSpec:
         return self.builder(dict(params or {}), seed, None)
 
 
-# Torch architectures live at module level so joblib can pickle a fitted estimator.
-# (A class declared inside a method has no importable name.)
+# Torch modules are defined at module level so joblib can pickle them.
 
 
 class _MelCNNNet(nn.Module):
-    """1-D CNN over the mel frequency axis.  See :class:`MelCNN` for the rationale."""
+    """1-D CNN over the mel frequency axis (see MelCNN)."""
 
     def __init__(self, n_classes: int, channels: int, dropout: float):
         super().__init__()
@@ -92,7 +87,7 @@ class _MelCNNNet(nn.Module):
 
 
 class _MelCRNNNet(nn.Module):
-    """CNN front-end + bidirectional GRU over frequency.  See :class:`MelCRNN`."""
+    """CNN + bidirectional GRU over frequency (see MelCRNN)."""
 
     def __init__(self, n_classes: int, channels: int, hidden: int, dropout: float):
         super().__init__()
@@ -101,7 +96,7 @@ class _MelCRNNNet(nn.Module):
             nn.BatchNorm1d(channels),
             nn.ReLU(inplace=True),
         )
-        # (batch, freq, channels) -- the frequency axis becomes the sequence.
+        # (batch, freq, channels): frequency is the sequence axis.
         self.rnn = nn.GRU(
             input_size=channels,
             hidden_size=hidden,
@@ -113,29 +108,27 @@ class _MelCRNNNet(nn.Module):
 
     def forward(self, x):
         h = self.conv(x)                     # (B, C, F/2)
-        h = h.transpose(1, 2)                # (B, F/2, C) -- sequence over frequency
+        h = h.transpose(1, 2)                # (B, F/2, C)
         out, _ = self.rnn(h)                 # (B, F/2, 2H)
-        # first + last state of both directions: recurrent pooling, which keeps the ordering
-        # information a global average pool would discard.
+        # first + last states of both directions (keeps order info, unlike average pooling)
         pooled = out[:, -1, :].add(out[:, 0, :])
         return self.head(self.drop(pooled))
 
 
-# Shared sklearn-compat machinery
+# sklearn-style base class
 
 
 class DeepModel:
     """Base class for the deep candidates.
 
-    __init__ parameters must be stored under the same names: sklearn's get_params introspects
-    the signature.
+    Store __init__ arguments under the same names; sklearn's get_params relies on it.
     """
 
     classes_: np.ndarray
     n_features_in_: int
 
     def _label_encode(self, y: Sequence[str]) -> np.ndarray:
-        """Sorted like sklearn's LabelEncoder, so the class order matches the classical models."""
+        """Sorted like sklearn's LabelEncoder."""
         classes = np.array(sorted(set(str(v) for v in y)), dtype=object)
         self.classes_ = classes
         lookup = {c: i for i, c in enumerate(classes)}
@@ -156,19 +149,16 @@ class DeepModel:
 
 
 def _standardise(X: np.ndarray, mean: np.ndarray, scale: np.ndarray) -> np.ndarray:
-    """Apply the training statistics.  Zero-variance columns are left at 0, not divided by 0."""
+    """Standardise with the training stats (zero-variance columns become 0)."""
     scale = np.where(np.abs(scale) < 1e-12, 1.0, scale)
     return (X - mean) / scale
 
 
-# 1. MelCNN -- a 1-D CNN over the mel frequency axis
+# 1. MelCNN: 1-D CNN over the mel axis
 
 
 class MelCNN(DeepModel):
-    """1-D CNN over the mel spectrum: two strided conv + batch-norm blocks, average pool, linear head.
-
-    Batch norm is what makes a small CNN trainable on ~2,000 rows.
-    """
+    """1-D CNN over the mel spectrum: two strided conv + batch-norm blocks, pooling, linear head."""
 
     def __init__(
         self,
@@ -195,7 +185,7 @@ class MelCNN(DeepModel):
 
 
     def _spatial(self, X: np.ndarray) -> np.ndarray:
-        """(n, n_mels) mel block shaped as (n, 1, freq) for Conv1d."""
+        """(n, n_mels) -> (n, 1, freq) for Conv1d."""
         idx = self._mel_index_array(X.shape[1])
         block = np.ascontiguousarray(X[:, idx], dtype=np.float32)
         return block[:, None, :]  # (n, channels=1, freq)
@@ -206,7 +196,7 @@ class MelCNN(DeepModel):
         if max(self.mel_indices) >= n_features:
             raise ValueError(
                 f"the mel block reaches column {max(self.mel_indices)} but the input has only "
-                f"{n_features} columns -- the feature vector and the model are out of sync"
+                f"{n_features}; the feature vector and the model don't match"
             )
         return np.asarray(self.mel_indices, dtype=np.int64)
 
@@ -238,15 +228,11 @@ class MelCNN(DeepModel):
         return _aligned(proba, self.classes_)
 
 
-# 2. MelCRNN -- CNN front-end + bidirectional GRU over frequency, recurrent pooling
+# 2. MelCRNN: CNN + bidirectional GRU over frequency
 
 
 class MelCRNN(DeepModel):
-    """CNN front-end, then a bidirectional GRU that reads the frequency axis as a sequence.
-
-    The final states of both directions are concatenated, keeping ordering information that a
-    global average pool would discard.
-    """
+    """CNN, then a bidirectional GRU that reads the frequency axis as a sequence."""
 
     def __init__(
         self,
@@ -315,13 +301,11 @@ class MelCRNN(DeepModel):
         return _aligned(self._forward(X), self.classes_)
 
 
-# Torch training loop, shared by MelCNN and MelCRNN
+# Training loop for MelCNN and MelCRNN
 
 
 def _train_torch(model: Any, X, y, sample_weight=None):
-    """Shared optimisation loop, so the optimiser, class weights and seeding cannot drift between
-    the two torch models.
-    """
+    """Training loop shared by the two torch models."""
     import torch.nn as nn
 
     X = np.asarray(X, dtype=np.float32)
@@ -365,9 +349,7 @@ def _train_torch(model: Any, X, y, sample_weight=None):
 
 
 def _aligned(proba: np.ndarray, classes: np.ndarray) -> np.ndarray:
-    """Finite (n, n_classes) probabilities summing to 1; the tuning harness checks the shape
-    strictly.
-    """
+    """Clean (n, n_classes) probabilities that sum to 1."""
     proba = np.asarray(proba, dtype=np.float64)
     if proba.ndim == 1:
         proba = proba.reshape(1, -1)
@@ -380,23 +362,20 @@ def _aligned(proba: np.ndarray, classes: np.ndarray) -> np.ndarray:
     rowsum = proba.sum(axis=1, keepdims=True)
     dead = np.squeeze(rowsum <= 0, axis=1)
     if dead.any():
-        # A row the model is genuinely silent on becomes uniform rather than a NaN-laden
-        # spike; the report then sees "Uncertain", which is the honest reading.
+        # Rows with no output become uniform instead of NaN.
         proba[dead] = 1.0 / proba.shape[1]
         rowsum = proba.sum(axis=1, keepdims=True)
     return proba / rowsum
 
 
-# 3. TransferMobileNet -- ImageNet-pretrained backbone, new head on our spectra
+# 3. TransferMobileNet: pretrained ImageNet backbone with a new head
 
 
 class TransferMobileNet(DeepModel):
     """Frozen ImageNet MobileNetV3Small with a new classification head.
 
-    The 128-bin spectrum is tiled to 16 x 8, upsampled to 96 x 96 and repeated over three
-    channels so the pretrained filters see the shape they expect. Upsampling a spectrum loses
-    information; this candidate tests whether reused filters beat training from scratch
-    (they did not, see python_models/metrics/).
+    The 128-bin spectrum is tiled to 16 x 8, upsampled to 96 x 96 and copied to three
+    channels. It did not beat the models trained from scratch (python_models/metrics/).
     """
 
     def __init__(
@@ -464,11 +443,11 @@ class TransferMobileNet(DeepModel):
         n_classes = len(self.classes_)
         inputs = keras.Input(shape=(16, None, 1), name="mel_tile")
         x = layers.Resizing(self.input_size, self.input_size, interpolation="bilinear")(inputs)
-        x = layers.Concatenate(axis=-1)([x, x, x])  # 1 -> 3 channels for the pretrained convs
+        x = layers.Concatenate(axis=-1)([x, x, x])  # 1 -> 3 channels
 
         from keras.applications import MobileNetV3Small
 
-        # ImageNet weights were trained at 224x224; 96x96 is a deliberate speed trade on CPU.
+        # 96x96 instead of 224x224 to keep CPU training fast.
         backbone = MobileNetV3Small(
             input_shape=(self.input_size, self.input_size, 3),
             include_top=False,
@@ -504,7 +483,7 @@ class TransferMobileNet(DeepModel):
         feats = self._spatial(Xs)
 
         self.model_ = self._build()
-        # The backbone is frozen, so a fit-time shuffle uses Keras' own seeded RNG.
+        # Shuffling uses Keras' seeded RNG.
         self.model_.fit(
             feats,
             targets,
@@ -532,15 +511,11 @@ class TransferMobileNet(DeepModel):
 
 
     def __getstate__(self) -> dict[str, Any]:
-        """Serialise weights to bytes: Keras 3 models are not joblib-picklable, and the bundle must
-        load offline.
-        """
+        """Save the weights as bytes, since Keras 3 models can't be pickled."""
         state = self.__dict__.copy()
         model = state.pop("model_", None)
         if model is not None:
-            # Keras 3 refuses to save to a file-like object (it dispatches on the path's
-            # extension), so the model is written to a temporary ``.keras`` file and only
-            # the bytes travel inside the joblib bundle.
+            # Keras 3 can only save to a .keras path, so go through a temp file.
             import os
             import tempfile
 
@@ -564,7 +539,7 @@ class TransferMobileNet(DeepModel):
             os.environ.setdefault("KERAS_BACKEND", "tensorflow")
             import keras
 
-            # Same constraint on load: a ``.keras`` path, never a BytesIO.
+            # Same on load.
             import tempfile
 
             fd, tmp_path = tempfile.mkstemp(suffix=".keras")
@@ -578,7 +553,7 @@ class TransferMobileNet(DeepModel):
             self._fitted_ = True
 
 
-# The registry
+# Registry
 
 
 def _cnn1d(params: Mapping[str, Any], seed: int, _rng: Any) -> Any:
@@ -613,7 +588,7 @@ def _transfer(params: Mapping[str, Any], seed: int, _rng: Any) -> Any:
     )
 
 
-#: Small grids on purpose: on this laptop's CPU one point per axis finishes, a sweep does not.
+# Small grids so a run finishes on a laptop CPU.
 DEEP_CANDIDATES: dict[str, CandidateSpec] = {
     "cnn1d": CandidateSpec(
         name="cnn1d",
@@ -646,15 +621,15 @@ DEEP_CANDIDATES: dict[str, CandidateSpec] = {
             "Transfer learning: frozen ImageNet-pretrained MobileNetV3Small backbone, new head "
             "trained on our mel spectra.  The 128-bin spectrum is upsampled to 96x96, which "
             "loses information; the comparison table shows whether reused filters beat the "
-            "from-scratch CNNs anyway.  Requires the cached pretrained weights -- no network "
-            "access at train or inference time."
+            "from-scratch CNNs anyway. Needs the cached pretrained weights (no network "
+            "access at train or inference time)."
         ),
     ),
 }
 
 
 def get_candidate(name: str) -> CandidateSpec:
-    """Fetch a registered deep candidate by name."""
+    """Look up a deep candidate by name."""
     try:
         return DEEP_CANDIDATES[name]
     except KeyError:
@@ -664,7 +639,7 @@ def get_candidate(name: str) -> CandidateSpec:
 
 
 def build_estimator(spec: CandidateSpec, params: Mapping[str, Any] | None = None, seed: int = 0) -> Any:
-    """A ready-to-fit deep estimator (standardisation happens inside fit)."""
+    """Build an unfitted deep estimator."""
     resolved = dict(params or {})
     resolved.pop("_seed", None)
     return spec.build({k: v for k, v in resolved.items() if not k.startswith("_")}, seed)
@@ -677,7 +652,7 @@ def fit_estimator(
     *,
     class_weights: Mapping[str, float] | None = None,
 ) -> Any:
-    """Fit with class weights passed as sample_weight (normalised to mean 1 inside the loop)."""
+    """Fit, passing class weights as sample_weight."""
     if class_weights:
         sample_weight = sample_weights_for(y, class_weights)
         return estimator.fit(X, list(y), sample_weight=sample_weight)
@@ -690,7 +665,7 @@ def sample_weights_for(y: Sequence[str], class_weights: Mapping[str, float]) -> 
 
 
 def supports_sample_weight(estimator: Any) -> bool:
-    """Deep models all accept ``sample_weight``; reported for symmetry with the classical zoo."""
+    """Always True for the deep models."""
     import inspect
 
     try:
@@ -700,7 +675,7 @@ def supports_sample_weight(estimator: Any) -> bool:
 
 
 def weighted_variant(spec: CandidateSpec, weights: Mapping[str, float] | None) -> CandidateSpec:
-    """The same candidate with critical-class weights; mirrors classical.weighted_variant."""
+    """The same candidate with critical-class weights."""
     note = (
         spec.notes
         + " Critical-class weighted variant: critical classes are boosted "
@@ -718,7 +693,7 @@ def weighted_variant(spec: CandidateSpec, weights: Mapping[str, float] | None) -
 
 
 def describe_zoo() -> list[dict[str, Any]]:
-    """The deep candidates, for the comparison report."""
+    """Deep candidates, for the comparison report."""
     return [
         {
             "name": spec.name,
@@ -731,9 +706,9 @@ def describe_zoo() -> list[dict[str, Any]]:
 
 
 def inference_latency_ms(estimator: Any, X: np.ndarray, repeats: int = 5) -> dict[str, float]:
-    """Single-row latency after a warm-up call, reported next to the score (3 s live budget)."""
+    """Single-row prediction latency after one warm-up call."""
     row = np.asarray(X[:1], dtype=np.float32)
-    estimator.predict_proba(row)  # warm up lazy imports and thread pools
+    estimator.predict_proba(row)  # warm-up
     samples: list[float] = []
     for _ in range(repeats):
         started = time.perf_counter()

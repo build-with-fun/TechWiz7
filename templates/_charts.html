@@ -1,5 +1,5 @@
-{# Server-rendered SVG charts. Sizes are SVG attributes and colours are CSS classes, so they work
-   under the style-src 'self' CSP without inline styles or JavaScript. #}
+{# SVG charts rendered on the server. Sizes are SVG attributes and colours are CSS classes,
+   so they need no inline styles or JavaScript. #}
 
 {% macro columns(points, label_key='day', value_key='count', aria_label='') -%}
 {% set n = points | length %}

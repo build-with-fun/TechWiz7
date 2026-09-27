@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-"""Deterministic procedural synthesiser for the ten classes.
+"""Procedural sound synthesiser for the ten classes.
 
-It began as the whole corpus. In the submitted dataset only 75 originals (50 Aggression and
-25 Panic Scream top-ups, via data/topup_synthetic.py) come from here; the rest are
-real recordings plus 300 TTS help phrases. It is still used for the --smoke training runs.
+Early on this generated the whole corpus. Now only 75 clips in the dataset come from here
+(50 Aggression and 25 Panic Scream, via data/topup_synthetic.py); it is also used for the
+--smoke training runs.
 
-Each clip is seeded by its audio_id hash, so every clip is a distinct, reproducible signal,
-and its row says ``source = procedural_synthesis``. Recording conditions (device, distance,
-room, interference, overlap) are simulated in physical order. No split is assigned here.
+Each clip is seeded from its audio_id, so output is reproducible. Recording conditions
+(device, distance, room, interference, overlap) are simulated too.
 
     python data/generate_corpus.py --per-class 5 --out-root /tmp/smoke
 """
@@ -31,23 +30,23 @@ CLASSES_CONFIG = REPO_ROOT / "config" / "classes.json"
 # Classes come from config/classes.json only.
 
 def load_class_config(path: Path = CLASSES_CONFIG) -> dict:
-    """Load the frozen class list. Returns the parsed JSON document."""
+    """Load config/classes.json."""
     with path.open(encoding="utf-8") as fh:
         return json.load(fh)
 
 
 _CLASS_CFG = load_class_config()
 
-#: the 10 exact class names, in frozen config order
+# the 10 class names, in config order
 CLASSES = [c["name"] for c in _CLASS_CFG["classes"]]
 
-#: class name -> frozen 3-letter code, used inside Audio IDs ("SS-GUN-0007")
+# class name -> 3-letter code used in ids ("SS-GUN-0007")
 CLASS_CODES = {c["name"]: c["code"] for c in _CLASS_CFG["classes"]}
 
-#: classes the SRS calls "critical" (severity + recall floor of 85%)
+# critical classes (85% recall target)
 CRITICAL_CLASSES = set(_CLASS_CFG["critical_classes"])
 
-#: The only phrases permitted for "Person Asking for Help" (SRS 1.4 / Step 1).
+# Allowed phrases for "Person Asking for Help" (SRS 1.4).
 HELP_PHRASES = list(_CLASS_CFG["allowed_help_phrases"])
 
 SOURCE_TAG = "procedural_synthesis:data/generate_corpus.py"
@@ -57,7 +56,7 @@ DATE_FETCHED = "2026-09-23"
 
 
 def seed_for(audio_id: str, master_seed: int) -> int:
-    """Stable 32-bit seed for a clip: same id + seed => same bytes, always."""
+    """32-bit seed for a clip from its id."""
     digest = hashlib.sha256(f"{master_seed}:{audio_id}".encode()).hexdigest()
     return int(digest[:8], 16)
 
@@ -72,9 +71,7 @@ def _rms(x: np.ndarray) -> float:
 
 
 def _rms_match(x: np.ndarray, target_rms: float) -> np.ndarray:
-    """Scale ``x`` to a target RMS; peak matching would let a fast transient dominate a sustained
-    component in the mix.
-    """
+    """Scale ``x`` to a target RMS."""
     r = _rms(x)
     return x * (target_rms / r) if r > 1e-12 else x
 
@@ -91,7 +88,7 @@ def pink_noise(n: int, rng: np.random.Generator) -> np.ndarray:
 
 
 def brown_noise(n: int, rng: np.random.Generator) -> np.ndarray:
-    """1/f^2 noise -- rumble, traffic, wind."""
+    """1/f^2 noise (rumble, traffic, wind)."""
     y = np.cumsum(rng.standard_normal(n))
     y -= y.mean()
     return _norm(y)
@@ -126,7 +123,7 @@ def highpass(x: np.ndarray, sr: int, fc: float, order: int = 4) -> np.ndarray:
 
 
 def resonator(x: np.ndarray, sr: int, freq: float, bandwidth: float) -> np.ndarray:
-    """Single 2-pole resonator -- one vocal-tract formant."""
+    """2-pole resonator (one formant)."""
     r = math.exp(-math.pi * bandwidth / sr)
     theta = 2.0 * math.pi * freq / sr
     b = [1.0 - r]
@@ -211,8 +208,7 @@ def reverb(x: np.ndarray, sr: int, rt60: float, wet: float, rng: np.random.Gener
         for i in range(d, len(y)):
             y[i] = -g * out[i] + out[i - d] + g * y[i - d]
         out = y
-    # Reverb changes temporal spread, not level: match the tail's RMS to the dry signal (peak-
-    # normalising here erased distance).
+    # Match the RMS of the dry signal so reverb doesn't change the level.
     r_in, r_tail = _rms(x), _rms(out)
     if r_tail > 1e-12:
         out = out * (r_in / r_tail)
@@ -446,8 +442,8 @@ def gen_aggression(rng, sr, n, profile) -> np.ndarray:
     return _norm(y)
 
 
-#: Syllable plans for the permitted help phrases: (onset kind, vowel, duration fraction, pitch
-#: scale)
+# Syllable plans for the permitted help phrases: (onset kind, vowel, duration fraction, pitch
+# scale)
 _SYLL = {
     "Help me": [("h", "e", 0.9, 1.0), ("m", "i", 0.7, 0.85)],
     "Somebody help": [("s", "a", 0.5, 1.15), ("b", "o", 0.5, 1.1), ("d", "i", 0.35, 1.05), ("h", "e", 0.9, 0.95)],
@@ -504,11 +500,10 @@ def gen_help_request(rng, sr, n, profile) -> np.ndarray:
         ln = int(seg_s * sr)
         if pos + ln >= n or ln < 16:
             break
-        f0 = f0_base * pitch * (1.0 - 0.18 * idx / max(len(plan) - 1, 1))  # declining declination
+        f0 = f0_base * pitch * (1.0 - 0.18 * idx / max(len(plan) - 1, 1))  # falling pitch
         voiced = _voiced_syllable(rng, sr, ln, f0, vowel)
         if cons:
-            # Fricatives last 80-180 ms, plosives 25-70 ms; too-short consonants leave the clip all
-            # vowel.
+            # Fricatives 80-180 ms, plosives 25-70 ms.
             dur = rng.uniform(0.08, 0.18) if cons in _FRICATIVES else rng.uniform(0.025, 0.07)
             cl = max(int(dur * sr), 8)
             c = _consonant_burst(rng, sr, cons, cl)
@@ -561,7 +556,7 @@ GENERATORS = {
 }
 
 
-# Recording-condition simulation (the SRS variation axes)
+# Recording conditions
 DEVICES = {
     # name: (low_cut, high_cut, presence_peak_gain, noise_floor_db)
     "smartphone_builtin": (90.0, 15000.0, 0.12, -52.0),
@@ -587,7 +582,7 @@ DISTANCE_BANDS = {
     "far_20-60m": (20.0, 60.0),
 }
 
-#: Simulated room -> recording_environment value; the raw name stays in sim_environment.
+# Simulated room -> recording_environment value.
 ENVIRONMENT_MAP = {
     "indoor_room": "indoor",
     "indoor_hall": "indoor",
@@ -598,14 +593,13 @@ ENVIRONMENT_MAP = {
 
 INTENSITIES = {"quiet": (0.06, 0.18), "normal": (0.3, 0.6), "loud": (0.75, 0.97), "clipped": (0.99, 1.25)}
 
-#: Per-recording gain, as real recorders and phone AGC vary; distance still dominates (~27 dB, 1-40
-#: m).
+# Random gain per recording, like real devices; distance still has the bigger effect.
 RECORDER_GAIN = {"quiet": (0.7, 1.5), "normal": (0.7, 1.5),
                  "loud": (0.6, 1.1), "clipped": (1.1, 2.0)}
 
 
 def sample_profile(rng: np.random.Generator) -> dict:
-    """Draw one recording condition from the SRS variation axes."""
+    """Pick random recording conditions."""
     env = str(rng.choice(list(ENVIRONMENTS), p=[0.3, 0.1, 0.28, 0.2, 0.12]))
     dist = str(rng.choice(list(DISTANCE_BANDS), p=[0.42, 0.36, 0.22]))
     device = str(rng.choice(list(DEVICES), p=[0.32, 0.14, 0.16, 0.14, 0.14, 0.1]))
@@ -627,9 +621,7 @@ def sample_profile(rng: np.random.Generator) -> dict:
 
 
 def simulate_channel(y: np.ndarray, sr: int, rng: np.random.Generator, profile: dict) -> np.ndarray:
-    """Apply intensity, device, distance, room, interference, overlap and mic noise, in physical
-    order, so the recorded level still carries distance.
-    """
+    """Apply intensity, device, distance, room, interference, overlap and mic noise, in order."""
     # 1. source level at the reference distance, from the event intensity
     lo_g, hi_g = INTENSITIES[profile["intensity"]]
     out = _norm(y) * float(rng.uniform(lo_g, hi_g))
@@ -686,7 +678,7 @@ def simulate_channel(y: np.ndarray, sr: int, rng: np.random.Generator, profile: 
     return np.clip(out, -1.0, 1.0).astype(np.float64)
 
 
-# Corpus assembly (splits are owned by audio_dataset/build_split.py)
+# Corpus assembly (splits are done by audio_dataset/build_split.py)
 
 
 def write_audio(path: Path, y: np.ndarray, sr: int, channels: int, subtype: str) -> None:
@@ -710,8 +702,8 @@ def build(
     audio_subdir: str = "synthetic",
     id_offset: int = 0,
 ) -> list[dict]:
-    """Generate ``per_class`` originals per class. ``audio_subdir``/``id_offset`` keep generated
-    clips away from audio_dataset/originals/ and the real recordings' id range.
+    """Generate ``per_class`` clips per class. ``audio_subdir``/``id_offset`` keep them apart
+    from the real recordings.
     """
     rows: list[dict] = []
     for label in CLASSES:
@@ -724,7 +716,7 @@ def build(
             rng = np.random.default_rng(seed_for(audio_id, master_seed))
             profile = sample_profile(rng)
 
-            # ~10% at 44.1/48 kHz and/or stereo, so resampling and downmixing get exercised.
+            # ~10% at 44.1/48 kHz or stereo, to exercise resampling and downmixing.
             if rng.random() < 0.10:
                 sr = int(rng.choice([44100, 48000]))
                 channels = int(rng.choice([1, 2]))
@@ -739,11 +731,10 @@ def build(
             rel = Path(audio_subdir) / slug / filename
             write_audio(out_root / rel, y, sr, channels, "PCM_16")
 
-            # sha256 of the bytes as written, for duplicate detection.
+            # sha256 for duplicate detection.
             digest = hashlib.sha256((out_root / rel).read_bytes()).hexdigest()
 
-            # Frozen 20 columns in schema order, blanks rather than omissions; the rest is
-            # simulation telemetry.
+            # The 20 schema columns, then the simulation details.
             rows.append({
                 "audio_id": audio_id,
                 "filename": str(rel),
@@ -764,8 +755,8 @@ def build(
                 "segment_start_sec": "",
                 "segment_end_sec": "",
                 "sha256": digest,
-                "dataset_split": "",  # builder fills this; never set it here
-                # extra columns (preserved by build_split.py)
+                "dataset_split": "",  # set by build_split.py
+                # extra columns
                 "seed": seed_for(audio_id, master_seed),
                 "audio_provenance": "synthetic",
                 "sim_environment": profile["environment"],
@@ -782,7 +773,7 @@ def build(
     return rows
 
 
-# The frozen 20 (audio_dataset/manifest_schema.md, in order) then our extras.
+# The 20 schema columns (audio_dataset/manifest_schema.md), then extras.
 MANIFEST_FIELDS = [
     "audio_id", "filename", "class_label", "source", "source_url", "licence",
     "author", "date_fetched", "duration_sec", "sampling_rate", "channels",
@@ -835,8 +826,7 @@ def main() -> int:
     print(f"[generate] wrote {len(rows)} clips -> {manifest}")
     for label in CLASSES:
         print(f"  {label:<24} {counts.get(label, 0):>4} originals")
-    print("[generate] splits are NOT set here -- run "
-          "audio_dataset/build_split.py to freeze them. ")
+    print("[generate] no split assigned; run audio_dataset/build_split.py for that.")
     return 0
 
 

@@ -1,12 +1,6 @@
-"""
-The SRS consistency taxonomy must be exactly right — it is what the whole comparison view,
-the manual-review queue and the alert engine are built on.
+"""Consistency statuses (SRS Step 11, Step 14, FR xxiii-xxx, lii).
 
-SRS Step 11, Step 14, FR xxiii-xxx and lii.
-
-Every test here injects thresholds rather than importing defaults, because one of the
-things under test is that the taxonomy RESPONDS to config — the SRS says an evaluator may
-change a threshold live, and a threshold baked into code would silently ignore them.
+Thresholds are passed in explicitly, to check that the result follows the config.
 """
 
 from __future__ import annotations
@@ -31,11 +25,7 @@ THRESHOLDS = load_thresholds()
 
 def make_result(model: str, predicted: str, confidence: float, runner_up: str | None = None,
                 runner_up_confidence: float | None = None) -> PredictionResult:
-    """Build a PredictionResult with a full 10-class distribution.
-
-    The remaining mass is spread evenly, so confidences still sum to 1 — a distribution
-    that does not sum to 1 is exactly the fabricated-confidence pattern we refuse.
-    """
+    """PredictionResult with a full 10-class distribution that sums to 1."""
     rest = [c for c in CLASSES if c not in (predicted, runner_up)]
     if runner_up is None:
         share = (1.0 - confidence) / len(rest)
@@ -51,10 +41,10 @@ def make_result(model: str, predicted: str, confidence: float, runner_up: str | 
     )
 
 
-# Each status must be reachable
+# Every status can be reached
 
 def test_strong_match():
-    """Agreement with a tiny confidence gap."""
+    """Same class, small confidence gap."""
     py = make_result("python", "Gunshot", 0.92)
     gtm = make_result("gtm", "Gunshot", 0.90)
     result = classify_consistency(py, gtm, THRESHOLDS)
@@ -80,7 +70,7 @@ def test_weak_match():
 
 
 def test_model_disagreement():
-    """Different classes is disagreement, regardless of how confident each model is."""
+    """Different classes means disagreement, whatever the confidences."""
     py = make_result("python", "Gunshot", 0.95)
     gtm = make_result("gtm", "Glass Breaking", 0.94)
     result = classify_consistency(py, gtm, THRESHOLDS)
@@ -97,7 +87,7 @@ def test_uncertain_result_both_models_unsure():
 
 
 def test_uncertain_result_when_only_one_model_is_unsure():
-    """Two models agreeing is not evidence if one of them is guessing."""
+    """Agreement doesn't count if one model is unsure."""
     py = make_result("python", "Alarm or Siren", 0.91)
     gtm = make_result("gtm", "Alarm or Siren", 0.20)
     result = classify_consistency(py, gtm, THRESHOLDS)
@@ -106,7 +96,7 @@ def test_uncertain_result_when_only_one_model_is_unsure():
 
 
 def test_all_five_statuses_are_producible():
-    """Guard against a status that is documented but unreachable."""
+    """All five statuses can actually occur."""
     produced = {
         classify_consistency(*pair, THRESHOLDS).consistency_status
         for pair in [
@@ -120,28 +110,22 @@ def test_all_five_statuses_are_producible():
     assert produced == set(CONSISTENCY_STATUSES)
 
 
-# Boundary behaviour — the off-by-one a code reviewer will find
+# Boundaries
 
 @pytest.mark.parametrize("strong_max,acceptable_max,weak_max,difference,expected", [
-    # threshold values and differences are all exact binary fractions, so this test
-    # exercises the comparison operators and NOT floating-point representation
-    (0.25, 0.50, 0.75, 0.125, STRONG_MATCH),      # comfortably inside strong
-    (0.25, 0.50, 0.75, 0.250, STRONG_MATCH),      # exactly on the strong bound: inclusive
+    # exact binary fractions, so float rounding doesn't matter
+    (0.25, 0.50, 0.75, 0.125, STRONG_MATCH),      # inside strong
+    (0.25, 0.50, 0.75, 0.250, STRONG_MATCH),      # on the strong bound (inclusive)
     (0.25, 0.50, 0.75, 0.500, ACCEPTABLE_MATCH),  # past strong, on the acceptable bound
     (0.25, 0.50, 0.75, 0.750, WEAK_MATCH),        # on the weak bound
-    (0.25, 0.50, 0.75, 0.875, WEAK_MATCH),        # past the weak band: still a weak match
+    (0.25, 0.50, 0.75, 0.875, WEAK_MATCH),        # past the weak bound: still weak
     (0.50, 0.75, 0.875, 0.250, STRONG_MATCH),     # same difference, looser config
     (0.125, 0.25, 0.50, 0.250, ACCEPTABLE_MATCH), # same difference, stricter config
 ])
 def test_match_grading_boundaries(strong_max, acceptable_max, weak_max, difference, expected):
-    """Thresholds are upper bounds and INCLUSIVE.
-
-    A strict `<` would misgrade the boundary case, and the boundary case is precisely what
-    a change of threshold produces — which is the surprise modification the SRS warns about.
-    """
+    """Thresholds are inclusive upper bounds."""
     thresholds = {
-        # min_confidence is neutralised here so this test isolates the GRADING thresholds;
-        # the min-confidence gate is exercised separately below.
+        # min_confidence is set low so only the grading thresholds matter here.
         "confidence": dict(THRESHOLDS["confidence"], min_confidence=0.0),
         "consistency": {
             "strong_match_max_diff": strong_max,
@@ -157,7 +141,7 @@ def test_match_grading_boundaries(strong_max, acceptable_max, weak_max, differen
 
 
 def test_real_config_thresholds_are_honoured():
-    """The shipped config values must actually drive the verdict, not just the injected ones."""
+    """The real config values are used."""
     cons = THRESHOLDS["consistency"]
     pairs = [
         (cons["strong_match_max_diff"] / 2, STRONG_MATCH),
@@ -171,7 +155,7 @@ def test_real_config_thresholds_are_honoured():
 
 
 def test_min_confidence_boundary_is_inclusive():
-    """A model exactly at the floor is accepted, not rejected."""
+    """A confidence exactly at the minimum is accepted."""
     threshold = THRESHOLDS["confidence"]["min_confidence"]
     py = make_result("python", "Gunshot", threshold)
     gtm = make_result("gtm", "Gunshot", threshold)
@@ -185,10 +169,10 @@ def test_just_below_min_confidence_is_uncertain():
     assert classify_consistency(py, gtm, THRESHOLDS).consistency_status == UNCERTAIN_RESULT
 
 
-# Configurability — the SRS surprise modification
+# Config changes
 
 def test_taxonomy_responds_to_changed_thresholds():
-    """Change the config and the verdict must change. This is what 'not hard-coded' means."""
+    """Changing the thresholds changes the result."""
     py = make_result("python", "Gunshot", 0.95)
     gtm = make_result("gtm", "Gunshot", 0.80)   # difference 0.15 -> Acceptable by default
 
@@ -214,7 +198,7 @@ def test_raising_min_confidence_turns_agreement_into_uncertain():
 
 
 def test_threshold_snapshot_is_recorded_with_every_result():
-    """The audit trail must show which thresholds produced a verdict, not just the verdict."""
+    """Each result records the thresholds used."""
     result = classify_consistency(
         make_result("python", "Gunshot", 0.9), make_result("gtm", "Gunshot", 0.9), THRESHOLDS
     )
@@ -225,10 +209,10 @@ def test_threshold_snapshot_is_recorded_with_every_result():
     assert all(isinstance(v, float) for v in snapshot.values())
 
 
-# Confidence difference — the SRS's headline number
+# Confidence difference
 
 def test_confidence_difference_is_absolute():
-    """Order must not matter: |python - gtm| == |gtm - python|."""
+    """|python - gtm| == |gtm - python|"""
     a = make_result("python", "Gunshot", 0.95)
     b = make_result("gtm", "Gunshot", 0.70)
     forward = classify_consistency(a, b, THRESHOLDS)
@@ -247,7 +231,7 @@ def test_top_two_margin_reported_for_both_models():
 
 
 def test_overlap_detected_when_runner_up_is_strong():
-    """SRS 'overlapping sounds': a strong second class means a second simultaneous event."""
+    """A strong second class is flagged as an overlapping sound."""
     py = make_result("python", "Gunshot", 0.62, runner_up="Panic Scream", runner_up_confidence=0.30)
     gtm = make_result("gtm", "Gunshot", 0.60)
     result = classify_consistency(py, gtm, THRESHOLDS)
@@ -257,7 +241,7 @@ def test_overlap_detected_when_runner_up_is_strong():
 
 
 def test_no_overlap_flagged_when_models_disagree():
-    """An overlap claim on a disagreement would double-count an already-confused signal."""
+    """No overlap flag when the models disagree."""
     py = make_result("python", "Gunshot", 0.62, runner_up="Panic Scream", runner_up_confidence=0.30)
     gtm = make_result("gtm", "Glass Breaking", 0.61)
     assert classify_consistency(py, gtm, THRESHOLDS).overlapping is False
@@ -283,7 +267,7 @@ def test_uncertain_goes_to_review():
 
 
 def test_confident_strong_match_does_not_go_to_review():
-    """Otherwise the queue fills with clean results and reviewers stop reading it."""
+    """A confident strong match stays out of the review queue."""
     result = classify_consistency(
         make_result("python", "Gunshot", 0.95), make_result("gtm", "Gunshot", 0.94), THRESHOLDS
     )
@@ -303,7 +287,7 @@ def test_weak_match_goes_to_review():
 
 
 def test_review_reason_names_every_trigger():
-    """A queue entry with no explanation is a usability defect — reviewers must know why."""
+    """The review reason lists every trigger."""
     py = make_result("python", "Gunshot", 0.62, runner_up="Panic Scream", runner_up_confidence=0.30)
     gtm = make_result("gtm", "Gunshot", 0.90)
     result = classify_consistency(py, gtm, THRESHOLDS)
@@ -327,9 +311,7 @@ def test_disagreement_and_low_confidence_both_named():
 
 
 def test_strong_runner_up_implies_low_confidence_and_routes_to_review():
-    """A runner-up at the 0.25 overlap threshold caps the top class at 0.75, the low-confidence
-    band, so every genuine overlap is routed to a human.
-    """
+    """A runner-up at 0.25 caps the top class at 0.75, so overlaps go to review."""
     py = make_result("python", "Gunshot", 0.75, runner_up="Panic Scream", runner_up_confidence=0.25)
     gtm = make_result("gtm", "Gunshot", 0.85)
     result = classify_consistency(py, gtm, THRESHOLDS)
@@ -344,7 +326,7 @@ def test_strong_runner_up_implies_low_confidence_and_routes_to_review():
 
 
 def test_a_weak_runner_up_is_not_an_overlap():
-    """Below the overlap threshold the second class is just the tail of the distribution."""
+    """A weak runner-up is not an overlap."""
     py = make_result("python", "Gunshot", 0.90, runner_up="Panic Scream", runner_up_confidence=0.02)
     gtm = make_result("gtm", "Gunshot", 0.89)
     result = classify_consistency(py, gtm, THRESHOLDS)
@@ -356,7 +338,7 @@ def test_a_weak_runner_up_is_not_an_overlap():
 
 
 def test_comparison_serialises_for_the_api():
-    """The UI, the audit record and the report all read this dict — shape is a contract."""
+    """to_dict has the fields the UI and reports use."""
     result = classify_consistency(
         make_result("python", "Gunshot", 0.9), make_result("gtm", "Gunshot", 0.88), THRESHOLDS
     )

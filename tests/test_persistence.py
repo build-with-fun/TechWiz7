@@ -1,22 +1,9 @@
-"""Tests for the persistence layer: pipeline record -> database rows.
+"""Tests for src/services/persistence.py (pipeline record -> database rows).
 
-
-These tests build synthetic pipeline records rather than running the pipeline, so a missing
-or untrained model never makes the audit trail untestable. The record shape here mirrors the
-one ``AnalysisPipeline.analyse`` produces; if the pipeline changes, that is caught by the
-pipeline's own tests, not here.
-
-What this file insists on:
-
-* both models' versions are stamped on the event row (FR lxxv);
-* the sha256 and the fingerprint land on the audio file (FR lxxiii/lxxiv);
-* every class of both models gets a confidence row with a correct ``rank`` and ``is_top``;
-* an alert is written only when the pipeline raised one, carrying its rule snapshot;
-* a review queue entry is written only when review was required, with the originals
-  snapshotted so an override never erases what the models said (FR lxi);
-* an exact duplicate stores no second event (FR lxxiii);
-* a rejected clip stores the file but no event -- the evidence without a fake detection;
-* storing never raises at the caller: a failure is reported on the record.
+Uses hand-built records shaped like AnalysisPipeline.analyse output, so no model is needed.
+Checks model versions on events, hashes on files, score rows, alerts and reviews only
+when asked for, no second event for an exact duplicate, no event for a rejected clip, and
+that storing reports errors instead of raising.
 """
 
 from __future__ import annotations
@@ -68,11 +55,7 @@ def factory(tmp_path: Path):
 
 @pytest.fixture()
 def actor(factory) -> User:
-    """A user row the store can attribute work to.
-
-    The store only ever reads ``actor.id``, so this is returned detached: no lazy load can
-    fire against the closed session it came from.
-    """
+    """A detached user row (the store only reads ``actor.id``)."""
     from src.auth import hash_password
 
     with factory() as session:
@@ -104,7 +87,7 @@ def _record(
     review_required: bool = False,
     near_duplicate_of: str | None = None,
     filename: str = "warehouse_north.wav",
-    location: str | None = "Warehouse North — Bay 4",
+    location: str | None = "Warehouse North, Bay 4",
     consent: bool = False,
     origin: str = "upload",
     source_path: str | None = None,
@@ -278,15 +261,14 @@ def test_analysed_record_stores_an_event_with_both_model_versions(factory, stora
         assert event.top_confidence == pytest.approx(0.93)
         assert event.severity == "High"
         assert event.quality_verdict == "Good"
-        assert event.location == "Warehouse North — Bay 4"
+        assert event.location == "Warehouse North, Bay 4"
         assert event.requires_manual_review is False
 
-        # FR lxxv: both versions stamped on the row, so activating a new one never
-        # rewrites this result.
+        # FR lxxv: both model versions are on the row.
         assert event.python_model_version.version == "svm_mfcc_v3"
         assert event.gtm_model_version.version == "tm_audio_v2"
 
-        # FR lxxiii / lxxiv: identity and sound on the file.
+        # FR lxxiii / lxxiv: hash and fingerprint on the file.
         assert audio.sha256 == "a" * 64
         assert audio.perceptual_fingerprint == "fp-aaaa"
         assert audio.audio_id.startswith("SST-")
@@ -336,7 +318,7 @@ def test_alert_is_written_only_when_raised_and_carries_its_rule(factory, storage
         assert alert.severity == "Critical"
         assert alert.status == "Open"
         assert alert.rule_class == "critical_gunshot"
-        # The rule as it stood, so an edit later does not change this alert's story.
+        # Copy of the rule at the time.
         assert alert.rule_snapshot["severity"]["severity"] == "Critical"
         assert alert.rule_snapshot["confirmation"]["consecutive"] == 2
         assert alert.dedup_key is not None
@@ -368,7 +350,7 @@ def test_review_queue_entry_is_written_only_when_required(factory, storage, acto
         assert review.condition_ids == ["critical_without_agreement"]
         assert review.decision == "pending"
 
-        # FR lxi: the models' originals are snapshotted, not replaced.
+        # FR lxi: the original outputs are copied.
         assert review.original_python_class == "Gunshot"
         assert review.original_python_confidence == pytest.approx(0.93)
         assert review.original_gtm_class == "Glass Breaking"
@@ -519,7 +501,7 @@ def test_model_version_row_is_registered_once_and_reused(factory, storage, actor
 # Robustness
 
 def test_storing_never_raises_at_the_caller(factory, storage, actor):
-    """A persistence failure must be reported, not thrown: the pipeline relies on that."""
+    """A failed write is reported, not raised."""
     broken = _record()
     broken["audio"] = {}  # no audio block -> ValueError deep inside
     with factory() as session:
@@ -543,17 +525,12 @@ def test_bytes_are_copied_to_storage_and_the_path_is_relative(factory, storage, 
     on_disk = storage.resolve(audio.stored_path)
     assert on_disk.exists()
     assert on_disk.read_bytes() == b"RIFF...."
-    # Relative, so the database survives the project moving (FR lxxi).
+    # Relative path (FR lxxi).
     assert not Path(audio.stored_path).is_absolute()
 
 
 def test_store_analysis_opens_its_own_session_when_none_is_given(tmp_path, storage):
-    """The pipeline's ``persist`` callback needs no request context of its own.
-
-    ``make_persistence_callback`` returns ``store_analysis`` with no session, which then has
-    to reach the *application's* factory through ``current_app``. That is the path the live
-    monitor will use, and it must not open a second engine.
-    """
+    """Without a session, store_analysis uses the app's session factory (no second engine)."""
     from flask import current_app
 
     from src.app import create_app
@@ -567,7 +544,7 @@ def test_store_analysis_opens_its_own_session_when_none_is_given(tmp_path, stora
         SST_LOAD_MODELS=False,
     )
     with app.app_context():
-        # The application's own factory is the one that must be used.
+        # Uses the app's factory.
         from src.db import app_session_factory
 
         assert app_session_factory() is app.config["SST_SESSION_FACTORY"]
@@ -579,7 +556,7 @@ def test_store_analysis_opens_its_own_session_when_none_is_given(tmp_path, stora
         result = persist(_record())
         assert result["event_ids"]
 
-        # No second engine: the rows are visible through the app's own connection.
+        # Rows are visible through the app's connection.
         with session_scope(app_session_factory()) as session:
             stored = session.execute(select(Event)).scalar_one()
             assert stored.audio_file.sha256 == "a" * 64

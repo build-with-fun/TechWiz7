@@ -1,6 +1,6 @@
 """Split logic on a synthetic 3,000-clip manifest (SRS Step 5, FR xvii-xviii).
 
-Self-contained on purpose, so leakage checks still run while the real corpus is incomplete.
+Doesn't need the real dataset.
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ def make_record(audio_id: str, label: str, *, filename: str | None = None,
 
 def make_manifest(n_per_class: int = N_PER_CLASS, classes: list[str] | None = None,
                   augmented_per_class: int = 0) -> list[dict[str, str]]:
-    """Build a synthetic manifest: n_per_class originals per class, plus optional augmentations."""
+    """Synthetic manifest with n_per_class originals per class, plus optional augmented rows."""
     classes = classes or CLASSES
     records: list[dict[str, str]] = []
     for label in classes:
@@ -81,15 +81,15 @@ def classes_config() -> dict:
     return load_classes()
 
 
-# split_counts — boundary behaviour
+# split_counts
 
 def test_split_counts_300_matches_srs_hint_exactly():
-    """300 per class must give 210/45/45, the exact numbers in the SRS Hint."""
+    """300 gives 210/45/45."""
     assert split_counts(300) == (210, 45, 45)
 
 
 def test_split_counts_always_sum_to_total():
-    """No item may be lost or duplicated at any size — including awkward ones."""
+    """Counts always add up to the total."""
     for n in range(1, 501):
         n_train, n_val, n_test = split_counts(n)
         assert n_train + n_val + n_test == n, f"n={n} lost items"
@@ -97,16 +97,16 @@ def test_split_counts_always_sum_to_total():
 
 
 def test_split_counts_degenerate_sizes():
-    """1 and 2 items must not crash or produce negative counts."""
+    """1 and 2 items work."""
     assert sum(split_counts(1)) == 1
     assert sum(split_counts(2)) == 2
     assert split_counts(0) == (0, 0, 0)
 
 
-# The headline requirement
+# Totals
 
 def test_exact_2100_450_450_split():
-    """SRS Hint: 70/15/15 over 3000 originals = 2100 train / 450 val / 450 test."""
+    """70/15/15 of 3000 = 2100 / 450 / 450."""
     split = build_split(make_manifest(), classes_config())
     totals = split["counts"]["originals_totals"]
     assert totals["train"] == 2100
@@ -116,7 +116,7 @@ def test_exact_2100_450_450_split():
 
 
 def test_per_class_stratification_is_exact():
-    """Every class contributes 210/45/45 — no class is under-represented in any split."""
+    """Every class is split 210/45/45."""
     split = build_split(make_manifest(), classes_config())
     for label in CLASSES:
         row = split["counts"]["originals_by_split"]
@@ -124,16 +124,16 @@ def test_per_class_stratification_is_exact():
 
 
 def test_all_ten_mandatory_classes_present():
-    """The split must cover all ten mandatory classes, not a convenient subset."""
+    """All ten classes are present."""
     split = build_split(make_manifest(), classes_config())
     assert set(split["class_names"]) == set(CLASSES)
     assert len(CLASSES) == 10
 
 
-# Disjointness and leakage — the project-ending defects
+# Leakage
 
 def test_splits_are_pairwise_disjoint():
-    """An audio_id in two splits is leakage. Prove it never happens."""
+    """No audio_id is in two splits."""
     split = build_split(make_manifest(), classes_config())
     buckets = {s: set() for s in SPLIT_NAMES}
     for audio_id, info in split["assignments"].items():
@@ -146,14 +146,14 @@ def test_splits_are_pairwise_disjoint():
 
 
 def test_every_record_is_assigned():
-    """An unassigned row would silently drop out of training with nobody noticing."""
+    """Every row gets a split."""
     records = make_manifest()
     split = build_split(records, classes_config())
     assert set(split["assignments"]) == {r["audio_id"] for r in records}
 
 
 def test_augmented_clips_inherit_parent_split():
-    """SRS: augmented recordings must stay in the same split as the original."""
+    """Augmented clips get their parent's split."""
     split = build_split(make_manifest(augmented_per_class=4), classes_config())
     for audio_id, info in split["assignments"].items():
         if info["role"] == AUGMENTED:
@@ -162,10 +162,7 @@ def test_augmented_clips_inherit_parent_split():
 
 
 def test_segments_of_one_recording_stay_together():
-    """
-    The classic leakage pattern: slice a 30s recording into 6 segments, put 5 in train and
-    1 in test, and report a wonderful score. Prove the builder refuses to do that.
-    """
+    """Segments of one recording all go to the same split."""
     records = []
     for label in CLASSES:
         code = "".join(w[0] for w in label.split()).upper()[:3]
@@ -191,17 +188,17 @@ def test_segments_of_one_recording_stay_together():
 
 
 def test_augmented_are_not_counted_as_originals():
-    """SRS: augmented recordings must not be counted as unique original clips."""
+    """Augmented clips don't count as originals."""
     with_aug = build_split(make_manifest(augmented_per_class=8), classes_config())
     assert with_aug["counts"]["originals_totals"] == {"train": 2100, "val": 450, "test": 450}
 
     plain = build_split(make_manifest(), classes_config())
     assert plain["counts"]["originals_totals"] == with_aug["counts"]["originals_totals"]
-    # ...and the augmentations really were placed somewhere
+    # but they are still assigned
     assert sum(with_aug["counts"]["derived_by_split"].values()) == 80
 
 
-# Determinism — an evaluator must be able to reproduce the freeze
+# Reproducibility
 
 def test_split_is_deterministic_across_runs():
     records = make_manifest()
@@ -211,7 +208,7 @@ def test_split_is_deterministic_across_runs():
 
 
 def test_split_is_independent_of_manifest_row_order():
-    """A differently-ordered manifest must produce the identical assignment."""
+    """Row order doesn't matter."""
     records = make_manifest()
     shuffled = list(reversed(records))
     assert (build_split(records, classes_config())["assignments"]
@@ -219,14 +216,14 @@ def test_split_is_independent_of_manifest_row_order():
 
 
 def test_different_seed_gives_a_different_split():
-    """Sanity: the seed actually does something, so the freeze is a real choice."""
+    """A different seed gives a different split."""
     records = make_manifest()
     a = build_split(records, classes_config(), seed=1)["assignments"]
     b = build_split(records, classes_config(), seed=2)["assignments"]
     assert a != b
 
 
-# Validation — negative tests
+# Validation
 
 def test_duplicate_audio_id_is_rejected():
     records = make_manifest()
@@ -237,13 +234,13 @@ def test_duplicate_audio_id_is_rejected():
 
 def test_unknown_class_label_is_rejected():
     records = make_manifest()
-    records[0]["class_label"] = "Explosion"  # an optional class we did NOT adopt
+    records[0]["class_label"] = "Explosion"  # not one of our classes
     with pytest.raises(ManifestError, match="not one of the"):
         validate_records(records, classes_config())
 
 
 def test_missing_licence_is_rejected():
-    """Ethical sourcing: an unlicensed clip may not enter the dataset."""
+    """A clip without a licence is rejected."""
     records = make_manifest()
     records[0]["licence"] = ""
     with pytest.raises(ManifestError, match="licence"):
@@ -251,7 +248,7 @@ def test_missing_licence_is_rejected():
 
 
 def test_augmented_without_parent_is_rejected():
-    """Without a parent we cannot know its split, so it could leak."""
+    """An augmented clip needs a parent."""
     records = make_manifest()
     records[0]["original_or_augmented"] = AUGMENTED
     records[0]["parent_audio_id"] = ""
@@ -268,7 +265,7 @@ def test_parent_must_exist():
 
 
 def test_augmented_parent_must_be_an_original():
-    """A chain of augmentations could otherwise launder a clip across a split."""
+    """An augmented clip's parent must be an original."""
     records = make_manifest(augmented_per_class=1)
     aug = next(r for r in records if r["original_or_augmented"] == AUGMENTED)
     records.append(make_record("SS-CHAIN-0001", aug["class_label"], status=AUGMENTED,
@@ -278,14 +275,14 @@ def test_augmented_parent_must_be_an_original():
 
 
 def test_strict_rejects_undersized_dataset():
-    """--strict must refuse to freeze a split that cannot meet the >=3000 floor."""
+    """--strict rejects fewer than 3000 clips."""
     small = make_manifest(n_per_class=100)
     with pytest.raises(ManifestError, match="strict"):
         assert_strict(small, classes_config())
 
 
 def test_strict_rejects_unbalanced_dataset():
-    """3000 clips with the wrong distribution is still off-spec."""
+    """--strict rejects unbalanced classes."""
     records = make_manifest(n_per_class=300)
     # move 10 clips from Machinery Fault to Gunshot: total stays 3000, balance breaks
     moved = 0
@@ -301,10 +298,10 @@ def test_strict_accepts_a_compliant_dataset():
     assert_strict(make_manifest(), classes_config())
 
 
-# End-to-end artifact test: build -> write -> reload -> re-audit
+# Build, write, reload
 
 def test_build_write_and_reload_round_trip(tmp_path: Path):
-    """The frozen file must survive a write/read cycle and still audit clean."""
+    """The split survives writing and reading back."""
     from audio_dataset.build_split import write_split
 
     records = make_manifest(augmented_per_class=2)
@@ -318,7 +315,7 @@ def test_build_write_and_reload_round_trip(tmp_path: Path):
     assert reloaded["counts"]["originals_totals"] == {"train": 2100, "val": 450, "test": 450}
     assert reloaded["seed"] == 20260923
 
-    # id lists written for the training scripts to consume
+    # id lists for the training scripts
     for split_name in SPLIT_NAMES:
         ids = (tmp_path / f"{split_name}_ids.txt").read_text(encoding="utf-8").split()
         assert len(ids) == len(set(ids))
@@ -327,7 +324,7 @@ def test_build_write_and_reload_round_trip(tmp_path: Path):
 
 
 def test_split_json_records_its_provenance():
-    """The artifact must state how it was made, so an evaluator can reproduce it."""
+    """split.json records how it was made."""
     split = build_split(make_manifest(), classes_config())
     from audio_dataset.build_split import ALGORITHM
 
@@ -337,7 +334,7 @@ def test_split_json_records_its_provenance():
 
 
 def test_manifest_csv_round_trip(tmp_path: Path):
-    """The manifest schema must survive a CSV write/read cycle unchanged."""
+    """The manifest survives a CSV round trip."""
     records = make_manifest(n_per_class=5)
     path = tmp_path / "manifest.csv"
     with path.open("w", newline="", encoding="utf-8") as fh:
@@ -351,7 +348,7 @@ def test_manifest_csv_round_trip(tmp_path: Path):
     assert {r["audio_id"] for r in back} == {r["audio_id"] for r in records}
 
 
-# Schema interop — the contract must accept other people's generators
+# Extra columns
 
 def test_extra_columns_from_a_generator_are_preserved_not_rejected(tmp_path: Path):
     """Extra generator columns are kept, not rejected."""
@@ -376,9 +373,7 @@ def test_extra_columns_from_a_generator_are_preserved_not_rejected(tmp_path: Pat
 
 
 def test_missing_columns_error_names_the_fix_and_the_no_write_rule(tmp_path: Path):
-    """The missing-columns error names the contract, maps near-misses and warns against writing
-    dataset_split.
-    """
+    """The missing-columns error points to the schema and suggests renames."""
     path = tmp_path / "manifest.csv"
     path.write_text(
         "audio_id,filename,class_label,sample_rate,label\n"
@@ -392,8 +387,8 @@ def test_missing_columns_error_names_the_fix_and_the_no_write_rule(tmp_path: Pat
         load_manifest(path)
     message = str(excinfo.value)
 
-    assert "manifest_schema.md" in message            # which contract
-    assert "sample_rate -> sampling_rate" in message  # the rename map, derived from the file
-    assert "dataset_split" in message                 # who owns the split column
+    assert "manifest_schema.md" in message
+    assert "sample_rate -> sampling_rate" in message
+    assert "dataset_split" in message
     assert "abuild_split" not in message              # no garbled paths
     assert "build_split.py" in message

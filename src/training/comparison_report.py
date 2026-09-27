@@ -1,8 +1,6 @@
-"""Comparison-report building blocks: run both predictors independently on the same
-held-out clips and tabulate agreement and correctness, refusing fewer than 100 clips or
-10 per class. classify_consistency is the only place the two results meet.
+"""Run both models on the same test clips and tabulate agreement and accuracy.
 
-The submitted report (every SRS column, through the full decision pipeline) is produced by
+Needs at least 100 clips and 10 per class. The full report is built by
 tools/build_comparison_report.py.
 """
 
@@ -14,7 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-# Fixed column order, so two runs of the report can be diffed.
+# Fixed column order so reports can be diffed.
 CSV_COLUMNS: tuple[str, ...] = (
     "audio_id",
     "true_class",
@@ -67,7 +65,7 @@ class ComparisonRow:
 
 @dataclass
 class ComparisonReport:
-    """The full report: per-clip rows plus the summary an evaluator reads first."""
+    """Per-clip rows plus a summary."""
 
     rows: list[ComparisonRow] = field(default_factory=list)
     split_name: str = "test"
@@ -76,7 +74,7 @@ class ComparisonReport:
     threshold_snapshot: dict[str, Any] = field(default_factory=dict)
     classes: tuple[str, ...] = ()
 
-    # gates the SRS sets on the report itself
+    # SRS minimums for the report
 
     MIN_TOTAL = 100
     MIN_PER_CLASS = 10
@@ -116,7 +114,7 @@ class ComparisonReport:
         return correct / len(self.rows)
 
     def missing_classes(self) -> list[str]:
-        """Classes with too few clips to count as evidence."""
+        """Classes with too few clips."""
         counts = self.per_class_counts()
         return sorted(
             c for c in self.classes
@@ -124,7 +122,7 @@ class ComparisonReport:
         )
 
     def meets_report_floor(self) -> tuple[bool, list[str]]:
-        """The >=100 total / >=10-per-class floor from the SRS."""
+        """At least 100 clips and 10 per class (SRS)."""
         problems: list[str] = []
         if self.n_clips < self.MIN_TOTAL:
             problems.append(

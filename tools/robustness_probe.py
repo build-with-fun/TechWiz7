@@ -3,18 +3,15 @@
     python tools/robustness_probe.py                   # 15 test clips per class per condition
     python tools/robustness_probe.py --per-class 45    # every test clip (slow on a laptop)
 
-Part A degrades held-out TEST recordings in the ways SRS 1.8 rule 9 says the hidden
-test may: background noise, echo, low volume, a different device, distance, a partial
-event, an overlapping second event, and re-encoding. Each condition is scored for both
-models. These are probes: they show how the models degrade and are never reported as
-test accuracy. The degraded audio is scored and discarded; nothing is written back into
-the dataset.
+Part A degrades test recordings the ways SRS 1.8 rule 9 mentions: noise, echo, low
+volume, another device, distance, a partial event, an overlapping event and re-encoding,
+and scores both models on each. These show how the models degrade; they are not test
+accuracy. The degraded audio is thrown away afterwards.
 
-Part B plays ESC-50 categories that are NOT in our training data but are easy to confuse
-with a critical class: fireworks, door knocks and clapping (against Gunshot), laughing
-and a crying baby (against Panic Scream), and church bells (against Alarm). There is no
-correct class for these. What matters is whether the product raises a confident critical
-alert or sends the clip to a person.
+Part B plays ESC-50 sounds we didn't train on that resemble critical classes: fireworks,
+door knocks and clapping (vs Gunshot), laughing and a crying baby (vs Panic Scream), and
+church bells (vs Alarm). There is no right class, so we check whether the app raises a
+confident alert or sends the clip for review.
 
 Outputs: reports/robustness.json and reports/ROBUSTNESS.md.
 """
@@ -46,7 +43,7 @@ SEED = 7
 
 
 def mp3_roundtrip(y: np.ndarray, sr: int, rng) -> np.ndarray:
-    """Re-encode through 64 kbit/s MP3 and decode again, the way a phone upload might."""
+    """Encode to 64 kbit/s MP3 and decode again."""
     import soundfile as sf
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -108,8 +105,7 @@ def part_a(pipeline, per_class: int) -> dict:
         if r["dataset_split"] == "test" and r["original_or_augmented"] == "original":
             test[r["class_label"]].append(r)
     chosen = [r for label in sorted(test) for r in test[label][:per_class]]
-    # Noise beds and overlap sources come from the TRAINING split, so a test clip is
-    # never mixed with another test clip.
+    # Noise and overlap sources come from the training split.
     train = [r for r in rows if r["dataset_split"] == "train"]
     noise_bank = [load(ROOT / "audio_dataset" / r["filename"])
                   for r in train if r["class_label"] == "Background Noise"][:25]

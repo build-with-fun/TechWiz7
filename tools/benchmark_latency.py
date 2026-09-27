@@ -1,18 +1,15 @@
-"""NFR 1 latency benchmark through the real HTTP routes and both real models.
+"""NFR 1 latency benchmark over HTTP with both real models.
 
     python tools/benchmark_latency.py            # ~2 min; writes reports/performance.json
 
-Targets (SRS §1.7): a clip of up to 30 s analysed within 8 s, a live window within 3 s.
-Measured here, on whatever machine runs it:
+Targets (SRS 1.7): a clip of up to 30 s within 8 s, a live window within 3 s. Measures:
 
-* 30 s uploads, one at a time, after one warm-up request (the first request also loads
-  CNN14, which is reported separately as the cold start);
-* 2 s live windows pushed one after another in a consented session;
-* the same 30 s upload sent by 4 clients at once, to see how latency degrades.
+* 30 s uploads one at a time, after a warm-up (the first, cold request is reported separately)
+* 2 s live windows, one after another
+* the same 30 s upload from 4 clients at once
 
-Everything runs against a temporary database and storage folder, so the benchmark never
-touches the real event history. Timings are wall-clock per HTTP request, including
-decoding, both models, the rules and the database write.
+Uses a temporary database. Times are per HTTP request, including decoding, both models,
+the rules and the database write.
 """
 
 from __future__ import annotations
@@ -48,7 +45,7 @@ def wav_bytes(samples: np.ndarray, rate: int = 16000) -> bytes:
 
 
 def test_audio(seconds: float) -> np.ndarray:
-    """Real test-split recordings concatenated up to the requested length."""
+    """Test-split recordings joined up to the requested length."""
     import csv
 
     import librosa
@@ -99,8 +96,7 @@ def main() -> None:
     base = test_audio(30.0)
 
     def unique_clip() -> bytes:
-        # A tiny random gain keeps every upload's bytes unique, so the duplicate check
-        # (409) never short-circuits the analysis we are trying to time.
+        # Tiny random gain so the duplicate check doesn't skip the analysis.
         return wav_bytes(base * rng.uniform(0.8, 0.95))
 
     def upload(c) -> float:

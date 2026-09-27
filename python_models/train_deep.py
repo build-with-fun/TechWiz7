@@ -1,9 +1,7 @@
-"""Train and compare the deep candidates (cnn1d, crnn, MobileNetV3 transfer) through the same
-tuning harness, frozen split and 254-column matrix as train_classical.py, so their rows are
-directly comparable.
+"""Train and compare the deep candidates (cnn1d, crnn, MobileNetV3 transfer).
 
-The grids are deliberately small (one or two points per axis) because this runs on a
-four-thread CPU; ``--epochs`` scales training time linearly.
+Uses the same tuning code, split and features as train_classical.py. Grids are small
+because this runs on a four-thread CPU; ``--epochs`` sets the training time.
 """
 
 from __future__ import annotations
@@ -22,12 +20,12 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 DEFAULT_MANIFEST = "audio_dataset/manifest_with_split.csv"
 METRICS_DIR = "python_models/metrics"
-BEST_DIR = "python_models/best"  # contract: src/services/pipeline.py DEFAULT_PYTHON_MODEL_DIR
-#: Shared with train_classical.py so the same files are not extracted twice.
+BEST_DIR = "python_models/best"  # what src/services/pipeline.py loads
+# Shared with train_classical.py.
 FEATURE_CACHE = "python_models/.cache/features_{version}.json"
 MODEL_VERSION = "1.0.0"
 
-import python_models.deep as deep  # noqa: E402  (module import after constants for readability)
+import python_models.deep as deep  # noqa: E402
 from python_models import dataset  # noqa: E402
 from python_models import tuning  # noqa: E402
 
@@ -36,7 +34,7 @@ from python_models import tuning  # noqa: E402
 
 
 def load_classes_config() -> tuple[list[str], list[str]]:
-    """``(class_names, critical_classes)`` from config/classes.json, the same file the app reads."""
+    """``(class_names, critical_classes)`` from config/classes.json."""
     path = REPO_ROOT / "config" / "classes.json"
     if not path.exists():
         raise SystemExit(f"config/classes.json not found at {path}")
@@ -49,7 +47,7 @@ def load_classes_config() -> tuple[list[str], list[str]]:
 
 
 def load_floors() -> dict[str, float]:
-    """The SRS floors from config/thresholds.json, so they sit auditable next to the results."""
+    """SRS performance targets from config/thresholds.json."""
     path = REPO_ROOT / "config" / "thresholds.json"
     floors = {"accuracy": 0.85, "macro_f1": 0.80, "critical_recall": 0.85}
     if path.exists():
@@ -65,7 +63,7 @@ def load_floors() -> dict[str, float]:
 
 
 def _expand_grid(grid: dict[str, Any]) -> list[dict[str, Any]]:
-    """Cartesian product of a param grid, as a list of dicts (small grids only)."""
+    """All combinations of a param grid."""
     import itertools
 
     if not grid:
@@ -91,9 +89,7 @@ def build_candidate_grid(
     with_weighted: bool = True,
     epochs_override: int | None = None,
 ) -> tuple[list[tuple[str, dict[str, Any]]], dict[str, dict[str, float]]]:
-    """Every ``(name, params)`` the deep run fits, mirroring
-    ``train_classical.build_candidate_grid``.
-    """
+    """All ``(name, params)`` to fit."""
     cw = {c: weight_boost for c in critical}
     weight_map: dict[str, dict[str, float]] = {}
     grid: list[tuple[str, dict[str, Any]]] = []
@@ -114,11 +110,11 @@ def build_candidate_grid(
     return grid, weight_map
 
 
-# Fit / score callables handed to the harness
+# Fit function for the tuning code
 
 
 def _fit_callable(X, y, params, seed, class_weights):
-    """Build and fit one deep candidate; the family name travels as ``params['_candidate']``."""
+    """Build and fit one deep candidate (family in ``params['_candidate']``)."""
     name = str(params.get("_candidate") or "")
     if not name:
         raise ValueError(
@@ -135,7 +131,7 @@ def _predict_proba_callable(estimator, X) -> np.ndarray:
     return np.asarray(estimator.predict_proba(X))
 
 
-# Reporting helpers
+# Reporting
 
 
 def _base_name(tag: str) -> str:
@@ -173,9 +169,7 @@ def _count_by(rows: list[dict[str, Any]], field: str) -> dict[str, int]:
 def _per_candidate_metrics(
     protocol, selection, class_names: list[str], critical: list[str]
 ) -> list[dict[str, Any]]:
-    """One row per candidate for the comparison CSV; feature importances are left empty (none exist
-    for these).
-    """
+    """One row per candidate for the comparison CSV."""
     rows: list[dict[str, Any]] = []
     for trial in protocol.trials:
         tag = trial.candidate
@@ -223,7 +217,7 @@ def _write_comparison_csv(path: Path, rows: list[dict[str, Any]], floors) -> Non
 
 
 def _plot_confusion(matrix, class_names, out_path: Path, title: str) -> None:
-    """Confusion matrix of the winner on the test split, saved next to the metrics."""
+    """Save the winner's test confusion matrix."""
     try:
         import matplotlib
 
@@ -264,7 +258,7 @@ def _plot_confusion(matrix, class_names, out_path: Path, title: str) -> None:
 
 
 def _measure_latency(estimator, X: np.ndarray, repeats: int = 5) -> dict[str, float]:
-    """Single-row inference latency, measured as in the classical script."""
+    """Single-row prediction latency."""
     return deep.inference_latency_ms(estimator, X, repeats=repeats)
 
 
@@ -277,13 +271,13 @@ def _rel(path: Path) -> str:
 
 
 def deep_save(estimator, out_dir, **kwargs):
-    """``save_bundle`` is the one writer the app's loader reads; this keeps a single format."""
+    """Save with save_bundle, the format the app loads."""
     from src.inference.predictor import save_bundle
 
     return save_bundle(estimator, out_dir, **kwargs)
 
 
-# Money path
+# Training run
 
 
 def run_training(
@@ -297,15 +291,13 @@ def run_training(
     epochs_override: int | None = None,
     tag: str = "",
 ) -> dict[str, Any]:
-    """Full train/compare/save run for the deep family; 3 CV folds rather than 5 to fit the CPU
-    budget.
-    """
+    """Full train/compare/save run for the deep models (3 CV folds to save time)."""
     class_names, critical = load_classes_config()
     floors = load_floors()
     names = candidate_names or list(deep.DEEP_CANDIDATES)
 
     print("=" * 78)
-    print("SonicSentinel AI -- deep model training (SRS Step 7)")
+    print("SonicSentinel AI: deep model training (SRS Step 7)")
     print("=" * 78)
     print(f"  python      : {sys.version.split()[0]} ({platform.machine()})")
     print(f"  classes     : {len(class_names)}  critical: {len(critical)}")
@@ -331,13 +323,13 @@ def run_training(
         )
         if imbalance["absent_classes"]:
             print(
-                f"          WARNING absent classes: {imbalance['absent_classes']} -- "
+                f"          WARNING absent classes: {imbalance['absent_classes']} "
                 "macro-F1 will be depressed by their zero recall, correctly."
             )
 
     train = dataset.training_records(splits["train"])
     val = dataset.training_records(splits["val"])
-    # Test rows drop augmented copies: a variant of a training clip is not a test.
+    # No augmented copies in the test set.
     test = dataset.training_records(splits["test"], exclude_augmented=True)
 
     # 2. features
@@ -423,7 +415,7 @@ def run_training(
             f"across {cv['folds']} folds"
         )
 
-    # 6. refit on train+val, score test ONCE
+    # 6. refit on train+val, score test once
     print("\n[final] refitting winner on train+val")
     winner_spec = deep.get_candidate(_base_name(selection.winner))
     # Keep ``_candidate`` for the refit; drop the other underscore keys.
@@ -456,7 +448,7 @@ def run_training(
     metrics_dir.mkdir(parents=True, exist_ok=True)
     suffix = f"_{tag}" if tag else ""
 
-    # Feature importances are {} for deep models by design -- see _per_candidate_metrics.
+    # Deep models have no feature importances.
     best_dir = REPO_ROOT / BEST_DIR if not tag else REPO_ROOT / BEST_DIR / tag
     out_dir = deep_save(
         final_estimator,
@@ -503,7 +495,7 @@ def run_training(
             "train_test_overlap": len(set(train_ids) & set(test_ids)),
             "val_test_overlap": len(set(val_ids) & set(test_ids)),
         },
-        # Recordings the quality gate rejected; reported so the denominators are visible.
+        # Recordings rejected by the quality check.
         "unusable_recordings": {
             "n": len(unusable),
             "by_split": _count_by(unusable, "split"),
@@ -535,7 +527,7 @@ def run_training(
         f"{selection.winner} (test split, n={artifact['test']['n_records']})",
     )
 
-    # 8. verdict
+    # 8. summary
     ok, failures = final.result.meets_floors(floors)
     print("\n" + "=" * 78)
     if ok:
@@ -548,11 +540,11 @@ def run_training(
     return artifact
 
 
-# Smoke manifest: the same two-step path the real corpus uses, at a tenth of the size
+# Smoke test corpus
 
 
 def make_smoke_manifest(out_root: Path, per_class: int, seed: int) -> Path:
-    """Tiny corpus for a smoke run, via ``train_classical.make_smoke_manifest``."""
+    """Tiny corpus for a smoke run."""
     from python_models.train_classical import make_smoke_manifest as _make
 
     return _make(out_root, per_class, seed)
@@ -595,7 +587,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--smoke",
         action="store_true",
-        help="tiny synthetic corpus -- proves the pipeline, metrics carry NO meaning",
+        help="tiny synthetic corpus to test the code path (the metrics mean nothing)",
     )
     parser.add_argument(
         "--smoke-per-class",

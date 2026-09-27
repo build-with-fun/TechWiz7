@@ -1,8 +1,7 @@
 """Event search and filtering (FR lxvii).
 
-The filter vocabulary is defined once (filter_fields) and shared by the HTML form and the
-JSON endpoints. The scope rule (a normal user sees only their own events) is applied inside
-the query, never by filtering a page afterwards, so counts and pagination stay truthful.
+filter_fields is shared by the HTML form and the JSON API. The "own events only" rule for
+normal users is part of the SQL query, so counts and pages are correct.
 """
 
 from __future__ import annotations
@@ -24,7 +23,7 @@ from src.models import (
     User,
 )
 
-#: Sort options in UI order, with their labels.
+# Sort options in UI order, with their labels.
 SORT_OPTIONS: tuple[tuple[str, str], ...] = (
     ("newest", "Newest first"),
     ("oldest", "Oldest first"),
@@ -35,13 +34,13 @@ SORT_OPTIONS: tuple[tuple[str, str], ...] = (
     ("class_asc", "Sound category (A-Z)"),
 )
 
-#: Fallback severity order, used only when a caller passes a bad sort key.
+# Fallback severity order.
 _SEVERITY_ORDER_FALLBACK = ("Informational", "Low", "Medium", "High", "Critical")
 
 
 @dataclass
 class Filters:
-    """A validated search. Every field is either absent or a real value."""
+    """A validated search."""
 
     audio_id: str | None = None
     filename: str | None = None
@@ -65,13 +64,13 @@ class Filters:
     sort: str = "newest"
     page: int = 1
     page_size: int = 25
-    #: The scope the caller is allowed to see, applied as a hard constraint.
+    # What the caller is allowed to see.
     viewer_id: int | None = None
     viewer_sees_all: bool = False
     problems: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
-        """A JSON-safe form, for the API's ``meta.filters`` echo."""
+        """JSON-safe version for the API's ``meta.filters``."""
         return {
             "audio_id": self.audio_id,
             "filename": self.filename,
@@ -99,7 +98,7 @@ class Filters:
 
     @property
     def is_filtered(self) -> bool:
-        """True when the user narrowed something -- the page then offers a "clear" link."""
+        """True if any filter is set."""
         return bool(
             self.audio_id or self.filename or self.sound_class or self.severity
             or self.quality or self.review_status or self.status or self.consistency_status
@@ -111,9 +110,7 @@ class Filters:
 
 
 def filter_fields(store) -> list[dict[str, Any]]:
-    """The filter form as data; option lists come from config, so a new class appears in the
-    dropdown automatically.
-    """
+    """The filter form as data. Options come from config."""
     return [
         {"name": "audio_id", "label": "Audio ID", "type": "text",
          "placeholder": "SST-2026-09-23-000007", "srs": "FR lxvii"},
@@ -167,9 +164,7 @@ _MULTI_FIELDS = {"severity", "quality", "status", "consistency_status"}
 
 
 def _as_float(value: str | None, field_name: str, problems: list[str]) -> float | None:
-    """A confidence value. Out of [0, 1] is a *reported* problem, not a silent clamp:
-    silently ignoring `confidence_min=5` would show unfiltered results to someone who
-    believes they filtered."""
+    """Parse a confidence. Values outside [0, 1] are reported, not clamped."""
     if value in (None, ""):
         return None
     try:
@@ -185,8 +180,7 @@ def _as_float(value: str | None, field_name: str, problems: list[str]) -> float 
 
 def _as_date(value: str | None, field_name: str, problems: list[str],
              *, end_of_day: bool = False) -> dt.datetime | None:
-    """Accept a plain date or a full timestamp. A plain end date covers that whole day,
-    because "to 23 September" meaning "up to midnight at its start" drops a day of results."""
+    """Parse a date or timestamp. A plain end date includes the whole day."""
     if value in (None, ""):
         return None
     for parse in (
@@ -211,7 +205,7 @@ def _has(args: Mapping[str, Any], key: str) -> bool:
 
 def _multi(args: Mapping[str, Any], key: str, allowed: Iterable[str],
            problems: list[str]) -> tuple[str, ...]:
-    """A repeatable parameter (?severity=High&severity=Critical) or a comma-separated list."""
+    """Repeated parameter (?severity=High&severity=Critical) or comma-separated list."""
     raw: list[str] = []
     if hasattr(args, "getlist"):
         raw = [str(v) for v in args.getlist(key)]  # type: ignore[attr-defined]
@@ -237,9 +231,9 @@ def _truthy(value: Any) -> bool:
 
 def parse_filters(args: Mapping[str, Any], store, *, viewer=None,
                   default_page_size: int = 25, max_page_size: int = 200) -> Filters:
-    """Turn query parameters into validated Filters, collecting every problem instead of raising.
+    """Parse query parameters into Filters and collect problems instead of raising.
 
-    A bad page number is the exception: it changes which rows come back, so it is fatal.
+    Only a bad page number raises.
     """
     problems: list[str] = []
     filters = Filters(problems=problems)
@@ -291,7 +285,7 @@ def parse_filters(args: Mapping[str, Any], store, *, viewer=None,
         sort = "newest"
     filters.sort = sort
 
-    # A bad page is fatal: silently returning page 1 for page 99 would mislead the client.
+    # Don't quietly return page 1 when asked for page 99.
     page_raw = args.get("page")
     if _has(args, "page"):
         try:
@@ -314,19 +308,19 @@ def parse_filters(args: Mapping[str, Any], store, *, viewer=None,
             raise ApiError("validation_error", "page_size must be 1 or greater.",
                            details={"page_size": "must be >= 1"})
         if filters.page_size > max_page_size:
-            # Clamped rather than refused; meta reports the size actually used.
+            # Clamp; meta shows the size used.
             filters.page_size = max_page_size
     else:
         filters.page_size = default_page_size
 
-    # Scope. This is the authorisation decision for *reading*, made once, here.
+    # Scope: which events this user may read.
     if viewer is not None:
         filters.viewer_id = getattr(viewer, "id", None)
         filters.viewer_sees_all = bool(
             hasattr(viewer, "can") and viewer.can("search_all_events")
         )
         if filters.user and not filters.viewer_sees_all:
-            # Another user's events are not a filter this viewer may apply: drop it and say so.
+            # Not allowed to filter by another user: drop it and report it.
             problems.append(
                 "the 'user' filter needs the fleet-wide search permission; it was ignored"
             )
@@ -345,14 +339,12 @@ def build_query(filters: Filters, store):
 
     if not filters.viewer_sees_all:
         if filters.viewer_id is None:
-            # Fail closed: no viewer and no fleet-wide capability matches nothing.
+            # No viewer and no view-all capability: match nothing.
             return statement.where(Event.id < 0)
         conditions.append(Event.created_by_id == filters.viewer_id)
 
-    # Text matches use LIKE, not ILIKE: the store is SQLite, whose LIKE is already
-    # case-insensitive for ASCII and whose lower() folds nothing beyond ASCII, so ILIKE's
-    # lower() on every row returned the same matches at almost twice the cost (free-text
-    # search over 20,000 events: 18.5 ms -> 10.3 ms per scan, reports/scale.json).
+    # LIKE rather than ILIKE: SQLite's LIKE is already case-insensitive for ASCII, and it was
+    # almost twice as fast on 20,000 events (reports/scale.json).
     if filters.audio_id:
         conditions.append(AudioFile.audio_id.like(f"%{filters.audio_id}%"))
     if filters.filename:
@@ -391,8 +383,7 @@ def build_query(filters: Filters, store):
         conditions.append(Event.severity != "Critical")
 
     if filters.user:
-        # Either the uploader or the reviewer who touched it -- "show me everything this person
-        # was involved in" is the question an investigator actually asks.
+        # Match the uploader or the reviewer.
         conditions.append(
             or_(
                 Event.created_by_id.in_(
@@ -436,9 +427,7 @@ def build_query(filters: Filters, store):
 
 
 def _order_by(sort: str, store) -> Sequence[Any]:
-    """Sort keys with an ``id`` tiebreak, so rows created in the same second cannot swap between
-    pages.
-    """
+    """Sort order, with ``id`` as a tiebreak so pages are stable."""
     tiebreak = Event.id.desc()
     if sort == "newest":
         return (Event.created_at.desc(), tiebreak)
@@ -451,7 +440,7 @@ def _order_by(sort: str, store) -> Sequence[Any]:
     if sort == "difference_desc":
         return (Event.confidence_difference.desc().nullslast(), tiebreak)
     if sort == "severity_desc":
-        # Ranked by the configured severity scale; alphabetical order would put Low above Critical.
+        # Sort by severity rank, not alphabetically.
         scale = list(store.severity_scale()) or list(_SEVERITY_ORDER_FALLBACK)
         ranking = case(
             {name: index for index, name in enumerate(scale)},
@@ -465,7 +454,7 @@ def _order_by(sort: str, store) -> Sequence[Any]:
 
 
 def run_search(session: Session, filters: Filters, store) -> tuple[list[Event], dict[str, Any]]:
-    """Run the search and return one page of events plus totals and a description of the filters."""
+    """Run the search and return one page of events, totals and a filter summary."""
     statement = build_query(filters, store)
 
     count_statement = select(func.count()).select_from(statement.order_by(None).subquery())
@@ -501,7 +490,7 @@ def run_search(session: Session, filters: Filters, store) -> tuple[list[Event], 
 
 
 def describe_filters(filters: Filters) -> str:
-    """A sentence naming the active filters, so an unexpectedly empty list explains itself."""
+    """A sentence describing the active filters."""
     parts: list[str] = []
     if filters.audio_id:
         parts.append(f"audio ID contains {filters.audio_id!r}")

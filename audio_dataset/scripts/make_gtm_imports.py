@@ -1,20 +1,15 @@
-"""Build Teachable Machine audio imports from the training split only.
+"""Build Teachable Machine audio imports from the training split.
 
-Teachable Machine's audio uploader accepts the ZIP its own "Download Samples" button
-produces: ``samples.json`` with browser-FFT frequency frames plus one WebM per sample.
-TM trains on the frames and only uses the WebM for playback in its UI. A plain ZIP of
-WAV files is not accepted.
+TM's audio uploader only accepts the ZIP format its own "Download Samples" button makes:
+``samples.json`` with browser-FFT frames plus a WebM per sample (used only for playback).
 
-Each training recording goes through the app's own preprocessing
-(``python_models/preprocess_cache.py``), is resampled to TM's 44.1 kHz, and gives its
-loudest one-second window (the rule the server applies at inference); ``--windows-per-clip``
-adds the next-loudest non-overlapping seconds. With ``--max-per-class`` the recordings are
-taken in a fixed hash order rather than by audio id, because low ids are all one source
-(FSD50K) and a capped run would otherwise learn that source's microphones.
+Each training recording goes through the app's preprocessing, is resampled to 44.1 kHz,
+and gives its loudest one-second window (same rule as inference). ``--windows-per-clip``
+adds more non-overlapping windows. ``--max-per-class`` picks recordings in hash order,
+not id order, because low ids all come from FSD50K.
 
-History: v1 (25 Sep) used 32 recordings per class and scored 0.28 on test. v2 (26 Sep
-morning) capped at 140 per class in id order and scored 0.46; 764 of its 1,400 samples
-were FSD50K clips. v3 (this file) spreads the cap across sources and writes evidence.
+Earlier runs: v1 used 32 clips per class (0.28 test accuracy); v2 took 140 per class in
+id order (0.46), mostly FSD50K. This version spreads the cap across sources.
 
 Outputs:
 
@@ -24,8 +19,7 @@ Outputs:
 * ``audio_dataset/manifests/gtm_segment_rows.csv``: one row per window with its parent
   recording, class and offset. Offsets are in the preprocessed (trimmed) signal.
 
-Validation and test recordings are never read: every parent is checked against the
-manifest split before any file is written.
+Only training recordings are used; every parent is checked against the split first.
 """
 
 from __future__ import annotations
@@ -79,7 +73,7 @@ SLUG = {
 
 def ranked_windows(samples: np.ndarray, rate: int, config: GtmFrontendConfig,
                    count: int) -> list[tuple[float, np.ndarray]]:
-    """``(start_sec, window)`` for the loudest second, then the next-loudest non-overlapping ones."""
+    """``(start_sec, window)`` for the loudest second, then the next loudest non-overlapping ones."""
     y = np.asarray(samples, dtype="float32")
     if rate != config.sample_rate:
         import librosa
@@ -120,7 +114,7 @@ def main() -> None:
         manifest = {r["audio_id"]: r for r in csv.DictReader(fh)}
     cache = read_index()
     frontend = GtmFrontendConfig.load(ROOT / "gtm_model" / "frontend_config.json")
-    # TM stores raw dB frames and normalises each example itself when it trains.
+    # TM stores raw dB frames and normalises them itself.
     raw_frontend = dataclasses.replace(frontend, normalize_mode="none")
 
     by_class: dict[str, list[str]] = defaultdict(list)
@@ -141,7 +135,7 @@ def main() -> None:
         target = OUTPUT / f"{SLUG[label]}.zip"
         wav_dir = SAMPLES / SLUG[label]
         wav_dir.mkdir(parents=True, exist_ok=True)
-        for stale in wav_dir.glob("*.wav"):  # this folder only ever holds this script's output
+        for stale in wav_dir.glob("*.wav"):  # only this script writes here
             stale.unlink()
         with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED,
                              compresslevel=6) as archive:
@@ -150,15 +144,15 @@ def main() -> None:
                     break
                 info = cache.get(parent)
                 if not info or info["rejected"] == "True":
-                    continue  # the app would reject it too, so GTM should not learn from it
+                    continue  # the app would reject it too
                 wave = load_cached(parent)
                 windows = ranked_windows(wave, int(info["sample_rate"]), frontend, args.windows_per_clip)
                 for k, (start_sec, window) in enumerate(windows, 1):
                     frames = compute_spectrogram(window, raw_frontend)
                     name = f"sample-{len(samples) + 1}.webm"
                     archive.writestr(name, to_webm(window, frontend.sample_rate))
-                    # One list of 232 dB values per frame (43 of them). A flat list of 9,976
-                    # numbers imports without error but hangs TM at "Preparing training data".
+                    # One list of 232 values per frame (43 frames). A flat list imports fine
+                    # but hangs TM at "Preparing training data".
                     samples.append({"frequencyFrames": frames.astype(float).tolist(),
                                     "blob": None, "startTime": 0, "endTime": 1.0,
                                     "recordingDuration": 1.0, "blobFilePath": name})

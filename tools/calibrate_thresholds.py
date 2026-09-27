@@ -1,11 +1,10 @@
-"""Check the confidence threshold against the VALIDATION split (never the test split).
+"""Check the confidence threshold on the validation split.
 
     python tools/calibrate_thresholds.py
 
-For each candidate ``confidence.min_confidence`` it reports how many validation
-recordings would be decided automatically, how accurate those automatic decisions are,
-and how many critical-class recordings would be wrongly auto-decided. Uses the served
-bundle in python_models/best/ and the cached embeddings, so it takes seconds.
+For each ``confidence.min_confidence`` value it shows how many clips would be decided
+automatically, how accurate those are, and how many critical clips would be decided
+wrongly. Uses python_models/best/ and the cached embeddings.
 """
 
 from __future__ import annotations

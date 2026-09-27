@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Run both saved models on the sample clips through AnalysisPipeline and time them.
+"""Run both models on the sample clips through AnalysisPipeline and time them.
 
-Checks that every usable clip gets a class and confidence from both models, that the
-consistency and quality verdicts are valid, that the silent clip is rejected, and the 8 s /
-3 s budgets. Process-level only (no HTTP, database or 30 s clip); tools/benchmark_latency.py
-measures the SRS latency targets. Writes reports/e2e_acceptance.json.
+Checks that each usable clip gets a result from both models, the verdicts are valid, the
+silent clip is rejected, and the 8 s / 3 s budgets hold. No HTTP or database; for the real
+latency numbers see tools/benchmark_latency.py. Writes reports/e2e_acceptance.json.
 
     .venv/bin/python tools/check_e2e_upload.py [--model-dir python_models/best]
 """
@@ -40,12 +39,12 @@ def main(argv: list[str] | None = None) -> int:
 
     clips = sorted(p for p in args.samples.glob("*.wav"))
     if not clips:
-        print("no clips — run audio_dataset/scripts/make_sample_audio.py first")
+        print("no clips, run audio_dataset/scripts/make_sample_audio.py first")
         return 2
 
     try:
         pipeline = AnalysisPipeline.load(model_dir=args.model_dir, gtm_dir=args.gtm_dir)
-    except Exception as exc:  # ModelsUnavailable etc — print the actionable message
+    except Exception as exc:  # e.g. ModelsUnavailable
         print(f"PIPELINE UNAVAILABLE: {exc}", file=sys.stderr)
         return 3
     failures: list[str] = []

@@ -1,10 +1,8 @@
-"""Metrics for the model reports: every number in them comes from here.
+"""Metrics for the model reports.
 
-Metrics are computed only over rows of the split being reported (assert_reportable_split),
-robustness probes are flagged and can never pass the SRS floors, and nothing here hard-codes
-what a good score is. The confusion matrix is computed here with an explicit label order,
-because swapped axes still sum correctly; test_evaluation_metrics.py checks it against
-scikit-learn.
+Only rows from the reported split are used (assert_reportable_split). Robustness probes
+are flagged and can't pass the SRS targets. The confusion matrix uses an explicit label
+order; test_evaluation_metrics.py checks it against scikit-learn.
 """
 
 from __future__ import annotations
@@ -18,10 +16,10 @@ SPLIT_NAMES = ("train", "val", "test")
 
 
 class EvaluationError(RuntimeError):
-    """Raised when an evaluation would produce a number that cannot be trusted."""
+    """Raised when the evaluation input is wrong (e.g. leaked rows)."""
 
 
-# The leakage guard
+# Leakage check
 
 def assert_reportable_split(
     records: Iterable[Mapping[str, Any]],
@@ -30,9 +28,7 @@ def assert_reportable_split(
     allow_augmented: bool = False,
     context: str = "",
 ) -> int:
-    """Refuse anything but clean rows of the frozen split; the failure it prevents looks like a good
-    number.
-    """
+    """Raise unless every row belongs to the frozen split being reported."""
     if split not in SPLIT_NAMES:
         raise EvaluationError(f"unknown split {split!r}; expected one of {SPLIT_NAMES}")
 
@@ -54,8 +50,7 @@ def assert_reportable_split(
     if bad_split:
         raise EvaluationError(
             f"refusing to report {split} metrics{where}: {len(bad_split)} of {n} records are "
-            f"not in the {split} split, e.g. {bad_split[:5]}. Metrics computed over the wrong "
-            "split are the most expensive kind of wrong — they look like progress."
+            f"not in the {split} split, e.g. {bad_split[:5]}."
         )
     if augmented:
         raise EvaluationError(
@@ -68,14 +63,12 @@ def assert_reportable_split(
     return n
 
 
-# Confusion matrix — written out so the axis order is not a convention we inherited
+# Confusion matrix
 
 def confusion_matrix(
     y_true: Sequence[str], y_pred: Sequence[str], labels: Sequence[str]
 ) -> np.ndarray:
-    """Rows = actual, columns = predicted, in exactly ``labels`` order (never inferred from the
-    data).
-    """
+    """Rows = actual, columns = predicted, in ``labels`` order."""
     index = {name: i for i, name in enumerate(labels)}
     if len(index) != len(list(labels)):
         raise EvaluationError("labels contains duplicates")
@@ -95,9 +88,7 @@ def confusion_matrix(
 
 
 def per_class_scores(matrix: np.ndarray) -> dict[str, np.ndarray]:
-    """Precision, recall, F1 and support per class; a class that is never predicted gets precision
-    0.0, not skipped.
-    """
+    """Precision, recall, F1 and support per class (0.0 precision if never predicted)."""
     matrix = np.asarray(matrix, dtype=np.float64)
     true_positive = np.diag(matrix)
     predicted_total = matrix.sum(axis=0)   # column sums
@@ -149,7 +140,7 @@ class EvaluationResult:
 
 
     def meets_floors(self, floors: Mapping[str, float]) -> tuple[bool, list[str]]:
-        """Check the SRS floors. A probe measures degradation, so it can never pass them."""
+        """Check the SRS targets. Probe results never pass."""
         if self.probe:
             return False, [
                 f"this is a probe ({self.probe_label}), not a test-set measurement; "
@@ -172,7 +163,7 @@ class EvaluationResult:
         return not failures, failures
 
     def worst_classes(self, k: int = 3) -> list[dict[str, Any]]:
-        """The classes dragging macro-F1 down, worst first."""
+        """Classes with the lowest F1, worst first."""
         return sorted(self.per_class, key=lambda c: (c["f1"], c["support"]))[:k]
 
     def to_dict(self) -> dict[str, Any]:
@@ -200,7 +191,7 @@ class EvaluationResult:
         }
 
 
-# The measurement
+# Metrics
 
 def compute_metrics(
     y_true: Sequence[str],
@@ -217,9 +208,7 @@ def compute_metrics(
     probe: bool = False,
     probe_label: str = "",
 ) -> EvaluationResult:
-    """Every metric the SRS judges a model by, averaged over the full configured class list, so a
-    class the model never predicts still counts (with recall 0).
-    """
+    """All SRS metrics, averaged over every configured class (missing classes count as 0)."""
     if len(y_true) != len(y_pred):
         raise EvaluationError(
             f"got {len(y_true)} actual labels but {len(y_pred)} predictions"
@@ -256,7 +245,7 @@ def compute_metrics(
         for i, name in enumerate(labels)
     ]
 
-    # Critical-event recall: a missed gunshot is not just a slightly worse prediction.
+    # Recall on the critical classes.
     critical_recall_by_class: dict[str, float] = {}
     for entry in per_class:
         if entry["is_critical"]:
@@ -280,8 +269,8 @@ def compute_metrics(
         )
         top2_accuracy = float(hits / n)
 
-    # Severe errors, ranked by consequence: a gunshot called Vehicle Horn is a false alarm,
-    # a gunshot called Background Noise is a missed emergency.
+    # Severe errors: a critical class predicted as a non-critical one (missed alert) or as
+    # another class (wrong alert).
     critical_set = set(critical_classes)
     severe_errors: list[dict[str, Any]] = []
     if critical_set:
@@ -294,13 +283,13 @@ def compute_metrics(
                         "audio_id": str(ids[i]),
                         "actual": actual,
                         "predicted": predicted,
-                        # True when the system would have raised no alert at all.
+                        # No alert would have been raised.
                         "silent_miss": not still_critical,
-                        # True when it alerted, but with the wrong label: a false alarm.
+                        # Alerted, but with the wrong class.
                         "misattributed_alert": still_critical,
                     }
                 )
-        # Silent misses first — those are the ones that cost lives.
+        # Missed alerts first.
         severe_errors.sort(key=lambda e: (not e["silent_miss"], e["actual"]))
 
     return EvaluationResult(
@@ -343,10 +332,9 @@ def evaluate_predictions(
     probe: bool = False,
     probe_label: str = "",
 ) -> tuple[EvaluationResult, list[dict[str, Any]]]:
-    """Run ``predict`` over ``records`` and return the metrics plus per-record predictions.
+    """Run ``predict`` on each record and return the metrics and per-record predictions.
 
-    ``predict`` returns a class name or a PredictionResult-shaped mapping, so the same harness
-    serves the Python model, the TM model and baselines.
+    ``predict`` may return a class name or a PredictionResult-like mapping.
     """
     if require_frozen_split:
         assert_reportable_split(
@@ -434,9 +422,7 @@ def load_split_records(
     manifest_path: str,
     split: str,
 ) -> list[dict[str, str]]:
-    """Rows of one split from the manifest; raises rather than returning an empty list for a wrong
-    path.
-    """
+    """Rows of one split from the manifest. Raises on a missing or malformed manifest."""
     import csv
     from pathlib import Path
 
@@ -451,7 +437,7 @@ def load_split_records(
         if "dataset_split" not in reader.fieldnames:
             raise EvaluationError(
                 f"{path} has no dataset_split column. The split is assigned by "
-                "audio_dataset/build_split.py — run it first; do not filter by hand."
+                "audio_dataset/build_split.py, so run that first."
             )
         every = list(reader)
 

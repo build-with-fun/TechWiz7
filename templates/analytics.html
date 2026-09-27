@@ -1,14 +1,9 @@
 {% extends "base.html" %}
 {% import "_macros.html" as ui %}
 {% import "_presentation.html" as pres %}
-{# ==========================================================================
-   templates/analytics.html — the aggregate queries (FR lxviii).
-
-   The window (hours) is a GET parameter, so an evaluator's "and the last
-   hour?" is one link click. Server-rendered, CSP-safe, no inline JS.
-   ========================================================================== #}
+{# Analytics (FR lxviii). The time window is a GET parameter. #}
 {% set page_id = "main.analytics" %}
-{% block title %}Analytics — {{ app_name }}{% endblock %}
+{% block title %}Analytics · {{ app_name }}{% endblock %}
 
 {% set max_count = by_class | map(attribute='count') | max if by_class else 0 %}
 {% set window_choices = [1, 6, 24, 24*7, 24*30] %}
@@ -18,7 +13,7 @@
   <div class="page-head__main">
     <div class="breadcrumb"><a href="{{ url_for('main.dashboard') }}">Home</a><span>Analytics</span></div>
     <h1 class="page-title">{{ page_title or 'Aggregate analytics' }}</h1>
-    <p class="page-sub">Aggregates over the last {{ hours }} h — since {{ since | when }}.</p>
+    <p class="page-sub">Aggregates over the last {{ hours }} h, since {{ since | when }}.</p>
   </div>
   <div class="page-head__actions">
     <nav class="row" aria-label="Analysis window">
@@ -63,7 +58,7 @@
           </tr>
           {% else %}
           <tr class="table-empty"><td colspan="5">
-            {{ ui.empty_state('No events in this window', 'No events were recorded in the selected window. Try a wider window — 7 d or 30 d.', action_text='Last 30 days', action_href=url_for('main.analytics', hours=24*30)) }}
+            {{ ui.empty_state('No events in this window', 'No events were recorded in the selected window. Try a wider window, such as 7 d or 30 d.', action_text='Last 30 days', action_href=url_for('main.analytics', hours=24*30)) }}
           </td></tr>
           {% endfor %}
         </tbody>
