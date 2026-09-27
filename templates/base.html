@@ -8,7 +8,7 @@
 {{ 'true' if (current_user is defined and current_user and current_user.can and current_user.can(capability)) else 'false' }}
 {%- endmacro %}
 
-{% set _theme_cookie = request.cookies.get('sst_theme', 'light') %}
+{% set _theme_cookie = request.cookies.get('sst_theme_v2', 'light') %}
 {% set _theme = 'dark' if _theme_cookie == 'dark' else 'light' %}
 {% set _motion = 'reduced' if request.cookies.get('sst_motion') == 'reduced' else 'auto' %}
 <!doctype html>

@@ -77,15 +77,15 @@
   --model-python: #0891b2;
   --model-gtm:    #c026d3;
 
-  /* --- navigation rail: ink in both themes ------------------------------- */
-  --nav-bg:          #0b1220;
-  --nav-border:      #182235;
-  --nav-text:        #c3cbd8;
-  --nav-text-strong: #ffffff;
-  --nav-muted:       #8391a7;
-  --nav-hover:       #151f33;
-  --nav-active:      #1d2b48;
-  --nav-accent:      #7ea4ff;
+  /* --- navigation rail ---------------------------------------------------- */
+  --nav-bg:          #ffffff;
+  --nav-border:      #e6e9ef;
+  --nav-text:        #465467;
+  --nav-text-strong: #0e1726;
+  --nav-muted:       #7a8699;
+  --nav-hover:       #f2f5fa;
+  --nav-active:      #eaf0ff;
+  --nav-accent:      #2458e6;
 
   /* --- space scale (4px base, 8pt rhythm) -------------------------------- */
   --sp-0: 0;
@@ -217,10 +217,14 @@
   --model-python: #22d3ee;
   --model-gtm:    #e879f9;
 
-  --nav-bg:          #070b12;
-  --nav-border:      #161f30;
-  --nav-hover:       #111a2b;
-  --nav-active:      #18243d;
+  --nav-bg:          #0d131e;
+  --nav-border:      #1b2436;
+  --nav-text:        #b0bacb;
+  --nav-text-strong: #ffffff;
+  --nav-muted:       #7d8aa3;
+  --nav-hover:       #152033;
+  --nav-active:      #172646;
+  --nav-accent:      #8fb2ff;
 
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-2: 0 6px 16px -4px rgba(0, 0, 0, 0.5);

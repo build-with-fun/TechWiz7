@@ -12,16 +12,45 @@
    average confidence, disagreements, poor-quality recordings and detection trends. #}
 
 {% block content %}
-<header class="page-head">
-  <div class="page-head__main">
-    <h1 class="page-title">{{ page_title or 'Dashboard' }}</h1>
-    <p class="page-sub">{{ 'All users' if scope_all else 'Your recordings' }} · events, alerts and the review queue at a glance.</p>
+{% set _name = current_user.display_name or current_user.username %}
+{% set _alerts = totals.open_alerts or 0 %}
+{% set _queue = totals.awaiting_review or 0 %}
+<section class="dash-hero" aria-labelledby="dash-title">
+  <div class="dash-hero__sky" aria-hidden="true"><span class="dash-hero__cloud dash-hero__cloud--a"></span><span class="dash-hero__cloud dash-hero__cloud--b"></span><span class="dash-hero__cloud dash-hero__cloud--c"></span></div>
+  <div class="dash-hero__main">
+    <p class="dash-hero__eyebrow">{{ page_title or 'Dashboard' }} · {{ 'All users' if scope_all else 'Your recordings' }}</p>
+    <h1 class="dash-hero__title" id="dash-title">Welcome back, {{ _name }}</h1>
+    <p class="dash-hero__summary">
+      {%- if _alerts and _queue -%}
+        {{ _alerts }} open alert{{ '' if _alerts == 1 else 's' }} need{{ 's' if _alerts == 1 else '' }} an operator, and {{ '{:,}'.format(_queue) }} recording{{ '' if _queue == 1 else 's' }} {{ 'is' if _queue == 1 else 'are' }} waiting for review.
+      {%- elif _alerts -%}
+        {{ _alerts }} open alert{{ '' if _alerts == 1 else 's' }} need{{ 's' if _alerts == 1 else '' }} an operator. The review queue is clear.
+      {%- elif _queue -%}
+        No open alerts. {{ '{:,}'.format(_queue) }} recording{{ '' if _queue == 1 else 's' }} {{ 'is' if _queue == 1 else 'are' }} waiting for review.
+      {%- else -%}
+        All clear: no open alerts and nothing waiting for review.
+      {%- endif -%}
+    </p>
+    <div class="dash-hero__actions">
+      {% if current_user.can('upload_audio') %}<a class="dash-hero__btn dash-hero__btn--solid" href="{{ url_for('main.upload') }}">{{ ui.icon('upload', 16) }} Upload audio</a>{% endif %}
+      {% if current_user.can('live_session') %}<a class="dash-hero__btn" href="{{ url_for('main.live') }}">{{ ui.icon('mic', 16) }} Live monitor</a>{% endif %}
+      {% if _alerts and current_user.can('view_alerts') %}<a class="dash-hero__btn" href="{{ url_for('main.alerts') }}">{{ ui.icon('bell', 16) }} Open alerts</a>{% endif %}
+    </div>
   </div>
-  <div class="page-head__actions">
-    {% if current_user.can('live_session') %}<a class="btn" href="{{ url_for('main.live') }}">{{ ui.icon('mic', 16) }} Live monitor</a>{% endif %}
-    {% if current_user.can('upload_audio') %}<a class="btn btn--primary" href="{{ url_for('main.upload') }}">{{ ui.icon('upload', 16) }} Upload audio</a>{% endif %}
+  <div class="dash-hero__status" aria-label="Models in service">
+    <p class="dash-hero__status-title"><span class="dash-hero__live" aria-hidden="true"></span>{{ 'Both models in service' if in_service | length >= 2 else 'Model status' }}</p>
+    {% for m in in_service %}
+      <div class="dash-hero__model">
+        <span class="dash-hero__model-dot dash-hero__model-dot--{{ 'python' if m.name == 'Python model' else 'gtm' }}" aria-hidden="true"></span>
+        <span class="dash-hero__model-name">{{ m.name }}</span>
+        {% if m.test_accuracy is not none %}<span class="dash-hero__model-acc">{{ '%.1f' % (m.test_accuracy * 100) }}%</span>{% endif %}
+      </div>
+    {% else %}
+      <p class="dash-hero__model">No model version is active.</p>
+    {% endfor %}
+    <p class="dash-hero__status-note">Test accuracy on 450 unseen recordings</p>
   </div>
-</header>
+</section>
 
 {% if admin and admin.anomalies %}
 <section class="banner banner--high" role="alert" aria-labelledby="anomaly-title">

@@ -495,7 +495,7 @@
     var next = THEMES.indexOf(theme) >= 0 ? theme : 'light';
     document.documentElement.setAttribute('data-theme', next);
     // The server reads the same cookie, avoiding a flash of the default theme.
-    document.cookie = 'sst_theme=' + next + '; path=/; max-age=31536000; SameSite=Lax' +
+    document.cookie = 'sst_theme_v2=' + next + '; path=/; max-age=31536000; SameSite=Lax' +
       (window.location.protocol === 'https:' ? '; Secure' : '');
     qsa('[data-theme-toggle]').forEach(function (button) {
       button.setAttribute('aria-pressed', next === 'light' ? 'true' : 'false');
