@@ -847,3 +847,67 @@ a.dash-stat:hover { transform: translateY(-2px); color: var(--text); text-decora
   .dash-greet__actions .btn { flex: 1 1 10rem; }
 }
 table.data .chip { white-space: nowrap; }
+
+/* ============================================================================
+   Motion. Entrances play once per page; hovers answer the pointer. The global
+   reduced-motion rules in product.css switch every animation and transition off,
+   and every animated property here rests at its final value when that happens.
+   ========================================================================== */
+@keyframes sst-rise { from { opacity: 0; translate: 0 14px; } }
+@keyframes sst-fade { from { opacity: 0; } }
+@keyframes sst-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes sst-pop { from { scale: 0; } 70% { scale: 1.25; } to { scale: 1; } }
+@keyframes sst-pulse { 0% { scale: 1; opacity: .9; } 100% { scale: 2.2; opacity: 0; } }
+@keyframes sst-ring { from { stroke-dasharray: 0 100; } }
+@keyframes sst-float { 50% { translate: 0 -6px; } }
+
+/* page content comes up in order */
+.main > * { animation: sst-rise .55s var(--ease) both; }
+.main > :nth-child(2) { animation-delay: 50ms; }
+.main > :nth-child(3) { animation-delay: 100ms; }
+.main > :nth-child(4) { animation-delay: 150ms; }
+.main > :nth-child(5) { animation-delay: 200ms; }
+.main > :nth-child(6) { animation-delay: 250ms; }
+.main > :nth-child(n + 7) { animation-delay: 300ms; }
+.dash-stats > *, .dash-lists > *, .dash-overview__side > *, .kpis > *, .summary-grid > * { animation: sst-rise .6s var(--ease) both; }
+.dash-stats > :nth-child(2), .dash-lists > :nth-child(2), .dash-overview__side > :nth-child(2),
+.kpis > :nth-child(2), .summary-grid > :nth-child(2) { animation-delay: 90ms; }
+.dash-stats > :nth-child(3), .kpis > :nth-child(3), .summary-grid > :nth-child(3) { animation-delay: 180ms; }
+.kpis > :nth-child(4), .summary-grid > :nth-child(4) { animation-delay: 270ms; }
+.kpis > :nth-child(n + 5), .summary-grid > :nth-child(n + 5) { animation-delay: 340ms; }
+.dash-feature { animation: sst-rise .6s var(--ease) .15s both; }
+
+/* chart: the line draws itself, the area fades in, the peak pops and keeps a soft pulse */
+.dash-chart__line { stroke-dasharray: 1; animation: sst-draw 1.6s cubic-bezier(.6, 0, .2, 1) .35s both; }
+.dash-chart__area { animation: sst-fade 1s ease .9s both; }
+.dash-chart__dot, .dash-chart__halo { transform-box: fill-box; transform-origin: center; }
+.dash-chart__dot { animation: sst-pop .5s cubic-bezier(.34, 1.56, .64, 1) 1.8s both; }
+.dash-chart__halo { animation: sst-pulse 2.2s ease-out 2.2s infinite; }
+.dash-chart__guide { animation: sst-fade .6s ease 1.9s both; }
+.dash-ring__fill { animation: sst-ring 1.4s cubic-bezier(.3, 0, .2, 1) .5s both; }
+.dash-card-visual { animation: sst-float 6s ease-in-out 1s infinite; }
+
+/* hover */
+.btn { transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease),
+                   box-shadow .25s var(--ease), translate .25s var(--ease), transform var(--t-fast) var(--ease); }
+.btn:hover:not(:disabled) { translate: 0 -1px; }
+.btn--primary:hover:not(:disabled) { box-shadow: 0 14px 26px -12px rgba(67, 97, 238, 0.85); }
+.nav__icon { transition: transform .25s var(--ease), color var(--t-fast) var(--ease); }
+.nav__link:hover .nav__icon { transform: translateX(2px); }
+.nav__link { transition: color var(--t-fast) var(--ease), background var(--t-fast) var(--ease); }
+.nav__promo { transition: translate .3s var(--ease), box-shadow .3s var(--ease); }
+.nav__promo:hover { translate: 0 -2px; box-shadow: 0 26px 46px -22px rgba(67, 97, 238, 0.8); }
+.dash-stat, a.kpi, .summary-cell { transition: translate .3s var(--ease), box-shadow .3s var(--ease); }
+a.dash-stat:hover, a.kpi:hover { transform: none; translate: 0 -3px; box-shadow: 0 24px 44px -26px rgba(67, 84, 150, 0.5); }
+.dash-stat__icon, .kpi__icon, .dash-item__icon { transition: transform .35s cubic-bezier(.34, 1.56, .64, 1); }
+.dash-stat:hover .dash-stat__icon, .kpi:hover .kpi__icon { transform: translateY(-2px) rotate(-8deg); }
+.dash-item { margin: 0 -0.6rem; padding-left: 0.6rem; padding-right: 0.6rem; border-radius: 0.9rem; transition: background var(--t-fast) var(--ease); }
+.dash-item + .dash-item { border-top-color: transparent; box-shadow: 0 -1px 0 var(--border-subtle); }
+.dash-item:hover { background: var(--bg-canvas); }
+.dash-item:hover .dash-item__icon { transform: scale(1.08); }
+.dash-list__head a, .panel__link { transition: color var(--t-fast) var(--ease), letter-spacing var(--t-fast) var(--ease); }
+.panel { transition: box-shadow .3s var(--ease); }
+.dash-feature:hover .dash-card-visual { animation-play-state: paused; }
+table.data tbody tr:hover td:first-child a { text-decoration: underline; text-underline-offset: 3px; }
+.dropzone { transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease), scale .3s var(--ease); }
+.dropzone[data-drag-active="1"] { scale: 1.01; }

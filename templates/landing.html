@@ -94,23 +94,23 @@
     </section>
 
     {# ------------------------------------------------------------ at a glance #}
-    <section class="lp-stats" aria-label="At a glance">
-      <div><strong>10</strong><span>sound classes, five of them critical</span></div>
-      <div><strong>2</strong><span>models trained separately, compared on every clip</span></div>
-      <div><strong>450</strong><span>unseen recordings behind every number on this page</span></div>
-      <div><strong>3</strong><span>matching windows in a row before a live alert</span></div>
+    <section class="lp-stats" aria-label="At a glance" data-reveal>
+      <div><strong data-count-to="10">10</strong><span>sound classes, five of them critical</span></div>
+      <div><strong data-count-to="2">2</strong><span>models trained separately, compared on every clip</span></div>
+      <div><strong data-count-to="450">450</strong><span>unseen recordings behind every number on this page</span></div>
+      <div><strong data-count-to="3">3</strong><span>matching windows in a row before a live alert</span></div>
     </section>
 
     {# ---------------------------------------------------------------- console #}
     <section class="lp-section lp-showcase" id="console" aria-labelledby="console-title">
       <div class="lp-wrap">
-        <div class="lp-head lp-head--center">
+        <div class="lp-head lp-head--center" data-reveal>
           <p class="lp-kicker">The console</p>
           <h2 class="lp-h2" id="console-title">What happened, and what needs a decision</h2>
           <p class="lp-sub">The console puts the latest detection, the alert and review queues and the evidence in one
             place. It works the same on a phone at the door as on the control-room screen.</p>
         </div>
-        <div class="lp-stage">
+        <div class="lp-stage" data-reveal>
           <figure class="lp-frame">
             <div class="lp-frame__bar" aria-hidden="true"><span></span><span></span><span></span><em>sonicsentinel · dashboard</em></div>
             <img src="{{ url_for('static', filename='img/landing/console.webp') }}" width="1440" height="900" loading="lazy"
@@ -121,7 +121,7 @@
                  alt="The same dashboard on a phone, with the menu folded into the top bar.">
           </figure>
         </div>
-        <ul class="lp-features">
+        <ul class="lp-features" data-reveal-stagger>
           <li>
             <span class="lp-feature__icon">{{ ui.icon('cpu', 18) }}</span>
             <h3>Both opinions, side by side</h3>
@@ -160,14 +160,14 @@
     {# ----------------------------------------------------------- how it works #}
     <section class="lp-section lp-section--tint" id="how" aria-labelledby="how-title">
       <div class="lp-wrap lp-split">
-        <div class="lp-split__intro">
+        <div class="lp-split__intro" data-reveal>
           <p class="lp-kicker">How it works</p>
           <h2 class="lp-h2" id="how-title">From a sound to a decision, in four checks</h2>
           <p class="lp-sub">No step trusts the one before it blindly. Bad audio is stopped early, and a
             prediction is only acted on when two independent models and the rules agree.</p>
           <a class="lp-textlink" href="{{ url_for('auth.login') }}">Try it with a sample clip →</a>
         </div>
-        <ol class="lp-timeline">
+        <ol class="lp-timeline" data-reveal-stagger>
           <li>
             <span class="lp-timeline__icon">{{ ui.icon('upload', 18) }}</span>
             <div>
@@ -207,11 +207,11 @@
     {# ---------------------------------------------------------- sound classes #}
     <section class="lp-section lp-dark" id="classes" aria-labelledby="classes-title">
       <div class="lp-wrap">
-        <div class="lp-head">
+        <div class="lp-head" data-reveal>
           <p class="lp-kicker">Sound classes</p>
           <h2 class="lp-h2" id="classes-title">Ten sounds. Five of them can't wait.</h2>
         </div>
-        <ul class="lp-classes">
+        <ul class="lp-classes" data-reveal-stagger>
           {% for name in class_names %}
             {% set critical = name in critical_classes %}
             {% set shape = shapes.get(name, [0.5] * 16) %}
@@ -232,7 +232,7 @@
     {# ----------------------------------------------------------------- models #}
     <section class="lp-section" id="models" aria-labelledby="models-title">
       <div class="lp-wrap lp-split lp-split--models">
-        <div class="lp-split__intro">
+        <div class="lp-split__intro" data-reveal>
           <p class="lp-kicker">Models</p>
           <h2 class="lp-h2" id="models-title">Measured on recordings they never heard</h2>
           <p class="lp-sub">450 held-out test recordings, 45 per class. The Teachable Machine model is the weaker
@@ -244,7 +244,7 @@
             <li><span class="lp-legend__target"></span>SRS target</li>
           </ul>
         </div>
-        <div class="lp-compare">
+        <div class="lp-compare" data-reveal-stagger>
           {% for key, label, target in (('accuracy', 'Accuracy', 0.85), ('macro_f1', 'Macro F1', 0.80), ('critical_recall', 'Critical-class recall', 0.85)) %}
             {% set pv = py[key] if py else 0 %}
             {% set tv = tm[key] if tm else 0 %}
@@ -273,11 +273,11 @@
     {# ------------------------------------------------------------------ roles #}
     <section class="lp-section lp-section--tint" aria-labelledby="roles-title">
       <div class="lp-wrap">
-        <div class="lp-head lp-head--center">
+        <div class="lp-head lp-head--center" data-reveal>
           <p class="lp-kicker">Who uses it</p>
           <h2 class="lp-h2" id="roles-title">Built for the people who respond</h2>
         </div>
-        <div class="lp-bento">
+        <div class="lp-bento" data-reveal-stagger>
           <article class="lp-tile lp-tile--wide">
             <span class="lp-tile__icon">{{ ui.icon('bell', 18) }}</span>
             <h3>Security operators</h3>
@@ -308,7 +308,7 @@
     </section>
 
     {# ------------------------------------------------------------------ final #}
-    <section class="lp-final" aria-labelledby="final-title">
+    <section class="lp-final" aria-labelledby="final-title" data-reveal>
       <div class="lp-sky" aria-hidden="true"><span class="lp-cloud lp-cloud--a"></span><span class="lp-cloud lp-cloud--b"></span></div>
       <h2 class="lp-h2" id="final-title">Try it with the evaluator account</h2>
       <p>Credentials for every role are listed in the project README.</p>
@@ -320,7 +320,7 @@
   </main>
 
   <footer class="lp-footer">
-    <div class="lp-footer__grid">
+    <div class="lp-footer__grid" data-reveal>
       <div class="lp-footer__brand">
         <a class="lp-brand lp-brand--dark" href="{{ url_for('main.index') }}">
           <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="" width="22" height="22">
@@ -349,5 +349,6 @@
     </div>
     <p class="lp-footer__note">A prototype for supervised operators. It is not a certified emergency-response or law-enforcement system.</p>
   </footer>
+  <script src="{{ url_for('static', filename='js/landing.js') }}" defer></script>
 </body>
 </html>

@@ -47,19 +47,19 @@
       <a class="dash-stat" href="{{ url_for('main.events') }}">
         <span class="dash-stat__icon dash-stat__icon--blue" aria-hidden="true">{{ ui.icon('waves', 18) }}</span>
         <span class="dash-stat__label">Events in the last 24 h</span>
-        <span class="dash-stat__value">{{ '{:,}'.format(totals.events_24h) }}</span>
+        <span class="dash-stat__value" data-count-up>{{ '{:,}'.format(totals.events_24h) }}</span>
         <span class="dash-stat__note">{{ '{:,}'.format(totals.events_7d) }} this week · {{ '{:,}'.format(totals.events_total) }} in total</span>
       </a>
       <div class="dash-stat">
         <span class="dash-stat__icon dash-stat__icon--red" aria-hidden="true">{{ ui.icon('alert', 18) }}</span>
         <span class="dash-stat__label">Critical severity · 7 days</span>
-        <span class="dash-stat__value">{{ '{:,}'.format(totals.critical_7d) }}</span>
+        <span class="dash-stat__value" data-count-up>{{ '{:,}'.format(totals.critical_7d) }}</span>
         <span class="dash-stat__note" title="{{ critical_classes | join(', ') }}">across {{ critical_classes | length }} critical classes</span>
       </div>
       <div class="dash-stat">
         <span class="dash-stat__icon dash-stat__icon--amber" aria-hidden="true">{{ ui.icon('volume', 18) }}</span>
         <span class="dash-stat__label">Quality warnings · 7 days</span>
-        <span class="dash-stat__value">{{ '{:,}'.format(totals.quality_warnings_7d) }}</span>
+        <span class="dash-stat__value" data-count-up>{{ '{:,}'.format(totals.quality_warnings_7d) }}</span>
         <span class="dash-stat__note">rated Poor or Unusable</span>
       </div>
     </div>
@@ -149,7 +149,7 @@
   <aside class="dash-overview__side">
     <section class="dash-chart" aria-labelledby="activity-title">
       <p class="dash-chart__label" id="activity-title">Detections · last 14 days</p>
-      <p class="dash-chart__value">{{ '{:,}'.format(activity.total) }}</p>
+      <p class="dash-chart__value" data-count-up>{{ '{:,}'.format(activity.total) }}</p>
       {% set c = activity.chart %}
       {% if c.line %}
       <svg class="dash-chart__svg" viewBox="0 0 {{ c.width }} {{ c.height }}" role="img"
@@ -160,7 +160,7 @@
           </linearGradient>
         </defs>
         <path class="dash-chart__area" d="{{ c.area }}" fill="url(#dash-area)"/>
-        <path class="dash-chart__line" d="{{ c.line }}"/>
+        <path class="dash-chart__line" d="{{ c.line }}" pathLength="1"/>
         <line class="dash-chart__guide" x1="{{ '%.1f' % c.peak.x }}" x2="{{ '%.1f' % c.peak.x }}" y1="{{ '%.1f' % c.peak.y }}" y2="{{ c.height }}"/>
         <circle class="dash-chart__halo" cx="{{ '%.1f' % c.peak.x }}" cy="{{ '%.1f' % c.peak.y }}" r="7"/>
         <circle class="dash-chart__dot" cx="{{ '%.1f' % c.peak.x }}" cy="{{ '%.1f' % c.peak.y }}" r="3.5"/>

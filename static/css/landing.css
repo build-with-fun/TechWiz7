@@ -31,9 +31,11 @@
 
 /* ------------------------------------------------------------------ nav --- */
 .lp-nav-wrap {
-  position: absolute; inset: 1.25rem 0 auto; z-index: 20;
+  position: fixed; inset: 1.25rem 0 auto; z-index: 20;
   display: flex; justify-content: center; padding: 0 1rem;
+  pointer-events: none;
 }
+.lp-nav-wrap .lp-nav { pointer-events: auto; }
 .lp-nav {
   display: flex; align-items: center; gap: 2rem;
   padding: .45rem .5rem .45rem 1rem;
@@ -44,7 +46,16 @@
   backdrop-filter: blur(14px) saturate(140%);
   -webkit-backdrop-filter: blur(14px) saturate(140%);
   color: #ffffff;
+  transition: background .35s var(--ease), color .35s var(--ease), border-color .35s var(--ease), box-shadow .35s var(--ease);
 }
+.lp-nav-wrap.is-scrolled .lp-nav {
+  background: rgba(255, 255, 255, .86); color: var(--lp-text);
+  border-color: rgba(226, 230, 236, .9);
+  box-shadow: 0 12px 34px -14px rgba(12, 40, 100, .28);
+}
+.lp-nav-wrap.is-scrolled .lp-brand img { filter: none; }
+.lp-nav-wrap.is-scrolled .lp-nav__signin { background: var(--lp-ink); border-color: var(--lp-ink); color: #ffffff; }
+.lp-nav-wrap.is-scrolled :focus-visible { outline-color: var(--lp-blue); }
 .lp-brand { display: inline-flex; align-items: center; gap: .5rem; font-weight: 600; text-decoration: none; letter-spacing: -.01em; }
 .lp-brand img { filter: brightness(0) invert(1); }
 .lp-brand--dark { color: var(--lp-text); }
@@ -105,12 +116,12 @@
   background: #ffffff;
   border-radius: 1.1rem;
   box-shadow: 0 24px 50px -18px rgba(12, 40, 100, .45), 0 2px 6px rgba(12, 40, 100, .08);
-  animation: lp-float 7s ease-in-out infinite;
+  animation: lp-drop-in .9s cubic-bezier(.2, .8, .2, 1) both, lp-float 7s ease-in-out infinite;
 }
-.lp-card--a { width: 15.5rem; margin-left: -29rem; top: 2.5rem; transform: rotate(-8deg); }
-.lp-card--b { width: 10.5rem; margin-left: -14.5rem; top: .6rem; transform: rotate(-3deg); z-index: 1; animation-delay: -2s; }
-.lp-card--c { width: 15rem; margin-left: -5.5rem; top: 1.6rem; transform: rotate(5deg); z-index: 3; animation-delay: -4s; }
-.lp-card--d { width: 14rem; margin-left: 11rem; top: .2rem; transform: rotate(9deg); z-index: 2; animation-delay: -1s; }
+.lp-card--a { width: 15.5rem; margin-left: -29rem; top: 2.5rem; transform: rotate(-8deg); animation-delay: .35s, 0s; }
+.lp-card--b { width: 10.5rem; margin-left: -14.5rem; top: .6rem; transform: rotate(-3deg); z-index: 1; animation-delay: .45s, -2s; }
+.lp-card--c { width: 15rem; margin-left: -5.5rem; top: 1.6rem; transform: rotate(5deg); z-index: 3; animation-delay: .55s, -4s; }
+.lp-card--d { width: 14rem; margin-left: 11rem; top: .2rem; transform: rotate(9deg); z-index: 2; animation-delay: .65s, -1s; }
 .lp-card--dark { background: var(--lp-ink); color: #ffffff; }
 @keyframes lp-float { 50% { translate: 0 -6px; } }
 
@@ -397,4 +408,67 @@
 @media (prefers-reduced-motion: reduce) {
   .lp-card { animation: none; }
   .lp-btn, .lp-class { transition: none; }
+}
+
+/* --------------------------------------------------------------- motion --- */
+@keyframes lp-rise { from { opacity: 0; translate: 0 22px; } }
+@keyframes lp-drop-in { from { opacity: 0; scale: .9; } }
+@keyframes lp-drift { to { translate: 3.5rem 0; } }
+@keyframes lp-eq { from { scale: 1 1; } to { scale: 1 .3; } }
+
+.lp-nav { animation: lp-rise .7s var(--ease) both; }
+.lp-title { animation: lp-rise .9s var(--ease) .05s both; }
+.lp-lede { animation: lp-rise .8s var(--ease) .75s both; }
+.lp-hero .lp-cta { animation: lp-rise .8s var(--ease) .85s both; }
+.lp-cloud--a { animation: lp-drift 34s ease-in-out infinite alternate; }
+.lp-cloud--b { animation: lp-drift 42s ease-in-out -12s infinite alternate-reverse; }
+.lp-cloud--d { animation: lp-drift 28s ease-in-out -6s infinite alternate; }
+
+/* Scroll reveal. Only active when landing.js has run (html.lp-motion). */
+.lp-motion [data-reveal] {
+  opacity: 0; translate: 0 28px;
+  transition: opacity .8s var(--ease), translate .8s var(--ease), scale .9s var(--ease);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.lp-motion [data-reveal].is-visible { opacity: 1; translate: 0 0; }
+.lp-motion .lp-stage[data-reveal] { translate: 0 64px; scale: .95; transition-duration: 1.1s; }
+.lp-motion .lp-stage[data-reveal].is-visible { scale: 1; }
+.lp-motion .lp-phone { transition: translate 1.2s var(--ease) .35s, opacity 1.2s var(--ease) .35s; }
+.lp-motion .lp-stage:not(.is-visible) .lp-phone { translate: 3rem 2rem; opacity: 0; }
+
+/* The comparison bars grow to their value when the card appears. */
+.lp-metric__py, .lp-metric__tm { transform-box: fill-box; transform-origin: left center; transition: transform 1.2s cubic-bezier(.2, .8, .2, 1) .25s; }
+.lp-metric__tm { transition-delay: .45s; }
+.lp-motion .lp-metric:not(.is-visible) .lp-metric__py,
+.lp-motion .lp-metric:not(.is-visible) .lp-metric__tm { transform: scaleX(0); }
+
+/* Hover: small lifts; each tile's waveform plays. */
+.lp-btn:hover { translate: 0 -1px; }
+.lp-stats div { transition: background .3s var(--ease); }
+.lp-stats div:hover { background: #f7f9ff; }
+.lp-stats div:first-child:hover { border-radius: 1.25rem 0 0 1.25rem; }
+.lp-stats div:last-child:hover { border-radius: 0 1.25rem 1.25rem 0; }
+.lp-feature__icon, .lp-timeline__icon, .lp-tile__icon { transition: transform .35s cubic-bezier(.34, 1.56, .64, 1); }
+.lp-features li:hover .lp-feature__icon,
+.lp-timeline > li:hover .lp-timeline__icon,
+.lp-tile:hover .lp-tile__icon { transform: translateY(-3px) rotate(-8deg); }
+.lp-timeline > li, .lp-tile, .lp-metric { transition: translate .3s var(--ease), box-shadow .3s var(--ease); }
+.lp-timeline > li:hover, .lp-tile:hover, .lp-metric:hover { translate: 0 -3px; box-shadow: 0 22px 44px -26px rgba(12, 40, 100, .38); }
+.lp-class { transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), translate .3s var(--ease); }
+.lp-class:hover { translate: 0 -3px; }
+.lp-class__wave rect { transform-box: fill-box; transform-origin: center; }
+.lp-class:hover .lp-class__wave rect { animation: lp-eq .7s ease-in-out infinite alternate; }
+.lp-class:hover .lp-class__wave rect:nth-child(2n) { animation-delay: -.25s; }
+.lp-class:hover .lp-class__wave rect:nth-child(3n) { animation-delay: -.45s; }
+.lp-class:hover .lp-class__wave rect:nth-child(5n) { animation-delay: -.6s; }
+.lp-frame { transition: box-shadow .4s var(--ease), translate .4s var(--ease); }
+.lp-stage:hover .lp-frame { translate: 0 -4px; box-shadow: 0 50px 100px -40px rgba(12, 40, 100, .5), 0 0 0 8px rgba(36, 88, 230, .06); }
+.lp-phone { transition: rotate .5s var(--ease), translate .5s var(--ease); }
+.lp-stage:hover .lp-phone { rotate: -2deg; }
+.lp-footer nav a { transition: color var(--t-fast) var(--ease); }
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-nav, .lp-title, .lp-lede, .lp-hero .lp-cta, .lp-cloud, .lp-class__wave rect { animation: none !important; }
+  .lp-card { animation: none !important; }
+  .lp-timeline > li, .lp-tile, .lp-metric, .lp-class, .lp-frame, .lp-phone, .lp-btn { transition: none; }
 }

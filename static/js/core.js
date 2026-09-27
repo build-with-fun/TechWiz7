@@ -579,6 +579,36 @@
     });
   }
 
+  /* Numbers marked data-count-up climb from zero once on load. Skipped when the
+     visitor asked for reduced motion; the server-rendered value is the final one. */
+  function motionAllowed() {
+    return !window.matchMedia('(prefers-reduced-motion: reduce)').matches &&
+      document.documentElement.getAttribute('data-motion') !== 'reduced';
+  }
+
+  function initCountUp(root) {
+    if (!motionAllowed() || !window.requestAnimationFrame) return;
+    qsa('[data-count-up]', root || document).forEach(function (el) {
+      var text = el.textContent.trim();
+      var target = parseFloat(text.replace(/[^0-9.]/g, ''));
+      if (!isFinite(target) || target === 0) return;
+      var decimals = (text.split('.')[1] || '').replace(/[^0-9]/g, '').length;
+      var suffix = text.replace(/[0-9.,\s]/g, '');
+      var start = null;
+      function frame(now) {
+        if (start === null) start = now;
+        var t = Math.min(1, (now - start) / 1000);
+        var eased = 1 - Math.pow(1 - t, 3);
+        el.textContent = (target * eased).toLocaleString('en-US', {
+          minimumFractionDigits: decimals, maximumFractionDigits: decimals
+        }) + suffix;
+        if (t < 1) window.requestAnimationFrame(frame);
+        else el.textContent = text;
+      }
+      window.requestAnimationFrame(frame);
+    });
+  }
+
   /* ------------------------------------------------------------ delegated - */
 
   /* Retry buttons that the server-rendered error blocks emit. Delegated so a
@@ -601,6 +631,7 @@
     initThemeToggle();
     initNav();
     initTableLabels();
+    initCountUp();
   });
 
   /* ------------------------------------------------------------------ API - */
