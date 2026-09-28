@@ -144,7 +144,6 @@
       "recommended_action": "Treat as a life-threatening event. Notify on-site security and the emergency services immediately, and preserve both the audio segment and the model evidence unedited.",
       "srs_ref": "FR xlvi",
       "min_confidence": 0.75,
-      "min_top_two_margin": 0.20,
       "required_consecutive_detections": "$thresholds.repeat_detection.required_consecutive_detections",
       "requires_model_agreement": true,
       "min_audio_quality": "Acceptable",

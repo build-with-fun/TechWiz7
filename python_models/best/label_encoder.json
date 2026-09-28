@@ -1,14 +1,14 @@
 {
   "class_names": [
-    "Aggression",
-    "Alarm or Siren",
-    "Animal Sound",
-    "Background Noise",
-    "Glass Breaking",
-    "Gunshot",
     "Machinery Fault",
+    "Glass Breaking",
+    "Alarm or Siren",
+    "Vehicle Horn",
+    "Animal Sound",
+    "Gunshot",
     "Panic Scream",
+    "Aggression",
     "Person Asking for Help",
-    "Vehicle Horn"
+    "Background Noise"
   ]
 }

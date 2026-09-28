@@ -28,7 +28,8 @@
       "enabled": true,
       "priority": "high",
       "srs_phrase": "Low confidence",
-      "when": { "any_model_confidence_lt": "$thresholds.confidence.low_confidence_band" },
+      "when": { "any": [{ "any_model_confidence_lt": "$thresholds.confidence.low_confidence_band" }, { "any_model_confidence_lt": "$thresholds.confidence.min_confidence" }] },
+      "note": "Also fires below the confidence floor, so raising min_confidence alone still sends those clips to review.",
       "reason_template": "At least one model is below the low-confidence band ({low_confidence_band:.2f}): Python {python_confidence:.2f}, GTM {gtm_confidence:.2f}.",
       "recommended_action": "Confirm the class by listening; consider whether the segment contains an event at all."
     },
@@ -82,7 +83,8 @@
       "enabled": true,
       "priority": "critical",
       "srs_phrase": "Possible false alarm",
-      "when": { "all": [{ "class_is_critical": true }, { "any": [{ "quality_in": ["Poor", "Unusable"] }, { "top_two_margin_lt": "$thresholds.confidence.top_two_margin_min" }, { "confidence_difference_gt": 0.25 }] }] },
+      "when": { "all": [{ "class_is_critical": true }, { "any": [{ "quality_in": ["Poor", "Unusable"] }, { "top_two_margin_lt": "$thresholds.confidence.top_two_margin_min" }] }] },
+      "note": "The confidence gap is left to the consistency status; critical_without_agreement catches a weak match.",
       "reason_template": "A critical category ('{predicted_class}') was raised on weak evidence: quality '{quality}', top-two margin {margin:.2f}, confidence difference {confidence_difference:.2f}.",
       "recommended_action": "Verify before dispatch. Record the outcome so the false-positive and false-negative analytics stay honest."
     }

@@ -31,6 +31,10 @@
   <path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9.5" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
 {%- elif name == 'user' -%}
   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+{%- elif name == 'eye' -%}
+  <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>
+{%- elif name == 'eye-off' -%}
+  <path d="M10.6 5.1A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a18 18 0 0 1-2.9 3.9"/><path d="M6.6 6.6A17.6 17.6 0 0 0 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M2 2l20 20"/>
 {%- elif name == 'logout' -%}
   <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>
 {%- elif name == 'play' -%}
@@ -87,6 +91,14 @@
   <circle cx="12" cy="12" r="9"/>
 {%- endif -%}
 </svg>
+{%- endmacro %}
+
+{# Eye button that shows or hides the password in the input with id `target` (core.js). #}
+{% macro reveal_button(target) -%}
+<button type="button" class="input-reveal__btn" data-reveal="{{ target }}"
+        aria-controls="{{ target }}" aria-label="Show password" aria-pressed="false">
+  {{- icon('eye', 18, 'input-reveal__show') -}}{{- icon('eye-off', 18, 'input-reveal__hide') -}}
+</button>
 {%- endmacro %}
 
 {# Formatted values #}

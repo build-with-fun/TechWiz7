@@ -28,9 +28,14 @@ def main() -> None:
     meta = json.loads((best / "model_meta.json").read_text(encoding="utf-8"))
     classes, critical = class_config()
     doc = {"model": meta.get("model_name"), "version": meta.get("model_version"), "splits": {}}
+    # An ensemble lists several backbones; its features are their embeddings joined.
+    backbones = meta.get("backbones") or [meta.get("backbone", "cnn14")]
     for split in ("train", "val", "test"):
-        _, X, y = load_split(meta.get("preprocessing_variant", "current"), split,
-                             backbone=meta.get("backbone", "cnn14"))
+        parts = [load_split(meta.get("preprocessing_variant", "current"), split, backbone=b)
+                 for b in backbones]
+        if any(part[0] != parts[0][0] for part in parts):
+            raise SystemExit(f"{split}: the embedding caches list different recordings")
+        X, y = np.hstack([part[1] for part in parts]), parts[0][2]
         order = np.asarray(model.classes_).astype(str)
         pred = order[model.predict_proba(X).argmax(1)]
         p, r, f, n = precision_recall_fscore_support(y, pred, labels=classes, zero_division=0)

@@ -40,7 +40,8 @@ class GtmFrontendConfig:
     source: str = "unknown"
     frontend_kind: str = "mel"
     # "loudest": score only the loudest window. "energy_weighted": score windows at half
-    # hops and average them weighted by energy.
+    # hops and average them weighted by energy. "energy_weighted_log": same, but averaging
+    # log-scores (a weighted geometric mean).
     window_aggregation: str = "loudest"
 
     @classmethod
@@ -253,7 +254,8 @@ class GtmModelPredictor:
         stamp = "".join(ch for ch in str(metadata.get("timeStamp", ""))[:16] if ch.isalnum())
         version = str(metadata.get("modelVersion")
                       or metadata.get("version")
-                      or (f"tm-{stamp}" + ("-ew" if frontend.window_aggregation == "energy_weighted" else ""))
+                      or (f"tm-{stamp}" + {"energy_weighted": "-ew", "energy_weighted_log": "-ewlog"}
+                                          .get(frontend.window_aggregation, ""))
                       if stamp else f"gtm-{frontend.frontend_id}")
 
         return cls(model, frontend, list(labels), version, backend=backend,
@@ -324,7 +326,13 @@ class GtmModelPredictor:
         if isinstance(output, (list, tuple)):
             output = output[0]
         scores = np.asarray(output).reshape(len(windows), -1)
-        raw = (scores * (weights / weights.sum())[:, None]).sum(axis=0)
+        share = (weights / weights.sum())[:, None]
+        if self.frontend.window_aggregation == "energy_weighted_log":
+            log_mean = (np.log(np.clip(scores, 1e-9, 1.0)) * share).sum(axis=0)
+            raw = np.exp(log_mean - log_mean.max())
+            raw = raw / raw.sum()
+        else:
+            raw = (scores * share).sum(axis=0)
 
         if raw.size != len(self.class_names):
             raise ModelLoadError(
@@ -361,7 +369,7 @@ class GtmModelPredictor:
         """Windows to score (loudest first) and their weights."""
         import numpy as np
 
-        if self.frontend.window_aggregation != "energy_weighted":
+        if not self.frontend.window_aggregation.startswith("energy_weighted"):
             return [self._select_window(preprocessed)], np.ones(1)
         y = np.asarray(preprocessed.samples, dtype="float32").ravel()
         if int(preprocessed.sample_rate) != self.frontend.sample_rate:

@@ -28,8 +28,8 @@ RUN pip install --no-cache-dir torch==2.14.0 --index-url https://download.pytorc
 
 COPY --chown=app:app . .
 USER app
-# The AST weights go into the image so a restart never waits on a download.
-RUN python tools/fetch_pretrained.py --ast
+# The CNN14, AST and CLAP weights go into the image so a restart never waits on a download.
+RUN python tools/fetch_pretrained.py --all
 
 EXPOSE 7860
 CMD ["sh", "deploy/huggingface/start.sh"]

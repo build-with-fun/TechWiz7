@@ -463,3 +463,18 @@ def test_energy_weighted_mode_scores_every_window():
     assert result.extra["windows_scored"] == 5         # 3 s at half-second hops
     assert result.predicted_class == CLASSES[1]        # 2 s of 3 kHz beats 1 s of 440 Hz
     assert abs(sum(result.confidences.values()) - 1.0) < 1e-6
+
+
+def test_energy_weighted_log_mode_is_a_weighted_geometric_mean():
+    """Same windows and weights as energy_weighted, averaged in the log domain."""
+    arithmetic = _predict_with("energy_weighted")
+    geometric = _predict_with("energy_weighted_log")
+    assert geometric.extra["windows_scored"] == arithmetic.extra["windows_scored"] == 5
+    assert geometric.predicted_class == CLASSES[1]
+    assert abs(sum(geometric.confidences.values()) - 1.0) < 1e-6
+    # A geometric mean punishes a class that is weak in some windows, so the leading
+    # class is ahead of the runner-up by more than with the arithmetic mean.
+    def lead(result):
+        top = sorted(result.confidences.values(), reverse=True)
+        return top[0] - top[1]
+    assert lead(geometric) > lead(arithmetic)

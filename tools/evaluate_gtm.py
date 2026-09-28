@@ -29,7 +29,8 @@ def main() -> None:
                         help="folder with metadata.json, frontend_config.json and gtm_model.h5")
     parser.add_argument("--out", default=None, help="metrics file (default: gtm_metrics.json "
                         "in --gtm-dir for test, gtm_val_metrics.json for val)")
-    parser.add_argument("--aggregation", choices=["loudest", "energy_weighted"], default=None,
+    parser.add_argument("--aggregation", choices=["loudest", "energy_weighted", "energy_weighted_log"],
+                        default=None,
                         help="override window_aggregation from frontend_config.json (for val comparisons)")
     args = parser.parse_args()
     gtm_dir = Path(args.gtm_dir)

@@ -50,9 +50,12 @@
 
           <div class="field">
             <label class="field__label" for="password">Password</label>
-            <input class="input" id="password" name="password" type="password"
-                   autocomplete="current-password" required
-                   {% if error %}aria-invalid="true"{% endif %}>
+            <div class="input-reveal">
+              <input class="input" id="password" name="password" type="password"
+                     autocomplete="current-password" required
+                     {% if error %}aria-invalid="true"{% endif %}>
+              {{ ui.reveal_button('password') }}
+            </div>
           </div>
 
           <label class="checkline auth-form__remember" for="remember">

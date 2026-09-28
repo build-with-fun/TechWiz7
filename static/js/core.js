@@ -571,9 +571,21 @@
 
   // Delegated handlers
 
-  /* Retry buttons in error blocks, including ones added later. */
+  /* Retry buttons in error blocks and password eye buttons, including ones added later. */
   function initDelegates() {
     document.addEventListener('click', function (event) {
+      var reveal = event.target.closest ? event.target.closest('[data-reveal]') : null;
+      if (reveal) {
+        var field = document.getElementById(reveal.getAttribute('data-reveal'));
+        if (field) {
+          var show = field.type === 'password';
+          field.type = show ? 'text' : 'password';
+          reveal.setAttribute('aria-pressed', show ? 'true' : 'false');
+          reveal.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+          field.focus();
+        }
+        return;
+      }
       var target = event.target.closest ? event.target.closest('[data-retry]') : null;
       if (target) {
         event.preventDefault();
@@ -581,6 +593,11 @@
         if (button.dataset.retryUrl) window.location.assign(button.dataset.retryUrl);
         else window.location.reload();
       }
+    });
+    // Hide a shown password again before sending, so the browser saves it as a password.
+    document.addEventListener('submit', function (event) {
+      var buttons = event.target.querySelectorAll ? event.target.querySelectorAll('[data-reveal][aria-pressed="true"]') : [];
+      Array.prototype.forEach.call(buttons, function (button) { button.click(); });
     });
   }
 

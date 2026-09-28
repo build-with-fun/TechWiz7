@@ -1,49 +1,2729 @@
 {
   "split": "val",
   "n": 450,
-  "configured_min_confidence": 0.6,
+  "python_model": "python_models/best",
+  "gtm_model": "tm-20260928T0918-ew",
+  "python_accuracy": 0.9111,
+  "gtm_accuracy": 0.5644,
+  "agreement_rate": 0.5911,
+  "accuracy_when_models_agree": 0.9398,
+  "rule": "max accepted share with accepted precision >= 0.97 overall and for critical predictions; ties -> stricter thresholds",
+  "grid": {
+    "confidence.min_confidence": [
+      0.4,
+      0.5,
+      0.6,
+      0.7
+    ],
+    "confidence.low_confidence_band": [
+      0.4,
+      0.5,
+      0.6,
+      0.7,
+      0.75
+    ],
+    "confidence.top_two_margin_min": [
+      0.1,
+      0.15,
+      0.2
+    ],
+    "consistency.confident_agreement_min": [
+      0.5,
+      0.6,
+      0.7,
+      0.8
+    ]
+  },
+  "configured_before": {
+    "values": {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.4,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.5
+    },
+    "result": {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.4,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.4244,
+      "accepted_precision": 0.9738,
+      "accepted_critical": 111,
+      "accepted_critical_precision": 0.982,
+      "accepted_wrong": 5,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 124,
+        "Uncertain Result": 4
+      }
+    }
+  },
+  "chosen": {
+    "confidence.min_confidence": 0.4,
+    "confidence.low_confidence_band": 0.4,
+    "confidence.top_two_margin_min": 0.2,
+    "consistency.confident_agreement_min": 0.5,
+    "accepted_share": 0.4244,
+    "accepted_precision": 0.9738,
+    "accepted_critical": 111,
+    "accepted_critical_precision": 0.982,
+    "accepted_wrong": 5,
+    "status_counts": {
+      "Weak Match": 78,
+      "Model Disagreement": 184,
+      "Strong Match": 60,
+      "Acceptable Match": 124,
+      "Uncertain Result": 4
+    }
+  },
   "table": [
     {
-      "min_confidence": 0.4,
-      "auto_decided_share": 0.978,
-      "accuracy_of_auto_decisions": 0.848,
-      "accuracy_sent_to_review": 0.5,
-      "critical_recordings_wrongly_auto_decided": 31
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.4,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.4244,
+      "accepted_precision": 0.9738,
+      "accepted_critical": 111,
+      "accepted_critical_precision": 0.982,
+      "accepted_wrong": 5,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 124,
+        "Uncertain Result": 4
+      }
     },
     {
-      "min_confidence": 0.5,
-      "auto_decided_share": 0.944,
-      "accuracy_of_auto_decisions": 0.861,
-      "accuracy_sent_to_review": 0.48,
-      "critical_recordings_wrongly_auto_decided": 27
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.4,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.4244,
+      "accepted_precision": 0.9738,
+      "accepted_critical": 111,
+      "accepted_critical_precision": 0.982,
+      "accepted_wrong": 5,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 124,
+        "Uncertain Result": 4
+      }
     },
     {
-      "min_confidence": 0.6,
-      "auto_decided_share": 0.9,
-      "accuracy_of_auto_decisions": 0.879,
-      "accuracy_sent_to_review": 0.489,
-      "critical_recordings_wrongly_auto_decided": 23
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.4,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.4244,
+      "accepted_precision": 0.9738,
+      "accepted_critical": 111,
+      "accepted_critical_precision": 0.982,
+      "accepted_wrong": 5,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 124,
+        "Uncertain Result": 4
+      }
     },
     {
-      "min_confidence": 0.7,
-      "auto_decided_share": 0.862,
-      "accuracy_of_auto_decisions": 0.902,
-      "accuracy_sent_to_review": 0.452,
-      "critical_recordings_wrongly_auto_decided": 19
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.4,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.4044,
+      "accepted_precision": 0.9725,
+      "accepted_critical": 102,
+      "accepted_critical_precision": 0.9804,
+      "accepted_wrong": 5,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 99,
+        "Uncertain Result": 4
+      }
     },
     {
-      "min_confidence": 0.8,
-      "auto_decided_share": 0.822,
-      "accuracy_of_auto_decisions": 0.916,
-      "accuracy_sent_to_review": 0.487,
-      "critical_recordings_wrongly_auto_decided": 15
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.4,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.4044,
+      "accepted_precision": 0.9725,
+      "accepted_critical": 102,
+      "accepted_critical_precision": 0.9804,
+      "accepted_wrong": 5,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 99,
+        "Uncertain Result": 4
+      }
     },
     {
-      "min_confidence": 0.9,
-      "auto_decided_share": 0.767,
-      "accuracy_of_auto_decisions": 0.925,
-      "accuracy_sent_to_review": 0.562,
-      "critical_recordings_wrongly_auto_decided": 14
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.4,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.4044,
+      "accepted_precision": 0.9725,
+      "accepted_critical": 102,
+      "accepted_critical_precision": 0.9804,
+      "accepted_wrong": 5,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 99,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.4,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.3756,
+      "accepted_precision": 0.9763,
+      "accepted_critical": 89,
+      "accepted_critical_precision": 0.9888,
+      "accepted_wrong": 4,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 74,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.4,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.3756,
+      "accepted_precision": 0.9763,
+      "accepted_critical": 89,
+      "accepted_critical_precision": 0.9888,
+      "accepted_wrong": 4,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 74,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.4,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.3756,
+      "accepted_precision": 0.9763,
+      "accepted_critical": 89,
+      "accepted_critical_precision": 0.9888,
+      "accepted_wrong": 4,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 74,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.5,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.3756,
+      "accepted_precision": 0.9763,
+      "accepted_critical": 110,
+      "accepted_critical_precision": 0.9818,
+      "accepted_wrong": 4,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 124,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.5,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.3756,
+      "accepted_precision": 0.9763,
+      "accepted_critical": 110,
+      "accepted_critical_precision": 0.9818,
+      "accepted_wrong": 4,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 124,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.5,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.3756,
+      "accepted_precision": 0.9763,
+      "accepted_critical": 110,
+      "accepted_critical_precision": 0.9818,
+      "accepted_wrong": 4,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 124,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.5,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.3756,
+      "accepted_precision": 0.9763,
+      "accepted_critical": 110,
+      "accepted_critical_precision": 0.9818,
+      "accepted_wrong": 4,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 120,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.5,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.3756,
+      "accepted_precision": 0.9763,
+      "accepted_critical": 110,
+      "accepted_critical_precision": 0.9818,
+      "accepted_wrong": 4,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 120,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.5,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.3756,
+      "accepted_precision": 0.9763,
+      "accepted_critical": 110,
+      "accepted_critical_precision": 0.9818,
+      "accepted_wrong": 4,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 120,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.5,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.3556,
+      "accepted_precision": 0.975,
+      "accepted_critical": 101,
+      "accepted_critical_precision": 0.9802,
+      "accepted_wrong": 4,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 99,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.5,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.3556,
+      "accepted_precision": 0.975,
+      "accepted_critical": 101,
+      "accepted_critical_precision": 0.9802,
+      "accepted_wrong": 4,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 99,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.5,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.3556,
+      "accepted_precision": 0.975,
+      "accepted_critical": 101,
+      "accepted_critical_precision": 0.9802,
+      "accepted_wrong": 4,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 99,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.5,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.3556,
+      "accepted_precision": 0.975,
+      "accepted_critical": 101,
+      "accepted_critical_precision": 0.9802,
+      "accepted_wrong": 4,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 95,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.5,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.3556,
+      "accepted_precision": 0.975,
+      "accepted_critical": 101,
+      "accepted_critical_precision": 0.9802,
+      "accepted_wrong": 4,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 95,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.5,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.3556,
+      "accepted_precision": 0.975,
+      "accepted_critical": 101,
+      "accepted_critical_precision": 0.9802,
+      "accepted_wrong": 4,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 95,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.4,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.3467,
+      "accepted_precision": 0.9744,
+      "accepted_critical": 76,
+      "accepted_critical_precision": 0.9868,
+      "accepted_wrong": 4,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 49,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.4,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.3467,
+      "accepted_precision": 0.9744,
+      "accepted_critical": 76,
+      "accepted_critical_precision": 0.9868,
+      "accepted_wrong": 4,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 49,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.4,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.3467,
+      "accepted_precision": 0.9744,
+      "accepted_critical": 76,
+      "accepted_critical_precision": 0.9868,
+      "accepted_wrong": 4,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 49,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.5,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.3267,
+      "accepted_precision": 0.9796,
+      "accepted_critical": 88,
+      "accepted_critical_precision": 0.9886,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 74,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.5,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.3267,
+      "accepted_precision": 0.9796,
+      "accepted_critical": 88,
+      "accepted_critical_precision": 0.9886,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 74,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.5,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.3267,
+      "accepted_precision": 0.9796,
+      "accepted_critical": 88,
+      "accepted_critical_precision": 0.9886,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 74,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.5,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.3267,
+      "accepted_precision": 0.9796,
+      "accepted_critical": 88,
+      "accepted_critical_precision": 0.9886,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 70,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.5,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.3267,
+      "accepted_precision": 0.9796,
+      "accepted_critical": 88,
+      "accepted_critical_precision": 0.9886,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 70,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.5,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.3267,
+      "accepted_precision": 0.9796,
+      "accepted_critical": 88,
+      "accepted_critical_precision": 0.9886,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 70,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.3133,
+      "accepted_precision": 0.9787,
+      "accepted_critical": 97,
+      "accepted_critical_precision": 0.9794,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 124,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.3133,
+      "accepted_precision": 0.9787,
+      "accepted_critical": 97,
+      "accepted_critical_precision": 0.9794,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 99,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.3133,
+      "accepted_precision": 0.9787,
+      "accepted_critical": 97,
+      "accepted_critical_precision": 0.9794,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 124,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.3133,
+      "accepted_precision": 0.9787,
+      "accepted_critical": 97,
+      "accepted_critical_precision": 0.9794,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 99,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.3133,
+      "accepted_precision": 0.9787,
+      "accepted_critical": 97,
+      "accepted_critical_precision": 0.9794,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 124,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.3133,
+      "accepted_precision": 0.9787,
+      "accepted_critical": 97,
+      "accepted_critical_precision": 0.9794,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 99,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.3133,
+      "accepted_precision": 0.9787,
+      "accepted_critical": 97,
+      "accepted_critical_precision": 0.9794,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 120,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.3133,
+      "accepted_precision": 0.9787,
+      "accepted_critical": 97,
+      "accepted_critical_precision": 0.9794,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 95,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.3133,
+      "accepted_precision": 0.9787,
+      "accepted_critical": 97,
+      "accepted_critical_precision": 0.9794,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 120,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.3133,
+      "accepted_precision": 0.9787,
+      "accepted_critical": 97,
+      "accepted_critical_precision": 0.9794,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 95,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.3133,
+      "accepted_precision": 0.9787,
+      "accepted_critical": 97,
+      "accepted_critical_precision": 0.9794,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 120,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.3133,
+      "accepted_precision": 0.9787,
+      "accepted_critical": 97,
+      "accepted_critical_precision": 0.9794,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 95,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.3133,
+      "accepted_precision": 0.9787,
+      "accepted_critical": 97,
+      "accepted_critical_precision": 0.9794,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 100,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 92,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.3133,
+      "accepted_precision": 0.9787,
+      "accepted_critical": 97,
+      "accepted_critical_precision": 0.9794,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 100,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 92,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.3133,
+      "accepted_precision": 0.9787,
+      "accepted_critical": 97,
+      "accepted_critical_precision": 0.9794,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 100,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 92,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.5,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2978,
+      "accepted_precision": 0.9776,
+      "accepted_critical": 75,
+      "accepted_critical_precision": 0.9867,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 49,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.5,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2978,
+      "accepted_precision": 0.9776,
+      "accepted_critical": 75,
+      "accepted_critical_precision": 0.9867,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 49,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.5,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2978,
+      "accepted_precision": 0.9776,
+      "accepted_critical": 75,
+      "accepted_critical_precision": 0.9867,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 49,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.5,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2978,
+      "accepted_precision": 0.9776,
+      "accepted_critical": 75,
+      "accepted_critical_precision": 0.9867,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 45,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.5,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2978,
+      "accepted_precision": 0.9776,
+      "accepted_critical": 75,
+      "accepted_critical_precision": 0.9867,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 45,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.5,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2978,
+      "accepted_precision": 0.9776,
+      "accepted_critical": 75,
+      "accepted_critical_precision": 0.9867,
+      "accepted_wrong": 3,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 45,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2844,
+      "accepted_precision": 0.9844,
+      "accepted_critical": 84,
+      "accepted_critical_precision": 0.9881,
+      "accepted_wrong": 2,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 74,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2844,
+      "accepted_precision": 0.9844,
+      "accepted_critical": 84,
+      "accepted_critical_precision": 0.9881,
+      "accepted_wrong": 2,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 74,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2844,
+      "accepted_precision": 0.9844,
+      "accepted_critical": 84,
+      "accepted_critical_precision": 0.9881,
+      "accepted_wrong": 2,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 74,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2844,
+      "accepted_precision": 0.9844,
+      "accepted_critical": 84,
+      "accepted_critical_precision": 0.9881,
+      "accepted_wrong": 2,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 70,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2844,
+      "accepted_precision": 0.9844,
+      "accepted_critical": 84,
+      "accepted_critical_precision": 0.9881,
+      "accepted_wrong": 2,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 70,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2844,
+      "accepted_precision": 0.9844,
+      "accepted_critical": 84,
+      "accepted_critical_precision": 0.9881,
+      "accepted_wrong": 2,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 70,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2844,
+      "accepted_precision": 0.9844,
+      "accepted_critical": 84,
+      "accepted_critical_precision": 0.9881,
+      "accepted_wrong": 2,
+      "status_counts": {
+        "Weak Match": 125,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 67,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2844,
+      "accepted_precision": 0.9844,
+      "accepted_critical": 84,
+      "accepted_critical_precision": 0.9881,
+      "accepted_wrong": 2,
+      "status_counts": {
+        "Weak Match": 125,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 67,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2844,
+      "accepted_precision": 0.9844,
+      "accepted_critical": 84,
+      "accepted_critical_precision": 0.9881,
+      "accepted_wrong": 2,
+      "status_counts": {
+        "Weak Match": 125,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 67,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2556,
+      "accepted_precision": 0.9826,
+      "accepted_critical": 71,
+      "accepted_critical_precision": 0.9859,
+      "accepted_wrong": 2,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 49,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2556,
+      "accepted_precision": 0.9826,
+      "accepted_critical": 71,
+      "accepted_critical_precision": 0.9859,
+      "accepted_wrong": 2,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 49,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2556,
+      "accepted_precision": 0.9826,
+      "accepted_critical": 71,
+      "accepted_critical_precision": 0.9859,
+      "accepted_wrong": 2,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 49,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2556,
+      "accepted_precision": 0.9826,
+      "accepted_critical": 71,
+      "accepted_critical_precision": 0.9859,
+      "accepted_wrong": 2,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 45,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2556,
+      "accepted_precision": 0.9826,
+      "accepted_critical": 71,
+      "accepted_critical_precision": 0.9859,
+      "accepted_wrong": 2,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 45,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2556,
+      "accepted_precision": 0.9826,
+      "accepted_critical": 71,
+      "accepted_critical_precision": 0.9859,
+      "accepted_wrong": 2,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 45,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2556,
+      "accepted_precision": 0.9826,
+      "accepted_critical": 71,
+      "accepted_critical_precision": 0.9859,
+      "accepted_wrong": 2,
+      "status_counts": {
+        "Weak Match": 150,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 42,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2556,
+      "accepted_precision": 0.9826,
+      "accepted_critical": 71,
+      "accepted_critical_precision": 0.9859,
+      "accepted_wrong": 2,
+      "status_counts": {
+        "Weak Match": 150,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 42,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.6,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2556,
+      "accepted_precision": 0.9826,
+      "accepted_critical": 71,
+      "accepted_critical_precision": 0.9859,
+      "accepted_wrong": 2,
+      "status_counts": {
+        "Weak Match": 150,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 42,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 124,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 99,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 74,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 124,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 99,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 74,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 124,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 99,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 74,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 120,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 95,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 70,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 120,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 95,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 70,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 120,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 95,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 70,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 100,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 92,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 125,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 67,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 100,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 92,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 125,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 67,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 100,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 92,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 125,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 67,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.7,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 119,
+        "Uncertain Result": 100,
+        "Model Disagreement": 118,
+        "Acceptable Match": 60,
+        "Strong Match": 53
+      }
+    },
+    {
+      "confidence.min_confidence": 0.7,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 119,
+        "Uncertain Result": 100,
+        "Model Disagreement": 118,
+        "Acceptable Match": 60,
+        "Strong Match": 53
+      }
+    },
+    {
+      "confidence.min_confidence": 0.7,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2444,
+      "accepted_precision": 0.9909,
+      "accepted_critical": 82,
+      "accepted_critical_precision": 0.9878,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 119,
+        "Uncertain Result": 100,
+        "Model Disagreement": 118,
+        "Acceptable Match": 60,
+        "Strong Match": 53
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2156,
+      "accepted_precision": 0.9897,
+      "accepted_critical": 69,
+      "accepted_critical_precision": 0.9855,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 49,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2156,
+      "accepted_precision": 0.9897,
+      "accepted_critical": 69,
+      "accepted_critical_precision": 0.9855,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 49,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2156,
+      "accepted_precision": 0.9897,
+      "accepted_critical": 69,
+      "accepted_critical_precision": 0.9855,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 49,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2156,
+      "accepted_precision": 0.9897,
+      "accepted_critical": 69,
+      "accepted_critical_precision": 0.9855,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 45,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2156,
+      "accepted_precision": 0.9897,
+      "accepted_critical": 69,
+      "accepted_critical_precision": 0.9855,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 45,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2156,
+      "accepted_precision": 0.9897,
+      "accepted_critical": 69,
+      "accepted_critical_precision": 0.9855,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 45,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2156,
+      "accepted_precision": 0.9897,
+      "accepted_critical": 69,
+      "accepted_critical_precision": 0.9855,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 150,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 42,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2156,
+      "accepted_precision": 0.9897,
+      "accepted_critical": 69,
+      "accepted_critical_precision": 0.9855,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 150,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 42,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2156,
+      "accepted_precision": 0.9897,
+      "accepted_critical": 69,
+      "accepted_critical_precision": 0.9855,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 150,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 42,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.7,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2156,
+      "accepted_precision": 0.9897,
+      "accepted_critical": 69,
+      "accepted_critical_precision": 0.9855,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 144,
+        "Uncertain Result": 100,
+        "Model Disagreement": 118,
+        "Acceptable Match": 35,
+        "Strong Match": 53
+      }
+    },
+    {
+      "confidence.min_confidence": 0.7,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2156,
+      "accepted_precision": 0.9897,
+      "accepted_critical": 69,
+      "accepted_critical_precision": 0.9855,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 144,
+        "Uncertain Result": 100,
+        "Model Disagreement": 118,
+        "Acceptable Match": 35,
+        "Strong Match": 53
+      }
+    },
+    {
+      "confidence.min_confidence": 0.7,
+      "confidence.low_confidence_band": 0.7,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.2156,
+      "accepted_precision": 0.9897,
+      "accepted_critical": 69,
+      "accepted_critical_precision": 0.9855,
+      "accepted_wrong": 1,
+      "status_counts": {
+        "Weak Match": 144,
+        "Uncertain Result": 100,
+        "Model Disagreement": 118,
+        "Acceptable Match": 35,
+        "Strong Match": 53
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 124,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 99,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 74,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 124,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 99,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 74,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 124,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 99,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 74,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 120,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 95,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 70,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 120,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 95,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 70,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.5,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 78,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 120,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 103,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 95,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 128,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 70,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 100,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 92,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 125,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 67,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 100,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 92,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 125,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 67,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.6,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 100,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 92,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 125,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 67,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.7,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 119,
+        "Uncertain Result": 100,
+        "Model Disagreement": 118,
+        "Acceptable Match": 60,
+        "Strong Match": 53
+      }
+    },
+    {
+      "confidence.min_confidence": 0.7,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 119,
+        "Uncertain Result": 100,
+        "Model Disagreement": 118,
+        "Acceptable Match": 60,
+        "Strong Match": 53
+      }
+    },
+    {
+      "confidence.min_confidence": 0.7,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.7,
+      "accepted_share": 0.2111,
+      "accepted_precision": 1.0,
+      "accepted_critical": 74,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 119,
+        "Uncertain Result": 100,
+        "Model Disagreement": 118,
+        "Acceptable Match": 60,
+        "Strong Match": 53
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.1933,
+      "accepted_precision": 1.0,
+      "accepted_critical": 66,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 49,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.1933,
+      "accepted_precision": 1.0,
+      "accepted_critical": 66,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 49,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.4,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.1933,
+      "accepted_precision": 1.0,
+      "accepted_critical": 66,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 184,
+        "Strong Match": 60,
+        "Acceptable Match": 49,
+        "Uncertain Result": 4
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.1933,
+      "accepted_precision": 1.0,
+      "accepted_critical": 66,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 45,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.1933,
+      "accepted_precision": 1.0,
+      "accepted_critical": 66,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 45,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.5,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.1933,
+      "accepted_precision": 1.0,
+      "accepted_critical": 66,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 153,
+        "Model Disagreement": 168,
+        "Uncertain Result": 26,
+        "Acceptable Match": 45,
+        "Strong Match": 58
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.1933,
+      "accepted_precision": 1.0,
+      "accepted_critical": 66,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 150,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 42,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.1933,
+      "accepted_precision": 1.0,
+      "accepted_critical": 66,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 150,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 42,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.6,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.1933,
+      "accepted_precision": 1.0,
+      "accepted_critical": 66,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 150,
+        "Uncertain Result": 59,
+        "Model Disagreement": 143,
+        "Acceptable Match": 42,
+        "Strong Match": 56
+      }
+    },
+    {
+      "confidence.min_confidence": 0.7,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.1,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.1933,
+      "accepted_precision": 1.0,
+      "accepted_critical": 66,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 144,
+        "Uncertain Result": 100,
+        "Model Disagreement": 118,
+        "Acceptable Match": 35,
+        "Strong Match": 53
+      }
+    },
+    {
+      "confidence.min_confidence": 0.7,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.15,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.1933,
+      "accepted_precision": 1.0,
+      "accepted_critical": 66,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 144,
+        "Uncertain Result": 100,
+        "Model Disagreement": 118,
+        "Acceptable Match": 35,
+        "Strong Match": 53
+      }
+    },
+    {
+      "confidence.min_confidence": 0.7,
+      "confidence.low_confidence_band": 0.75,
+      "confidence.top_two_margin_min": 0.2,
+      "consistency.confident_agreement_min": 0.8,
+      "accepted_share": 0.1933,
+      "accepted_precision": 1.0,
+      "accepted_critical": 66,
+      "accepted_critical_precision": 1.0,
+      "accepted_wrong": 0,
+      "status_counts": {
+        "Weak Match": 144,
+        "Uncertain Result": 100,
+        "Model Disagreement": 118,
+        "Acceptable Match": 35,
+        "Strong Match": 53
+      }
     }
   ]
 }

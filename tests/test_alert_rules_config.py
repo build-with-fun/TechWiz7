@@ -142,7 +142,7 @@ def test_repeat_detection_defaults_inherit_the_thresholds_file(store: ConfigStor
     thresholds = store.thresholds()
     expected_deviations = {
         # class -> fields it overrides
-        "Gunshot": {"min_confidence", "min_top_two_margin"},   # FR xlvi
+        "Gunshot": {"min_confidence"},                         # FR xlvi
         "Glass Breaking": {"min_top_two_margin"},              # FR xlii
     }
     inheritable = ("min_confidence", "min_top_two_margin",
@@ -176,7 +176,8 @@ def test_repeat_detection_defaults_inherit_the_thresholds_file(store: ConfigStor
 
 def test_editing_the_shared_threshold_file_moves_every_inheriting_rule(sandbox: ConfigStore):
     """One edit to thresholds.json changes every rule that inherits it."""
-    assert sandbox.rule_for_class("Glass Breaking")["min_confidence"] == 0.60
+    shared = sandbox.thresholds()["confidence"]["min_confidence"]
+    assert sandbox.rule_for_class("Glass Breaking")["min_confidence"] == shared
 
     path = sandbox.config_dir / "thresholds.json"
     doc = json.loads(path.read_text())
@@ -231,7 +232,7 @@ def test_retention_never_truncates_a_critical_event(store: ConfigStore):
 
 def test_changing_min_confidence_on_disk_changes_what_the_loader_returns(sandbox: ConfigStore):
     before = sandbox.thresholds()["confidence"]["min_confidence"]
-    assert before == 0.60
+    assert before != 0.93
 
     path = sandbox.config_dir / "thresholds.json"
     doc = json.loads(path.read_text())

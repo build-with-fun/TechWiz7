@@ -11,6 +11,6 @@
   ],
   "frontend_kind": "browser_fft",
   "frontend_id": "browser-fft-2048-43x232-zscore-v1",
-  "source": "Teachable Machine audio export 2026-09-26 (1,400 training windows, 140 per class, sources balanced); input shape from model.json; window aggregation chosen on the validation split",
+  "source": "Teachable Machine audio export 2026-09-27 (1,400 training windows, 140 per class, sources balanced; 200 epochs, chosen on validation over 50 and 100); input shape from model.json; window aggregation chosen on the validation split",
   "window_aggregation": "energy_weighted"
 }

@@ -1,0 +1,317 @@
+{
+  "backbone": "clap",
+  "variant": "current",
+  "augmented": false,
+  "n_train": 2100,
+  "n_val": 450,
+  "criterion": "0.5*val_macro_f1 + 0.5*val_critical_recall; ties (0.005) -> faster",
+  "selected": {
+    "family": "svm_rbf",
+    "params": {
+      "C": 3.0
+    },
+    "val_accuracy": 0.9088888888888889,
+    "val_macro_f1": 0.908939016966605,
+    "val_critical_recall": 0.9199999999999999,
+    "val_critical_recall_by_class": {
+      "Glass Breaking": 0.9555555555555556,
+      "Gunshot": 0.9555555555555556,
+      "Panic Scream": 0.8666666666666667,
+      "Aggression": 0.8222222222222222,
+      "Person Asking for Help": 1.0
+    },
+    "val_min_critical_recall": 0.8222222222222222,
+    "selection_score": 0.9144695084833024,
+    "fit_seconds": 4.56,
+    "predict_ms_per_clip": 0.936
+  },
+  "best_by_family": {
+    "svm_rbf": {
+      "family": "svm_rbf",
+      "params": {
+        "C": 3.0
+      },
+      "val_accuracy": 0.9088888888888889,
+      "val_macro_f1": 0.908939016966605,
+      "val_critical_recall": 0.9199999999999999,
+      "val_critical_recall_by_class": {
+        "Glass Breaking": 0.9555555555555556,
+        "Gunshot": 0.9555555555555556,
+        "Panic Scream": 0.8666666666666667,
+        "Aggression": 0.8222222222222222,
+        "Person Asking for Help": 1.0
+      },
+      "val_min_critical_recall": 0.8222222222222222,
+      "selection_score": 0.9144695084833024,
+      "fit_seconds": 4.56,
+      "predict_ms_per_clip": 0.936
+    },
+    "logreg": {
+      "family": "logreg",
+      "params": {
+        "C": 0.01
+      },
+      "val_accuracy": 0.9044444444444445,
+      "val_macro_f1": 0.9042796767719882,
+      "val_critical_recall": 0.9111111111111111,
+      "val_critical_recall_by_class": {
+        "Glass Breaking": 0.9555555555555556,
+        "Gunshot": 0.9555555555555556,
+        "Panic Scream": 0.8666666666666667,
+        "Aggression": 0.7777777777777778,
+        "Person Asking for Help": 1.0
+      },
+      "val_min_critical_recall": 0.7777777777777778,
+      "selection_score": 0.9076953939415496,
+      "fit_seconds": 16.09,
+      "predict_ms_per_clip": 0.063
+    },
+    "mlp": {
+      "family": "mlp",
+      "params": {
+        "hidden": 512,
+        "alpha": 0.001
+      },
+      "val_accuracy": 0.8866666666666667,
+      "val_macro_f1": 0.8862126797186514,
+      "val_critical_recall": 0.8977777777777778,
+      "val_critical_recall_by_class": {
+        "Glass Breaking": 0.9333333333333333,
+        "Gunshot": 0.9555555555555556,
+        "Panic Scream": 0.8444444444444444,
+        "Aggression": 0.7555555555555555,
+        "Person Asking for Help": 1.0
+      },
+      "val_min_critical_recall": 0.7555555555555555,
+      "selection_score": 0.8919952287482146,
+      "fit_seconds": 2.74,
+      "predict_ms_per_clip": 0.021
+    }
+  },
+  "all": [
+    {
+      "family": "svm_rbf",
+      "params": {
+        "C": 3.0
+      },
+      "val_accuracy": 0.9088888888888889,
+      "val_macro_f1": 0.908939016966605,
+      "val_critical_recall": 0.9199999999999999,
+      "val_critical_recall_by_class": {
+        "Glass Breaking": 0.9555555555555556,
+        "Gunshot": 0.9555555555555556,
+        "Panic Scream": 0.8666666666666667,
+        "Aggression": 0.8222222222222222,
+        "Person Asking for Help": 1.0
+      },
+      "val_min_critical_recall": 0.8222222222222222,
+      "selection_score": 0.9144695084833024,
+      "fit_seconds": 4.56,
+      "predict_ms_per_clip": 0.936
+    },
+    {
+      "family": "svm_rbf",
+      "params": {
+        "C": 1.0
+      },
+      "val_accuracy": 0.9066666666666666,
+      "val_macro_f1": 0.9063723155885566,
+      "val_critical_recall": 0.9199999999999999,
+      "val_critical_recall_by_class": {
+        "Glass Breaking": 0.9555555555555556,
+        "Gunshot": 0.9555555555555556,
+        "Panic Scream": 0.9111111111111111,
+        "Aggression": 0.7777777777777778,
+        "Person Asking for Help": 1.0
+      },
+      "val_min_critical_recall": 0.7777777777777778,
+      "selection_score": 0.9131861577942783,
+      "fit_seconds": 4.52,
+      "predict_ms_per_clip": 1.074
+    },
+    {
+      "family": "logreg",
+      "params": {
+        "C": 0.01
+      },
+      "val_accuracy": 0.9044444444444445,
+      "val_macro_f1": 0.9042796767719882,
+      "val_critical_recall": 0.9111111111111111,
+      "val_critical_recall_by_class": {
+        "Glass Breaking": 0.9555555555555556,
+        "Gunshot": 0.9555555555555556,
+        "Panic Scream": 0.8666666666666667,
+        "Aggression": 0.7777777777777778,
+        "Person Asking for Help": 1.0
+      },
+      "val_min_critical_recall": 0.7777777777777778,
+      "selection_score": 0.9076953939415496,
+      "fit_seconds": 16.09,
+      "predict_ms_per_clip": 0.063
+    },
+    {
+      "family": "svm_rbf",
+      "params": {
+        "C": 10.0
+      },
+      "val_accuracy": 0.9088888888888889,
+      "val_macro_f1": 0.9090065849628491,
+      "val_critical_recall": 0.9155555555555555,
+      "val_critical_recall_by_class": {
+        "Glass Breaking": 0.9555555555555556,
+        "Gunshot": 0.9333333333333333,
+        "Panic Scream": 0.8666666666666667,
+        "Aggression": 0.8222222222222222,
+        "Person Asking for Help": 1.0
+      },
+      "val_min_critical_recall": 0.8222222222222222,
+      "selection_score": 0.9122810702592024,
+      "fit_seconds": 4.75,
+      "predict_ms_per_clip": 1.092
+    },
+    {
+      "family": "logreg",
+      "params": {
+        "C": 0.1
+      },
+      "val_accuracy": 0.9022222222222223,
+      "val_macro_f1": 0.902047928050494,
+      "val_critical_recall": 0.9066666666666666,
+      "val_critical_recall_by_class": {
+        "Glass Breaking": 0.9555555555555556,
+        "Gunshot": 0.9555555555555556,
+        "Panic Scream": 0.8444444444444444,
+        "Aggression": 0.7777777777777778,
+        "Person Asking for Help": 1.0
+      },
+      "val_min_critical_recall": 0.7777777777777778,
+      "selection_score": 0.9043572973585803,
+      "fit_seconds": 14.36,
+      "predict_ms_per_clip": 0.037
+    },
+    {
+      "family": "logreg",
+      "params": {
+        "C": 0.3
+      },
+      "val_accuracy": 0.9,
+      "val_macro_f1": 0.8998768406059143,
+      "val_critical_recall": 0.9066666666666666,
+      "val_critical_recall_by_class": {
+        "Glass Breaking": 0.9555555555555556,
+        "Gunshot": 0.9555555555555556,
+        "Panic Scream": 0.8444444444444444,
+        "Aggression": 0.7777777777777778,
+        "Person Asking for Help": 1.0
+      },
+      "val_min_critical_recall": 0.7777777777777778,
+      "selection_score": 0.9032717536362904,
+      "fit_seconds": 8.48,
+      "predict_ms_per_clip": 0.081
+    },
+    {
+      "family": "logreg",
+      "params": {
+        "C": 1.0
+      },
+      "val_accuracy": 0.8977777777777778,
+      "val_macro_f1": 0.8976549220198464,
+      "val_critical_recall": 0.9066666666666666,
+      "val_critical_recall_by_class": {
+        "Glass Breaking": 0.9333333333333333,
+        "Gunshot": 0.9555555555555556,
+        "Panic Scream": 0.8666666666666667,
+        "Aggression": 0.7777777777777778,
+        "Person Asking for Help": 1.0
+      },
+      "val_min_critical_recall": 0.7777777777777778,
+      "selection_score": 0.9021607943432566,
+      "fit_seconds": 6.4,
+      "predict_ms_per_clip": 0.027
+    },
+    {
+      "family": "logreg",
+      "params": {
+        "C": 0.03
+      },
+      "val_accuracy": 0.9022222222222223,
+      "val_macro_f1": 0.9021138700784114,
+      "val_critical_recall": 0.9022222222222223,
+      "val_critical_recall_by_class": {
+        "Glass Breaking": 0.9555555555555556,
+        "Gunshot": 0.9555555555555556,
+        "Panic Scream": 0.8222222222222222,
+        "Aggression": 0.7777777777777778,
+        "Person Asking for Help": 1.0
+      },
+      "val_min_critical_recall": 0.7777777777777778,
+      "selection_score": 0.9021680461503168,
+      "fit_seconds": 14.97,
+      "predict_ms_per_clip": 0.051
+    },
+    {
+      "family": "mlp",
+      "params": {
+        "hidden": 512,
+        "alpha": 0.001
+      },
+      "val_accuracy": 0.8866666666666667,
+      "val_macro_f1": 0.8862126797186514,
+      "val_critical_recall": 0.8977777777777778,
+      "val_critical_recall_by_class": {
+        "Glass Breaking": 0.9333333333333333,
+        "Gunshot": 0.9555555555555556,
+        "Panic Scream": 0.8444444444444444,
+        "Aggression": 0.7555555555555555,
+        "Person Asking for Help": 1.0
+      },
+      "val_min_critical_recall": 0.7555555555555555,
+      "selection_score": 0.8919952287482146,
+      "fit_seconds": 2.74,
+      "predict_ms_per_clip": 0.021
+    },
+    {
+      "family": "mlp",
+      "params": {
+        "hidden": 512,
+        "alpha": 0.01
+      },
+      "val_accuracy": 0.8866666666666667,
+      "val_macro_f1": 0.8862126797186514,
+      "val_critical_recall": 0.8977777777777778,
+      "val_critical_recall_by_class": {
+        "Glass Breaking": 0.9333333333333333,
+        "Gunshot": 0.9555555555555556,
+        "Panic Scream": 0.8444444444444444,
+        "Aggression": 0.7555555555555555,
+        "Person Asking for Help": 1.0
+      },
+      "val_min_critical_recall": 0.7555555555555555,
+      "selection_score": 0.8919952287482146,
+      "fit_seconds": 2.23,
+      "predict_ms_per_clip": 0.021
+    },
+    {
+      "family": "mlp",
+      "params": {
+        "hidden": 512,
+        "alpha": 0.1
+      },
+      "val_accuracy": 0.8866666666666667,
+      "val_macro_f1": 0.8862126797186514,
+      "val_critical_recall": 0.8977777777777778,
+      "val_critical_recall_by_class": {
+        "Glass Breaking": 0.9333333333333333,
+        "Gunshot": 0.9555555555555556,
+        "Panic Scream": 0.8444444444444444,
+        "Aggression": 0.7555555555555555,
+        "Person Asking for Help": 1.0
+      },
+      "val_min_critical_recall": 0.7555555555555555,
+      "selection_score": 0.8919952287482146,
+      "fit_seconds": 2.48,
+      "predict_ms_per_clip": 0.021
+    }
+  ],
+  "decided_at": "2026-09-28T10:27:14.343424+00:00"
+}

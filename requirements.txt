@@ -22,11 +22,11 @@ scikit-learn==1.9.1
 xgboost==3.4.1
 joblib==1.6.0
 
-# --- transfer-learning model (AST embeddings; CNN14 for the earlier candidates) ---
-# The served Python model runs the Audio Spectrogram Transformer through Hugging Face
-# transformers on PyTorch. On Linux install the CPU wheel to avoid a 2 GB CUDA download:
+# --- transfer-learning model (ensemble of AST, CLAP and CNN14 embeddings) ---
+# The served Python model runs AST and CLAP through Hugging Face transformers and CNN14
+# directly, all on PyTorch. On Linux install the CPU wheel to avoid a 2 GB CUDA download:
 #   pip install torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu
-# The AST weights (~350 MB) are fetched once with `python tools/fetch_pretrained.py --ast`.
+# The weights (~1.5 GB in total) are fetched once with `python tools/fetch_pretrained.py --all`.
 torch==2.14.0
 transformers==5.17.0
 huggingface_hub==1.33.0

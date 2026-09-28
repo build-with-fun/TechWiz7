@@ -1,134 +1,246 @@
 {
   "variant": "current",
-  "augmented": false,
   "members": {
     "ast": {
       "family": "logreg",
-      "params": {
-        "C": 0.01
-      },
-      "val": {
-        "val_accuracy": 0.8733333333333333,
-        "val_macro_f1": 0.8723677855385782,
-        "val_critical_recall": 0.8977777777777778
-      }
+      "C": 0.003,
+      "cv": [
+        {
+          "C": 0.003,
+          "cv_accuracy": 0.810952380952381,
+          "cv_macro_f1": 0.8082956400904544,
+          "cv_critical_recall": 0.8142857142857143,
+          "cv_score": 0.8112906771880843
+        },
+        {
+          "C": 0.01,
+          "cv_accuracy": 0.8071428571428572,
+          "cv_macro_f1": 0.8045223562641206,
+          "cv_critical_recall": 0.8114285714285714,
+          "cv_score": 0.807975463846346
+        },
+        {
+          "C": 0.03,
+          "cv_accuracy": 0.8042857142857143,
+          "cv_macro_f1": 0.8020089085858937,
+          "cv_critical_recall": 0.8085714285714285,
+          "cv_score": 0.8052901685786611
+        },
+        {
+          "C": 0.1,
+          "cv_accuracy": 0.7995238095238095,
+          "cv_macro_f1": 0.7973189388286543,
+          "cv_critical_recall": 0.8047619047619048,
+          "cv_score": 0.8010404217952796
+        }
+      ]
+    },
+    "clap": {
+      "family": "logreg",
+      "C": 0.01,
+      "cv": [
+        {
+          "C": 0.003,
+          "cv_accuracy": 0.8371428571428572,
+          "cv_macro_f1": 0.8326389768830375,
+          "cv_critical_recall": 0.8209523809523809,
+          "cv_score": 0.8267956789177091
+        },
+        {
+          "C": 0.01,
+          "cv_accuracy": 0.8395238095238096,
+          "cv_macro_f1": 0.8360926019251123,
+          "cv_critical_recall": 0.8276190476190475,
+          "cv_score": 0.8318558247720799
+        },
+        {
+          "C": 0.03,
+          "cv_accuracy": 0.8338095238095238,
+          "cv_macro_f1": 0.8307497595197033,
+          "cv_critical_recall": 0.8266666666666665,
+          "cv_score": 0.8287082130931849
+        },
+        {
+          "C": 0.1,
+          "cv_accuracy": 0.8252380952380952,
+          "cv_macro_f1": 0.8229945906487522,
+          "cv_critical_recall": 0.82,
+          "cv_score": 0.8214972953243761
+        }
+      ]
     },
     "cnn14": {
-      "family": "mlp",
-      "params": {
-        "hidden": 512,
-        "alpha": 0.1
-      },
-      "val": {
-        "val_accuracy": 0.84,
-        "val_macro_f1": 0.83970973623353,
-        "val_critical_recall": 0.8533333333333333
-      }
+      "family": "logreg",
+      "C": 0.003,
+      "cv": [
+        {
+          "C": 0.003,
+          "cv_accuracy": 0.7719047619047619,
+          "cv_macro_f1": 0.7667222021108959,
+          "cv_critical_recall": 0.7838095238095237,
+          "cv_score": 0.7752658629602098
+        },
+        {
+          "C": 0.01,
+          "cv_accuracy": 0.7661904761904762,
+          "cv_macro_f1": 0.7619908275267239,
+          "cv_critical_recall": 0.7838095238095238,
+          "cv_score": 0.7729001756681239
+        },
+        {
+          "C": 0.03,
+          "cv_accuracy": 0.7595238095238095,
+          "cv_macro_f1": 0.7557624441199121,
+          "cv_critical_recall": 0.7809523809523811,
+          "cv_score": 0.7683574125361465
+        },
+        {
+          "C": 0.1,
+          "cv_accuracy": 0.7495238095238095,
+          "cv_macro_f1": 0.7459963857058339,
+          "cv_critical_recall": 0.7733333333333333,
+          "cv_score": 0.7596648595195836
+        }
+      ]
     }
   },
-  "criterion": "0.5*val_macro_f1 + 0.5*val_critical_recall",
-  "chosen_w_ast": 1.0,
-  "chosen_val": {
-    "w_ast": 1.0,
-    "val_accuracy": 0.8733333333333333,
-    "val_macro_f1": 0.8723677855385782,
-    "val_critical_recall": 0.8977777777777778,
-    "selection_score": 0.885072781658178
+  "criterion": "member C: grouped 5-fold CV on train; member set: 0.5*val_macro_f1 + 0.5*val_critical_recall, equal weights, ties (0.005) -> fewer members",
+  "selected": {
+    "members": [
+      "ast",
+      "clap",
+      "cnn14"
+    ],
+    "val_accuracy": 0.9111111111111111,
+    "val_macro_f1": 0.9103818362485946,
+    "val_critical_recall": 0.9155555555555555,
+    "val_critical_recall_by_class": {
+      "Glass Breaking": 0.9333333333333333,
+      "Gunshot": 0.9555555555555556,
+      "Panic Scream": 0.9111111111111111,
+      "Aggression": 0.7777777777777778,
+      "Person Asking for Help": 1.0
+    },
+    "selection_score": 0.9129686959020751
   },
-  "all_weights": [
+  "all": [
     {
-      "w_ast": 1.0,
-      "val_accuracy": 0.8733333333333333,
-      "val_macro_f1": 0.8723677855385782,
-      "val_critical_recall": 0.8977777777777778,
-      "selection_score": 0.885072781658178
+      "members": [
+        "ast",
+        "clap",
+        "cnn14"
+      ],
+      "val_accuracy": 0.9111111111111111,
+      "val_macro_f1": 0.9103818362485946,
+      "val_critical_recall": 0.9155555555555555,
+      "val_critical_recall_by_class": {
+        "Glass Breaking": 0.9333333333333333,
+        "Gunshot": 0.9555555555555556,
+        "Panic Scream": 0.9111111111111111,
+        "Aggression": 0.7777777777777778,
+        "Person Asking for Help": 1.0
+      },
+      "selection_score": 0.9129686959020751
     },
     {
-      "w_ast": 1.0,
-      "val_accuracy": 0.8733333333333333,
-      "val_macro_f1": 0.8723677855385782,
-      "val_critical_recall": 0.8977777777777778,
-      "selection_score": 0.885072781658178,
-      "member": "ast_solo"
+      "members": [
+        "clap"
+      ],
+      "val_accuracy": 0.9044444444444445,
+      "val_macro_f1": 0.9042796767719882,
+      "val_critical_recall": 0.9111111111111111,
+      "val_critical_recall_by_class": {
+        "Glass Breaking": 0.9555555555555556,
+        "Gunshot": 0.9555555555555556,
+        "Panic Scream": 0.8666666666666667,
+        "Aggression": 0.7777777777777778,
+        "Person Asking for Help": 1.0
+      },
+      "selection_score": 0.9076953939415496
     },
     {
-      "w_ast": 0.8,
-      "val_accuracy": 0.8733333333333333,
-      "val_macro_f1": 0.8721668712562781,
-      "val_critical_recall": 0.8977777777777778,
-      "selection_score": 0.884972324517028
+      "members": [
+        "ast",
+        "clap"
+      ],
+      "val_accuracy": 0.9022222222222223,
+      "val_macro_f1": 0.9018060634220856,
+      "val_critical_recall": 0.9155555555555555,
+      "val_critical_recall_by_class": {
+        "Glass Breaking": 0.9333333333333333,
+        "Gunshot": 0.9777777777777777,
+        "Panic Scream": 0.8666666666666667,
+        "Aggression": 0.8,
+        "Person Asking for Help": 1.0
+      },
+      "selection_score": 0.9086808094888206
     },
     {
-      "w_ast": 0.7,
-      "val_accuracy": 0.8733333333333333,
-      "val_macro_f1": 0.8723731892556726,
-      "val_critical_recall": 0.8933333333333333,
-      "selection_score": 0.882853261294503
+      "members": [
+        "clap",
+        "cnn14"
+      ],
+      "val_accuracy": 0.9066666666666666,
+      "val_macro_f1": 0.9056071449805202,
+      "val_critical_recall": 0.9111111111111111,
+      "val_critical_recall_by_class": {
+        "Glass Breaking": 0.9555555555555556,
+        "Gunshot": 1.0,
+        "Panic Scream": 0.8666666666666667,
+        "Aggression": 0.7333333333333333,
+        "Person Asking for Help": 1.0
+      },
+      "selection_score": 0.9083591280458156
     },
     {
-      "w_ast": 0.9,
-      "val_accuracy": 0.8733333333333333,
-      "val_macro_f1": 0.8721487677853679,
-      "val_critical_recall": 0.8933333333333333,
-      "selection_score": 0.8827410505593506
+      "members": [
+        "ast",
+        "cnn14"
+      ],
+      "val_accuracy": 0.8822222222222222,
+      "val_macro_f1": 0.880298326265525,
+      "val_critical_recall": 0.8800000000000001,
+      "val_critical_recall_by_class": {
+        "Glass Breaking": 0.8888888888888888,
+        "Gunshot": 0.9333333333333333,
+        "Panic Scream": 0.9111111111111111,
+        "Aggression": 0.6666666666666666,
+        "Person Asking for Help": 1.0
+      },
+      "selection_score": 0.8801491631327625
     },
     {
-      "w_ast": 0.6,
-      "val_accuracy": 0.8733333333333333,
-      "val_macro_f1": 0.8724380171517503,
-      "val_critical_recall": 0.888888888888889,
-      "selection_score": 0.8806634530203197
+      "members": [
+        "ast"
+      ],
+      "val_accuracy": 0.8666666666666667,
+      "val_macro_f1": 0.8659194617861191,
+      "val_critical_recall": 0.8844444444444445,
+      "val_critical_recall_by_class": {
+        "Glass Breaking": 0.8888888888888888,
+        "Gunshot": 0.9333333333333333,
+        "Panic Scream": 0.8888888888888888,
+        "Aggression": 0.7111111111111111,
+        "Person Asking for Help": 1.0
+      },
+      "selection_score": 0.8751819531152818
     },
     {
-      "w_ast": 0.5,
-      "val_accuracy": 0.8755555555555555,
-      "val_macro_f1": 0.8743581964142029,
-      "val_critical_recall": 0.8755555555555556,
-      "selection_score": 0.8749568759848793
-    },
-    {
-      "w_ast": 0.4,
-      "val_accuracy": 0.8577777777777778,
-      "val_macro_f1": 0.8567894303439296,
-      "val_critical_recall": 0.8622222222222222,
-      "selection_score": 0.8595058262830759
-    },
-    {
-      "w_ast": 0.3,
-      "val_accuracy": 0.8511111111111112,
-      "val_macro_f1": 0.8503514354401067,
-      "val_critical_recall": 0.8577777777777778,
-      "selection_score": 0.8540646066089422
-    },
-    {
-      "w_ast": 0.2,
-      "val_accuracy": 0.8422222222222222,
-      "val_macro_f1": 0.8415755818242596,
-      "val_critical_recall": 0.8533333333333333,
-      "selection_score": 0.8474544575787964
-    },
-    {
-      "w_ast": 0.0,
-      "val_accuracy": 0.84,
-      "val_macro_f1": 0.83970973623353,
-      "val_critical_recall": 0.8533333333333333,
-      "selection_score": 0.8465215347834316
-    },
-    {
-      "w_ast": 0.0,
-      "val_accuracy": 0.84,
-      "val_macro_f1": 0.83970973623353,
-      "val_critical_recall": 0.8533333333333333,
-      "selection_score": 0.8465215347834316,
-      "member": "cnn14_solo"
-    },
-    {
-      "w_ast": 0.1,
-      "val_accuracy": 0.84,
-      "val_macro_f1": 0.8396741319702834,
-      "val_critical_recall": 0.8533333333333333,
-      "selection_score": 0.8465037326518083
+      "members": [
+        "cnn14"
+      ],
+      "val_accuracy": 0.8444444444444444,
+      "val_macro_f1": 0.8433772881467314,
+      "val_critical_recall": 0.8355555555555554,
+      "val_critical_recall_by_class": {
+        "Glass Breaking": 0.7333333333333333,
+        "Gunshot": 0.9111111111111111,
+        "Panic Scream": 0.9111111111111111,
+        "Aggression": 0.6444444444444445,
+        "Person Asking for Help": 0.9777777777777777
+      },
+      "selection_score": 0.8394664218511434
     }
   ],
-  "decided_at": "2026-09-26T16:39:46.190150+00:00"
+  "decided_at": "2026-09-28T10:28:56.911149+00:00"
 }

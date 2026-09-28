@@ -40,12 +40,17 @@ def main() -> None:
                         help="Advanced > Epochs in TM (0 keeps TM's default of 50)")
     parser.add_argument("--tag", default="",
                         help="added to screenshot names so several runs on one day are all kept")
+    parser.add_argument("--js-stack-kb", type=int, default=0,
+                        help="Chrome's JavaScript stack in KB. TM overflows the default one "
+                             "above ~1,400 samples; 4000 handles 2,100")
+    parser.add_argument("--imports", default=str(INDEX),
+                        help="index.json written by make_gtm_imports.py (default: the served imports)")
     args = parser.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     SHOTS.mkdir(parents=True, exist_ok=True)
     stamp = time.strftime("%Y%m%d") + (f"_{args.tag}" if args.tag else "")
-    classes = json.loads(INDEX.read_text(encoding="utf-8"))
+    classes = json.loads(Path(args.imports).read_text(encoding="utf-8"))
     ordered = [next(item for item in classes if item["class"] == "Background Noise")]
     ordered += [item for item in classes if item["class"] != "Background Noise"]
     with sync_playwright() as playwright:
@@ -55,11 +60,14 @@ def main() -> None:
             # Headless Chrome uses software WebGL by default, which was far too slow.
             # ANGLE over desktop GL uses the GPU.
             args=["--no-sandbox", "--disable-dev-shm-usage", "--enable-gpu",
-                  "--use-gl=angle", "--use-angle=gl", "--ignore-gpu-blocklist"],
+                  "--use-gl=angle", "--use-angle=gl", "--ignore-gpu-blocklist"]
+                 + ([f"--js-flags=--stack-size={args.js_stack_kb}"] if args.js_stack_kb else []),
         )
         page = browser.new_page(viewport={"width": 1440, "height": 900}, accept_downloads=True)
         page.on("console", lambda message: print("browser error:", message.text[:250], flush=True)
                 if message.type == "error" else None)
+        # Errors inside TM don't reach the console; without this they look like a stall.
+        page.on("pageerror", lambda error: print("page error:", str(error)[:500], flush=True))
         page.goto("https://teachablemachine.withgoogle.com/train/audio", wait_until="domcontentloaded")
         page.wait_for_timeout(5500)
         page.mouse.click(416, 464)  # close the intro tour

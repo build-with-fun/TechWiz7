@@ -762,10 +762,22 @@ def _extractor_for_bundle(model_dir: Path) -> Any:
     version = ""
     if config_path.exists():
         version = str(_json.loads(config_path.read_text(encoding="utf-8")).get("feature_version", ""))
+    if version.startswith("ensemble:"):
+        from feature_extraction import ensemble_embeddings
+
+        try:
+            return ensemble_embeddings.EnsembleFeatureExtractor(
+                ensemble_embeddings.backbones_from_version(version))
+        except ValueError as exc:
+            raise ModelsUnavailable(f"{model_dir}: {exc}; retrain or check out the matching code") from exc
     if version.startswith("panns"):
         from feature_extraction import embeddings as backbone
 
         extractor_cls = backbone.EmbeddingFeatureExtractor
+    elif version.startswith("clap"):
+        from feature_extraction import clap_embeddings as backbone
+
+        extractor_cls = backbone.ClapFeatureExtractor
     elif version.startswith("ast"):
         from feature_extraction import ast_embeddings as backbone
 
@@ -931,7 +943,10 @@ class AnalysisPipeline:
 
             seconds = float(self.store.thresholds()["audio"].get("segment_duration_sec", 3.0))
             sr = int(self.store.thresholds()["audio"]["target_sample_rate"])
-            probe = np.zeros(int(sr * seconds), dtype=np.float32)
+            # Silence is rejected by preprocessing, so use a quiet tone to load every model.
+            t = np.arange(int(sr * seconds), dtype=np.float32) / sr
+            probe = (0.1 * np.sin(2 * np.pi * 440.0 * t)
+                     + 0.01 * np.random.default_rng(0).standard_normal(t.size)).astype(np.float32)
             t0 = time.perf_counter()
             pre = self.models.preprocessor.preprocess_samples(probe, sr)
             model_warm_ms["preprocess"] = round((time.perf_counter() - t0) * 1000.0, 3)

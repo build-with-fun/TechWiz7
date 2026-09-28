@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_macros.html" as ui %}
 {% from "auth/_panel.html" import panel with context %}
 {% block title %}Create account · {{ app_name }}{% endblock %}
 {% block page_id %}register{% endblock %}
@@ -24,7 +25,7 @@
             <div class="field"><label class="field__label" for="username">Username</label><input class="input" id="username" name="username" autocomplete="username" required minlength="3" maxlength="64" placeholder="3 or more characters"></div>
           </div>
           <div class="field"><label class="field__label" for="email">Email</label><input class="input" id="email" name="email" type="email" autocomplete="email" required placeholder="you@example.com"></div>
-          <div class="field"><label class="field__label" for="password">Password</label><input class="input" id="password" name="password" type="password" autocomplete="new-password" required><small>At least 10 characters, with an uppercase letter, a number and a symbol.</small></div>
+          <div class="field"><label class="field__label" for="password">Password</label><div class="input-reveal"><input class="input" id="password" name="password" type="password" autocomplete="new-password" required>{{ ui.reveal_button('password') }}</div><small>At least 10 characters, with an uppercase letter, a number and a symbol.</small></div>
           <button class="btn btn--primary auth-form__submit" type="submit">Create account</button>
         </form>
         <p class="auth-card__switch">Already have an account? <a href="{{ url_for('auth.login') }}">Sign in</a></p>

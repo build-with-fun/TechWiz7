@@ -33,16 +33,17 @@ empty and error states, and alerts and reviews are only written for real decisio
 
 **How is this different from a generic sound classifier?** It keeps both models' scores,
 the comparison, the source audio, configurable alert rules, human decisions and an audit
-trail. The Python model reaches 0.891 test accuracy and 0.892 macro-F1, but Aggression
-(0.84) and Panic Scream (0.82) are below the 85% per-class recall target, and the Teachable
-Machine model is well below target (0.511 accuracy). So the strength is the transparent
+trail. The Python model reaches 0.933 test accuracy and 0.933 macro-F1, with every
+critical class at 85% recall or more, but the Teachable Machine model is well below target
+(0.573 accuracy). So the strength is the transparent
 workflow, not a claim of better detection.
 
 **What trade-offs did you make?** SQLite and a single Flask process are simple to inspect
 and demo. `tools/benchmark_scale.py` showed 20,000 events and 10 users at once staying under
 1 s at the 95th percentile (`reports/scale.json`), but 99% uptime has not been measured over
-a real evaluation period. The TM model was trained in the browser on 1,400 one-second
-windows for 200 epochs; larger sample sets stalled inside Teachable Machine. Browser/server
+a real evaluation period. The TM model was trained in the browser on 2,100 one-second
+windows (one per training recording) for 200 epochs; above 1,400 samples TM needs Chrome
+started with a larger JavaScript stack, or it overflows while preparing the data. Browser/server
 spectrogram parity for TM is still unverified. None of this is ready for unsupervised
 safety use.
 

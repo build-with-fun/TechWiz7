@@ -25,7 +25,7 @@ test with their own audio anyway.
 | Case needed | Filter | Clip to use |
 |---|---|---|
 | Model disagreement | `class_match == mismatch` | |
-| Low-confidence result | `python_confidence < 0.6` | |
+| Low-confidence result | `python_confidence < 0.4` (the floor in `config/thresholds.json`), or `consistency_status == Uncertain Result` | |
 | Overlapping sound | `overlap_flag == yes`, or mix two sample clips with `augmentation.transforms.overlay` | |
 | Noisy case | `tools/robustness_probe.py` writes nothing to disk, so mix a clip with noise: `add_noise(y, 16000, rng, snr_db=5)` and save it | |
 | High-severity / critical alert | a Gunshot or Glass clip both models agree on, uploaded 3 times in the live window, or played live 3 windows running | |

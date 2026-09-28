@@ -35,7 +35,7 @@ Two classes override on purpose, and a test checks the list:
 
 | Class | Deviates | Why |
 |---|---|---|
-| `Gunshot` | `min_confidence` 0.75, `min_top_two_margin` 0.20 | FR xlvi: a critical alert must satisfy configured confirmation *and* confidence rules. |
+| `Gunshot` | `min_confidence` 0.75 | FR xlvi: a critical alert must satisfy configured confirmation *and* confidence rules. |
 | `Glass Breaking` | `min_top_two_margin` 0.10 | FR xlii: a high-severity security alert shouldn't be blocked by a near-tie between two similar classes. |
 
 The list is in `test_alert_rules_config.py::test_repeat_detection_defaults_inherit_the_thresholds_file`.

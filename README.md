@@ -37,29 +37,26 @@ tuned on. The split keeps every source recording in one partition (see
 
 | Model | Accuracy | Macro F1 | Critical-class recall (mean) | Evidence |
 |---|---:|---:|---:|---|
-| Python: AST embeddings + logistic regression (served) | **0.891** | **0.892** | **0.907** | `python_models/metrics/transfer_test_ast_current.json` |
-| Python: CNN14 embeddings + MLP (previous) | 0.840 | 0.840 | 0.862 | `python_models/metrics/transfer_test_current.json` |
+| Python: ensemble of AST + CLAP + CNN14 embeddings, logistic regression each (served) | **0.933** | **0.933** | **0.942** | `python_models/metrics/ensemble_test_ensemble_current.json` |
+| Python: AST embeddings + logistic regression (served until 28 Sep) | 0.891 | 0.892 | 0.907 | `python_models/metrics/transfer_test_ast_current.json` |
+| Python: CNN14 embeddings + MLP (earlier) | 0.840 | 0.840 | 0.862 | `python_models/metrics/transfer_test_current.json` |
 | Python baseline: HistGradientBoosting, 254 hand-made features | 0.731 | 0.730 | 0.822 | `python_models/metrics/classical_metrics_hgb_split_v2.json` |
-| Teachable Machine audio model (served, 200 epochs) | 0.511 | 0.492 | 0.600 | `gtm_model/gtm_metrics.json` |
+| Teachable Machine audio model (served: all 2,100 training recordings, 200 epochs) | 0.573 | 0.568 | 0.640 | `gtm_model/gtm_metrics.json` |
+| Teachable Machine audio model (27 Sep: 1,400 samples) | 0.511 | 0.492 | 0.600 | `gtm_model/candidates/tm_v6_140_e200/gtm_metrics.json` |
 | SRS target (both models) | 0.85 | 0.80 | 0.85 per class | |
 
-The served Python model meets the accuracy target (0.891 ≥ 0.85) and the macro-F1 target
-(0.892 ≥ 0.80). The SRS also asks for 85% recall **per critical class**. Help (1.00),
-Gunshot (0.96) and Glass (0.91) meet it, but Aggression (0.84, 38/45) and Panic Scream
-(0.82, 37/45) don't, even though the five average 0.907. Those two get confused with each
-other, but 43/45 Aggression and 41/45 Panic Scream clips are still labelled as *some*
-critical class, so the alert still fires. Retraining with augmented copies on Day 5 didn't
-help on validation ([devlog](documentation/devlog.md)). The mistakes are described in
-[MODEL_EVALUATION.md](documentation/MODEL_EVALUATION.md) and
-[ROBUSTNESS.md](reports/ROBUSTNESS.md). Keep in mind that a confidence score is only the
-model's own estimate: 10 of the 450 test predictions were wrong at 0.9 or higher.
+The Python model meets all three targets: accuracy 0.933, macro F1 0.933, and at least
+85% recall for every critical class (Gunshot 0.98, Glass 0.96, Panic Scream 0.89,
+Aggression 0.89, Help 1.00). It averages three pretrained networks (AST, CLAP, CNN14), each
+with its own logistic regression ([MODEL_EVALUATION.md](documentation/MODEL_EVALUATION.md)).
+Its confidence means something: 1 of the 215 test clips at 0.9 or higher was wrong.
 
-The Teachable Machine model is well below all three targets. Teachable Machine only trains
-one layer on top of a frozen speech-command network, and in our runs it stalled above about
-1,400 training samples. Training for 200 epochs instead of the default 50 was the last thing
-left to try (test accuracy went from 0.493 to 0.511). The app doesn't average the two models:
-if they disagree, or TM isn't confident, the clip goes to manual review. More in
-[MODEL_EVALUATION.md](documentation/MODEL_EVALUATION.md).
+The Teachable Machine model is well below all three targets. TM only trains one layer on
+top of a frozen network built for spoken words. It used to stop at about 1,400 samples;
+that turned out to be a JavaScript stack overflow inside TM, and with a bigger stack it now
+trains on all 2,100 training recordings (test accuracy 0.511 to 0.573). Offline tests put
+this network's ceiling here at about 0.55. The app never averages the two models: if they
+disagree, or either is unsure, the clip goes to manual review.
 
 ## Install (Ubuntu 22.04+ or Windows 10/11 with WSL; Python 3.12)
 
@@ -71,14 +68,16 @@ sudo apt install ffmpeg                       # Windows: winget install ffmpeg
 python3.12 -m venv .venv
 .venv/bin/pip install torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu
 .venv/bin/pip install -r requirements.txt
-.venv/bin/python tools/fetch_pretrained.py --ast   # AST weights for the served model, ~350 MB
+.venv/bin/python tools/fetch_pretrained.py --all   # CNN14, AST and CLAP weights for the served model, ~1.5 GB
 cp .env.example .env                          # then set SST_SECRET_KEY
 .venv/bin/python database/init_db.py          # SQLite schema + demo accounts + model versions
 ```
 
-The served Python model's AST weights are fetched automatically from Hugging Face on
-first analysis (model card `MIT/ast-finetuned-audioset-10-10-0.4593`, ~340 MB, cached in
-`~/.cache/huggingface`). Set `HF_HUB_OFFLINE=1` after the first run to go cache-only.
+The served Python model's AST and CLAP weights come from Hugging Face (model cards
+`MIT/ast-finetuned-audioset-10-10-0.4593`, ~340 MB, and `laion/larger_clap_general`,
+~780 MB, both at pinned revisions, cached in `~/.cache/huggingface`); CNN14 comes from
+Zenodo into `~/.cache/sonicsentinel/`. Set `HF_HUB_OFFLINE=1` after the first run to go
+cache-only.
 
 Models: the Python model is in `python_models/best/` (in Git, ~25 MB) and the TM export in
 `gtm_model/` (`model.json`, `weights.bin`, `metadata.json`, the converted `gtm_model.h5` and
@@ -155,10 +154,11 @@ from your proxy.
 - **Waveform and spectrogram**: drawn on the event page and embedded in the report.
 - **Both predictions**: each model's class, confidence and top three; the full ten-class
   scores are on the event page and in the report.
-- **Reading the comparison**: *Strong/Acceptable Match* means the same class; *Weak
-  Match* means the same class but the confidences are far apart; *Model Disagreement*
-  means different classes; *Uncertain Result* means low confidence or a near tie. Δ is
-  |Python top confidence − TM top confidence|.
+- **Reading the comparison**: *Strong/Acceptable Match*: same class, both models
+  confident (their scores needn't be equal); *Weak Match*: same class, but TM is unsure or
+  far off; *Model Disagreement*: different classes; *Uncertain Result*: the Python model is
+  unsure. Only a Strong or Acceptable Match with a clear lead and usable audio skips review.
+  Δ is |Python top confidence − TM top confidence|.
 - **Audio quality**: Good, Acceptable, Poor (analysed but sent to review), Unusable
   (refused).
 - **Live monitoring**: on the Live page, tick the consent box and allow the microphone.
@@ -208,7 +208,7 @@ The audio is not in Git (size and licences). It is shared on Google Drive:
 |---|---|
 | `originals/` | 2,625 real recordings (ESC-50, UrbanSound8K, FSD50K), one folder per class |
 | `synthetic/` | 375 generated clips: 300 Person Asking for Help (offline TTS), 50 Aggression, 25 Panic Scream |
-| `gtm_samples/` | the 1,400 one-second training windows the Teachable Machine model learned from |
+| `gtm_samples/` | the one-second training windows the Teachable Machine model learned from (2,100 since 28 Sep; `audio_dataset/scripts/make_gtm_imports.py` rebuilds them from `originals/` and `synthetic/`) |
 | `manifest.csv`, `manifest_with_split.csv`, `manifest_schema.md`, `manifests/` | per-clip metadata: audio ID, class, source, licence, original or augmented, split, sha256 |
 | `split.json`, `train_ids.txt`, `val_ids.txt`, `test_ids.txt` | the frozen split: 2,100 train, 450 validation, 450 test (300 per class overall) |
 | `DATA_DICTIONARY.md`, `DATA_ATTRIBUTION.md`, `licences/` | column definitions, sources and per-author credits |
@@ -225,9 +225,9 @@ identical to the Drive copies. Then check every file against the manifest:
 
 | Symptom | Fix |
 |---|---|
-| `/api/health/ready` is 503 | a model is missing: run `tools/fetch_pretrained.py --ast`; check `gtm_model/gtm_model.h5` exists |
+| `/api/health/ready` is 503 | a model is missing: run `tools/fetch_pretrained.py --all`; check `gtm_model/gtm_model.h5` exists |
 | MP3/M4A upload refused as unreadable | FFmpeg is not on `PATH` |
-| First analysis is slow | the AST model loads on first use; later clips are much faster |
+| First analysis is slow | the three embedding networks load and warm up at start-up (about 10 s); with `SST_WARM_MODELS=0` that happens on the first clip instead |
 | "Permission denied" on the live page | allow the microphone in the browser's site settings; use `localhost` or HTTPS |
 | Login lockout | 5 failures lock an account for 15 min (`config/auth.json`) |
 

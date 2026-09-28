@@ -29,8 +29,10 @@ browser upload / 2 s mic window
  -> POST /api/audio/upload  or  /api/live/sessions/<id>/windows      (src/api/)
  -> AudioPipeline: decode, validate, quality verdict, high-pass, denoise, trim, normalise,
     resample to 16 kHz                                                (audio_preprocessing/)
- -> Python model: AST embedding -> logistic regression -> 10 scores    (python_models/best/)
- -> TM model: loudest 1 s -> browser-style FFT 43x232 -> CNN -> 10 scores (gtm_model/)
+ -> Python model: AST, CLAP and CNN14 embeddings -> one logistic regression each
+    -> average of the three score lists -> 10 scores                  (python_models/best/)
+ -> TM model: every 1 s window -> browser-style FFT 43x232 -> CNN -> energy-weighted
+    average -> 10 scores                                              (gtm_model/)
     (each model receives only the preprocessed audio)
  -> compare: agree?, |top1 - top1|, top-two margin, overlap            (consistency.py)
  -> rules: severity, repeated-detection tracker, alert, review routing (pipeline.py)
@@ -46,14 +48,20 @@ browser upload / 2 s mic window
 | CRNN on log-mel (PyTorch) | 0.600 | 0.596 | 0.667 | Learns its own features; *old v1 split*; too little data to train from scratch |
 | CNN14 embeddings + MLP | 0.840 | 0.840 | 0.862 | Transfer learning: a network pretrained on AudioSet already separates textures such as slam vs shot |
 | CNN14 embeddings + logreg, +4,200 augmented copies | 0.838 | 0.837 | 0.849 | Whether augmentation closed the accuracy gap; it did not generalise to test |
-| **AST embeddings + logistic regression (served)** | **0.891** | **0.892** | **0.907** | A transformer over the same spectrogram, stronger than CNN14 on AudioSet; meets the accuracy and macro-F1 targets |
+| AST embeddings + logistic regression (served until 28 Sep) | 0.891 | 0.892 | 0.907 | A transformer over the same spectrogram, stronger than CNN14 on AudioSet; meets the accuracy and macro-F1 targets |
+| CLAP embeddings + logistic regression | 0.922 | 0.922 | 0.933 | Trained on audio-text pairs, so its mistakes differ from AST's |
+| **Ensemble: AST + CLAP + CNN14, logistic regression each, scores averaged (served)** | **0.933** | **0.933** | **0.942** | Three networks that make different mistakes; averaging calibrated scores cancels part of them |
 
-Sources: `python_models/metrics/transfer_test_ast_current.json`, `transfer_test_current.json`,
+Sources: `python_models/metrics/ensemble_test_ensemble_current.json`,
+`transfer_test_ast_current.json`, `transfer_test_current.json`,
 `transfer_test_current_aug.json`, `classical_metrics_hgb_split_v2.json`, `deep_metrics_deep.json`.
 
 Selection rule, fixed before looking at any test numbers: the highest
 `0.5 x validation macro-F1 + 0.5 x validation critical recall`, with ties going to the
 faster model. Going by accuracy alone could trade a missed gunshot for a correct horn.
+For the ensemble, each member's C came from cross-validation on the training recordings,
+and validation picked the members. Every member is a logistic regression because averaging
+needs well-behaved scores; with MLP members the average was no better than AST alone.
 
 ## 4. The split, and the leak we found
 
@@ -108,9 +116,12 @@ faster model. Going by accuracy alone could trade a missed gunshot for a correct
 ## 8. Numbers to remember
 
 - Dataset: 3,000 originals, 300 per class, 2,100 / 450 / 450, 2,353 source groups.
-- Python model on the test split: accuracy 0.891, macro F1 0.892, critical recall 0.907
-  (AST embeddings + logistic regression, `python_models/metrics/transfer_test_ast_current.json`).
-- Confidence ≥ 0.6: 93% correct on test; below 0.6: 43%.
+- Python model on the test split: accuracy 0.933, macro F1 0.933, critical recall 0.942
+  (ensemble of AST, CLAP and CNN14, `python_models/metrics/ensemble_test_ensemble_current.json`).
+- Confidence ≥ 0.9: 215 test clips, 1 wrong; ≥ 0.7: 98.5% correct.
 - Old model before 26 Sep: 0.698 accuracy.
-- TM model on the test split: accuracy 0.511, macro F1 0.492, critical recall 0.600
-  (`gtm_model/gtm_metrics.json`).
+- TM model on the test split: accuracy 0.573, macro F1 0.568, critical recall 0.640
+  (`gtm_model/gtm_metrics.json`; 2,100 training recordings since 28 Sep, was 0.511 on
+  1,400). The old 1,400 limit was a JavaScript stack overflow in TM (`--js-stack-kb 4000`).
+- Thresholds picked on validation (`tools/calibrate_thresholds.py`): floor 0.40, margin
+  0.20; 42.4% of validation clips accepted without review, 97.4% of those right.

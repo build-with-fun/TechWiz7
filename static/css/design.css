@@ -897,3 +897,19 @@ a.dash-stat:hover, a.kpi:hover { transform: none; translate: 0 -3px; box-shadow:
 table.data tbody tr:hover td:first-child a { text-decoration: underline; text-underline-offset: 3px; }
 .dropzone { transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease), scale .3s var(--ease); }
 .dropzone[data-drag-active="1"] { scale: 1.01; }
+
+/* Password field with a show/hide eye button */
+.input-reveal { position: relative; display: flex; }
+.input-reveal .input { flex: 1; min-width: 0; padding-right: 2.75rem; }
+.input-reveal input::-ms-reveal { display: none; }
+.input-reveal__btn {
+  position: absolute; top: 50%; right: 0.25rem; transform: translateY(-50%);
+  display: grid; place-items: center; width: 2.25rem; height: 2.25rem;
+  border: 0; border-radius: var(--r-2); background: transparent;
+  color: var(--text-subtle); cursor: pointer;
+}
+.input-reveal__btn:hover { color: var(--text); }
+.input-reveal__btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.input-reveal__hide { display: none; }
+.input-reveal__btn[aria-pressed="true"] .input-reveal__show { display: none; }
+.input-reveal__btn[aria-pressed="true"] .input-reveal__hide { display: block; }

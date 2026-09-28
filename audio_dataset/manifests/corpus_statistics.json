@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "generated": "2026-09-26",
+  "generated": "2026-09-28",
   "generated_by": "audio_dataset/scripts/regen_corpus_stats.py",
   "manifest": "audio_dataset/manifest.csv",
   "manifest_sha256": "5d8fd8d3d287316c766c536217f92de0bf75e7d4ffaa3a523cf3945e286b9b75",

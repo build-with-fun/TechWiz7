@@ -108,7 +108,12 @@ def main() -> None:
     parser.add_argument("--windows-per-clip", type=int, default=1)
     parser.add_argument("--max-per-class", type=int, default=0,
                         help="cap samples per class (0 = no cap)")
+    parser.add_argument("--out", default=str(OUTPUT),
+                        help="where to write the ZIPs and index.json")
+    parser.add_argument("--no-evidence", action="store_true",
+                        help="skip the WAV copies and gtm_segment_rows.csv (for trial runs)")
     args = parser.parse_args()
+    output = Path(args.out).resolve()
 
     with MANIFEST.open(newline="", encoding="utf-8") as fh:
         manifest = {r["audio_id"]: r for r in csv.DictReader(fh)}
@@ -127,16 +132,17 @@ def main() -> None:
         if bad:
             raise ValueError(f"{label}: non-training parents {bad[:3]}")
 
-    OUTPUT.mkdir(parents=True, exist_ok=True)
+    output.mkdir(parents=True, exist_ok=True)
     index, rows = [], []
     today = date.today().isoformat()
     for label, parents in sorted(by_class.items()):
         samples, lineage = [], []
-        target = OUTPUT / f"{SLUG[label]}.zip"
+        target = output / f"{SLUG[label]}.zip"
         wav_dir = SAMPLES / SLUG[label]
-        wav_dir.mkdir(parents=True, exist_ok=True)
-        for stale in wav_dir.glob("*.wav"):  # only this script writes here
-            stale.unlink()
+        if not args.no_evidence:
+            wav_dir.mkdir(parents=True, exist_ok=True)
+            for stale in wav_dir.glob("*.wav"):  # only this script writes here
+                stale.unlink()
         with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED,
                              compresslevel=6) as archive:
             for parent in parents:
@@ -157,11 +163,13 @@ def main() -> None:
                                     "blob": None, "startTime": 0, "endTime": 1.0,
                                     "recordingDuration": 1.0, "blobFilePath": name})
                     segment_id = f"{parent}S{k}"
-                    wav_path = wav_dir / f"{segment_id}.wav"
-                    sf.write(wav_path, window, frontend.sample_rate, subtype="PCM_16")
                     lineage.append({"sample": name, "segment_id": segment_id,
                                     "parent_audio_id": parent, "window": k,
                                     "start_sec_in_preprocessed": round(start_sec, 3)})
+                    if args.no_evidence:
+                        continue
+                    wav_path = wav_dir / f"{segment_id}.wav"
+                    sf.write(wav_path, window, frontend.sample_rate, subtype="PCM_16")
                     src = manifest[parent]
                     rows.append({
                         "audio_id": segment_id,
@@ -193,7 +201,9 @@ def main() -> None:
               f"{index[-1]['distinct_parents']} training recordings -> {target.name}",
               flush=True)
 
-    (OUTPUT / "index.json").write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
+    (output / "index.json").write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
+    if args.no_evidence:
+        return
     with ROWS.open("w", newline="", encoding="utf-8") as fh:
         writer = csv.DictWriter(fh, fieldnames=ROW_FIELDS)
         writer.writeheader()

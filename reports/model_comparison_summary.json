@@ -1,105 +1,113 @@
 {
-  "generated_at": "2026-09-26T22:57:41.472502+00:00",
+  "generated_at": "2026-09-28T11:13:34.594682+00:00",
   "split": "test",
-  "clips_scored": 450,
-  "clips_failed": 0,
-  "failures": [],
+  "clips_scored": 449,
+  "clips_failed": 1,
+  "failures": [
+    {
+      "audio_id": "SS-AGG-0001",
+      "reason": {
+        "stage": "python_model",
+        "message": "ImportError: cannot import name 'ClapFeatureExtractor' from 'transformers' (/home/ammar/Downloads/SRS_NextWave AI and ML/sonicsentinel-ai/.venv/lib/python3.12/site-packages/transformers/__init__.py)"
+      }
+    }
+  ],
   "models": {
     "python": {
-      "model_name": "ast_embedding+logreg",
-      "model_version": "2.0.0-ast_current"
+      "model_name": "ensemble(ast+clap+cnn14)",
+      "model_version": "3.1.0-ensemble_current"
     },
     "gtm": {
       "model_name": "Google Teachable Machine",
-      "model_version": "tm-20260926T2241-ew"
+      "model_version": "tm-20260928T0918-ew"
     }
   },
-  "python_accuracy": 0.8911111111111111,
-  "gtm_accuracy": 0.5111111111111111,
-  "agreement_rate": 0.4955555555555556,
-  "accuracy_when_models_agree": 0.9730941704035875,
-  "sent_to_manual_review": 388,
-  "auto_decided": 62,
-  "accuracy_of_auto_decisions": 0.9838709677419355,
-  "alerts_raised": 176,
+  "python_accuracy": 0.933184855233853,
+  "gtm_accuracy": 0.5723830734966593,
+  "agreement_rate": 0.5968819599109132,
+  "accuracy_when_models_agree": 0.9552238805970149,
+  "sent_to_manual_review": 270,
+  "auto_decided": 179,
+  "accuracy_of_auto_decisions": 0.9720670391061452,
+  "alerts_raised": 197,
   "consistency_status_counts": {
-    "Uncertain Result": 295,
-    "Model Disagreement": 47,
-    "Strong Match": 36,
-    "Weak Match": 46,
-    "Acceptable Match": 26
+    "Model Disagreement": 170,
+    "Weak Match": 86,
+    "Uncertain Result": 18,
+    "Strong Match": 43,
+    "Acceptable Match": 132
   },
   "per_class": {
     "Aggression": {
-      "n": 45,
-      "python": 38,
-      "gtm": 17,
-      "agree": 18,
-      "review": 44
+      "n": 44,
+      "python": 39,
+      "gtm": 16,
+      "agree": 19,
+      "review": 37
     },
     "Alarm or Siren": {
       "n": 45,
-      "python": 38,
-      "gtm": 6,
-      "agree": 5,
-      "review": 44
+      "python": 42,
+      "gtm": 13,
+      "agree": 16,
+      "review": 37
     },
     "Animal Sound": {
       "n": 45,
-      "python": 39,
-      "gtm": 11,
-      "agree": 13,
-      "review": 44
+      "python": 40,
+      "gtm": 17,
+      "agree": 19,
+      "review": 36
     },
     "Background Noise": {
       "n": 45,
-      "python": 40,
+      "python": 41,
       "gtm": 24,
-      "agree": 23,
-      "review": 42
+      "agree": 25,
+      "review": 27
     },
     "Glass Breaking": {
       "n": 45,
-      "python": 41,
-      "gtm": 16,
-      "agree": 15,
-      "review": 43
+      "python": 43,
+      "gtm": 28,
+      "agree": 28,
+      "review": 32
     },
     "Gunshot": {
       "n": 45,
-      "python": 43,
-      "gtm": 35,
-      "agree": 33,
-      "review": 43
+      "python": 44,
+      "gtm": 32,
+      "agree": 32,
+      "review": 24
     },
     "Machinery Fault": {
       "n": 45,
-      "python": 41,
+      "python": 43,
       "gtm": 28,
       "agree": 28,
-      "review": 42
+      "review": 23
     },
     "Panic Scream": {
       "n": 45,
-      "python": 37,
+      "python": 40,
       "gtm": 22,
-      "agree": 21,
-      "review": 36
+      "agree": 24,
+      "review": 29
     },
     "Person Asking for Help": {
       "n": 45,
       "python": 45,
       "gtm": 45,
       "agree": 45,
-      "review": 16
+      "review": 4
     },
     "Vehicle Horn": {
       "n": 45,
-      "python": 39,
-      "gtm": 26,
-      "agree": 22,
-      "review": 34
+      "python": 42,
+      "gtm": 32,
+      "agree": 32,
+      "review": 21
     }
   },
-  "median_total_ms": 1428.327
+  "median_total_ms": 1776.816
 }

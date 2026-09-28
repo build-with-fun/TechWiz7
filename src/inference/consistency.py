@@ -2,9 +2,10 @@
 
     difference = |python_top_confidence - gtm_top_confidence|
 
-Same class: Strong, Acceptable or Weak Match depending on the difference. Different
-classes: Model Disagreement. Either model not confident enough: Uncertain Result.
-Thresholds come from config/thresholds.json.
+Different classes: Model Disagreement. Same class: graded by the difference, but if both
+models are confident it is at least an Acceptable Match, since the two models don't score
+on the same scale (SRS Step 11). TM unsure on the same class: Weak Match. Python unsure:
+Uncertain Result. Thresholds come from config/thresholds.json.
 """
 
 from __future__ import annotations
@@ -107,6 +108,9 @@ def classify_consistency(
         "strong_match_max_diff": float(cons["strong_match_max_diff"]),
         "acceptable_match_max_diff": float(cons["acceptable_match_max_diff"]),
         "weak_match_max_diff": float(cons["weak_match_max_diff"]),
+        # Never below the floor; without the key only the difference counts.
+        "confident_agreement_min": max(float(cons.get("confident_agreement_min", 1.01)),
+                                       min_confidence),
     }
 
     # If both agree, a strong Python runner-up suggests a second, overlapping event.
@@ -124,23 +128,35 @@ def classify_consistency(
             f"Neither model reached the {min_confidence:.2f} confidence floor "
             f"(Python {py_conf:.3f}, GTM {gtm_conf:.3f}). Routed to manual review."
         )
-    # 2. Only one model confident -> also Uncertain.
-    elif py_conf < min_confidence or gtm_conf < min_confidence:
-        weaker = "Python" if py_conf < min_confidence else "GTM"
-        status = UNCERTAIN_RESULT
-        reason = (
-            f"{weaker} model below the {min_confidence:.2f} confidence floor "
-            f"(Python {py_conf:.3f}, GTM {gtm_conf:.3f}). Routed to manual review."
-        )
-    # 3. Different classes -> Disagreement.
+    # 2. Different classes -> Disagreement (even if one model is also unsure).
     elif not agree:
         status = MODEL_DISAGREEMENT
         reason = (
             f"Python says '{python_result.predicted_class}' ({py_conf:.3f}) but GTM says "
             f"'{gtm_result.predicted_class}' ({gtm_conf:.3f}); difference {difference:.3f}."
         )
-    # 4. Same class, both confident -> grade by the confidence difference.
+        if min(py_conf, gtm_conf) < min_confidence:
+            weaker = "Python" if py_conf < min_confidence else "GTM"
+            reason += f" The {weaker} model is also below the {min_confidence:.2f} confidence floor."
+    # 3. Same class, Python unsure -> Uncertain.
+    elif py_conf < min_confidence:
+        status = UNCERTAIN_RESULT
+        reason = (
+            f"Both models chose '{python_result.predicted_class}', but the Python model is "
+            f"below the {min_confidence:.2f} confidence floor (Python {py_conf:.3f}, "
+            f"GTM {gtm_conf:.3f}). Routed to manual review."
+        )
+    # 4. Same class, TM unsure -> Weak Match.
+    elif gtm_conf < min_confidence:
+        status = WEAK_MATCH
+        reason = (
+            f"Both models chose '{python_result.predicted_class}', but the GTM model's "
+            f"support is below the {min_confidence:.2f} confidence floor (Python "
+            f"{py_conf:.3f}, GTM {gtm_conf:.3f})."
+        )
+    # 5. Same class, both confident -> grade by the confidence difference.
     else:
+        both_sure = min(py_conf, gtm_conf) >= snapshot["confident_agreement_min"]
         if difference <= snapshot["strong_match_max_diff"]:
             status = STRONG_MATCH
             reason = (
@@ -152,6 +168,13 @@ def classify_consistency(
             reason = (
                 f"Both models agree on '{python_result.predicted_class}'; confidence "
                 f"difference {difference:.3f} is within the acceptable band."
+            )
+        elif both_sure:
+            status = ACCEPTABLE_MATCH
+            reason = (
+                f"Both models agree on '{python_result.predicted_class}' and both are "
+                f"confident (Python {py_conf:.3f}, GTM {gtm_conf:.3f}); the models score "
+                f"on different scales, so the {difference:.3f} gap is not held against them."
             )
         elif difference <= snapshot["weak_match_max_diff"]:
             status = WEAK_MATCH

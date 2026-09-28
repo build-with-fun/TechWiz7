@@ -52,7 +52,7 @@ file that implements it, the test or measurement, and its status in
 |---|---|
 | `src/app.py`, `src/auth.py`, `src/api/` | Flask app, sessions, CSRF, role checks, HTTP routes |
 | `audio_preprocessing/` | decoding (FFmpeg), validation, quality verdict, high-pass, noise gate, trimming, normalisation, 16 kHz mono, segmentation |
-| `feature_extraction/` | 254 hand-made features (baseline), CNN14 embeddings, and AST embeddings (served model) |
+| `feature_extraction/` | 254 hand-made features (baseline), and the CNN14, AST and CLAP embeddings the served ensemble uses |
 | `python_models/` | training scripts, the served bundle `best/`, metrics |
 | `gtm_model/`, `src/inference/gtm_predictor.py` | the TM export and its server-side frontend |
 | `src/inference/consistency.py` | comparison of the two models |
@@ -99,14 +99,19 @@ timestamps. Training uses the output of this same code (`python_models/preproces
 
 **Comparison** (FR xxxi–xxxix): whether the classes match, |Python top − TM top|, each
 model's top-two margin, and any second class above 0.25 (a possible overlap). The result is
-Strong Match, Acceptable Match, Weak Match, Model Disagreement or Uncertain Result.
+Strong Match, Acceptable Match, Weak Match, Model Disagreement or Uncertain Result. The
+models score on different scales, so two that agree at 0.50 or more make at least an
+Acceptable Match whatever the gap (SRS Step 11). If TM agrees but is under the 0.40 floor
+it's a Weak Match; if the Python model is under it, an Uncertain Result.
 
 **Rules** (FR xl–liii): each class has a severity, recommended action and escalation in
 `alert_rules/alert_rules.json`. A critical alert needs an alertable class, both models
 agreeing, quality of at least Acceptable and, by default, three windows in a row within 8 s.
 It is raised once per confirmation. **Review** (FR lvii) is triggered by disagreement,
-confidence below 0.6, a top-two margin below 0.15, poor quality, overlap, a possible
-near-duplicate, or a critical class without agreement.
+either model below 0.40, a top-two margin below 0.20, poor quality, overlap, a possible
+near-duplicate, or a critical class without a Strong or Acceptable Match. The values were
+picked on validation by `tools/calibrate_thresholds.py` so that at least 97% of the clips
+accepted without review are right (`reports/threshold_calibration.json`).
 
 ## 7. Dataset
 
@@ -148,15 +153,20 @@ split, and never count as originals. The robustness probes use the same function
 | CRNN on log-mel (old split) | 0.600 | 0.596 | 0.667 |
 | CNN14 embeddings + MLP | 0.840 | 0.840 | 0.862 |
 | CNN14 embeddings + logreg, +4,200 augmented train copies | 0.838 | 0.837 | 0.849 |
-| **AST embeddings + logistic regression (served)** | **0.891** | **0.892** | **0.907** |
+| AST embeddings + logistic regression (served until 28 Sep) | 0.891 | 0.892 | 0.907 |
+| CLAP embeddings + logistic regression | 0.922 | 0.922 | 0.933 |
+| **Ensemble: AST + CLAP + CNN14, logistic regression each, scores averaged (served)** | **0.933** | **0.933** | **0.942** |
 
-The served model uses the Audio Spectrogram Transformer (pretrained on AudioSet, model card
-`MIT/ast-finetuned-audioset-10-10-0.4593`, pinned revision) with logistic regression on its
-2,063-value embedding. Validation picked logreg with `C 0.01` (selection score 0.885). Every
-family was trained on the training split only and scored once on test. The served model
-scores 0.997 accuracy on the training split, 0.873 on validation and 0.891 on test
-(`python_models/metrics/served_model_split_results.json`, from `tools/split_results.py`), so
-it fits the training clips much more closely than new ones.
+The served model runs three pretrained networks on the clip: the Audio Spectrogram
+Transformer (AudioSet, `MIT/ast-finetuned-audioset-10-10-0.4593`), CLAP (audio and text,
+`laion/larger_clap_general`) and CNN14 (AudioSet, PANNs), all at pinned versions. Each
+gets its own logistic regression and the three score lists are averaged. Each member's C
+came from cross-validation on the training recordings; validation picked the three-member
+set (score 0.913, against 0.908 for CLAP alone and 0.875 for AST alone). Everything was
+trained on the training split and scored once on test: 0.981 accuracy on train, 0.911 on
+validation, 0.933 on test (`python_models/metrics/served_model_split_results.json`). Of 215
+test clips scored 0.9 or higher, one was wrong. The three networks run in parallel; a
+30-second upload takes 5.4 s over HTTP against the 8 s limit (`reports/performance.json`).
 
 The design, validation grid, per-class precision/recall/F1, confusion matrix and error
 analysis are in [documentation/MODEL_EVALUATION.md](documentation/MODEL_EVALUATION.md). The
@@ -164,33 +174,34 @@ features are described in `feature_extraction/features.py`. The served bundle re
 training-set hash, seed, selection criterion and pretrained checksum
 (`python_models/best/model_meta.json`).
 
-![Python confusion matrix](python_models/metrics/confusion_matrix_transfer_test.png)
+![Python confusion matrix](python_models/metrics/confusion_matrix_ensemble_test.png)
 
 ### 8.2 Teachable Machine model
 
-A TM audio project with the ten SRS class names, trained on 1,400 one-second samples: 140
-training recordings per class, picked in a fixed hash order so every source is represented,
-one sample each (the loudest second after preprocessing, the same rule the server uses).
-1,400 was the most Teachable Machine would train in our browser without stalling. It was
-exported as TensorFlow.js and converted to Keras for the server, which averages the scores
-of every one-second window of a clip, weighted by energy (chosen on validation). Training
-used TM's defaults except Epochs = 200 (picked on validation over 50 and 100, on 27 Sep).
+A TM audio project with the ten SRS class names, trained on 2,100 one-second samples, one
+per training recording (the loudest second after preprocessing, as on the server). TM used
+to stall above about 1,400 samples; it was a JavaScript stack overflow inside TM, fixed by
+starting Chrome with a bigger stack (`tools/train_gtm_browser.py --js-stack-kb 4000`). It was exported as TensorFlow.js and converted to Keras for the server,
+which averages the scores of every one-second window of a clip, weighted by energy (chosen
+on validation). Training used TM's defaults except Epochs = 200 (picked on validation over
+50 and 100, on 27 Sep).
 Evidence: `screenshots/gtm/`, `gtm_model/metadata.json`,
 `gtm_model/upload_package/tm_imports/index.json`, `audio_dataset/gtm_samples/`.
 
 Project link: <https://teachablemachine.withgoogle.com/train/audio/17pC3F6eg_sY_HHF8fY8aI2M73_B87UQ_> (a Google sign-in is needed to open it in Teachable Machine; the
 project file itself is at <https://drive.google.com/file/d/17pC3F6eg_sY_HHF8fY8aI2M73_B87UQ_/view>). Hosted model: <https://teachablemachine.withgoogle.com/models/56AmxJNhY/>. This linked project was trained
-on 27 Sep with the same 1,400 samples and settings. Each TM run comes out a little
-different, and this one scored slightly lower on validation (0.531 accuracy against 0.536),
-so the app keeps serving the earlier export; the linked model is in
-`gtm_model/candidates/tm_linked_e200/`.
+on 27 Sep with 1,400 samples (`gtm_model/candidates/tm_linked_e200/`). The served 28 Sep
+export was trained in an unsigned session; its evidence is
+`screenshots/gtm/20260928_v7_2100_e200_*`, and a signed-in re-run is needed to link it.
 
-Test result: **0.511 accuracy, 0.492 macro F1, 0.600 mean critical-class recall**
-(`gtm_model/gtm_metrics.json`). Earlier attempts: the first export (32 samples per class,
-first second of each clip) scored 0.278; 1,400 samples in audio-id order (mostly FSD50K)
-scored 0.462; the same samples in hash order with the default 50 epochs scored 0.493. Runs
-with 1,750 and 2,100 samples stalled inside TM on both GPUs. The model is still well below
-the SRS targets; `documentation/MODEL_EVALUATION.md` explains why and what we tried.
+Test result: **0.573 accuracy, 0.568 macro F1, 0.640 mean critical-class recall**
+(`gtm_model/gtm_metrics.json`; validation 0.564 against 0.536 for the 27 Sep export, which
+scored 0.511 on test). Earlier attempts: the first export (32 samples per class, first second
+of each clip) scored 0.278; 1,400 samples in audio-id order (mostly FSD50K) scored 0.462; the
+same samples in hash order with the default 50 epochs scored 0.493, and with 200 epochs
+0.511. TM trains only its last layer, so we could copy its training offline and try ideas
+quickly; nothing we tried took this network past about 0.55 on validation. The model is still well
+below the SRS targets; `documentation/MODEL_EVALUATION.md` explains why and what we tried.
 
 ### 8.3 Prediction and confidence comparison
 
@@ -307,11 +318,10 @@ be changed before any public deployment.
 
 ## 12. Limitations and future work
 
-- SRS-4: the served Python model reaches **0.891** test accuracy (target 0.85, met) and
-  0.892 macro F1 (target 0.80, met). For the 85% recall per critical class, Help, Gunshot
-  and Glass pass but Aggression (0.84) and Panic Scream (0.82) don't, although the five
-  average 0.907. Retraining with augmented copies on Day 5 didn't beat the served model on
-  validation. The TM model misses all three targets (0.511 / 0.492 / 0.600), see §8.2.
+- SRS-4: the served Python model reaches **0.933** test accuracy (target 0.85, met),
+  0.933 macro F1 (target 0.80, met) and at least 85% recall on every critical class
+  (Gunshot 0.98, Glass 0.96, Panic Scream 0.89, Aggression 0.89, Help 1.00; met). The TM model misses all three targets (0.573 / 0.568 /
+  0.640), see §8.2.
 - Aggression and Machinery Fault use stand-in labels, and the help phrases are synthetic only.
 - There is no "Unknown" class, so a sound outside the ten gets the closest class and relies
   on review.

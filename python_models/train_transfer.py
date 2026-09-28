@@ -40,7 +40,7 @@ METRICS = ROOT / "python_models" / "metrics"
 SEED = 20260926
 
 
-BACKBONES = {"cnn14": "panns", "ast": "ast"}
+BACKBONES = {"cnn14": "panns", "ast": "ast", "clap": "clap"}
 
 
 def emb_dir(variant: str, backbone: str = "cnn14") -> Path:
@@ -50,6 +50,8 @@ def emb_dir(variant: str, backbone: str = "cnn14") -> Path:
 def backbone_module(backbone: str):
     if backbone == "ast":
         from feature_extraction import ast_embeddings as mod
+    elif backbone == "clap":
+        from feature_extraction import clap_embeddings as mod
     else:
         from feature_extraction import embeddings as mod
     return mod
@@ -59,6 +61,8 @@ def make_embedder(backbone: str):
     threads = int(os.environ.get("SST_TORCH_THREADS", "8"))
     if backbone == "ast":
         return backbone_module(backbone).AstEmbedder(threads=threads)
+    if backbone == "clap":
+        return backbone_module(backbone).ClapEmbedder(threads=threads)
     return backbone_module(backbone).PannsEmbedder(threads=threads)
 
 
@@ -94,7 +98,9 @@ def embed(variant: str, splits: list[str], *, include_augmented: bool = False,
         target = out / f"{audio_id}.npy"
         if target.exists() or index.get(audio_id, {}).get("rejected") == "True":
             continue
-        np.save(target, embedder.embed(load_cached(audio_id, variant)).astype(np.float32))
+        # Pass the cache's rate: CLAP's default is 48 kHz, the cache is 16 kHz.
+        rate = int(index[audio_id]["sample_rate"])
+        np.save(target, embedder.embed(load_cached(audio_id, variant), rate).astype(np.float32))
         if n % 250 == 0:
             print(f"  {n}/{len(todo)} embedded, {time.time() - started:.0f}s", flush=True)
 

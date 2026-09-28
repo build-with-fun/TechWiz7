@@ -2,16 +2,17 @@
   "version": "1.0.0",
   "note": "Every value here is read at runtime. The SRS states evaluators may demand a changed confidence threshold live, so no threshold may ever be a literal in code. src/inference and src/services read this file; the admin UI edits it.",
   "confidence": {
-    "min_confidence": 0.6,
-    "low_confidence_band": 0.75,
-    "top_two_margin_min": 0.15,
+    "min_confidence": 0.4,
+    "low_confidence_band": 0.4,
+    "top_two_margin_min": 0.2,
     "overlap_secondary_confidence": 0.25
   },
   "consistency": {
     "strong_match_max_diff": 0.05,
     "acceptable_match_max_diff": 0.15,
     "weak_match_max_diff": 0.3,
-    "comment": "Difference = |python_top_confidence - gtm_top_confidence|. Above weak_match_max_diff and the models disagree on class => Model Disagreement. Same class but a large gap => Weak Match. Below min_confidence on both => Uncertain Result."
+    "confident_agreement_min": 0.5,
+    "comment": "Difference = |python_top_confidence - gtm_top_confidence|. Different classes: Model Disagreement. Same class: graded by the difference, but at least Acceptable when both reach confident_agreement_min. Python below min_confidence: Uncertain Result. Values picked on validation by tools/calibrate_thresholds.py."
   },
   "repeat_detection": {
     "required_consecutive_detections": 3,

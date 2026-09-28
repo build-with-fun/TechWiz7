@@ -20,7 +20,17 @@ from src.inference.consistency import (
 from src.inference.contract import PredictionResult, load_class_config, load_thresholds
 
 CLASSES = [c["name"] for c in load_class_config()["classes"]]
-THRESHOLDS = load_thresholds()
+CONFIG = load_thresholds()
+# The logic tests pin their own values, so re-calibrating config/thresholds.json cannot
+# change what they check; test_real_config_* tests cover the live file.
+THRESHOLDS = {
+    **CONFIG,
+    "confidence": dict(CONFIG["confidence"], min_confidence=0.6, low_confidence_band=0.75,
+                       top_two_margin_min=0.15, overlap_secondary_confidence=0.25),
+    "consistency": dict(CONFIG["consistency"], strong_match_max_diff=0.05,
+                        acceptable_match_max_diff=0.15, weak_match_max_diff=0.3,
+                        confident_agreement_min=0.8),
+}
 
 
 def make_result(model: str, predicted: str, confidence: float, runner_up: str | None = None,
@@ -62,11 +72,45 @@ def test_acceptable_match():
 
 
 def test_weak_match():
+    """Same class, wide gap, and GTM below the "both confident" level."""
     py = make_result("python", "Vehicle Horn", 0.95)
     gtm = make_result("gtm", "Vehicle Horn", 0.72)
     result = classify_consistency(py, gtm, THRESHOLDS)
     assert result.consistency_status == WEAK_MATCH
     assert result.confidence_difference == pytest.approx(0.23, abs=1e-9)
+
+
+def test_weak_match_when_gtm_agrees_below_the_floor():
+    """Python is sure and GTM picks the same class without reaching the floor."""
+    py = make_result("python", "Gunshot", 0.93)
+    gtm = make_result("gtm", "Gunshot", 0.41)
+    result = classify_consistency(py, gtm, THRESHOLDS)
+    assert result.consistency_status == WEAK_MATCH
+    assert "GTM" in result.reason
+
+
+def test_confident_agreement_is_acceptable_despite_a_wide_gap():
+    """SRS Step 11: the models scale scores differently, so both confident is enough."""
+    py = make_result("python", "Glass Breaking", 0.99)
+    gtm = make_result("gtm", "Glass Breaking", 0.81)
+    result = classify_consistency(py, gtm, THRESHOLDS)
+    assert result.confidence_difference == pytest.approx(0.18, abs=1e-9)
+    assert result.consistency_status == ACCEPTABLE_MATCH
+    assert "both are confident" in result.reason
+    needed, reason = requires_manual_review(result, THRESHOLDS)
+    assert needed is False and reason == ""
+
+
+def test_without_confident_agreement_min_the_gap_decides():
+    """Older configs without the key keep grading by the difference alone."""
+    legacy = {
+        "confidence": THRESHOLDS["confidence"],
+        "consistency": {k: v for k, v in THRESHOLDS["consistency"].items()
+                        if k != "confident_agreement_min"},
+    }
+    py = make_result("python", "Glass Breaking", 0.99)
+    gtm = make_result("gtm", "Glass Breaking", 0.81)
+    assert classify_consistency(py, gtm, legacy).consistency_status == WEAK_MATCH
 
 
 def test_model_disagreement():
@@ -86,13 +130,21 @@ def test_uncertain_result_both_models_unsure():
     assert result.consistency_status == UNCERTAIN_RESULT
 
 
-def test_uncertain_result_when_only_one_model_is_unsure():
-    """Agreement doesn't count if one model is unsure."""
-    py = make_result("python", "Alarm or Siren", 0.91)
-    gtm = make_result("gtm", "Alarm or Siren", 0.20)
+def test_uncertain_result_when_the_python_result_is_unsure():
+    """Agreement doesn't make the reported (Python) result certain."""
+    py = make_result("python", "Alarm or Siren", 0.20)
+    gtm = make_result("gtm", "Alarm or Siren", 0.91)
     result = classify_consistency(py, gtm, THRESHOLDS)
     assert result.consistency_status == UNCERTAIN_RESULT
-    assert "GTM" in result.reason
+    assert "Python" in result.reason
+
+
+def test_disagreement_is_named_even_when_one_model_is_unsure():
+    py = make_result("python", "Gunshot", 0.90)
+    gtm = make_result("gtm", "Glass Breaking", 0.35)
+    result = classify_consistency(py, gtm, THRESHOLDS)
+    assert result.consistency_status == MODEL_DISAGREEMENT
+    assert "below" in result.reason
 
 
 def test_all_five_statuses_are_producible():
@@ -141,17 +193,32 @@ def test_match_grading_boundaries(strong_max, acceptable_max, weak_max, differen
 
 
 def test_real_config_thresholds_are_honoured():
-    """The real config values are used."""
-    cons = THRESHOLDS["consistency"]
+    """The live config values are used."""
+    cons = CONFIG["consistency"]
+    floor = CONFIG["confidence"]["min_confidence"]
     pairs = [
-        (cons["strong_match_max_diff"] / 2, STRONG_MATCH),
-        (cons["acceptable_match_max_diff"] / 2, ACCEPTABLE_MATCH),
-        (cons["weak_match_max_diff"] / 2, WEAK_MATCH),
+        (0.95 - cons["strong_match_max_diff"] / 2, STRONG_MATCH),
+        (0.95 - (cons["strong_match_max_diff"] + cons["acceptable_match_max_diff"]) / 2,
+         ACCEPTABLE_MATCH),
+        (floor - 0.01, WEAK_MATCH),
     ]
-    for difference, expected in pairs:
+    for gtm_confidence, expected in pairs:
         py = make_result("python", "Gunshot", 0.95)
-        gtm = make_result("gtm", "Gunshot", 0.95 - difference)
-        assert classify_consistency(py, gtm, THRESHOLDS).consistency_status == expected
+        gtm = make_result("gtm", "Gunshot", gtm_confidence)
+        assert classify_consistency(py, gtm, CONFIG).consistency_status == expected
+
+
+def test_confident_agreement_never_counts_a_model_below_the_floor():
+    """Raising only the floor (a typical surprise change) keeps "both confident" above it."""
+    raised = {
+        "confidence": dict(THRESHOLDS["confidence"], min_confidence=0.9),
+        "consistency": dict(THRESHOLDS["consistency"], confident_agreement_min=0.5),
+    }
+    py = make_result("python", "Gunshot", 0.95)
+    gtm = make_result("gtm", "Gunshot", 0.85)
+    result = classify_consistency(py, gtm, raised)
+    assert result.threshold_snapshot["confident_agreement_min"] == 0.9
+    assert result.consistency_status == WEAK_MATCH      # GTM is below the raised floor
 
 
 def test_min_confidence_boundary_is_inclusive():
@@ -180,7 +247,8 @@ def test_taxonomy_responds_to_changed_thresholds():
 
     stricter = {
         "confidence": dict(THRESHOLDS["confidence"]),
-        "consistency": dict(THRESHOLDS["consistency"], acceptable_match_max_diff=0.05),
+        "consistency": dict(THRESHOLDS["consistency"], acceptable_match_max_diff=0.05,
+                            confident_agreement_min=0.9),
     }
     assert classify_consistency(py, gtm, stricter).consistency_status == WEAK_MATCH
 
@@ -205,6 +273,7 @@ def test_threshold_snapshot_is_recorded_with_every_result():
     snapshot = result.threshold_snapshot
     assert set(snapshot) == {
         "min_confidence", "strong_match_max_diff", "acceptable_match_max_diff", "weak_match_max_diff",
+        "confident_agreement_min",
     }
     assert all(isinstance(v, float) for v in snapshot.values())
 

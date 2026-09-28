@@ -2,6 +2,8 @@
 
     python tools/fetch_pretrained.py            # PANNs CNN14, ~358 MB into ~/.cache/sonicsentinel/
     python tools/fetch_pretrained.py --ast      # AST (AudioSet), ~350 MB into the Hugging Face cache
+    python tools/fetch_pretrained.py --clap     # CLAP (LAION), ~780 MB into the Hugging Face cache
+    python tools/fetch_pretrained.py --all      # all three, which the served ensemble needs
     SST_PANNS_CHECKPOINT=/path/file.pth ...     # use a CNN14 copy somewhere else instead
 
 CNN14: Zenodo record 3987831 (Kong et al., PANNs), CC BY 4.0, checked against the MD5
@@ -10,6 +12,9 @@ parallel, resumable chunks.
 
 AST: MIT/ast-finetuned-audioset-10-10-0.4593 on Hugging Face (BSD-3-Clause), at the revision
 pinned in feature_extraction/ast_embeddings.py.
+
+CLAP: laion/larger_clap_general on Hugging Face (Apache-2.0), at the revision pinned in
+feature_extraction/clap_embeddings.py.
 """
 
 from __future__ import annotations
@@ -61,10 +66,25 @@ def fetch_ast() -> None:
     print(f"AST {AST_MODEL}@{AST_REVISION[:8]} is in the Hugging Face cache")
 
 
+def fetch_clap() -> None:
+    from feature_extraction.clap_embeddings import CLAP_MODEL, CLAP_REVISION, ClapEmbedder
+
+    ClapEmbedder()  # downloads on first use
+    print(f"CLAP {CLAP_MODEL}@{CLAP_REVISION[:8]} is in the Hugging Face cache")
+
+
 def main() -> None:
-    if "--ast" in sys.argv[1:]:
+    flags = set(sys.argv[1:])
+    if "--ast" in flags or "--all" in flags:
         fetch_ast()
+    if "--clap" in flags or "--all" in flags:
+        fetch_clap()
+    if flags & {"--ast", "--clap"} and "--all" not in flags:
         return
+    fetch_cnn14()
+
+
+def fetch_cnn14() -> None:
     target = default_checkpoint_path()
     if target.exists() and digest(target, "sha256") == CHECKPOINT_SHA256:
         print(f"already present and verified: {target}")
