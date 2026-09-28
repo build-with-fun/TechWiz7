@@ -37,11 +37,11 @@ centre's row in the official table). Aim to finish by **29 Sep 04:00**, twelve h
 
 ## Before you zip / push
 
-- [x] `pytest -q` passes and the result is in `TEST_PLAN.md` (497 passed, 0 failed, 27 Sep)
+- [x] `pytest -q` passes and the result is in `TEST_PLAN.md` (505 passed, 0 failed, 28 Sep)
 - [x] `python tools/render_uml.py --check` PASS
 - [x] `grep -rn "{{" README.md PROJECT_REPORT.md TEST_PLAN.md documentation/` finds no unfilled placeholders
 - [x] No secrets: `.env` is not committed; `git grep -n "SECRET_KEY="` shows only `.env.example` and a `...` placeholder in the Dockerfile comment (27 Sep)
-- [ ] Fresh clone: follow `README.md` from scratch in a new folder and upload one sample clip (27 Sep: `requirements.txt` was missing `transformers`, now fixed; a clean install is still untested)
+- [ ] Fresh clone: follow `README.md` from scratch in a new folder and upload one sample clip (28 Sep: `requirements.txt` was missing `transformers`, now fixed; a clean install is still untested — `requirements.txt` now also lists the CLAP weights the served ensemble needs)
 - [ ] Record the video; export 1080p MP4 named per the portal's rule
 - [ ] Share links (report, blog, video, dataset) set to "anyone with the link can view"
 

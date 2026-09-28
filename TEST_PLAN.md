@@ -7,11 +7,14 @@ was run; anything not run yet says so.
 
 | Date | Command | Result |
 |---|---|---|
-| 27 Sep | `pytest -q` (full suite, deep-model tests included) | **497 passed**, 0 failed, 196 s |
+| 28 Sep | `pytest -q` (full suite, deep-model tests included) | **505 passed**, 0 failed, 208 s |
+| 28 Sep | `tools/render_uml.py --check` | PASS (5 diagrams, no overlaps, no edge through a node) |
+| 28 Sep | `tools/build_comparison_report.py` (both served models, 450 test recordings) | 449 scored, 1 failed on one clip (`reports/MODEL_COMPARISON.md`); Python ensemble 0.933, TM 0.572, agreement 0.597 |
+| 28 Sep | `tools/evaluate_gtm.py --split test` (2,100-sample, 200-epoch TM export) | 0.573 accuracy, 0.568 macro-F1, 0.640 critical recall (`gtm_model/gtm_metrics.json`) |
+| 28 Sep | `tools/calibrate_thresholds.py --apply` (validation split) | thresholds picked so 97.2% of auto-accepted clips are right (`reports/threshold_calibration.json`) |
+| 28 Sep | `pytest -q tests/test_consistency_taxonomy.py tests/test_alert_rules_config.py` (after the consistency fix) | 38 + 71 passed |
 | 27 Sep | `tools/browser_acceptance.py` (Chrome, fake microphone, isolated database) | **35/35 checks passed** (`reports/browser_acceptance.json`, `screenshots/acceptance/`) |
 | 27 Sep | `tools/benchmark_scale.py` (20,000 events, gunicorn 1 × 8 threads) | pass line met: p95 of reads 0.37 s at 10 users, 0.60 s at 20, no errors (`reports/scale.json`) |
-| 27 Sep | `tools/evaluate_gtm.py --split test` (200-epoch TM export) | 0.511 accuracy, 0.492 macro-F1, 0.600 critical recall |
-| 27 Sep | `tools/build_comparison_report.py` (both served models, 450 test recordings) | 450 scored, 0 failed (`reports/MODEL_COMPARISON.md`) |
 | 26 Sep | `pytest -q -k "not deep_models"` (before the final fixes) | 456 passed, 1 skipped, 27 deselected, 79 s |
 | 26 Sep | `tools/render_uml.py --check` | PASS (5 diagrams, no overlaps, no edge through a node) |
 | 25 Sep | `pytest -q` including deep-model tests (needs network for MobileNet weights) | 449 passed |

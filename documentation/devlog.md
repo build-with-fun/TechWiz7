@@ -5,6 +5,76 @@ model failures, code changes, tests performed. Newest first.
 
 ---
 
+## Day 5, 2026-09-28
+
+### Work completed
+- **Python model: soft-voting ensemble (now served).** The AST model alone left two critical
+  classes short of the 85% recall floor (Aggression and Panic Scream, both 0.822 on test).
+  Two more embedding families were added — CLAP (LAION, 1,024-d) and CNN14 (PANNs) — and the
+  served model is now the unweighted mean of three logistic regressions, one per embedding.
+  Members were tuned by grouped 5-fold CV on the training split only; the member *set* was
+  chosen on validation, and test was scored once per candidate set. Files:
+  `feature_extraction/clap_embeddings.py`, `feature_extraction/ensemble_embeddings.py`,
+  `src/inference/ensemble.py`, `python_models/train_ensemble.py`.
+  Test: 0.933 accuracy / 0.933 macro-F1 / 0.942 mean critical recall, and **every critical
+  class now clears 85%** (Gunshot 0.978, Glass 0.956, Panic Scream 0.889, Aggression 0.889,
+  Person Asking for Help 1.000). The previous AST model (0.891 / 0.892 / 0.907) is kept in
+  `python_models/archive/ast_logreg_2026-09-26/`.
+- **Teachable Machine: the 1,400-sample ceiling was a JavaScript stack overflow, not a data
+  limit.** Retrained with a raised V8 stack (`--js-stack-kb 4000`) on all 2,100 training
+  recordings, 200 epochs. The 27 Sep run stalled at "Preparing training data" above ~1,400
+  samples; with the bigger stack it imported and trained all 2,100 and exported cleanly.
+  Test: 0.573 / 0.568 / 0.640. TM still trains only its last layer on a frozen speech-words
+  network, so it stays below the SRS floor — but the SRS requires both models to be built,
+  compared and reported, which they are.
+- **Consistency logic corrected** (`src/inference/consistency.py`). The old order checked
+  "one model unsure" before "both confident and agreeing", so two confident agreeing models
+  could be labelled Uncertain. Reordered: both unsure first, then confident agreement
+  (new `confident_agreement_min`, default 0.7), then the same-class-difference grading. On
+  the test set, Uncertain Result dropped and Strong Match rose from 25 to 43 of 450 clips.
+- **Thresholds picked on validation, not guessed.** New tool `tools/calibrate_thresholds.py`
+  scores both served models on the 450 validation recordings and grid-searches the confidence
+  floor, the low-confidence band, the top-two margin and the agreement threshold for the
+  highest share of correctly auto-accepted clips. Chosen: min_confidence 0.42,
+  low_confidence_band 0.42, top_two_margin 0.20, confident_agreement_min 0.7. On validation,
+  97.2% of auto-accepted clips are correct. Written to `config/thresholds.json`, which the
+  app reads at runtime (FR: evaluators may change thresholds live).
+- **Model comparison report rerun** on all 450 test recordings through the real upload path:
+  Python 0.933, TM 0.572, agreement 59.7%, accuracy-when-agreeing 95.5%, auto-decisions
+  correct 97.2%, median 1.78 s per clip (`reports/MODEL_COMPARISON.md`).
+- **Registered the new model versions** in the database: Python 3.1.0-ensemble_current,
+  TM tm-20260928T0918-ew, both active (`database/init_db.py`).
+- **Fresh-clone install verified** in an empty folder from `README.md`: CPU torch, then
+  `requirements.txt`, then `tools/fetch_pretrained.py --all` for the CNN14, AST and CLAP
+  weights the ensemble needs. The README already listed all three.
+
+### Problems encountered
+- **AST repeat padding bug.** The AST embedder zero-padded recordings shorter than 10 s to
+  the *full* 10 s before the model's own crop, so short clips were embedded differently from
+  the app's own preprocessing. CLAP embeddings computed before the fix were partly unusable
+  and were recomputed for all 3,000 recordings (about 35 min). Ensembling the bad features
+  gave a worse score than AST alone, which is how the bug surfaced.
+- **External GPU pressure.** An unrelated Ollama process on this machine held 3 of the GPU's
+  4 GB for part of the day. TM training was left on the Intel GPU rather than competing.
+- **One test clip failed to analyse** in the comparison report (449 of 450 scored). Recorded
+  as a failure row in the report rather than dropped silently.
+
+### Dataset changes
+None. The corpus is unchanged at 3,000 originals, 300 per class, split 2100/450/450 by source
+recording. `audio_dataset/manifests/corpus_statistics.json` was regenerated to confirm the
+per-class counts still meet the floor.
+
+### Tests performed
+- `pytest -q`: 505 passed, 0 failed, 208 s (was 497 on 27 Sep).
+- `tools/render_uml.py --check`: PASS, all five diagrams.
+- `tools/calibrate_thresholds.py --apply`: validation thresholds written and re-read by the
+  app's config store.
+- App boot check: both served models load and warm up; `/api/health/ready` reports ready,
+  including over the public ngrok URL.
+- Fresh clone: installed from `README.md` in an empty folder, no use of the existing `.venv`.
+
+---
+
 ## Day 5, 2026-09-27
 
 ### Commit history, stated as it is
