@@ -41,7 +41,7 @@ centre's row in the official table). Aim to finish by **29 Sep 04:00**, twelve h
 - [x] `python tools/render_uml.py --check` PASS
 - [x] `grep -rn "{{" README.md PROJECT_REPORT.md TEST_PLAN.md documentation/` finds no unfilled placeholders
 - [x] No secrets: `.env` is not committed; `git grep -n "SECRET_KEY="` shows only `.env.example` and a `...` placeholder in the Dockerfile comment (27 Sep)
-- [ ] Fresh clone: follow `README.md` from scratch in a new folder and upload one sample clip (28 Sep: `requirements.txt` was missing `transformers`, now fixed; a clean install is still untested — `requirements.txt` now also lists the CLAP weights the served ensemble needs)
+- [x] Fresh clone: followed `README.md` from scratch in a new folder (28 Sep). CPU torch, `requirements.txt`, `tools/fetch_pretrained.py --all`, `database/init_db.py`, then one upload through `/api/audio/upload`; both models load, the clip is analysed, an alert is raised, HTTP 201
 - [ ] Record the video; export 1080p MP4 named per the portal's rule
 - [ ] Share links (report, blog, video, dataset) set to "anyone with the link can view"
 
