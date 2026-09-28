@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="banner.jpeg" alt="SonicSentinel AI banner" width="100%">
+</p>
+
 # SonicSentinel AI
 
 SonicSentinel listens to uploaded recordings and to a consented browser microphone, and
